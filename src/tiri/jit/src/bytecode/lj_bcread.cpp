@@ -1210,6 +1210,8 @@ GCproto *lj_bcread_proto(LexState *State)
    numparams = bcread_byte(State);
    framesize = bcread_byte(State);
    sizeuv    = bcread_byte(State);
+   const uint8_t ordinary = bcread_byte(State);
+   if (ordinary > 1) bcread_error(State, ErrMsg::BCBAD);
    const uint8_t source_wire = bcread_byte(State);
    if ((source_wire >= State->compilation_sources.size()) and
        source_wire != FILESOURCE_SYNTHETIC_INDEX and source_wire != FILESOURCE_OVERFLOW_INDEX) {
@@ -1294,6 +1296,7 @@ GCproto *lj_bcread_proto(LexState *State)
    pt->sizept = sizept;
    pt->sizeuv = (uint8_t)sizeuv;
    pt->flags = (uint8_t)flags;
+   pt->ordinary = ordinary;
    pt->trace = 0;
    pt->file_source_idx = source_wire;
    setgcref(pt->chunk_name, obj2gco(State->chunk_name));

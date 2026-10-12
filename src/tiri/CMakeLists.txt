@@ -974,7 +974,8 @@ set (TIRI_TESTS
    jitoptions fstring const const_optimisation import_scope unicode ellipsis safe_nav close type_annotations type_fixing
    type_inference jit jit_uclo jit_fnew jit_arrays jit_objects jit_try_regex pipe for_each arrow_functions
    result_filter thunks deferred_expr shadow_assert ranges contains bare_iteration compiler_intrinsics
-   annotations package_annotation dependencies_annotation locality anonymous_for key_values debug_filesources compound choose_from enum flow
+   annotations ordinary_annotation package_annotation dependencies_annotation locality anonymous_for key_values
+   debug_filesources compound choose_from enum flow
    table_slice table_merge table_clone options type_name
    library_namespaces
    try_except checkall import versioned_import package_index_import include_list processing metatables with thunk_table_index debug

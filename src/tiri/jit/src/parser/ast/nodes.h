@@ -619,6 +619,7 @@ struct FunctionExprPayload {
    std::vector<FunctionParameter> parameters;
    bool is_vararg = false;
    bool is_thunk = false;              // Marks function as thunk
+   bool is_ordinary = false;           // Inherit caller context during entity member dispatch
    mutable FunctionReturnTypes return_types{}; // Declared, validated inferred or advisory result metadata
    mutable StaticCallableHandle callable{};
    std::unique_ptr<BlockStmt> body;

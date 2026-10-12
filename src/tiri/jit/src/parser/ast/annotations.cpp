@@ -330,11 +330,14 @@ ParserResult<std::vector<AnnotationEntry>> AstBuilder::parse_annotations(bool Si
 //********************************************************************************************************************
 // Attaches parsed annotations to a function expression value.
 
-static bool attach_annotations_to_function_value(ExprNodePtr &Value, std::vector<AnnotationEntry> &Annotations)
+static bool attach_annotations_to_function_value(
+   ExprNodePtr &Value, std::vector<AnnotationEntry> &Annotations, bool Ordinary)
 {
    if (not Value or Value->kind != AstNodeKind::FunctionExpr) return false;
 
    if (auto *function = std::get_if<FunctionExprPayload>(&Value->data)) {
+      if (Ordinary and function->is_thunk) return false;
+      function->is_ordinary = Ordinary;
       function->annotations = std::move(Annotations);
       return true;
    }
@@ -345,11 +348,14 @@ static bool attach_annotations_to_function_value(ExprNodePtr &Value, std::vector
 //********************************************************************************************************************
 // Attaches parsed annotations to a statement containing a single function expression.
 
-static bool attach_annotations_to_statement(StmtNode &Statement, std::vector<AnnotationEntry> &Annotations)
+static bool attach_annotations_to_statement(
+   StmtNode &Statement, std::vector<AnnotationEntry> &Annotations, bool Ordinary)
 {
    if (Statement.kind IS AstNodeKind::FunctionStmt) {
       auto *payload = std::get_if<FunctionStmtPayload>(&Statement.data);
       if (payload and payload->function) {
+         if (Ordinary and payload->function->is_thunk) return false;
+         payload->function->is_ordinary = Ordinary;
          payload->function->annotations = std::move(Annotations);
          return true;
       }
@@ -357,6 +363,8 @@ static bool attach_annotations_to_statement(StmtNode &Statement, std::vector<Ann
    else if (Statement.kind IS AstNodeKind::LocalFunctionStmt) {
       auto *payload = std::get_if<LocalFunctionStmtPayload>(&Statement.data);
       if (payload and payload->function) {
+         if (Ordinary and payload->function->is_thunk) return false;
+         payload->function->is_ordinary = Ordinary;
          payload->function->annotations = std::move(Annotations);
          return true;
       }
@@ -364,19 +372,19 @@ static bool attach_annotations_to_statement(StmtNode &Statement, std::vector<Ann
    else if (Statement.kind IS AstNodeKind::AssignmentStmt) {
       auto *payload = std::get_if<AssignmentStmtPayload>(&Statement.data);
       if (payload and payload->values.size() IS 1) {
-         return attach_annotations_to_function_value(payload->values[0], Annotations);
+         return attach_annotations_to_function_value(payload->values[0], Annotations, Ordinary);
       }
    }
    else if (Statement.kind IS AstNodeKind::LocalDeclStmt) {
       auto *payload = std::get_if<LocalDeclStmtPayload>(&Statement.data);
       if (payload and payload->values.size() IS 1) {
-         return attach_annotations_to_function_value(payload->values[0], Annotations);
+         return attach_annotations_to_function_value(payload->values[0], Annotations, Ordinary);
       }
    }
    else if (Statement.kind IS AstNodeKind::GlobalDeclStmt) {
       auto *payload = std::get_if<GlobalDeclStmtPayload>(&Statement.data);
       if (payload and payload->values.size() IS 1) {
-         return attach_annotations_to_function_value(payload->values[0], Annotations);
+         return attach_annotations_to_function_value(payload->values[0], Annotations, Ordinary);
       }
    }
 
@@ -389,6 +397,8 @@ static bool attach_annotations_to_statement(StmtNode &Statement, std::vector<Ann
 
 ParserResult<StmtNodePtr> AstBuilder::parse_annotated_statement()
 {
+   Token annotation_token = this->ctx.tokens().current();
+
    // Parse the annotation sequence
    auto annotations_result = this->parse_annotations();
    if (not annotations_result.ok()) return ParserResult<StmtNodePtr>::failure(annotations_result.error_ref());
@@ -399,7 +409,15 @@ ParserResult<StmtNodePtr> AstBuilder::parse_annotated_statement()
       return ParserResult<StmtNodePtr>::success(nullptr);
    }
 
+   bool ordinary = false;
    for (const auto &annotation : annotations) {
+      if (annotation.name and std::string_view(strdata(annotation.name), annotation.name->len) IS "Ordinary") {
+         if (ordinary or not annotation.args.empty()) {
+            return this->fail<StmtNodePtr>(ParserErrorCode::UnexpectedToken, Token::from_span(annotation.span),
+               ordinary ? "duplicate @Ordinary annotation" : "@Ordinary accepts no arguments");
+         }
+         ordinary = true;
+      }
       if (annotation.name and std::string_view(strdata(annotation.name), annotation.name->len) IS "Package") {
          Token current = this->ctx.tokens().current();
          return this->fail<StmtNodePtr>(ParserErrorCode::UnexpectedToken, current,
@@ -442,9 +460,15 @@ ParserResult<StmtNodePtr> AstBuilder::parse_annotated_statement()
          "annotations must precede a function declaration or function assignment");
    }
 
-   if (not stmt or not attach_annotations_to_statement(*stmt, annotations)) {
+   if (ordinary and current.kind() IS TokenKind::ThunkToken) {
+      return this->fail<StmtNodePtr>(ParserErrorCode::UnexpectedToken, annotation_token,
+         "@Ordinary is not supported on thunk declarations");
+   }
+
+   if (not stmt or not attach_annotations_to_statement(*stmt, annotations, ordinary)) {
       return this->fail<StmtNodePtr>(ParserErrorCode::UnexpectedToken, current,
-         "annotations must precede a function declaration or function assignment");
+         ordinary ? "@Ordinary requires a function literal; thunks and aliases are unsupported" :
+            "annotations must precede a function declaration or function assignment");
    }
 
    return ParserResult<StmtNodePtr>::success(std::move(stmt));

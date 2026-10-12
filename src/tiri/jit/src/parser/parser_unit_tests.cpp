@@ -3088,10 +3088,10 @@ static bool test_structural_bytecode_reader_validation(kt::Log &Log)
 
    // Replace the first prototype's sizekgc field with 65,537 without relying on host-sized arithmetic. The reader
    // must reject the count before allocating or walking the shortened constant section.
-   size_t constant_cursor = body_offset + 4;
+   size_t constant_cursor = body_offset + 6;
    uint32_t old_constant_count = 0;
    if (not read_uleb(stripped, constant_cursor, old_constant_count)) return false;
-   std::string changed_body = stripped.substr(body_offset, 4);
+   std::string changed_body = stripped.substr(body_offset, 6);
    append_uleb(changed_body, BCMAX_D + 2u);
    changed_body.append(stripped, constant_cursor, prototype_length - (constant_cursor - body_offset));
    std::string excessive_count = stripped.substr(0, length_offset);
@@ -3127,7 +3127,7 @@ static bool test_structural_bytecode_reader_validation(kt::Log &Log)
       bool parent = depth != 0;
       std::string body;
       body.push_back(char(parent ? PROTO_CHILD : 0));
-      body.append("\0\1\0", 3); // Parameters, frame size, upvalues.
+      body.append("\0\1\0\0\0", 5); // Parameters, frame size, upvalues, ordinary policy, source.
       append_uleb(body, parent ? 1 : 0);
       append_uleb(body, 0);
       append_uleb(body, 1);
@@ -3377,6 +3377,75 @@ static bool test_unmatched_context_entry_rejected(kt::Log &Log)
    if (lua_load(lua, std::string_view(dump.data(), dump.size()), "unmatched-context-entry") IS 0) {
       Log.error("bytecode reader accepted an unmatched BC_CTXENTER");
       lua_pop(lua, 1);
+      return false;
+   }
+   lua_pop(lua, 1);
+   return true;
+}
+
+static bool test_ordinary_function_policy(kt::Log &Log)
+{
+   LuaStateHolder state;
+   lua_State *lua = state.get();
+   constexpr std::string_view source =
+      "@Ordinary local function ordinary() return function() end end\nreturn ordinary";
+   if (lua_load(lua, source, "ordinary-policy") or lua_pcall(lua, 0, 1, 0)) {
+      Log.error("failed to compile an ordinary closure: %s", lua_tostring(lua, -1));
+      return false;
+   }
+   GCproto *prototype = funcproto(funcV(lua->top - 1));
+   GCproto *nested = first_child_proto(prototype);
+   if (not func_is_ordinary(funcV(lua->top - 1)) or not nested or nested->ordinary != 0) {
+      Log.error("ordinary policy was absent or inherited by a nested function");
+      return false;
+   }
+   for (int strip : { 0, 1 }) {
+      std::string dump;
+      if (lj_bcwrite(lua, prototype, bytecode_writer, &dump, strip) != 0 or
+          lua_load(lua, dump, "ordinary-roundtrip")) return false;
+      bool ordinary = func_is_ordinary(funcV(lua->top - 1));
+      lua_pop(lua, 1);
+      if (not ordinary) {
+         Log.error("ordinary policy was lost in a bytecode round trip");
+         return false;
+      }
+   }
+
+   std::string dump;
+   if (lj_bcwrite(lua, prototype, bytecode_writer, &dump, 1) != 0) return false;
+   size_t cursor = 4;
+   auto read_uleb = [&](uint32_t &Value) {
+      Value = 0;
+      for (unsigned shift = 0; shift < 35 and cursor < dump.size(); shift += 7) {
+         uint8_t byte = uint8_t(dump[cursor++]);
+         Value |= uint32_t(byte & 0x7f) << shift;
+         if (not (byte & 0x80)) return true;
+      }
+      return false;
+   };
+   uint32_t length;
+   if (not read_uleb(length)) return false; // Header flags.
+   for (int block = 0; block < 5; ++block) {
+      if (not read_uleb(length) or length > dump.size() - cursor) return false;
+      cursor += length;
+   }
+   if (not read_uleb(length) or cursor + 4 >= dump.size()) return false;
+   std::string malformed = dump;
+   malformed[cursor + 4] = char(2);
+   if (lua_load(lua, malformed, "ordinary-invalid-policy") IS 0) {
+      Log.error("bytecode accepted an unknown ordinary policy");
+      return false;
+   }
+   lua_pop(lua, 1);
+   malformed = dump.substr(0, cursor + 4);
+   if (lua_load(lua, malformed, "ordinary-truncated-policy") IS 0) {
+      Log.error("bytecode accepted a truncated policy header");
+      return false;
+   }
+   lua_pop(lua, 1);
+   dump[3] = char(BCDUMP_VERSION - 1);
+   if (lua_load(lua, dump, "ordinary-old-format") IS 0) {
+      Log.error("bytecode accepted the previous format version");
       return false;
    }
    lua_pop(lua, 1);
@@ -3696,11 +3765,11 @@ static bool test_malformed_signature_rejected(kt::Log &Log)
       return false;
    }
    position += value;
-   if (not read_uleb(position, value) or position + 5 > dump.size()) {
+   if (not read_uleb(position, value) or position + 6 > dump.size()) {
       Log.error("could not locate the prototype header in the malformed-signature fixture");
       return false;
    }
-   position += 5;
+   position += 6;
 
    // Header ULEB fields, in order: sizekgc, sizekn, sizebc, siglen, deplen.  The dump is stripped, so no debug
    // length follows and the signature payload begins immediately after deplen.
@@ -3839,7 +3908,7 @@ static bool test_source_manifest_validation(kt::Log &Log)
    }
    size_t prototype_offset = struct_offset + struct_size;
    uint32_t prototype_size = 0;
-   if (not read_uleb(prototype_offset, prototype_size) or prototype_offset + 5 > dump.size()) {
+   if (not read_uleb(prototype_offset, prototype_size) or prototype_offset + 6 > dump.size()) {
       Log.error("could not locate the prototype source identity");
       return false;
    }
@@ -3847,7 +3916,7 @@ static bool test_source_manifest_validation(kt::Log &Log)
    std::array<std::string, 3> invalid = { dump, dump, dump };
    invalid[0][source_offset] = char(0xff);
    invalid[1][source_offset + 2] = char(1);
-   invalid[2][prototype_offset + 4] = char(1);
+   invalid[2][prototype_offset + 5] = char(1);
    constexpr std::array<const char *, 3> descriptions = {
       "unsupported source version", "out-of-range source root", "out-of-range prototype source"
    };
@@ -5778,11 +5847,11 @@ static bool test_module_dependency_corruption_rejected(kt::Log &Log)
       return false;
    }
    position += value;
-   if (not read_uleb(position, value) or position + 5 > dump.size()) {
+   if (not read_uleb(position, value) or position + 6 > dump.size()) {
       Log.error("could not locate the prototype header in the corruption fixture");
       return false;
    }
-   position += 5;
+   position += 6;
 
    uint32_t signature_length = 0, dependency_length = 0;
    for (int field = 0; field < 3; ++field) {
@@ -8604,10 +8673,11 @@ static bool test_contextual_call_specialisation(kt::Log &Log)
       "local target = entity { value = 1 }\n"
       "function target.read(Value:num):num return &value + Value end\n"
       "return target.read(&value)\n", true, error);
-   if (not contextual_arguments or count_opcode(*contextual_arguments, BC_CTXGET) != 0 or
+   if (not contextual_arguments or count_opcode(*contextual_arguments, BC_CTXGET) != 1 or
        count_opcode(*contextual_arguments, BC_CTXENTER) != 1 or
        count_opcode(*contextual_arguments, BC_CTXCALL) != 1) {
-      Log.error("a statically contextual argument region reacquired its retained receiver: %s", error.c_str());
+      Log.error("a contextual argument region failed to acquire context after resolving callable policy: %s",
+         error.c_str());
       return false;
    }
 
@@ -12326,8 +12396,9 @@ static bool test_import_module_relocation_transaction(kt::Log &Log)
 
 extern void parser_unit_tests(int &Passed, int &Total)
 {
-   constexpr std::array<TestCase, 108> tests = { {
+   constexpr std::array<TestCase, 109> tests = { {
       { "nested_function_failure_after_bytecode_growth", test_nested_function_failure_after_bytecode_growth },
+      { "ordinary_function_policy", test_ordinary_function_policy },
       { "package_annotation_metadata", test_package_annotation_metadata },
       { "versioned_import_syntax", test_versioned_import_syntax },
       { "bytecode_load_metadata_transaction", test_bytecode_load_metadata_transaction },
