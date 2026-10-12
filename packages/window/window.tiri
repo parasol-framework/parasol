@@ -38,29 +38,19 @@ function setDisplayIcon(Display:obj, Icon:str)
    end
 end
 
-lStyle = choose mSys.AnalysePath('style:window.tiri') from
-   ERR_Okay -> loadFile('style:window.tiri')
-   else -> loadFile('styles:default/window.tiri')
-end
-
 gui.window = function(Options:table!)
    self = setmetatable({
       -- Public variables
       events       = Options.events ?? { },
       aspectRatio  = Options.aspectRatio??,
-      minimiseEnabled   = Options.minimise??,
-      maximiseEnabled   = Options.maximise??,
-      moveToBackEnabled = Options.moveToBack??,
+      maximiseEnabled = Options.maximise??,
       presence     = Options.presence ?? SPT_HOST,
       theme        = nil,
       focus        = Options.focus??,
       quit         = Options.quit is false ? nil : true, -- Construction-only; defaults to true.
       title        = Options.title ?? 'Window',
       icon         = Options.icon,
-      restore      = nil, -- { x, y, width, height }
-      orientation  = Options.orientation ?? 'landscape',
       client       = { }, -- Client margins
-      menubar      = Options.menubar, -- Menubar configuration
       margins      = Options.margins,
       surface      = nil, -- Client access to the surface is permitted
       viewport     = nil -- The window's top-level viewport
@@ -141,20 +131,6 @@ gui.window = function(Options:table!)
       end
    end
 
-   -- Smart limits are used to prevent the window from moving completely outside of the visible display area.
-
-   self.applySmartLimits = function()
-      self.smartLimitsEnabled = true
-   end
-
-   -- Run the minimise procedure for the window (environment dependent).
-
-   self.minimise = function()
-      if self.minimiseEnabled then
-         self?.events?.minimise(self)
-      end
-   end
-
    -- Run the maximise procedure for the window.  The process will take into account the hints provided by the margin
    -- settings of the parent surface (so if the margins are all set to 10, the window will be maximised to the size of
    -- the container minus 10 pixels from its edge).
@@ -162,14 +138,9 @@ gui.window = function(Options:table!)
    -- If Toggle is true, the window is restored to its original position if the window is already maximised.
 
    self.maximise = function(Toggle)
-      if not self.maximiseEnabled then
-         msg('Maximisation for this window is turned off.')
-         return
-      end
+      self.maximiseEnabled ?! return
 
-      if self.events.maximise then
-         self.events.maximise(self)
-      end
+      self.events?.maximise(self)
 
       -- Send the maximisation request to the display
       display = obj.find(self.surface.display)
@@ -378,7 +349,7 @@ gui.window = function(Options:table!)
 
    self.viewport.mtSubscribeFeedback(FM_HAS_FOCUS | FM_CHILD_HAS_FOCUS | FM_LOST_FOCUS, function(Viewport, Event)
       local window = lifecycle.window
-      if not window then return ERR_Terminate end
+      window ?! return ERR_Terminate
 
       if Event is FM_LOST_FOCUS then
          window.events?.lostFocus(window)
@@ -393,10 +364,10 @@ gui.window = function(Options:table!)
 
    mGfx.WindowHook(self.surface.id, WH_CLOSE, function()
       local window = lifecycle.window
-      if not window then return ERR_Terminate end
+      window ?! return ERR_Terminate
 
       result = window.events?.close(window)
-      if result != nil then -- If client returns something, the window stays open
+      if result then
          msg('Client requested that the window stay open.')
          raise ERR_Cancelled
       end
@@ -405,7 +376,7 @@ gui.window = function(Options:table!)
 
    self.surface.subscribe('focus', function(Surface, Args, Lifecycle)
       local window = Lifecycle.window
-      if not window then return end
+      window ?! return
 
       Surface.acMoveToFront()
       if window.visible and not (Surface.flags has RNF_VISIBLE) then
@@ -417,7 +388,7 @@ gui.window = function(Options:table!)
 
    self.surface.subscribe('lostfocus', function(Surface, Args, Lifecycle)
       local window = Lifecycle.window
-      if not window then return end
+      window ?! return
       window.events?.lostFocus(window)
    end, lifecycle)
 
@@ -426,8 +397,7 @@ gui.window = function(Options:table!)
          mSys.SendMessage(MSGID_QUIT)
       end
 
-      local window = Lifecycle.window
-      if window then window.clear() end
+      Lifecycle.window?.clear()
    end, lifecycle)
 
    return self

@@ -67,7 +67,7 @@ function lastItem(View):table
 end
 
 function selectItem(View, Item)
-   if Item is View.sItem then return end
+   if Item is View.sItem and Item?._selected then return end
 
    View.sItem = Item
 
@@ -87,28 +87,29 @@ end
 --   manual:    Item was manually selected (by the application, not the user).
 
 function reportItemSelected(View:table!, Reason, Item)
-   View?.itemSelected(View, Reason, Item)
+   View.events?.itemSelected(View, Reason, Item)
 end
 
 function reportItemDeselected(View:table!, Reason, Item)
-   View?.itemDeselected(View, Reason, Item)
+   View.events?.itemDeselected(View, Reason, Item)
 end
 
 function reportItemActivated(View:table!, Reason, Item)
    if Item.activity then Item.activity(Item) end
-   View?.itemActivated(View, Reason, Item)
+   View.events?.itemActivated(View, Reason, Item)
 end
 
 function reportActiveChange(View:table!, Reason, Item)
-   View?.activeChange(View, Reason, Item)
+   View.events?.activeChange(View, Reason, Item)
 end
 
 ----------------------------------------------------------------------------------------------------------------------
 
 function simpleSelect(View:table!, Item)
    if View.sItem then
-      deselectItem(View, View.sItem)
-      reportItemDeselected(View, 'user', View.sItem)
+      previous = View.sItem
+      deselectItem(View, previous)
+      reportItemDeselected(View, 'user', previous)
    end
 
    selectItem(View, Item)
@@ -173,6 +174,8 @@ gui.initView = function(Options:table!, BuildUI, NewItems)
       sensitive  = Options.sensitive ?? false,
       hItem      = nil, -- Highlighted item
       sItem      = nil, -- Selected item
+      selectionAnchor = nil,
+      qualifiers = 0,
       activeItem = nil,
       scene      = nil,
       viewport   = nil,
@@ -181,15 +184,76 @@ gui.initView = function(Options:table!, BuildUI, NewItems)
       -- Utilises the 'page' theme for inner view and 'widget' for titlebars etc
       theme      = nil,
       noIcons    = Options.noIcons,
-      itemSelected    = Options.itemSelected,
-      itemDeselected  = Options.itemDeselected,
-      itemActivated   = Options.itemActivated,
-      activeChange    = Options.activeChange,
       events          = Options.events ?? {},
       top             = { },
       totalTop        = 0,
       _built          = false
    }
+
+   -- Shift replaces the visible range; Ctrl+Shift adds it to the existing selection.
+   function selectUserItem(Item:table!, Qualifiers:num!, Toggle:bool)
+      range_start:num = nil
+      range_end:num = nil
+      if Options.multiSelect and (Qualifiers has KQ_SHIFT) then
+         anchor = vw.selectionAnchor ?? vw.sItem ?? Item
+         for i in {0 to #vw.items} do
+            if vw.items[i] is anchor then range_start = i end
+            if vw.items[i] is Item then range_end = i end
+         end
+         if range_start != nil and range_end != nil then
+            vw.selectionAnchor = anchor
+            if range_start > range_end then range_start, range_end = range_end, range_start end
+         else
+            range_start = nil
+         end
+      end
+
+      if not Options.multiSelect and Toggle then
+         for item in values(vw.items) do
+            if item != Item and item._selected then
+               deselectItem(vw, item)
+               reportItemDeselected(vw, 'user', item)
+            end
+         end
+      end
+
+      if range_start != nil then
+         for i, item in ipairs(vw.items) do
+            wanted = not item.hidden and i >= range_start and i <= range_end
+            if wanted and not item._selected then
+               selectItem(vw, item)
+               reportItemSelected(vw, 'user', item)
+            elseif not wanted and item._selected and not (Qualifiers has KQ_CTRL) then
+               deselectItem(vw, item)
+               reportItemDeselected(vw, 'user', item)
+            end
+         end
+         vw.sItem = Item
+      elseif (Options.multiSelect and (Qualifiers has KQ_CTRL)) or Toggle then
+         if Item._selected then
+            deselectItem(vw, Item)
+            reportItemDeselected(vw, 'user', Item)
+         else
+            selectItem(vw, Item)
+            reportItemSelected(vw, 'user', Item)
+         end
+         vw.selectionAnchor = Item
+      else
+         for item in values(vw.items) do
+            if item != Item and item._selected then
+               deselectItem(vw, item)
+               reportItemDeselected(vw, 'user', item)
+            end
+         end
+         if not Item._selected then
+            selectItem(vw, Item)
+            reportItemSelected(vw, 'user', Item)
+         end
+         vw.sItem = Item
+         vw.selectionAnchor = Item
+      end
+      vw.scene.surface.mtScheduleRedraw()
+   end
 
    function seekKeyboardItem(Start:num!, Step:num!):table
       index = Start
@@ -217,27 +281,11 @@ gui.initView = function(Options:table!, BuildUI, NewItems)
       end
    end
 
-   function selectHighlighted(Activate:bool!)
+   function selectHighlighted(Activate:bool!, Qualifiers:num!)
       item = vw.hItem
       if not item then return end
-
-      if item._selected then
-         if not Activate then
-            deselectItem(vw, item)
-            reportItemDeselected(vw, 'user', item)
-         end
-      else
-         if not Options.multiSelect and vw.sItem then
-            previous = vw.sItem
-            deselectItem(vw, previous)
-            reportItemDeselected(vw, 'user', previous)
-         end
-         selectItem(vw, item)
-         reportItemSelected(vw, 'user', item)
-      end
-
+      if not Activate or not item._selected then selectUserItem(item, Qualifiers, not Activate) end
       if Activate then reportItemActivated(vw, 'user', item) end
-      vw.scene.surface.mtScheduleRedraw()
    end
 
    vw.addItem = function(Item)
@@ -316,10 +364,12 @@ gui.initView = function(Options:table!, BuildUI, NewItems)
 
    vw.disable = function()
       vw.disabled = true
+      vw?._stateChanged()
    end
 
    vw.enable = function()
       vw.disabled = false
+      vw?._stateChanged()
    end
 
    -- Add a monitored click zone.  Not for client use.
@@ -357,6 +407,7 @@ gui.initView = function(Options:table!, BuildUI, NewItems)
       deselectAll(vw, nil)
       vw.activeItem = nil
       vw.sItem = nil
+      vw.selectionAnchor = nil
 
       clearItems(vw)
       vw.rebuild()
@@ -434,6 +485,8 @@ gui.initView = function(Options:table!, BuildUI, NewItems)
    vw.removeItem = function(Item)
       assert(Item, 'No Item provided')
 
+      if Item is vw.selectionAnchor then vw.selectionAnchor = nil end
+
       if Item is vw.hItem then
          highlightItem(vw, nil)
       end
@@ -506,8 +559,8 @@ gui.initView = function(Options:table!, BuildUI, NewItems)
       highlightItem(vw, nil)
       vw.activeItem = vw.items[0]
       vw.sItem = vw.items[0]
-      reportItemSelected(vw, 'selected', vw.items[0])
-      reportActiveChange(vw, 'selected', vw.items[0])
+      reportItemSelected(vw, 'manual', vw.items[0])
+      reportActiveChange(vw, 'manual', vw.items[0])
 
       vw.scene.surface.mtScheduleRedraw()
    end
@@ -520,8 +573,8 @@ gui.initView = function(Options:table!, BuildUI, NewItems)
          if Conditional(item) is true then
             selectItem(vw, item)
             vw.activeItem = item
-            reportItemSelected(vw, 'selected', item)
-            reportActiveChange(vw, 'selected', item)
+            reportItemSelected(vw, 'manual', item)
+            reportActiveChange(vw, 'manual', item)
          end
       end
       vw.scene.surface.mtScheduleRedraw()
@@ -556,8 +609,8 @@ gui.initView = function(Options:table!, BuildUI, NewItems)
 
       vw.sItem = nil
       vw.activeItem = nil
-      reportItemDeselected(vw, 'deselected', vw.items[0])
-      reportActiveChange(vw, 'deselected', vw.items[0])
+      reportItemDeselected(vw, 'manual', vw.items[0])
+      reportActiveChange(vw, 'manual', vw.items[0])
 
       vw.scene.surface.mtScheduleRedraw()
    end
@@ -582,6 +635,10 @@ gui.initView = function(Options:table!, BuildUI, NewItems)
    -- Load a new set of items and display them for the user.  Any existing items will be cleared.
 
    vw.loadItems = function(Items)
+      vw.selectionAnchor = nil
+      vw.sItem = nil
+      vw.activeItem = nil
+      highlightItem(vw, nil)
       clearItems(vw)
       vw.addItems(Items)
       vw.rebuild()
@@ -713,25 +770,53 @@ gui.initView = function(Options:table!, BuildUI, NewItems)
          vw.hasFocus = true
          vw.events?.focus(vw)
       end
+      vw?._stateChanged()
       vw.viewport.acDraw()
+   end)
+
+   -- Pointer input has no qualifiers.  Track them independently of vector focus so that Ctrl/Shift
+   -- pressed in another widget still apply to the first click here.
+   vw._modifierKeyboard = input.keyboard(nil, function(Handle, SurfaceID, Qualifiers, Code, Unicode)
+      vw.qualifiers = Qualifiers & (KQ_SHIFT | KQ_CTRL)
+      if Qualifiers has KQ_RELEASED then
+         if Code is KEY_L_SHIFT then vw.qualifiers = vw.qualifiers & ~KQ_L_SHIFT end
+         if Code is KEY_R_SHIFT then vw.qualifiers = vw.qualifiers & ~KQ_R_SHIFT end
+         if Code is KEY_L_CONTROL then vw.qualifiers = vw.qualifiers & ~KQ_L_CONTROL end
+         if Code is KEY_R_CONTROL then vw.qualifiers = vw.qualifiers & ~KQ_R_CONTROL end
+      end
+   end)
+   vw.viewport.subscribe('free', function()
+      vw._modifierKeyboard?.unsubscribe()
+      vw._modifierKeyboard = nil
    end)
 
    vw.viewport.mtSubscribeKeyboard(function(Viewport, Qualifiers, Code, Unicode)
       if (Qualifiers has KQ_PRESSED) and not vw.disabled then
+         if vw._keyEvent and vw._keyEvent(Qualifiers, Code, Unicode) then return end
          if (Code is KEY_ENTER) or (Code is KEY_NP_ENTER) then
-            selectHighlighted(true)
+            selectHighlighted(true, Qualifiers)
          elseif Code is KEY_SPACE then
-            selectHighlighted(false)
+            selectHighlighted(false, Qualifiers)
          elseif (Code is KEY_UP) or (Code is KEY_LEFT) then
             moveKeyboardHighlight(-1)
+            if vw.hItem and (Qualifiers has KQ_SHIFT) then selectUserItem(vw.hItem, Qualifiers) end
          elseif (Code is KEY_DOWN) or (Code is KEY_RIGHT) then
             moveKeyboardHighlight(1)
+            if vw.hItem and (Qualifiers has KQ_SHIFT) then selectUserItem(vw.hItem, Qualifiers) end
          elseif Code is KEY_HOME then
             item = seekKeyboardItem(0, 1)
-            if item then highlightItem(vw, item); vw.revealItem(item) end
+            if item then
+               highlightItem(vw, item)
+               vw.revealItem(item)
+               if Qualifiers has KQ_SHIFT then selectUserItem(item, Qualifiers) end
+            end
          elseif Code is KEY_END then
             item = seekKeyboardItem(#vw.items - 1, -1)
-            if item then highlightItem(vw, item); vw.revealItem(item) end
+            if item then
+               highlightItem(vw, item)
+               vw.revealItem(item)
+               if Qualifiers has KQ_SHIFT then selectUserItem(item, Qualifiers) end
+            end
          end
       end
    end)
@@ -767,6 +852,11 @@ gui.initView = function(Options:table!, BuildUI, NewItems)
                return
             end
 
+            if vw._itemClick and vw._itemClick(vw.hItem, ev) then
+               ev = ev.next
+               continue
+            end
+
             if vw.hoveredItem and vw.hoveredItem.click then -- Feedback for all click types.  Refer to hoveredItem()
                if vw.hoveredItem.click(ev) then
                   return
@@ -774,19 +864,7 @@ gui.initView = function(Options:table!, BuildUI, NewItems)
             end
 
             if (ev.value is 1) and vw.hItem then
-               if not Options.multiSelect and vw.sItem then
-                  deselectItem(vw, vw.sItem)
-               end
-
-               if vw.hItem._selected then
-                  deselectItem(vw, vw.hItem)
-                  reportItemDeselected(vw, 'user', vw.hItem)
-               else
-                  selectItem(vw, vw.hItem)
-                  reportItemSelected(vw, 'user', vw.hItem)
-               end
-
-               vw.scene.surface.mtScheduleRedraw()
+               if not vw.disabled then selectUserItem(vw.hItem, vw.qualifiers) end
             end
          elseif ev.type is JET_ABS_XY then
             vw?.activeZone?.clickMove(ev)

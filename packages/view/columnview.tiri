@@ -11,7 +11,6 @@ Documentation is available in the Kotuku Wiki.
 
    namespace gui
 
-lDate = nil
 VSPACING <const> = 2
 EDGE     <const> = 4 -- Whitespace around the page
 
@@ -20,7 +19,7 @@ rx_date <const> = <{ regex.new([[^(\d+)-(\d+)-(\d+)$]]) }>
 rx_time <const> = <{ regex.new([[^(\d{2}):(\d{2}):?(\d{0,2})$]]) }>
 
 local LINE_HEIGHT:num, FONT_HEIGHT:num, LINE_HEIGHT:num, FONT_HEIGHT:num, MARGIN:num
-local ICON_OFFSET:num, LINE_OFFSET:num, LINE_HEIGHT:num, lEnableTextGradients:bool
+local ICON_OFFSET:num, LINE_OFFSET:num, LINE_HEIGHT:num
 
 glIconSize = 16
 glCounter = 1
@@ -60,19 +59,19 @@ function columnText(Value:any, Type:str):any
    elseif Type is 'date' then
       -- The date type can be expressed as 'YYYY-MM-DD HH:NN', 'YYYY-MM-DD', 'YYYY-MM-DDTHH:NN'.
 
-      if not lDate then lDate = struct.new('DateTime') end
+      local date = struct<DateTime>
       day, time = rx_datetime.extract(Value)
       local y, m, d = rx_date.extract(day)
-      lDate.year, lDate.month, lDate.day = tonumber(y), tonumber(m), tonumber(d)
+      date.year, date.month, date.day = tonumber(y), tonumber(m), tonumber(d)
 
       local h, min, sec = rx_time.extract(time)
       if h then
-         lDate.hour   = tonumber(h ?? '0')
-         lDate.minute = tonumber(min ?? '0')
-         lDate.second = tonumber(sec ?? '0')
+         date.hour   = tonumber(h ?? '0')
+         date.minute = tonumber(min ?? '0')
+         date.second = tonumber(sec ?? '0')
       end
 
-      return string.format('%4d-%02d-%02d %02d:%02d', lDate.year, lDate.month, lDate.day, lDate.hour, lDate.minute)
+      return string.format('%4d-%02d-%02d %02d:%02d', date.year, date.month, date.day, date.hour, date.minute)
    elseif Type is 'numeric' then
       return string.format('%d', (tonumber(Value) ?? 0))
    elseif Type is 'seconds' then
@@ -93,11 +92,92 @@ function setListTextFill(Item:table, Fill)
    end
 end
 
+-- Cache complete checkbox artwork in scene definitions.  Cell rectangles only switch their fill.
+
+function checkboxPatterns(View:table!, Size:num!):table
+   style = View.theme.input.bkgd
+   ink = View.theme.input.text.fill
+   signature = f'{Size}|{style.fill}|{style.stroke}|{style.strokeWidth}|{style.roundX}|{style.roundY}' ..
+      f'|{style.opacity}|{ink}'
+   prefix = f'column_checkbox_{Size}_{signature.hash()}'
+   fills = { }
+
+   for state in {0 to 2} do
+      name = f'{prefix}_{state}'
+      if View.scene.mtFindDef(name) != ERR_Okay then
+         pattern = View.scene.new('VectorPattern', {
+            pageWidth = Size, pageHeight = Size, units = VUNIT_BOUNDING_BOX,
+            width = '100%', height = '100%', spreadMethod = VSPREAD_PAD
+         })
+         pattern.viewport.viewWidth = Size
+         pattern.viewport.viewHeight = Size
+         inset = math.max(1, ((style.strokeWidth is nil ? 1 : style.strokeWidth)) * 0.5)
+         pattern.viewport.new('VectorRectangle', {
+            x = inset, y = inset, width = Size-inset*2, height = Size-inset*2,
+            fill = style.fill, stroke = style.stroke, strokeWidth = (style.strokeWidth is nil ? 1 : style.strokeWidth),
+            roundX = (style.roundX is nil ? Size*0.15 : style.roundX),
+            roundY = (style.roundY is nil ? Size*0.15 : style.roundY),
+            opacity = (style.opacity is nil ? 1 : style.opacity)
+         })
+
+         if state is 1 then
+            pattern.viewport.new('VectorPath', {
+               sequence=f'M{Size*0.25} {Size*0.5} L{Size*0.44} {Size*0.7} L{Size*0.76} {Size*0.3}',
+               fill='none', stroke=ink, strokeWidth=math.max(1, Size*0.12)
+            })
+         end
+
+         check View.scene.mtAddDef(name, pattern)
+      end
+
+      fills[state] = f'url(#{name})'
+   end
+
+   return fills
+end
+
+function checkboxValue(Item:table!, Column:table!):bool
+   value:any = Item[Column.attrib]
+   if value is <table> then value = value.value end
+   return value is true
+end
+
+function checkboxX(Column:table!):num
+   if Column.align is 'right' then return Column.px_width - Column._checkboxMargin - Column._checkboxSize end
+   if Column.align is 'center' then return (Column.px_width - Column._checkboxSize) * 0.5 end
+   return Column._checkboxMargin
+end
+
+function refreshCheckbox(View:table!, Item:table!, Column:table!, Highlighted:bool)
+   cell = Item._col?[Column.attrib]
+   cell?.checkbox ?! return
+
+   box = cell.checkbox
+   box.x = math.round(checkboxX(Column))
+   box.y = Item._y + Column._checkboxOffset
+   box.visibility = Item.hidden ? VIS_HIDDEN : VIS_VISIBLE
+   box.fill = Column._checkboxFills[checkboxValue(Item, Column) ? 1 : 0]
+
+   disabled = View.disabled or Item.insensitive or Column.disabled
+   box.opacity = disabled ? 0.5 : 1
+
+   highlighted = Highlighted is nil ? Item is View.hItem : Highlighted
+   focused = not disabled and View.hasFocus and highlighted and View.checkboxColumn is Column.attrib
+
+   box.stroke = focused ? (View.theme.input.focus.stroke ?? View.theme.page.textHighlightBkgd) : 'none'
+   box.strokeWidth = focused ? 1 : 0
+end
+
 function highlightItem(View:table!, Item:table, Highlighted:bool)
+   for col in values(View.columns) do
+      if col.checkBoxes then refreshCheckbox(View, Item, col, Highlighted) end
+   end
+
    if not Item._vectors.highlight and (Highlighted or Item._selected) then
       Item._vectors.highlight = Item._vectors.viewport.new('VectorRectangle', {
          name = 'item_highlight',
-         roundX = LINE_HEIGHT * 0.2, roundY = LINE_HEIGHT * 0.2, x = 0, y = 0, width = '100%', height = '100%'
+         roundX = LINE_HEIGHT * 0.2, roundY = LINE_HEIGHT * 0.2,
+         x = 0, y = 0, width = '100%', height = '100%'
       })
       Item._vectors.highlight.acMoveToBack()
    end
@@ -107,6 +187,7 @@ function highlightItem(View:table!, Item:table, Highlighted:bool)
          for k, col in pairs(Item._col) do
             if col.text then col.text.fill = View.namedCol[k].fillItemSelect end
          end
+
          Item._vectors.highlight.fill        = View.theme.page.textSelectBkgd
          Item._vectors.highlight.stroke      = View.theme.page.textHighlightBkgd
          Item._vectors.highlight.strokeWidth = 2
@@ -117,6 +198,7 @@ function highlightItem(View:table!, Item:table, Highlighted:bool)
          for k, col in pairs(Item._col) do
             if col.text then col.text.fill = View.namedCol[k].fillItemSelect end
          end
+
          Item._vectors.highlight.fill        = View.theme.page.textHighlightBkgd
          Item._vectors.highlight.strokeWidth = 0
          if Item._vectors.iconImage and Item._iconHighlight then
@@ -127,6 +209,7 @@ function highlightItem(View:table!, Item:table, Highlighted:bool)
       for k, col in pairs(Item._col) do
          if col.text then col.text.fill = View.namedCol[k].fillItemSelect end
       end
+
       Item._vectors.highlight.fill = View.theme.page.textSelectBkgd
       Item._vectors.highlight.strokeWidth = 0
       if Item._vectors.iconImage and Item._iconHighlight then
@@ -149,21 +232,17 @@ function highlightItem(View:table!, Item:table, Highlighted:bool)
          end
       end
 
-      if Item._vectors.iconImage then
-         Item._vectors.iconImage.fill = Item._iconFill
-      end
+      Item._vectors.iconImage?.fill = Item._iconFill
 
-      if Item._vectors.highlight then
-         Item._vectors.highlight.free()
-         Item._vectors.highlight = nil
-      end
+      Item._vectors.highlight?.free()
+      Item._vectors.highlight = nil
    end
 end
 
 function arrangeColumns(View:table!)
    View.banner.lines.acClear()
 
-   pc = struct.new('PathCommand')
+   pc = struct<PathCommand>
    for col in values(View.columns) do
       col.vecTitle.x = col.align is 'right' ? col.px_width - MARGIN : MARGIN
 
@@ -179,40 +258,12 @@ function arrangeColumns(View:table!)
 
       col.bannerVP.x = col.x
       col.bannerVP.width = col.px_width
-
-      if not lEnableTextGradients then
-         col.fillItem = View.theme.page.text.fill
-         col.fillItemSelect = View.theme.page.textHighlight
-      elseif not col.vecGradient then
-         defName = 'colGradient' .. glCounter
-         glCounter++
-         selName = 'colSelect' .. glCounter
-         glCounter++
-
-         if (col.align ?? 'left') is 'right' then
-            col.vecGradient = gui.simpleGradient(View.scene, defName,
-               { gui.srgb(0, 0, 0, 0, { offset=0.1 }), gui.srgb(0, 0, 0, 255, { offset=0.2 }), gui.srgb(0, 0, 0, 255, { offset=1.0 }) },
-               0, 0, col.px_width, 0, 'userspace')
-
-            col.vecGradientSelect = gui.simpleGradient(View.scene, selName,
-               { gui.srgb(255, 255, 255, 0, { offset=0.1 }), gui.srgb(255, 255, 255, 255, { offset=0.2 }), gui.srgb(255, 255, 255, 255, {offset=1.0 }) },
-               0, 0, col.px_width, 0, 'userspace')
-         else
-            col.vecGradient = gui.simpleGradient(View.scene, defName,
-               { gui.srgb(0, 0, 0, 255, { offset=0 }), gui.srgb(0, 0, 0, 255, { offset=0.9 }), gui.srgb(0, 0, 0, 0, { offset=0.98 }) },
-               0, 0, col.px_width, 0, 'userspace')
-
-            col.vecGradientSelect = gui.simpleGradient(View.scene, selName,
-               { gui.srgb(255, 255, 255, 255, { offset=0 }), gui.srgb(255, 255, 255, 255, { offset=0.9 }), gui.srgb(255, 255, 255, 0,{ offset=0.98 }) },
-               0, 0, col.px_width, 0, 'userspace')
-         end
-
-         col.fillItem = f'url(#{defName})'
-         col.fillItemSelect = f'url(#{selName})'
-      else
-         col.vecGradient.x2 = col.px_width
-         col.vecGradientSelect.x2 = col.px_width
+      if col.checkBoxes then
+         for item in values(View.items) do refreshCheckbox(View, item, col) end
       end
+
+      col.fillItem = View.theme.page.text.fill
+      col.fillItemSelect = View.theme.page.textHighlight
    end
 
    if View._sort then
@@ -233,7 +284,7 @@ function bannerZoneClick(View, Col, X, Y, Value)
    if Value is 1 then return end
 
    if View._sort and View._sort.icon then
-      View._sort.icon.free()
+      View._sort?.icon?.free()
       View._sort.icon = nil
    end
 
@@ -289,27 +340,20 @@ function rearrangeItems(View)
          vis = item.hidden ? VIS_HIDDEN : VIS_VISIBLE
 
          item._vectors.viewport.visibility = vis
-         if item._vectors.iconImage then
-            item._vectors.iconImage.visibility = vis
-         end
+         item._vectors.iconImage?.visibility = vis
 
          for col in values(View.columns) do
-            if item._col and item._col[col.attrib].text then
-               item._col[col.attrib].text.visibility = vis
-            end
+            item._col?[col.attrib]?.text?.visibility = vis
+            if col.checkBoxes then refreshCheckbox(View, item, col) end
          end
 
          item._vectors.viewport.y = y
       end
 
-      if item._vectors.iconImage then
-         item._vectors.iconImage.y = y + ICON_OFFSET
-      end
+      item._vectors.iconImage?.y = y + ICON_OFFSET
 
       for col in values(View.columns) do
-         if item._col and item._col[col.attrib].text then
-            item._col[col.attrib].text.y = y + LINE_OFFSET
-         end
+         item._col?[col.attrib]?.text?.y = y + LINE_OFFSET
       end
 
       if not item.hidden then
@@ -319,14 +363,16 @@ function rearrangeItems(View)
    end
 
    View._last_y = y
+   View.page.height = y + EDGE
+   View.scene.surface.mtScheduleRedraw()
 end
 
 ----------------------------------------------------------------------------------------------------------------------
 
 gui.columnView = function(Options):table
    function setColumns(View:table!, Columns)
-      if #Columns is 0 then return end
-
+      sort = View._sort
+      View._sort = nil
       c = 0
       set = { }
       View.namedCol = { }
@@ -335,12 +381,26 @@ gui.columnView = function(Options):table
 
          new_col = { _index=c, width=8, title='Untitled' }
          for k, v in pairs(col) do new_col[k] = v end
+         if new_col.checkBoxes then
+            new_col._checkboxSize = math.max(4, math.round(View._fontHeight))
+            new_col._checkboxMargin = View._columnMargin
+            new_col._checkboxOffset = math.round((View._lineHeight - new_col._checkboxSize) * 0.5)
+            new_col._checkboxFills = checkboxPatterns(View, new_col._checkboxSize)
+         end
          set.insert(new_col)
          View.namedCol[col['attrib']] = new_col
          c++
       end
 
-      if View.columns then -- Clear any existing banner allocations
+      if View.columns then -- Clear cell references before freeing their owning column viewports.
+         for item in values(View.items) do
+            for col in values(View.columns) do
+               item._col?[col.attrib] = nil
+               item._vectors['_a_' .. col.attrib] = nil
+               item._vectors['_check_' .. col.attrib] = nil
+            end
+            item._vectors.iconImage = nil
+         end
          for col in values(View.columns) do
             col.vecViewport?.free()
             col.vecGradient?.free()
@@ -350,6 +410,12 @@ gui.columnView = function(Options):table
       end
 
       View.columns = set
+      if not View.namedCol[View.checkboxColumn]?.checkBoxes then
+         View.checkboxColumn = nil
+         for col in values(set) do
+            if col.checkBoxes then View.checkboxColumn = col.attrib; break end
+         end
+      end
 
       View.reserveTop('ViewUI', LINE_HEIGHT)
 
@@ -458,9 +524,7 @@ gui.columnView = function(Options):table
                if col.align is 'right' then -- Realign all text in this column
                   align_x = col.px_width - MARGIN
                   for item in values(View.items) do
-                     if item._col and item._col[col.attrib].text then
-                        item._col[col.attrib].text.x = align_x
-                     end
+                     item._col?[col.attrib]?.text?.x = align_x
                   end
                end
 
@@ -491,11 +555,7 @@ gui.columnView = function(Options):table
 
             page_width = View.page.width
             frame_width = View.viewport.width
-            if page_width > frame_width then
-               View.banner.clip.width = page_width
-            else
-               View.banner.clip.width = frame_width
-            end
+            View.banner.clip.width = page_width > frame_width ? page_width : frame_width
          end)
 
          View.frame.mtSubscribeFeedback(FM_PATH_CHANGED, function(Viewport, Event)
@@ -504,6 +564,11 @@ gui.columnView = function(Options):table
       end
 
       View.columnsInitialised = true;
+      if sort and View.namedCol[sort.col.attrib] then
+         col = View.namedCol[sort.col.attrib]
+         View._sort = { col=col, ascending=not sort.ascending }
+         bannerZoneClick(View, col, 0, 0, 0)
+      end
    end
 
    -- Process new items that have been added to the view
@@ -547,7 +612,7 @@ gui.columnView = function(Options):table
 
             if not item._col[attrib] then item._col[attrib] = { } end
 
-            if col.showIcons and item.icon then
+            if not col.checkBoxes and col.showIcons and item.icon then
                try
                   local theme = item.iconTheme ?? View.theme.page.icon
                   local uid   = f'{theme}+{item.icon}'
@@ -576,22 +641,20 @@ gui.columnView = function(Options):table
                      item._vectors.iconImage.visibility = vis
                   end
                end
-            elseif col.checkBoxes then
-               -- Checkbox mode leverages the icon mechanisms that are already in place.
---[[
-               if not glTick and not tick_error then
-                  obj.new('image', src='templates:images/tick') then
-               end
-
-               if item.checked then
-                  glTick->Bitmap->Opacity = 255
-               else
-                  glTick->Bitmap->Opacity = 40
-               end
---]]
             end
 
-            if item[attrib]?? then
+            if col.checkBoxes then
+               cell = item._col[attrib]
+               if not cell.checkbox then
+                  cell.checkbox = col.vecViewport.new('VectorRectangle', {
+                     name=f'checkbox_{attrib}', width=col._checkboxSize, height=col._checkboxSize
+                  })
+                  item._vectors['_check_' .. attrib] = cell.checkbox
+               end
+               refreshCheckbox(View, item, col)
+            end
+
+            if not col.checkBoxes and item[attrib]?? then
                if not item._col[attrib].text then
                   item._col[attrib].text = col.vecViewport.new('VectorText', table.merge({
                      name      = f'text_{attrib}',
@@ -619,14 +682,12 @@ gui.columnView = function(Options):table
                item._highlightEvent(View, item, false)
             end
 
-            if not item.hidden then
-               View.addZone(0, item._y, nil, LINE_HEIGHT, item)
-            end
-
             cx += col.px_width
          end
 
+         item._highlightEvent(View, item, item is View.hItem)
          if not item.hidden then
+            View.addZone(0, item._y, nil, LINE_HEIGHT, item)
             y += LINE_HEIGHT + VSPACING
          end
       end
@@ -643,13 +704,17 @@ gui.columnView = function(Options):table
 
    function constructColumnView(View)
       LINE_HEIGHT, FONT_HEIGHT = gui.getFontHeight(View.theme.page.text, false)
-      glIconSize    = FONT_HEIGHT
-      MARGIN        = math.round(LINE_HEIGHT * 0.3) -- Min space between graphics elements
-      LINE_HEIGHT   = math.round(LINE_HEIGHT * 1.2)
-      ICON_OFFSET   = math.round((LINE_HEIGHT - glIconSize) * 0.5)
-      LINE_OFFSET   = math.round(FONT_HEIGHT * 1.2)
+      glIconSize  = FONT_HEIGHT
+      MARGIN      = math.round(LINE_HEIGHT * 0.3) -- Min space between graphics elements
+      LINE_HEIGHT = math.round(LINE_HEIGHT * 1.2)
+      ICON_OFFSET = math.round((LINE_HEIGHT - glIconSize) * 0.5)
+      LINE_OFFSET = math.round(FONT_HEIGHT * 1.2)
 
+      View._fontHeight = FONT_HEIGHT
+      View._lineHeight = LINE_HEIGHT
+      View._columnMargin = MARGIN
       setColumns(View, Options.columns ?? { })
+      View.zones = { }
 
       View._last_y = EDGE
       if #View.items > 0 then newItems(View, View.items) end
@@ -659,7 +724,126 @@ gui.columnView = function(Options):table
 
    vw = gui.initView(Options, constructColumnView, newItems)
 
-   vw.setColumns = setColumns
+   function resolveColumn(Column:any!):table
+      if Column is <str> then return vw.namedCol[Column] end
+      if Column is <num> then return vw.columns[Column] end
+      for col in values(vw.columns) do
+         if Column is col then return col end
+      end
+   end
+
+   function setCheckbox(Item:table!, Column:table!, Checked:bool!, Reason:str!):bool
+      if checkboxValue(Item, Column) is Checked then return false end
+      if Item[Column.attrib] is <table> then Item[Column.attrib].value = Checked
+      else Item[Column.attrib] = Checked end
+      Item._col?[Column.attrib]?.checkbox?.fill = Column._checkboxFills[Checked ? 1 : 0]
+      vw.scene.surface.mtScheduleRedraw()
+      vw.events?.itemChecked(vw, Reason, Item, Column, Checked)
+      return true
+   end
+
+   -- Change a checkbox programmatically.  Column accepts an attrib, zero-based index or column reference.
+   vw.setChecked = function(Item:table!, Column:any!, Checked:bool!):bool
+      col = resolveColumn(Column)
+      assert(col?.checkBoxes, 'Column is not a checkbox column')
+      assert(vw.lookup[Item._id] is Item, 'Item does not belong to this view')
+      return setCheckbox(Item, col, Checked, 'manual')
+   end
+
+   vw._stateChanged = function()
+      for item in values(vw.items) do
+         for col in values(vw.columns) do
+            if col.checkBoxes then refreshCheckbox(vw, item, col) end
+         end
+      end
+      vw.scene.surface.mtScheduleRedraw()
+   end
+
+   -- Use row hit testing for all checkbox columns, without per-cell input subscriptions.
+
+   vw._itemClick = function(Item:table, Input:table):bool
+      if Input.value is 0 and vw._checkboxPressed then
+         vw._checkboxPressed = nil
+         return true
+      end
+
+      if not Item or Item.hidden then return false end
+
+      for col in values(vw.columns) do
+         if not col.checkBoxes then continue end
+         box = Item._col?[col.attrib].checkbox
+         box ?! continue
+         x = col.x + box.x
+         if Input.x >= math.max(col.x, x) and Input.x < math.min(col.x + col.px_width, x + box.width) and
+            Input.y >= box.y and Input.y < box.y + box.height then
+            if Input.value is 1 then
+               vw._checkboxPressed = true
+               previous = vw.namedCol[vw.checkboxColumn]
+               vw.checkboxColumn = col.attrib
+               vw.viewport.acFocus()
+
+               if previous then refreshCheckbox(vw, Item, previous) end
+
+               refreshCheckbox(vw, Item, col)
+               vw.scene.surface.mtScheduleRedraw()
+
+               if not vw.disabled and not Item.insensitive and not col.disabled then
+                  setCheckbox(Item, col, not checkboxValue(Item, col), 'user')
+               end
+            end
+
+            return true
+         end
+      end
+
+      return false
+   end
+
+   -- Space toggles the active checkbox column; Alt+Left/Right changes the column without moving the row.
+
+   vw._keyEvent = function(Qualifiers:num!, Code:num!, Unicode:num):bool
+      if not vw.namedCol[vw.checkboxColumn]?.checkBoxes then return false end
+
+      if (Qualifiers has KQ_ALT) and (Code is KEY_LEFT or Code is KEY_RIGHT) then
+         col = vw.namedCol[vw.checkboxColumn]
+         step = Code is KEY_RIGHT ? 1 : -1
+         index = col._index + step
+         while index >= 0 and index < #vw.columns do
+            if vw.columns[index].checkBoxes then vw.checkboxColumn = vw.columns[index].attrib; break end
+            index += step
+         end
+
+         if vw.hItem then
+            for column in values(vw.columns) do
+               if column.checkBoxes then refreshCheckbox(vw, vw.hItem, column) end
+            end
+         end
+
+         vw.scene.surface.mtScheduleRedraw()
+         return true
+      elseif Code is KEY_SPACE and not (Qualifiers has (KQ_CTRL | KQ_SHIFT | KQ_ALT)) then
+         col = vw.namedCol[vw.checkboxColumn]
+         item = vw.hItem
+
+         if item and not item.hidden and not item.insensitive and not col.disabled then
+            setCheckbox(item, col, not checkboxValue(item, col), 'user')
+         end
+
+         return true
+      end
+
+      return false
+   end
+
+   vw.setColumns = function(View:table!, Columns:any!)
+      assert(View is vw, 'View does not match this columnview')
+      Options.columns = Columns
+      setColumns(View, Columns)
+      View.zones = { }
+      View._last_y = EDGE
+      newItems(View, View.items)
+      View.scene.surface.mtScheduleRedraw()
+   end
 
    -- Sorts the view by column (named or index).
    -- NB: Attrib values that evaluate to nil are not permitted/supported.
@@ -679,23 +863,34 @@ gui.columnView = function(Options):table
       if Column is <table> then
          if #View.items > 0 then
             attrib = Column['attrib']
-            if View.items[0][attrib] is <table> then
-               if View.items[0][attrib]['sort'] then
-                  View.items.sort(function(a,b)
-                     return Ascending ? a[attrib].sort < b[attrib].sort : a[attrib].sort > b[attrib].sort
-                  end)
-               else
-                  View.items.sort(function(a,b)
-                     return Ascending ? a[attrib].value < b[attrib].value : a[attrib].value > b[attrib].value
-                  end)
-               end
-            elseif type(View.items[0][attrib]) then
-               View.items.sort(function(a,b)
-                  al = a[attrib] ? tostring(a[attrib]) : ''
-                  bl = b[attrib] ? tostring(b[attrib]) : ''
-                  return Ascending ? al.lower() < bl.lower() : al.lower() > bl.lower()
-               end)
+            numeric = (Column.type is 'bytesize') or (Column.type is 'numeric') or
+               (Column.type is 'float') or (Column.type is 'seconds')
+            -- Explicit text keys can encode grouping (e.g. folders before files), even in numeric columns.
+            custom_text = false
+            for item in values(View.items) do
+               value = item[attrib]
+               if value is <table> and value.sort is <str> then custom_text = true; break end
             end
+            View.items.sort(function(A, B)
+               local a:any = A[attrib]
+               local b:any = B[attrib]
+               if a is <table> then a = a.sort is nil ? a.value : a.sort end
+               if b is <table> then b = b.sort is nil ? b.value : b.sort end
+               if custom_text then
+                  a = tostring(a is nil ? '' : a)
+                  b = tostring(b is nil ? '' : b)
+               elseif Column.checkBoxes then
+                  a = a is true ? 1 : 0
+                  b = b is true ? 1 : 0
+               elseif numeric then
+                  a = tonumber(a) ?? 0
+                  b = tonumber(b) ?? 0
+               else
+                  a = tostring(a is nil ? '' : a).lower()
+                  b = tostring(b is nil ? '' : b).lower()
+               end
+               return Ascending ? a < b : a > b
+            end)
          end
 
          rearrangeItems(View)
