@@ -163,6 +163,36 @@ private:
    lua_State* state = nullptr;
 };
 
+static bool test_nested_function_failure_after_bytecode_growth(kt::Log &Log)
+{
+   LuaStateHolder state;
+   lua_State *lua = state.get();
+   luaL_openlibs(lua);
+   std::string source = "function outer()\n   function inner()\n";
+   for (int i = 0; i < 500; ++i) source += "      print('hello')\n";
+   source += "      print(undefined_nested_name)\n   end\nend\n";
+
+   if (lua_load(lua, source, "nested-function-bytecode-growth") != LUA_ERRSYNTAX) {
+      Log.error("An undeclared name in a large nested function was accepted");
+      return false;
+   }
+   const char *error = lua_tostring(lua, -1);
+   if (not error or std::string_view(error).find("Undeclared variable 'undefined_nested_name'") IS
+       std::string_view::npos) {
+      Log.error("The nested function did not report the expected undeclared name: %s", error ? error : "<no error>");
+      return false;
+   }
+   lua_pop(lua, 1);
+   lua_gc(lua, LUA_GCCOLLECT, 0);
+   if (lua_load(lua, "return 42", "nested-function-recovery") or lua_pcall(lua, 0, 1, 0) or
+       lua_tointeger(lua, -1) != 42) {
+      Log.error("The parser did not recover after the failed nested function");
+      return false;
+   }
+   lua_pop(lua, 1);
+   return true;
+}
+
 struct StringReaderCtx {
    const char* str = nullptr;
    size_t size = 0;
@@ -12296,7 +12326,8 @@ static bool test_import_module_relocation_transaction(kt::Log &Log)
 
 extern void parser_unit_tests(int &Passed, int &Total)
 {
-   constexpr std::array<TestCase, 107> tests = { {
+   constexpr std::array<TestCase, 108> tests = { {
+      { "nested_function_failure_after_bytecode_growth", test_nested_function_failure_after_bytecode_growth },
       { "package_annotation_metadata", test_package_annotation_metadata },
       { "versioned_import_syntax", test_versioned_import_syntax },
       { "bytecode_load_metadata_transaction", test_bytecode_load_metadata_transaction },
