@@ -1,4 +1,4 @@
-@Package(name="gui/dropdown", version="1.0")
+@Package(name="gui/combobox", version="1.0")
 
 --[[
 Internal script for combobox drop-down menus.
@@ -22,6 +22,7 @@ SCROLL_WIDTH <const> = 12
 gui.dropdown = function(Options)
    local theme_name = gui.getThemeName(Options.relative?.scene) -- Adopt the theme of the window that opens the dropdown
    local dropdown = table.merge(gui.themes[theme_name].dropdown, Options.theme, true, true)
+   local parent_surface = Options.target ?? Options.relative?.scene.surface
 
    self = entity { -- Public variables
       surface  = nil,
@@ -100,8 +101,8 @@ gui.dropdown = function(Options)
             rel = { absX = relative_pos.absX, absY = relative_pos.absY }
             local target = { absX = 0, absY = 0, height = 4096 }
 
-            if Options.target then
-               local err, info = mGfx.GetSurfaceInfo(Options.target)
+            if parent_surface then
+               local err, info = mGfx.GetSurfaceInfo(parent_surface)
                if err is ERR_Okay then
                   target.absX   = info.absX
                   target.absY   = info.absY
@@ -232,6 +233,7 @@ gui.dropdown = function(Options)
    -- highlighted.
 
    self.activate = function():bool
+   print('active ', tostring(&hItem))
       item = &hItem
       if (not item) or (not selectable(item)) then return false end
       item.config?.feedback(self, item.config)
@@ -248,7 +250,7 @@ gui.dropdown = function(Options)
       &surface = obj.new('surface')
       &surface.name     = 'menu'
       &surface.width    = Options.width ?? 400
-      &surface.parent   = Options.target
+      &surface.parent   = parent_surface
       &surface.flags    = RNF_STICK_TO_FRONT|RNF_COMPOSITE|RNF_NO_FOCUS -- Key presses are forwarded by the owner
       &surface.x        = -10000
       &surface.y        = -10000
@@ -313,7 +315,9 @@ gui.dropdown = function(Options)
          ev = Events
          while ev do
             if ev.type is JET_BUTTON_1 then
-               if ev.value is 1 then &activate() end
+               if ev.value is 1 then
+                  &activate()
+               end
             elseif ev.type is JET_ABS_XY then
                ev_y = ev.y
                highlightFound = false
@@ -354,9 +358,6 @@ gui.dropdown = function(Options)
             mi = { y=y, config=item }
             vText = &page.new('VectorText', table.merge({
                x        = TEXT_X,
-               face     = gui.fonts.menu.face,
-               fontSize = string.format('%.2fpt', gui.fonts.menu.size),
-               fontStyle = gui.fonts.menu.style,
                align    = 'left',
                string   = item['item']
             }, dropdown.text))

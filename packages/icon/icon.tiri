@@ -149,12 +149,10 @@ gui.icon = function(Options)
       for line in values(lLines) do
          vText = lTextGroup.new('VectorText', table.merge({
             x         = math.floor(lIconSize * 0.5),
-            face      = gui.fonts.icon.face,
             fontSize  = string.format('%.2fpt', lFontSize),
-            fontStyle = gui.fonts.icon.style,
             align     = 'horizontal',
             string    = line
-         }, theme.widget.text))
+         }, theme.icon.text, false))
 
          y += lLineHeight
          vText.y = math.floor(y)

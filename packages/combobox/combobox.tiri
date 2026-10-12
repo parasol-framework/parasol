@@ -15,8 +15,7 @@ DEFAULT_HEIGHT <const> = math.floor(FONT_MAX_HEIGHT * 1.35) + 1
 MARGIN     <const> = math.floor(FONT_HEIGHT * 0.5) + 1
 
 function iconTheme(Widget:table!):str
-   colour = gui.strToRGB(Widget.theme.page.text.fill)
-   return colour.brightness() > 0.5 ? 'pearl' : 'default'
+   return Widget.theme.scheme is 'dark' ? 'pearl' : 'default'
 end
 
 function reportFeedback()
@@ -59,6 +58,7 @@ gui.combobox = function(Options)
       label          = Options.label,
       parentViewport = Options.target,
       allowCustom    = Options.allowCustom,
+      menuIcon       = Options.menuIcon ?? 'arrows/down',
       _menuNavigated = false,
       text           = nil, -- A VectorText that represents the string
       viewport       = nil  -- The primary viewport
@@ -133,9 +133,6 @@ gui.combobox = function(Options)
             name      = 'Label',
             x         = 0,
             y         = FONT_HEIGHT + math.floor((BOX_HEIGHT - FONT_HEIGHT) * 0.5),
-            face      = gui.fonts.label.face,
-            fontSize  = string.format('%.2fpt', gui.fonts.label.size),
-            fontStyle = gui.fonts.label.style,
             string    = &label,
             lineLimit = 1
          }, &theme.window.text))
@@ -152,7 +149,7 @@ gui.combobox = function(Options)
       }, &input_theme.bkgd))
 
       ICON_SIZE = math.min(FONT_HEIGHT, BOX_HEIGHT - (&input_theme.bkgd.strokeWidth * 2))
-      down_icon = gui.createIcon(&viewport.scene, 'arrows/down', ICON_SIZE, iconTheme(self))
+      down_icon = gui.createIcon(&viewport.scene, self.menuIcon, ICON_SIZE, iconTheme(self))
 
       &iconRender = &viewport.new('VectorViewport', {
          xOffset = MARGIN,
@@ -179,9 +176,6 @@ gui.combobox = function(Options)
       &text = &_textClip.new('VectorText', table.merge({
          x         = 4,
          y         = FONT_HEIGHT + math.floor((BOX_HEIGHT - FONT_HEIGHT - (&input_theme.bkgd.strokeWidth * 2)) * 0.5),
-         face      = gui.fonts.input.face,
-         fontSize  = string.format('%.2fpt', gui.fonts.input.size),
-         fontStyle = gui.fonts.input.style,
          string    = defaultText,
          lineLimit = 1,
          textFlags = (function()
@@ -277,6 +271,13 @@ gui.combobox = function(Options)
          until Msg is nil
       end)
 
+      -- Apply the combobox text theme to the dropdown for consistency
+
+      dd_theme = &theme.dropdown
+      if &input_theme.text then
+         dd_theme.text = table.merge(dd_theme.text, &input_theme.text, true)
+      end
+
       &menu = gui.dropdown({
          relative  = &viewport,
          config    = Options.items,
@@ -287,7 +288,8 @@ gui.combobox = function(Options)
                reportFeedback()
                &viewport.acDraw()
             end
-         end
+         end,
+         theme = dd_theme
       })
 
       if &unlockMenuWidth then -- Set combobox size to the width of the menu

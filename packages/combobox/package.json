@@ -23,15 +23,28 @@
     "tiri": "1.0"
   },
   "dependencies": {
-    "gui": "1.0",
-    "gui/dropdown": "1.0"
+    "gui": "1.0"
   },
   "files": [
     {
       "path": "combobox.tiri",
-      "size": 9867,
-      "sha256": "6c3b1414a5ff2c28719b69ecbb90ef4dcc03b6cff5ad994b2672f1ec988ca045",
+      "size": 9808,
+      "sha256": "304bf63ad962cab2d0781ddd9fc8671833d3c9c50f6580fc9b2cb16d6bdd887a",
       "mediaType": "application/vnd.kotuku.tiri"
+    },
+    {
+      "path": "dropdown.tiri",
+      "size": 14210,
+      "sha256": "68f161c5e6488184ca5ff0afa0c19b97673a70518c38f42155c95cfbf3323753",
+      "mediaType": "application/vnd.kotuku.tiri"
+    }
+  ],
+  "exports": [
+    {
+      "gui/combobox": "combobox.tiri"
+    },
+    {
+      "gui/dropdown": "dropdown.tiri"
     }
   ]
 }

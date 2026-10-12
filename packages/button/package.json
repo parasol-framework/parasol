@@ -23,13 +23,14 @@
     "tiri": "1.0"
   },
   "dependencies": {
-    "gui": "1.0"
+    "gui": "1.0",
+    "gui/tooltip": "1.0"
   },
   "files": [
     {
       "path": "button.tiri",
-      "size": 6782,
-      "sha256": "31e9e4cb343aac73c7ac424232f9c09b9ae4bccd7e277cae5e2c92e94fdf1237",
+      "size": 7601,
+      "sha256": "7c2a14a3418afd85368f1c18ff0910587ee9dcb6c6b10e3984a211075806bf51",
       "mediaType": "application/vnd.kotuku.tiri"
     }
   ]
