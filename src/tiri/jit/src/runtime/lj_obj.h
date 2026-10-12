@@ -995,6 +995,7 @@ typedef struct GCproto {
    BCLine firstline;  //  First line of the function definition.
    BCLine numline;    //  Number of lines for the function definition.
    uint8_t file_source_idx;  //  Index into lua_State::file_sources (fallback for edge cases).
+   uint8_t ordinary; // Immutable entity-member dispatch policy: 0 contextual, 1 caller context.
    uint8_t interpreter_required; // Deterministic policy reconstructed from this prototype's bytecode.
    GCRef source_root;        // Root prototype which owns the compilation-unit source descriptor.
    MRef compilation_sources; // CompilationSourceMap owned by the root prototype only.
@@ -1136,6 +1137,7 @@ inline void proto_restore_jit_policy(GCproto *Proto) noexcept
 
 inline void proto_metadata_init(GCproto *Proto) noexcept
 {
+   Proto->ordinary = 0;
    Proto->interpreter_required = 0;
    setmref(Proto->contract_cache, nullptr);
    Proto->file_source_idx = 0;
@@ -1337,6 +1339,12 @@ typedef union GCfunc {
 [[nodiscard]] inline GCproto* funcproto(const GCfunc* fn) noexcept {
    return check_exp(isluafunc(fn), (GCproto*)(mref<char>(fn->l.pc) - sizeof(GCproto)));
 }
+
+[[nodiscard]] inline bool func_is_ordinary(const GCfunc *Function) noexcept
+{
+   return isluafunc(Function) and funcproto(Function)->ordinary != 0;
+}
+
 
 [[nodiscard]] constexpr inline size_t sizeCfunc(MSize n) noexcept {
    return sizeof(GCfuncC) - sizeof(TValue) + sizeof(TValue) * n;

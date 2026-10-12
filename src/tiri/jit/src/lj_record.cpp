@@ -1497,7 +1497,8 @@ static bool rec_context_state_is_metamethod(uint8_t State)
 
 static TRef rec_context_current(jit_State *J)
 {
-   for (int32_t slot = int32_t(J->baseslot) - 1; slot >= 0; slot--) {
+   // CTXENTER may prepare an activation above the current base before argument evaluation.
+   for (int32_t slot = std::max(int32_t(J->baseslot) - 1, J->context_virtual_slot); slot >= 0; slot--) {
       if (rec_context_state_is_virtual(J->context_call_state[slot])) return J->context_call_receiver[slot];
    }
    return lj_ir_call(J, IRCALL_lj_context_current_jit);
@@ -1599,6 +1600,16 @@ static void rec_context_enter(jit_State *J, BCREG CallBase)
 
    TRef receiver = getslot(J, int32_t(CallBase) - 1);
    if (not tref_istab(receiver)) {
+      return;
+   }
+
+   // Prototype specialisation guards immutable policy before arguments can observe a context.
+   bool ordinary = tvisfunc(callable) and func_is_ordinary(funcV(callable));
+   if (tvisfunc(callable)) {
+      J->base[CallBase] = rec_call_specialise(J, funcV(callable), getslot(J, CallBase), true);
+   }
+   if (ordinary) {
+      J->context_call_state[int32_t(J->baseslot) + int32_t(CallBase)] = CONTEXT_CALL_EXEMPT;
       return;
    }
 
@@ -1844,8 +1855,9 @@ static void rec_context_tailcall(jit_State *J, BCREG CallBase, ptrdiff_t Argumen
    }
 
    TRef receiver = getslot(J, int32_t(CallBase) - 1);
-   bool contextual_receiver = tvistab(&J->L->base[CallBase - 1]) and
+   bool designated_receiver = tvistab(&J->L->base[CallBase - 1]) and
       lj_tab_is_contextual(tabV(&J->L->base[CallBase - 1]));
+   bool contextual_receiver = designated_receiver and not func_is_ordinary(funcV(callable));
 
    // Guard the monotonic designation bit before the callable overwrites the receiver slot, so that a trace
    // specialised to one receiver class cannot be reused for the other.
@@ -1853,7 +1865,7 @@ static void rec_context_tailcall(jit_State *J, BCREG CallBase, ptrdiff_t Argumen
       IRBuilder ir(J);
       TRef flags = ir.fload(receiver, IRFL_TAB_FLAGS, IRT_U8);
       TRef designated = ir.emit_int(IR_BAND, flags, ir.kint(TAB_CONTEXTUAL));
-      if (contextual_receiver) ir.guard_ne_int(designated, ir.kint(0));
+      if (designated_receiver) ir.guard_ne_int(designated, ir.kint(0));
       else ir.guard_eq_int(designated, ir.kint(0));
    }
 

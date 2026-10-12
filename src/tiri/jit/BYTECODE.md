@@ -853,10 +853,18 @@ boundary.
 Current-context access uses the dedicated `CTXGET` opcode. Table member calls use appended contextual variants of the
 existing call family. Their register layout reserves the slot immediately before the ordinary call base for the
 original receiver; the callable and written arguments otherwise retain the `CALL`/`CALLM` layout. `CTXENTER` performs
-the runtime table gate after member lookup and before argument evaluation. `CTXCALL` repeats the gate idempotently at
+the runtime receiver/function gate after member lookup and before argument evaluation. An entity receiver activates
+context only when the resolved callable is not a Tiri function marked `@Ordinary`. `CTXCALL` repeats the gate idempotently at
 the activation boundary, and `CTXLEAVE` restores the inherited context after a normal return. It shifts returned
 values down over the retained receiver slot so expression result allocation remains identical to an ordinary member
 call.
+
+The private dump format `0xaf` adds an immutable `ordinaryB` policy byte after `numuvB` and before `sourceB` in every
+prototype header. Values are 0 (default dispatch) or 1 (inherit caller context for entity member calls); all other
+values and truncated headers are rejected. The policy is preserved for nested prototypes and stripped dumps. Older
+format versions are rejected, allowing source caches to rebuild rather than silently losing the policy. Compiler-only
+`@Ordinary` emits no runtime annotation registration. `CTXLEAVE` still compacts results for exempt calls, and an exempt
+`CTXCALLT` retains the outgoing activation's inherited context without requiring a prepared receiver activation.
 
 Named and computed lookup continue to use the appropriate existing `TGET*` operation while retaining the original
 receiver. Safe calls branch around lookup, entry and argument evaluation on their `nil` path. Statically proved

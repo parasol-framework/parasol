@@ -40,6 +40,7 @@ inline const TiriConstant * lookup_constant(const GCstr *Name)
 }
 
 static bool is_named_external_global(GCstr *Name);
+static bool has_runtime_annotations(const std::vector<AnnotationEntry> &Annotations);
 
 // Canonical object methods are callable syntax, not object fields.  A bare lookup must therefore retain ordinary
 // table indexing, which lets the runtime return a real field when present or nil when it is absent.
@@ -70,12 +71,6 @@ static bool receiver_uses_contextual_call(const ParserContext &Context, const Ex
    if (descriptor.contextuality IS StaticContextuality::Contextual) return true;
    return not (descriptor.proved() and descriptor.primary != TiriType::Unknown and
       descriptor.primary != TiriType::Any and descriptor.primary != TiriType::Table);
-}
-
-static bool receiver_is_proven_contextual(const ParserContext &Context, const ExprNode &Receiver)
-{
-   if (not Receiver.static_value) return false;
-   return Context.descriptors().value(Receiver.static_value).contextuality IS StaticContextuality::Contextual;
 }
 
 static const ExprNode *call_receiver(const CallExprPayload &Payload)
@@ -3275,9 +3270,17 @@ ParserResult<ExpDesc> IrEmitter::emit_expression(const ExprNode& expr)
       case AstNodeKind::ChooseExpr:
          result = this->emit_choose_expr(std::get<ChooseExprPayload>(expr.data));
          break;
-      case AstNodeKind::FunctionExpr:
-         result = this->emit_function_expr(std::get<FunctionExprPayload>(expr.data));
+      case AstNodeKind::FunctionExpr: {
+         const auto &function = std::get<FunctionExprPayload>(expr.data);
+         result = this->emit_function_expr(function);
+         if (result.ok() and has_runtime_annotations(function.annotations)) {
+            this->materialise_to_next_reg(result.value_ref(), "annotated function expression");
+            auto registered = this->emit_annotation_registration(
+               BCReg(result.value_ref().u.s.info), function.annotations, nullptr);
+            if (not registered.ok()) return ParserResult<ExpDesc>::failure(registered.error_ref());
+         }
          break;
+      }
       default:
          result = this->unsupported_expr(expr.kind, expr.span);
          break;

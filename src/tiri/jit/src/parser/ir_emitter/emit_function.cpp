@@ -2,6 +2,16 @@
 // IR emitter implementation: function expression and declaration emission
 // This file is #included from ir_emitter.cpp
 
+static bool has_runtime_annotations(const std::vector<AnnotationEntry> &Annotations)
+{
+   for (const auto &annotation : Annotations) {
+      if (not annotation.name or std::string_view(strdata(annotation.name), annotation.name->len) != "Ordinary") {
+         return true;
+      }
+   }
+   return false;
+}
+
 //********************************************************************************************************************
 // Emit bytecode for a function expression (function(...) ... end), creating a child function prototype.
 // For thunk functions, transforms into a wrapper that returns thunk userdata via AST transformation.
@@ -357,6 +367,7 @@ ParserResult<ExpDesc> IrEmitter::emit_function_body(
 
    fs_guard.disarm();  // fs_finish will handle cleanup
    GCproto *pt = this->lex_state.fs_finish(Body.span.line);
+   pt->ordinary = Payload.is_ordinary ? 1 : 0;
    if (Prototype) *Prototype = pt;
    scope_guard.disarm();
    parent_state->bcbase = this->lex_state.bc_stack + oldbase;
@@ -826,7 +837,7 @@ ParserResult<IrEmitUnit> IrEmitter::emit_local_function_stmt(const LocalFunction
 
    // Register annotations if present
 
-   if (not Payload.function->annotations.empty()) {
+   if (has_runtime_annotations(Payload.function->annotations)) {
       auto anno_result = this->emit_annotation_registration(slot, Payload.function->annotations, Payload.name.symbol);
       if (not anno_result.ok()) return anno_result;
    }
@@ -919,7 +930,7 @@ ParserResult<IrEmitUnit> IrEmitter::emit_function_stmt(const FunctionStmtPayload
       }
 
       // Register annotations if present
-      if (not Payload.function->annotations.empty()) {
+      if (has_runtime_annotations(Payload.function->annotations)) {
          auto anno_result = this->emit_annotation_registration(slot, Payload.function->annotations, funcname);
          if (not anno_result.ok()) return anno_result;
       }
@@ -946,7 +957,7 @@ ParserResult<IrEmitUnit> IrEmitter::emit_function_stmt(const FunctionStmtPayload
    // For annotation registration, we need the function in a register
    // Materialise the function value to a register before the store
    BCReg func_reg = BCReg(BCREG(0));
-   bool has_annotations = not Payload.function->annotations.empty();
+   bool has_annotations = has_runtime_annotations(Payload.function->annotations);
    if (has_annotations) {
       func_reg = BCReg(this->func_state.freereg);
       this->materialise_to_next_reg(value, "annotated function");
@@ -1034,7 +1045,7 @@ static bool annotation_entry_name_is(const AnnotationEntry &Annotation, std::str
 
 ParserResult<IrEmitUnit> IrEmitter::emit_annotation_registration(BCReg FuncReg, const std::vector<AnnotationEntry>& Annotations, GCstr* Funcname)
 {
-   if (Annotations.empty()) return ParserResult<IrEmitUnit>::success(IrEmitUnit{});
+   if (not has_runtime_annotations(Annotations)) return ParserResult<IrEmitUnit>::success(IrEmitUnit{});
 
    FuncState* fs = &this->func_state;
    lua_State* L = fs->L;
@@ -1044,6 +1055,7 @@ ParserResult<IrEmitUnit> IrEmitter::emit_annotation_registration(BCReg FuncReg, 
    // Format: @Name(key=value, ...); @Name2; ...
    std::string anno_str;
    for (const auto& anno : Annotations) {
+      if (annotation_entry_name_is(anno, "Ordinary")) continue;
       if (not anno_str.empty()) anno_str += "; ";
       anno_str += "@";
       if (anno.name) anno_str.append(strdata(anno.name), anno.name->len);

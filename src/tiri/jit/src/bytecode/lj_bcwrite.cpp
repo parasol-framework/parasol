@@ -61,6 +61,7 @@ static bool bcwrite_source_id(BCWriteCtx *Ctx, uint8_t Runtime, uint8_t &Wire)
 static bool bcwrite_validate_proto(BCWriteCtx *Ctx, GCproto *Proto)
 {
    uint8_t wire;
+   if (Proto->ordinary > 1) return false;
    if (not bcwrite_source_id(Ctx, Proto->file_source_idx, wire)) return false;
    if (proto_lineinfo(Proto)) {
       const BCLine *lines = (const BCLine *)proto_lineinfo(Proto);
@@ -539,7 +540,7 @@ static void bcwrite_proto(BCWriteCtx *ctx, GCproto *pt)
    }
 
    // Start writing the prototype info to a buffer.
-   p = lj_buf_need(&ctx->sb, 5 + 5 + 8 * 5 + sizesig + sizedep +
+   p = lj_buf_need(&ctx->sb, 5 + 6 + 8 * 5 + sizesig + sizedep +
       (pt->sizebc - 1) * (MSize)sizeof(BCIns) + pt->sizeuv * 2);
    p += 5;  //  Leave room for final size.
 
@@ -548,6 +549,7 @@ static void bcwrite_proto(BCWriteCtx *ctx, GCproto *pt)
    *p++ = pt->numparams;
    *p++ = pt->framesize;
    *p++ = pt->sizeuv;
+   *p++ = pt->ordinary;
    uint8_t prototype_source = 0;
    const bool prototype_source_mapped = bcwrite_source_id(ctx, pt->file_source_idx, prototype_source);
    lj_assertBCW(prototype_source_mapped, "unmapped prototype source");
