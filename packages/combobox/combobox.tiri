@@ -273,7 +273,7 @@ gui.combobox = function(Options)
 
       -- Apply the combobox text theme to the dropdown for consistency
 
-      dd_theme = &theme.dropdown
+      dd_theme = table.clone(&theme.dropdown)
       if &input_theme.text then
          dd_theme.text = table.merge(dd_theme.text, &input_theme.text, true)
       end
