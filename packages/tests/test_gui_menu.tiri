@@ -1,4 +1,4 @@
-   import 'gui', 'gui/menu', 'gui/menubar'
+   import 'gui', 'gui/menu', 'gui/menubar', 'gui/dropdown'
    include 'display', 'vector'
 
 function sendKey(Code:num!, Qualifiers:num, Unicode:num)
@@ -117,6 +117,30 @@ end
 function resetPointer()
    -- Keep pointer position from an earlier test from selecting a newly created menu or suppressing a repeated move.
    if obj.find('SystemPointer') then feed(JET_ABS_XY, 1000, 1000) end
+end
+
+@Test function ModalDropdownAcceptsPointerPress()
+   local surface <close>, target = newTarget()
+   local hits = 0
+   local dropdown = gui.dropdown({
+      relative = target, x = 20, y = 20,
+      config = array<table> { { item='First' }, { item='Second' } },
+      feedback = function(Menu, Item)
+         if Item.item is 'Second' then hits++ end
+      end
+   })
+   defer dropdown.surface?.free() end
+
+   surface.modal = true
+   surface.acShow()
+   dropdown.show()
+   dropdown.surface.acDraw()
+   processing.sleep(0)
+
+   feed(JET_ABS_XY, dropdown.surface.absX + 10, dropdown.surface.absY + dropdown.items[1].y + 5)
+   feed(JET_LMB, 1, 0)
+   feed(JET_LMB, 0, 0)
+   assert(hits is 1 and not dropdown.visible, 'A modal dropdown click must activate the selected row')
 end
 
 @Test function MenuReportsHighlightChanges()

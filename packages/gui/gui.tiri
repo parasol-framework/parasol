@@ -155,10 +155,14 @@ gui.mtRGB = { -- sRGB metatable
       return &r is Other.r and &g is Other.g and &b is Other.b and &a is Other.a
    end,
    __tostring = function():str -- Returns an SVG compliant colour string
-      if &a >= 1 or &a is nil then
-         return string.format('rgb(%d %d %d)', &r ? &r * 255 : 0, &g ? &g * 255 : 0, &b ? &b * 255 : 0)
+      -- Channels are rounded rather than truncated, so a value such as 239.99 is written as 240
+      r = math.round((&r ?? 0) * 255)
+      g = math.round((&g ?? 0) * 255)
+      b = math.round((&b ?? 0) * 255)
+      if &a is nil or &a >= 1 then
+         return string.format('rgb(%d %d %d)', r, g, b)
       else
-         return string.format('rgb(%d %d %d / %g)', &r ? &r * 255 : 0, &g ? &g * 255 : 0, &b ? &b * 255 : 0, &a)
+         return string.format('rgb(%d %d %d / %g)', r, g, b, &a)
       end
    end
 }
@@ -678,6 +682,7 @@ gui.setTheme = function(Object:obj, Theme:str!):table
 end
 
 ----------------------------------------------------------------------------------------------------------------------
+-- Internal function for widget libraries
 
 gui.applyStyle = function(Vector:any!, Set:table)
    if not Set then return end
@@ -698,7 +703,14 @@ end
 
 ----------------------------------------------------------------------------------------------------------------------
 
-gui.sizing = {
+gui.interface = {
+   dpi       = 160,       -- Default DPI baseline
+   fontSize  = 12,        -- Default font-size for everything (pt)
+   iconTheme = 'Default', -- Named folder to load the icons from
+   iconSize  = 20         -- Recommended default size for icons (px) and should be related to fontSize
+}
+
+gui.sizing = { -- Universal sizing information
    widget = {
       width  = 160, -- Default width for common widgets (px)
       gap    = 6,   -- Recommended gap between widgets (px)
@@ -707,7 +719,8 @@ gui.sizing = {
 }
 
 gui.fonts = {
-   -- Percentages are scaled against gui.interface.fontSize
+   -- Percentages are converted to numeric pt sizes, relative to gui.interface.fontSize
+   -- Numeric sizes are treated as fixed point
    default  = { face='Noto Sans,Source Sans Pro', size='100%' },
    window   = { face='Noto Sans,Source Sans Pro', style='medium', size='100%' }, -- For non-widget text
    button   = { face='Noto Sans,Source Sans Pro', size=12 }, -- Text inside buttons
@@ -718,10 +731,23 @@ gui.fonts = {
    titlebar = { face='Noto Sans', size='100%' }, -- Window titlebar text
    small    = { face='Tiny', size='60%' }, -- Recommended text for small sizes
    large    = { face='Noto Sans,Source Sans Pro', size='130%' }, -- Recommended text for headers
-   input    = { face='Noto Sans,Source Sans Pro', style='medium', size='12' }, -- Text inside input widgets (e.g. combobox)
-   widget   = { face='Noto Sans,Source Sans Pro', style='medium', size='12' }, -- Text inside non-input widgets (e.g. button)
+   input    = { face='Noto Sans,Source Sans Pro', style='medium', size=12 }, -- Text inside input widgets (e.g. combobox)
+   widget   = { face='Noto Sans,Source Sans Pro', style='medium', size=12 }, -- Text inside non-input widgets (e.g. button)
    label    = { face='Noto Sans,Source Sans Pro', style='medium', size='100%' } -- Text for labels and outside widgets
 }
+
+   -- Convert font percentage sizes to their px size
+
+   for font in values(gui.fonts) do
+      if font.size then
+         if rxFontSize.test(font.size) then
+            pct = tonumber(rxFontSize.extract(font.size))
+            font.size = math.floor(gui.interface.fontSize * (pct / 100))
+         end
+      end
+
+      font.style ??= 'Regular'
+   end
 
 gui.iconThemes = {
    default = { first=gui.strToRGB('oklch(0.468 0.000 89.876)'),  last=gui.strToRGB('oklch(0.412 0.066 283.103)') },
@@ -783,7 +809,7 @@ gui.palettes = {
                 prime = 'oklch(0.634 0.185 40.533)', contrast = 'oklch(0.740 0.161 69.169)',
                 neutral = 'oklch(0.894 0 89.876)', mid='none',
                 text='black', altText='white' },
-      dark=   { type = 'dark', bkgd = 'black', inverse = 'oklch(0.560 0.019 196.622)',
+      dark =  { type = 'dark', bkgd = 'black', inverse = 'oklch(0.560 0.019 196.622)',
                 prime = 'oklch(0.634 0.185 40.533)', contrast = 'oklch(0.740 0.161 69.169)',
                 neutral = 'oklch(0.277 0 89.876)', mid='none',
                 text='white', altText='white' }
@@ -855,21 +881,24 @@ gui.themes = {
          iconHighlight     = 'pearl'                    -- Recommended icon theme when highlighted or selected
       },
       widget = { -- Non-input widgets only (exc. checkbox, combobox, etc.)
-         text        = { fill = gui.palette.dark.text },
+         text        = { fill = gui.palette.dark.text, face = gui.fonts.widget.face, fontSize = string.format('%.2fpt', gui.fonts.widget.size), fontStyle = gui.fonts.widget.style },
          bkgd        = { fill = gui.palette.dark.prime, opacity = 1 },
          stroke      = { stroke = 'rgb(255 255 255 / .25)' },
          strokeFocus = { stroke = gui.palette.dark.contrast },
          disabled    = { opacity = 0.5 }
       },
+      icon = {
+         text = { fill = gui.palette.dark.text, face = gui.fonts.icon.face, fontSize = string.format('%.2fpt', gui.fonts.icon.size), fontStyle = gui.fonts.icon.style },
+      }
       input = { -- Used by checkbox, input, combobox
          bkgd  = { fill = gui.palette.dark.bkgd, stroke = 'rgb(255 255 255 / .25)', strokeWidth = 2, roundX = 4, roundY = 4, opacity = 1 },
          focus = { stroke = gui.palette.dark.contrast },
-         text  = { fill = gui.palette.dark.text },
+         text  = { fill = gui.palette.dark.text, face = gui.fonts.input.face, fontSize = string.format('%.2fpt', gui.fonts.input.size), fontStyle = gui.fonts.input.style },
          disabled = { opacity = 0.5 }
       },
       window = {
          bkgd   = { fill = gui.palette.dark.neutral },
-         text   = { fill = gui.palette.dark.text },
+         text   = { fill = gui.palette.dark.text, face = gui.fonts.window.face, fontSize =  string.format('%.2fpt', gui.fonts.window.size), fontStyle = gui.fonts.window.style },
          stroke = { stroke = modifyAlpha(gui.palette.dark.text, 0.25), strokeWidth = 2 }, -- Stroking of lines/paths (not borders of widgets)
          icon   = 'pearl'
       },
@@ -877,7 +906,7 @@ gui.themes = {
          bkgd      = { fill = gui.palette.dark.neutral, stroke = 'rgb(255 255 255 / .25)', strokeWidth = 2, roundX = 4, roundY = 4, opacity = 1 },
          highlight = { fill = gui.palette.dark.contrast },
          focus     = { stroke = gui.palette.dark.contrast },
-         text      = { fill = gui.palette.dark.text },
+         text      = { fill = gui.palette.dark.text, face = gui.fonts.button.face, fontSize = string.format('%.2fpt', gui.fonts.button.size), fontStyle = gui.fonts.button.style },
          disabled  = { opacity = 0.5 }
       },
       menubar = {
@@ -890,15 +919,15 @@ gui.themes = {
          bkgd      = { fill = gui.palette.dark.bkgd }, -- VectorRectangle
          border    = { stroke = gui.palette.dark.inverse, opacity = 0.5 }, -- VectorRectangle
          highlight = { fill = gui.palette.dark.contrast }, -- VectorRectangle
-         text      = { fill = gui.palette.dark.text }, -- VectorText
+         text      = { fill = gui.palette.dark.text, face = gui.fonts.menu.face, fontSize = string.format('%.2fpt', gui.fonts.menu.size), fontStyle = gui.fonts.menu.style }, -- VectorText
          icon      = 'pearl'
       },
-      dropdown = {
+      dropdown = { -- Exclusive to combobox
          bkgd          = { fill = gui.palette.dark.bkgd },
          border        = { stroke = gui.palette.dark.inverse },
          highlight     = { fill = gui.palette.dark.contrast },
-         text          = { fill = gui.palette.dark.text },
-         textHighlight = { fill = gui.palette.dark.altText },
+         text          = { fill = gui.palette.dark.text, face = gui.fonts.input.face, fontSize = string.format('%.2fpt', gui.fonts.input.size), fontStyle = gui.fonts.input.style },
+         textHighlight = { fill = gui.palette.dark.altText, face = gui.fonts.input.face, fontSize = string.format('%.2fpt', gui.fonts.input.size), fontStyle = gui.fonts.input.style },
          icon          = 'pearl',
          iconHighlight = 'pearl'
       },
@@ -948,21 +977,24 @@ gui.themes = {
          iconHighlight     = 'pearl'
       },
       widget = {
-         text        = { fill = gui.palette.light.altText },
+         text        = { fill = gui.palette.light.altText, face = gui.fonts.widget.face, fontSize = string.format('%.2fpt', gui.fonts.widget.size), fontStyle = gui.fonts.widget.style },
          bkgd        = { fill = gui.palette.light.prime, opacity = 1 },
          stroke      = { stroke = 'rgb(0 0 0 / .35)' },
          strokeFocus = { stroke = gui.palette.light.contrast },
          disabled    = { opacity = 0.5 }
       },
+      icon = {
+         text = { fill = gui.palette.light.altText, face = gui.fonts.icon.face, fontSize = string.format('%.2fpt', gui.fonts.icon.size), fontStyle = gui.fonts.icon.style },
+      },
       input = {
          bkgd  = { fill = gui.palette.light.bkgd, stroke = 'rgb(0 0 0 / .35)', strokeWidth = 2, roundX = 4, roundY = 4, opacity = 1 },
          focus = { stroke = gui.palette.light.contrast },
-         text  = { fill = gui.palette.light.text },
+         text  = { fill = gui.palette.light.text, face = gui.fonts.input.face, fontSize = string.format('%.2fpt', gui.fonts.input.size), fontStyle = gui.fonts.input.style },
          disabled = { opacity = 0.5 }
       },
       window = {
          bkgd   = { fill = gui.palette.light.neutral },
-         text   = { fill = gui.palette.light.text },
+         text   = { fill = gui.palette.light.text, face = gui.fonts.window.face, fontSize = string.format('%.2fpt', gui.fonts.window.size), fontStyle = gui.fonts.window.style },
          stroke = { stroke = modifyAlpha(gui.palette.light.inverse, 0.5), strokeWidth = 2 },
          icon   = 'carbon'
       },
@@ -970,7 +1002,7 @@ gui.themes = {
          bkgd      = { fill = gui.palette.light.inverse, stroke = 'rgb(0 0 0 / .35)', strokeWidth = 2, roundX = 4, roundY = 4, opacity = 1 },
          highlight = { fill = gui.palette.light.contrast },
          focus     = { stroke = gui.palette.light.contrast },
-         text      = { fill = gui.palette.light.altText },
+         text      = { fill = gui.palette.light.altText, face = gui.fonts.button.face, fontSize = string.format('%.2fpt', gui.fonts.button.size), fontStyle = gui.fonts.button.style, },
          disabled  = { opacity = 0.5 }
       },
       menubar = {
@@ -983,15 +1015,15 @@ gui.themes = {
          bkgd      = { fill = gui.palette.light.inverse },
          border    = { stroke  = gui.palette.light.neutral, opacity = 0.5 },
          highlight = { fill = gui.palette.light.contrast },
-         text      = { fill = gui.palette.light.altText },
+         text      = { fill = gui.palette.light.altText, face = gui.fonts.menu.face, fontSize = string.format('%.2fpt', gui.fonts.menu.size), fontStyle = gui.fonts.menu.style },
          icon      = 'pearl'
       },
       dropdown = {
          bkgd          = { fill = gui.palette.light.bkgd },
          border        = { stroke = gui.palette.light.inverse },
          highlight     = { fill = gui.palette.light.contrast },
-         text          = { fill = gui.palette.light.text },
-         textHighlight = { fill = gui.palette.light.altText },
+         text          = { fill = gui.palette.light.text, face = gui.fonts.input.face, fontSize = string.format('%.2fpt', gui.fonts.input.size), fontStyle = gui.fonts.input.style },
+         textHighlight = { fill = gui.palette.light.altText, face = gui.fonts.input.face, fontSize = string.format('%.2fpt', gui.fonts.input.size), fontStyle = gui.fonts.input.style },
          icon          = 'carbon',
          iconHighlight = 'pearl'
       },
@@ -1023,23 +1055,3 @@ gui.themes.dark.menubar.menu = gui.themes.dark.menu
 gui.themes.light.menubar.menu = gui.themes.light.menu
 
 gui.style = gui.themes[gui.theme] -- Default user theme; but using gui.setTheme() is the preferred approach
-
-gui.interface = {
-   dpi       = 160,       -- Default DPI baseline
-   fontSize  = 12,        -- Default font-size for everything (pt)
-   iconTheme = 'Default', -- Named folder to load the icons from
-   iconSize  = 20         -- Recommended default size for icons (px) and should be related to fontSize
-}
-
-   -- Convert font percentage sizes to their px size
-
-   for font in values(gui.fonts) do
-      if font.size then
-         if rxFontSize.test(font.size) then
-            pct = tonumber(rxFontSize.extract(font.size))
-            font.size = math.floor(gui.interface.fontSize * (pct / 100))
-         end
-      end
-
-      font.style ??= 'Regular'
-   end

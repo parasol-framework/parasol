@@ -127,18 +127,13 @@ gui.input = function(Options)
       })
 
       if &label then
-         label_style = Options.labelFill ? table.merge(theme.window.text, { fill=Options.labelFill }) : theme.window.text
-
          &labelText = &viewport.new('VectorText', table.merge({
             name      = 'vt_input_label',
             x         = 0,
             y         = math.round(font_height + math.floor((box_height - font_height) * 0.5)),
-            face      = Options.textFace ?? gui.fonts.label.face,
-            fontSize  = string.format('%.2fpt', gui.fonts.label.size),
-            fontStyle = gui.fonts.label.style,
             string    = &label,
             lineLimit = 1
-         }, label_style))
+         }, theme.window.text))
 
          &labelWidth          = &labelText.textWidth + gui.sizing.widget.margin
          &inputViewport.x     = &labelText.x + &labelWidth
@@ -163,9 +158,6 @@ gui.input = function(Options)
             name      = 'vt_shadow',
             x         = 4,
             y         = math.round(font_height + math.floor((box_height - font_height - (input_theme.bkgd.strokeWidth * 2)) * 0.5)),
-            face      = Options.textFace ?? gui.fonts.input.face,
-            fontSize  = string.format('%.2fpt', gui.fonts.input.size),
-            fontStyle = Options.textStyle ?? gui.fonts.input.style,
             opacity   = 0.5,
             string    = Options.shadowLabel,
             lineLimit = 1

@@ -4,18 +4,20 @@
 Documentation is available in the Kotuku Wiki.
 --]]
 
-   import 'gui'
+   import 'gui', 'gui/tooltip'
 
    namespace gui
 
 LINE_SPACING, FONT_HEIGHT = gui.getFontHeight(gui.fonts.button)
 DEFAULT_HEIGHT <const> = math.floor(LINE_SPACING * 1.75) + 1
+TIP_DELAY <const> = 0.75 -- Seconds that the pointer must rest on the button before its tip is shown, as for toolbars
 
 gui.button = function(Options)
    self = entity { -- Public variables
       events         = Options.events ?? { },
       parentViewport = Options.target,
       text           = nil, -- A VectorText that represents the string
+      tip            = Options.tip, -- Hover tip text; recommended for buttons that only show an icon
       viewport       = nil, -- The button's primary viewport
    }
 
@@ -27,6 +29,27 @@ gui.button = function(Options)
    HEIGHT    <const> = Options.height ?? DEFAULT_HEIGHT
    ICON_SIZE <const> = HEIGHT * 0.56
    GAP       <const> = HEIGHT * 0.35
+
+   -- The hover tip is shown when the pointer rests on the button.  The tooltip removes itself when the pointer moves.
+
+   function cancelTip()
+      if self._tipTimer then
+         mSys.UpdateTimer(self._tipTimer, 0)
+         self._tipTimer = nil
+      end
+   end
+
+   function startTip()
+      cancelTip()
+      if not self.tip then return end
+      err, self._tipTimer = mSys.SubscribeTimer(TIP_DELAY, function()
+         self._tipTimer = nil
+         if self.tip and obj.find(self._viewportID) then
+            gui.tooltip({ target = self.viewport, text = self.tip })
+         end
+         raise ERR_Terminate
+      end)
+   end
 
    -- Change the active state of the button to disabled or enabled
 
@@ -75,6 +98,7 @@ gui.button = function(Options)
    end
 
    self.viewport = self.parentViewport.new('VectorViewport', vps)
+   self._viewportID = self.viewport.id
 
    self.bkgd = self.viewport.new('VectorRectangle', table.merge({
       x      = theme.bkgd.strokeWidth * 0.5,
@@ -120,9 +144,6 @@ gui.button = function(Options)
       self.text = self._textClip.new('VectorText', table.merge({
          x         = GAP + label_offset,
          y         = FONT_HEIGHT + math.floor((HEIGHT - FONT_HEIGHT - (theme.bkgd.strokeWidth * 2)) * 0.5),
-         face      = gui.fonts.button.face,
-         fontSize  = string.format('%.2fpt', gui.fonts.button.size),
-         fontStyle = gui.fonts.button.style,
          string    = Options.text,
          lineLimit = 1
       }, theme.text))
@@ -167,13 +188,16 @@ gui.button = function(Options)
       repeat
          if Msg.type is JET_CROSSED_IN then
             gui.applyStyle(self.bkgd, theme.highlight)
+            startTip()
             self.events?.cursorEntry(self)
          elseif Msg.type is JET_CROSSED_OUT then
+            cancelTip()
             local t = table.clone(theme.bkgd)
             if self.hasFocus then gui.applyStyle(t, theme.focus) end
             gui.applyStyle(self.bkgd, t)
             self.events?.cursorExit(self)
          elseif Msg.type is JET_LMB then
+            cancelTip()
             if Msg.value > 0 then
                if not self.disabled then
                   -- Click event is triggered on release unless the button is set to pulse

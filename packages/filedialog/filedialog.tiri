@@ -4,13 +4,7 @@
 Documentation is available in the Kotuku Wiki.
 --]]
 
-   import 'gui'
-   import 'gui/fileview'
-   import 'gui/columnview'
-   import 'gui/button'
-   import 'gui/combobox'
-   import 'gui/input'
-   import 'gui/window'
+   import 'gui', 'gui/fileview', 'gui/columnview', 'gui/button', 'gui/combobox', 'gui/input', 'gui/window'
 
    namespace gui
 
@@ -94,7 +88,7 @@ gui.dialog.file = function(Options)
       title        = Options.title ?? 'Select a file',
       modal        = Options.modal ?? false,
       events = {
-         close = function(Window)
+         close = function()
             Options?.feedback(self, nil)
             self.clear()
             processing.collect('defer')
@@ -110,20 +104,16 @@ gui.dialog.file = function(Options)
 
    self.viewport = self.window.clientViewport({ })
 
-   path_theme = table.clone(theme.input)
-   path_theme.bkgd.fill = 'none'
-   path_theme.bkgd.stroke = 'none'
-   path_theme.bkgd.roundX = 0
-   path_theme.bkgd.roundY = 0
-
    self.pathbox = gui.input({
       target     = self.viewport,
       x          = 0,
       y          = 0,
       xOffset    = 0,
       text       = self.currentPath,
-      textFace   = gui.fonts.filesys.face,
-      theme      = path_theme,
+      theme      = {
+         bkgd = { fill = 'none', stroke = 'none', roundX = 0, roundY = 0 },
+         text = { face = gui.fonts.filesys.face }
+      },
       events = {
          activate = function(Event)
             self.fileview.browse(Event.text)
@@ -145,7 +135,7 @@ gui.dialog.file = function(Options)
       yOffset = footer,
       icon    = 'items/cancel',
       events = {
-         activate = function(Button)
+         activate = function()
             Options?.feedback(self, nil)
             self.clear()
             processing.collect()
@@ -154,12 +144,12 @@ gui.dialog.file = function(Options)
    })
 
    lOkayButton = gui.button({
-      target     = self.viewport,
-      text       = Options.okText ?? 'Okay',
-      xOffset    = lCancelButton.viewport.width + (GAP * 2),
-      yOffset    = footer,
-      icon       = 'items/checkmark',
-      events = {
+      target  = self.viewport,
+      text    = Options.okText ?? 'Okay',
+      xOffset = lCancelButton.viewport.width + (GAP * 2),
+      yOffset = footer,
+      icon    = 'items/checkmark',
+      events  = {
          activate = processFeedback
       }
    })
@@ -173,9 +163,11 @@ gui.dialog.file = function(Options)
          yOffset     = footer,
          xOffset     = 0,
          shadowLabel = 'Enter file name',
-         textFace    = gui.fonts.filesys.face,
-         theme       = path_theme,
-         text        = target_file,
+         theme       = {
+            bkgd = { fill = 'none', stroke = 'none', roundX = 0, roundY = 0 },
+            text = { face = gui.fonts.filesys.face }
+         },
+         text = target_file,
          events = {
             activate = function(Event:table!)
                if Event.state is 'activated' then
