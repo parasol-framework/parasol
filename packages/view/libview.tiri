@@ -178,10 +178,8 @@ gui.initView = function(Options:table!, BuildUI, NewItems)
       viewport   = nil,
       page       = nil,
       window     = nil, -- Host of the page
+      -- Utilises the 'page' theme for inner view and 'widget' for titlebars etc
       theme      = nil,
-      fontFace   = Options.fontFace ?? gui.fonts.page.face,
-      fontSize   = Options.fontSize ?? gui.fonts.page.size,
-      fontStyle  = Options.fontStyle ?? gui.fonts.page.style,
       noIcons    = Options.noIcons,
       itemSelected    = Options.itemSelected,
       itemDeselected  = Options.itemDeselected,
@@ -662,6 +660,9 @@ gui.initView = function(Options:table!, BuildUI, NewItems)
    vw.viewport = vw.parentViewport.new('VectorViewport', { name='view_main', overflow='hidden' }) -- Main viewport for vector graphics.
    vw.frame    = vw.viewport.new('VectorViewport', { name='view_frame', x=0, xOffset=0, y=0, yOffset=0, overflow=VOF_HIDDEN })
    vw.theme    = gui.getTheme(vw.scene)
+   if Options.theme then -- Accepts page and widget theme config
+      vw.theme = table.merge(vw.theme, Options.theme, true, true)
+   end
 
    vw.bkgd = vw.frame.new('VectorRectangle', table.merge({
       name = 'view_bkgd', width = '100%', height = '100%'
@@ -693,9 +694,9 @@ gui.initView = function(Options:table!, BuildUI, NewItems)
 --]]
 
    vw.scrollbar = gui.scrollbar({
-      target = vw.viewport,
-      view   = vw.frame,
-      page   = vw.page,
+      target    = vw.viewport,
+      view      = vw.frame,
+      page      = vw.page,
       direction = 'all'
    })
 

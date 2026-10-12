@@ -327,12 +327,13 @@ function displayFilters(self)
          item.vp = self.filterViewport.new('VectorViewport', { x = 0, y = height, width = '100%', height = 1 })
 
          item.highlight = item.vp.new('VectorRectangle', {
-            x = 0, y = 0, width='100%', height='100%', fill=self.theme.page.textSelectBkgd, visibility = VIS_HIDDEN
+            x = 0, y = 0, width='100%', height='100%',
+            fill = self.theme.page.textSelectBkgd, visibility = VIS_HIDDEN
          })
 
          item.txt = item.vp.new('VectorText', table.merge({
             x=0, y=0, string=item.name, face=gui.fonts.widget.face, fontSize='10pt'
-         }, self.theme.page.text))
+         }, self.theme.page.text, false))
 
          if not descent then
             descent = math.round(item.txt.descent)
@@ -494,15 +495,15 @@ function createFileItem(self, Info)
    if Info.flags has RDF_VOLUME then -- Get the icon to use for displaying the volume
       icon = getFileIcon(Info.name .. ':')
       if icon is 'icons:folders/folder' then icon = 'folders/folder_shortcut' end
-      icon ?= 'folders/folder_shortcut'
-      colour = 'blue'
+      icon      ?= 'folders/folder_shortcut'
+      colour     = nil
       total_size = nil
       free_space = nil
-      device = obj.new('storagedevice', { volume = Info.name .. ':' } )
+      device     = obj.new('storagedevice', { volume = Info.name .. ':' } )
+
       if device.deviceFlags has DEVICE_BOOKMARK then -- User shortcut
-         colour = self.theme.palette.type is 'light' ? 'carbon' : 'pearl'
+         -- colour = ?
       elseif device.deviceFlags has (DEVICE_FLOPPY_DISK|DEVICE_FIXED|DEVICE_HARD_DISK|DEVICE_COMPACT_DISC) then
-         colour = 'green'
          if device.deviceSize >= 1 then total_size = sortNum(device.deviceSize) end
          if device.bytesFree >= 1 then free_space = sortNum(device.bytesFree) end
       end
@@ -1551,9 +1552,13 @@ gui.fileview = function(Options)
                         popOver    = self._surface,
                         feedback = function(Dialog, Accepted)
                            if Accepted then
-                              ViewOptions.fontFace  = Dialog.face
-                              ViewOptions.fontSize  = Dialog.pointSize
-                              ViewOptions.fontStyle = Dialog.style
+                              ViewOptions.theme = table.merge(ViewOptions.theme, {
+                                 page = { text = {
+                                    face = Dialog.face,
+                                    fontSize = string.format('%.2fpt', Dialog.pointSize),
+                                    fontStyle = Dialog.style
+                                 } }
+                              }, true, true)
                               self.view.free()
                               self.view = choose self.style from
                                  'column' -> gui.columnView(ViewOptions)
@@ -1656,16 +1661,22 @@ gui.fileview = function(Options)
    -- View initialisation
 
    vo = {
-      target      = Options.target,
-      fontFace    = gui.fonts.filesys.face,
-      fontSize    = gui.fonts.filesys.size,
-      fontStyle   = gui.fonts.filesys.style,
+      target = Options.target,
+      theme = {
+         page = {
+            text = {
+               face      = gui.fonts.filesys.face,
+               fontSize  = string.format('%.2fpt', gui.fonts.filesys.size),
+               fontStyle = gui.fonts.filesys.style
+            }
+         }
+      },
       dragDrop    = true,
       multiSelect = Options.multiSelect,
       borderless  = true
    }
 
-   for k,v in pairs(Options.viewOptions) do vo[k] = v end
+   vo = table.merge(vo, Options.viewOptions, true, true)
 
    if Options.style is 'column' then
       self.view = gui.columnView(vo)

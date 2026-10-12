@@ -20,7 +20,7 @@ rx_date <const> = <{ regex.new([[^(\d+)-(\d+)-(\d+)$]]) }>
 rx_time <const> = <{ regex.new([[^(\d{2}):(\d{2}):?(\d{0,2})$]]) }>
 
 local LINE_HEIGHT:num, FONT_HEIGHT:num, LINE_HEIGHT:num, FONT_HEIGHT:num, MARGIN:num
-local ICON_OFFSET:num, LINE_OFFSET:num, BANNER_HEIGHT:num, lEnableTextGradients:bool
+local ICON_OFFSET:num, LINE_OFFSET:num, LINE_HEIGHT:num, lEnableTextGradients:bool
 
 glIconSize = 16
 glCounter = 1
@@ -174,7 +174,7 @@ function arrangeColumns(View:table!)
 
       pc.type = PE_Line
       pc.x    = col.x + col.px_width
-      pc.y    = BANNER_HEIGHT
+      pc.y    = LINE_HEIGHT
       View.banner.lines.mtAddCommand(pc)
 
       col.bannerVP.x = col.x
@@ -248,7 +248,7 @@ function bannerZoneClick(View, Col, X, Y, Value)
          View._sort.icon = Col.bannerVP.new('VectorRectangle', {
             name   = 'banner_sort',
             fill   = View._sort_desc,
-            y      = math.round( ((BANNER_HEIGHT - glIconSize) * 0.5)),
+            y      = math.round( ((LINE_HEIGHT - glIconSize) * 0.5)),
             width  = glIconSize,
             height = glIconSize
          })
@@ -264,7 +264,7 @@ function bannerZoneClick(View, Col, X, Y, Value)
          View._sort.icon = Col.bannerVP.new('VectorRectangle', {
             name   = 'banner_sort',
             fill   = View._sort_asc,
-            y      = math.round((BANNER_HEIGHT - glIconSize) * 0.5),
+            y      = math.round((LINE_HEIGHT - glIconSize) * 0.5),
             width  = glIconSize,
             height = glIconSize
          })
@@ -351,7 +351,7 @@ gui.columnView = function(Options):table
 
       View.columns = set
 
-      View.reserveTop('ViewUI', BANNER_HEIGHT)
+      View.reserveTop('ViewUI', LINE_HEIGHT)
 
       if View.banner then View.banner.clip.free() end
 
@@ -361,11 +361,11 @@ gui.columnView = function(Options):table
 
       View.banner.clip = View.viewport.new('VectorViewport', {
          name = 'banner_clip',
-         x = 0, y = View.frame.y - BANNER_HEIGHT, width = '100%', height = BANNER_HEIGHT, overflow = VOF_HIDDEN
+         x = 0, y = View.frame.y - LINE_HEIGHT, width = '100%', height = LINE_HEIGHT, overflow = VOF_HIDDEN
       })
 
       View.banner.viewport = View.banner.clip.new('VectorViewport', {
-         name = 'banner_vp', x = 0, y = 0, width = '100%', height = BANNER_HEIGHT, overflow = VOF_HIDDEN
+         name = 'banner_vp', x = 0, y = 0, width = '100%', height = LINE_HEIGHT, overflow = VOF_HIDDEN
       })
 
       View.banner.lines = View.banner.viewport.new('VectorPath', table.merge({
@@ -401,7 +401,7 @@ gui.columnView = function(Options):table
 
          col.x = x
          col.minWidth = x + MARGIN
-         col.px_width = col.width * tonumber(View.fontSize) * (4 / 3)
+         col.px_width = col.width * gui.pixel(tostring(View.theme.page.text.fontSize), 96)
 
          if not col.bannerVP then
             -- Each banner viewport hosts the title and sorting icon
@@ -419,12 +419,9 @@ gui.columnView = function(Options):table
 
             col.vecTitle = col.bannerVP.new('VectorText', table.merge({
                name      = 'col_title',
-               face      = View.fontFace,
-               fontSize  = string.format('%.2fpt', View.fontSize),
-               fontStyle = View.fontStyle,
                align     = col.align ?? 'left',
-               y         = math.round((BANNER_HEIGHT + FONT_HEIGHT) * 0.5)
-            }, View.theme.window.text))
+               y         = LINE_OFFSET,
+            }, View.theme.page.text))
 
             -- Support for resize management
 
@@ -502,7 +499,7 @@ gui.columnView = function(Options):table
          end)
 
          View.frame.mtSubscribeFeedback(FM_PATH_CHANGED, function(Viewport, Event)
-            View.banner.clip.y = View.frame.y - BANNER_HEIGHT
+            View.banner.clip.y = View.frame.y - LINE_HEIGHT
          end)
       end
 
@@ -596,15 +593,12 @@ gui.columnView = function(Options):table
 
             if item[attrib]?? then
                if not item._col[attrib].text then
-                  item._col[attrib].text = col.vecViewport.new('VectorText', {
+                  item._col[attrib].text = col.vecViewport.new('VectorText', table.merge({
                      name      = f'text_{attrib}',
-                     face      = View.fontFace,
-                     fontSize  = string.format('%.2fpt', View.fontSize),
-                     fontStyle = View.fontStyle,
                      align     = col.align ?? 'left',
                      y         = y + LINE_OFFSET,
                      visibility = vis
-                  })
+                  }, View.theme.page.text))
                   item._vectors['_a_' .. attrib] = item._col[attrib].text -- Referenced for future termination
                else
                   item._col[attrib].text.y = y + LINE_OFFSET
@@ -648,13 +642,12 @@ gui.columnView = function(Options):table
    -- Callback function for constructing the view from scratch.  Can be called multiple times
 
    function constructColumnView(View)
-      LINE_HEIGHT, FONT_HEIGHT = gui.getFontHeight({ face=View.fontFace, size=View.fontSize, style=View.fontStyle })
-      glIconSize    = LINE_HEIGHT
+      LINE_HEIGHT, FONT_HEIGHT = gui.getFontHeight(View.theme.page.text, false)
+      glIconSize    = FONT_HEIGHT
       MARGIN        = math.round(LINE_HEIGHT * 0.3) -- Min space between graphics elements
-      LINE_HEIGHT   = math.round(LINE_HEIGHT * 1.5)
+      LINE_HEIGHT   = math.round(LINE_HEIGHT * 1.2)
       ICON_OFFSET   = math.round((LINE_HEIGHT - glIconSize) * 0.5)
-      LINE_OFFSET   = math.round((LINE_HEIGHT + FONT_HEIGHT) * 0.5)
-      BANNER_HEIGHT = math.round(LINE_HEIGHT * 1.15)
+      LINE_OFFSET   = math.round(FONT_HEIGHT * 1.2)
 
       setColumns(View, Options.columns ?? { })
 
