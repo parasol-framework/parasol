@@ -44,14 +44,16 @@ inline void skip_whitespace(std::string_view &IRI)
    if (i) IRI.remove_prefix(i);
 }
 
-static double parse_number(std::string_view &IRI)
+static double parse_number(std::string_view &IRI, std::errc *Error = nullptr)
 {
+   if (Error) *Error = std::errc::invalid_argument;
    skip_whitespace(IRI);
    if (IRI.empty()) return 0;
    if (IRI.starts_with('+')) IRI.remove_prefix(1);
 
    double value = 0;
    auto [ ptr, error ] = std::from_chars(IRI.data(), IRI.data() + IRI.size(), value);
+   if (Error) *Error = error;
    if (error IS std::errc()) IRI.remove_prefix(ptr - IRI.data());
    return value;
 }
@@ -401,8 +403,9 @@ static float parse_hsx_alpha(std::string_view &IRI)
 
 static ERR parse_hsx(std::string_view &IRI, double &Hue, double &Sat, double &Third, float &Alpha)
 {
-   double hue = parse_number(IRI);
-   if (not std::isfinite(hue)) return ERR::Syntax;
+   std::errc error;
+   double hue = parse_number(IRI, &error);
+   if ((error != std::errc()) or (not std::isfinite(hue))) return ERR::Syntax;
 
    double period = 360.0;
    if (kt::startswith("deg", IRI)) IRI.remove_prefix(3);

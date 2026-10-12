@@ -308,6 +308,19 @@ end
    end
 end
 
+@Test function RejectOutOfRangeHue()
+   painter = struct.new('VectorPainter')
+   for _, angle in { '1e309', '-1e309', '+1e309turn', ' 1e309turn', '-1e309deg', '1e-400turn' } do
+      for _, model in { 'hsl', 'hsla', 'hsv' } do
+         for _, components in { ',100%,50%,0.5', ' 100% 50% / 0.5' } do
+            local err, result = mVec.ReadPainter(nil, f'{model}({angle}{components});blue', painter)
+            assert(err is ERR_Syntax, f'Out-of-range hue must return ERR_Syntax: {model}({angle}{components})')
+            assert(not result or result is '', 'Failed hue parsing must clear the next painter')
+         end
+      end
+   end
+end
+
 @Test function RejectNonFiniteHue()
    painter = struct.new('VectorPainter')
    for _, angle in { 'inf', '-inf', 'nan' } do
