@@ -19,7 +19,7 @@ rx_date <const> = <{ regex.new([[^(\d+)-(\d+)-(\d+)$]]) }>
 rx_time <const> = <{ regex.new([[^(\d{2}):(\d{2}):?(\d{0,2})$]]) }>
 
 local LINE_HEIGHT:num, FONT_HEIGHT:num, LINE_HEIGHT:num, FONT_HEIGHT:num, MARGIN:num
-local ICON_OFFSET:num, LINE_OFFSET:num, LINE_HEIGHT:num, lEnableTextGradients:bool
+local ICON_OFFSET:num, LINE_OFFSET:num, LINE_HEIGHT:num
 
 glIconSize = 16
 glCounter = 1
@@ -150,16 +150,20 @@ end
 
 function refreshCheckbox(View:table!, Item:table!, Column:table!, Highlighted:bool)
    cell = Item._col?[Column.attrib]
-   if not cell?.checkbox then return end
+   cell?.checkbox ?! return
+
    box = cell.checkbox
    box.x = math.round(checkboxX(Column))
    box.y = Item._y + Column._checkboxOffset
    box.visibility = Item.hidden ? VIS_HIDDEN : VIS_VISIBLE
    box.fill = Column._checkboxFills[checkboxValue(Item, Column) ? 1 : 0]
+
    disabled = View.disabled or Item.insensitive or Column.disabled
    box.opacity = disabled ? 0.5 : 1
+
    highlighted = Highlighted is nil ? Item is View.hItem : Highlighted
    focused = not disabled and View.hasFocus and highlighted and View.checkboxColumn is Column.attrib
+
    box.stroke = focused ? (View.theme.input.focus.stroke ?? View.theme.page.textHighlightBkgd) : 'none'
    box.strokeWidth = focused ? 1 : 0
 end
@@ -168,10 +172,12 @@ function highlightItem(View:table!, Item:table, Highlighted:bool)
    for col in values(View.columns) do
       if col.checkBoxes then refreshCheckbox(View, Item, col, Highlighted) end
    end
+
    if not Item._vectors.highlight and (Highlighted or Item._selected) then
       Item._vectors.highlight = Item._vectors.viewport.new('VectorRectangle', {
          name = 'item_highlight',
-         roundX = LINE_HEIGHT * 0.2, roundY = LINE_HEIGHT * 0.2, x = 0, y = 0, width = '100%', height = '100%'
+         roundX = LINE_HEIGHT * 0.2, roundY = LINE_HEIGHT * 0.2,
+         x = 0, y = 0, width = '100%', height = '100%'
       })
       Item._vectors.highlight.acMoveToBack()
    end
@@ -256,39 +262,8 @@ function arrangeColumns(View:table!)
          for item in values(View.items) do refreshCheckbox(View, item, col) end
       end
 
-      if not lEnableTextGradients then
-         col.fillItem = View.theme.page.text.fill
-         col.fillItemSelect = View.theme.page.textHighlight
-      elseif not col.vecGradient then
-         defName = 'colGradient' .. glCounter
-         glCounter++
-         selName = 'colSelect' .. glCounter
-         glCounter++
-
-         if (col.align ?? 'left') is 'right' then
-            col.vecGradient = gui.simpleGradient(View.scene, defName,
-               { gui.srgb(0, 0, 0, 0, { offset=0.1 }), gui.srgb(0, 0, 0, 255, { offset=0.2 }), gui.srgb(0, 0, 0, 255, { offset=1.0 }) },
-               0, 0, col.px_width, 0, 'userspace')
-
-            col.vecGradientSelect = gui.simpleGradient(View.scene, selName,
-               { gui.srgb(255, 255, 255, 0, { offset=0.1 }), gui.srgb(255, 255, 255, 255, { offset=0.2 }), gui.srgb(255, 255, 255, 255, {offset=1.0 }) },
-               0, 0, col.px_width, 0, 'userspace')
-         else
-            col.vecGradient = gui.simpleGradient(View.scene, defName,
-               { gui.srgb(0, 0, 0, 255, { offset=0 }), gui.srgb(0, 0, 0, 255, { offset=0.9 }), gui.srgb(0, 0, 0, 0, { offset=0.98 }) },
-               0, 0, col.px_width, 0, 'userspace')
-
-            col.vecGradientSelect = gui.simpleGradient(View.scene, selName,
-               { gui.srgb(255, 255, 255, 255, { offset=0 }), gui.srgb(255, 255, 255, 255, { offset=0.9 }), gui.srgb(255, 255, 255, 0,{ offset=0.98 }) },
-               0, 0, col.px_width, 0, 'userspace')
-         end
-
-         col.fillItem = f'url(#{defName})'
-         col.fillItemSelect = f'url(#{selName})'
-      else
-         col.vecGradient.x2 = col.px_width
-         col.vecGradientSelect.x2 = col.px_width
-      end
+      col.fillItem = View.theme.page.text.fill
+      col.fillItemSelect = View.theme.page.textHighlight
    end
 
    if View._sort then
