@@ -128,6 +128,7 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 -- A cached package must preserve native dependencies declared by relative helpers, every helper source needed by a
 -- dependent cache entry, and declared namespaces when the same transitive dependency is loaded through two branches.
+-- Entry and helper both use Core: PreciseTime overlaps, while each file also requires a different native function.
 
 @Test function CachedRelativeImportMetadataRemainsComplete()
    local packages = glRoot .. 'cache-graph-packages/'
@@ -143,13 +144,17 @@ end
       '[cache-top]\n1 = cache-top/1/main.tiri\n')
    write_file(packages .. 'cache-dependency/1/helper.tiri', [[
       global function cache_dependency_helper():num
-         return mSys.PreciseTime() > 0 ? 17 : 0
+         return mSys.PreciseTime() > 0 and mSys.GetSystemState().platform != '' ? 17 : 0
       end
    ]])
    write_file(packages .. 'cache-dependency/1/main.tiri', [[
       @Package(name="cache-dependency", version="1")
       import './helper'
       namespace cache_dependency { }
+      assert(mSys.PreciseTime() > 0)
+      local err, resolved = mSys.ResolvePath('temp:', 0)
+      check err
+      assert(resolved != '')
       cache_dependency.value = cache_dependency_helper()
    ]])
    write_file(packages .. 'cache-a/1/main.tiri', [[

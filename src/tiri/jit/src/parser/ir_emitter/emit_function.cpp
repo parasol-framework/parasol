@@ -338,7 +338,14 @@ ParserResult<ExpDesc> IrEmitter::emit_function_body(
    BCLine saved_lastline = this->lex_state.lastline;
 
    auto body_result = child_emitter.emit_block(Body, FuncScopeFlag::None);
-   if (not body_result.ok()) return ParserResult<ExpDesc>::failure(body_result.error_ref());
+   if (not body_result.ok()) {
+      // A nested function may have grown the shared bytecode stack.  The parent scope still unwinds on error, so
+      // rebase its bytecode pointer before any outer ScopeGuard can emit cleanup into the old allocation.
+      scope_guard.disarm();
+      parent_state->bcbase = this->lex_state.bc_stack + oldbase;
+      parent_state->bclim = BCPos(this->lex_state.size_bc_stack - oldbase).raw();
+      return ParserResult<ExpDesc>::failure(body_result.error_ref());
+   }
 
    // Module declarations retain their historical compile-time visibility after the runtime body moves into a child
    // frame.  Copy only environment-level declaration state back; lexical locals and captures remain module-private.

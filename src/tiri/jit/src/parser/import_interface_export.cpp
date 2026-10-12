@@ -494,13 +494,27 @@ bool prepare_block(ParserContext &Context, BlockStmt &Block, std::string &Diagno
          }
          portable.Sources.push_back(std::move(source));
 
-         uint32_t activation_order = 0;
+         // Local inclusions retain separate bytecode activation descriptors.  The portable interface instead
+         // requires one record per native module, with the union of its functions in first-occurrence order.
+
+         AssemblyIndex native_indexes;
+         std::vector<std::unordered_set<std::string>> native_functions;
          for (const auto &dependency : unit.module_dependencies) {
-            NativeDependency native;
-            native.Module = symbol_name(dependency.name);
-            native.ActivationOrder = activation_order++;
-            for (GCstr *function : dependency.functions) native.Functions.push_back(symbol_name(function));
-            portable.NativeDependencies.push_back(std::move(native));
+            auto [position, inserted] = native_indexes.try_emplace(
+               symbol_name(dependency.name), portable.NativeDependencies.size());
+            if (inserted) {
+               NativeDependency native;
+               native.Module = position->first;
+               native.ActivationOrder = uint32_t(position->second);
+               portable.NativeDependencies.push_back(std::move(native));
+               native_functions.emplace_back();
+            }
+            auto &native = portable.NativeDependencies[position->second];
+            auto &functions = native_functions[position->second];
+            for (GCstr *function : dependency.functions) {
+               auto name = symbol_name(function);
+               if (functions.insert(name).second) native.Functions.push_back(std::move(name));
+            }
          }
 
          for (auto &child_statement : body->statements) {
