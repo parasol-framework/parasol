@@ -29,20 +29,20 @@
   "files": [
     {
       "path": "columnview.tiri",
-      "size": 24625,
-      "sha256": "842a9b0582585d4c122eabec72d47758a1766d6fb19d8fe2fbb179f5ab560b60",
+      "size": 33362,
+      "sha256": "612a52ccc41cd11213c57b9247f05912bcec85b2cad162f988d75770770eaa44",
       "mediaType": "application/vnd.kotuku.tiri"
     },
     {
       "path": "libview.tiri",
-      "size": 23283,
-      "sha256": "fce20537e30c39827b607abe74bf8cd5e9392667af7959734774fe4ed0e29a06",
+      "size": 26712,
+      "sha256": "813b4d06a181af0e00cb1e517bf28447adacd95239410445dd70802f61634156",
       "mediaType": "application/vnd.kotuku.tiri"
     },
     {
       "path": "listview.tiri",
-      "size": 8278,
-      "sha256": "7da7a99f96618f5adb0f4e384be21d7f6a839f410118f550dc00baf023643339",
+      "size": 8100,
+      "sha256": "d00fcb752858b966b897aba07a6b4d35f9eaf8bce98d137c392251c6e98f7d31",
       "mediaType": "application/vnd.kotuku.tiri"
     },
     {

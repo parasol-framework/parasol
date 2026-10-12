@@ -1410,7 +1410,7 @@ gui.fileview = function(Options)
 
       -- Browse the currently selected file or folder.
 
-      self.view.itemActivated = function(View, Reason, Item)
+      self.view.events.itemActivated = function(View, Reason, Item)
          choose Item.type from
             'folder' -> self.browse((self.path ?? '') .. Item.filename .. '/')
             'volume' -> self.browse(Item.filename .. ':')

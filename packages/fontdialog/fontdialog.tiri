@@ -265,12 +265,14 @@ Fusce auctor metus egestas commodo laoreet. Morbi sed venenatis augue. Maecenas 
       sensitive  = true,
       noIcons    = true,
       textAttrib = 'name',
-      itemSelected = function(View:table!, Reason:str!, Item:table!)
-         selection = Item.name
-         self.pointSize = math.clamp(selection, 4, 400)
-         processing.collect()
-         refreshExample()
-      end
+      events = {
+         itemSelected = function(View:table!, Reason:str!, Item:table!)
+            selection = Item.name
+            self.pointSize = math.clamp(selection, 4, 400)
+            processing.collect()
+            refreshExample()
+         end
+      }
    })
 
    showFontSizes(lSizes)
@@ -286,11 +288,13 @@ Fusce auctor metus egestas commodo laoreet. Morbi sed venenatis augue. Maecenas 
       sensitive    = true,
       noIcons      = true,
       textAttrib   = 'name',
-      itemSelected = function(View:table!, Reason:str!, Item:table!)
-         self.style = Item.name
-         processing.collect()
-         refreshExample()
-      end
+      events = {
+         itemSelected = function(View:table!, Reason:str!, Item:table!)
+            self.style = Item.name
+            processing.collect()
+            refreshExample()
+         end
+      }
    })
 
    footer += vwStyle.viewport.height + gui.sizing.widget.gap
@@ -305,48 +309,50 @@ Fusce auctor metus egestas commodo laoreet. Morbi sed venenatis augue. Maecenas 
       target       = self.viewport,
       sensitive    = true,
       textAttrib   = 'name',
-      itemSelected = function(View, Reason, Item)
-         assert(lFonts[Item.name], f'Font "{Item.name}" not recognised.')
+      events = {
+         itemSelected = function(View, Reason, Item)
+            assert(lFonts[Item.name], f'Font "{Item.name}" not recognised.')
 
-         self.face = Item.name
+            self.face = Item.name
 
-         showStyles(Item.name)
+            showStyles(Item.name)
 
-         -- Highlight the correct style, trying to keep the current setting if possible.
+            -- Highlight the correct style, trying to keep the current setting if possible.
 
-         if self.style and lFonts[self.face] then
-            supported = false
-            face = self.face
-            if lFonts[face].alias then face = lFonts[face].alias end
+            if self.style and lFonts[self.face] then
+               supported = false
+               face = self.face
+               if lFonts[face].alias then face = lFonts[face].alias end
 
-            for v in values(lFonts[face].styles) do
-               if v is self.style then
-                  supported = true
-                  break
+               for v in values(lFonts[face].styles) do
+                  if v is self.style then
+                     supported = true
+                     break
+                  end
                end
+
+               if not supported then self.style = 'Regular' end
+            else
+               self.style = 'Regular'
             end
 
-            if not supported then self.style = 'Regular' end
-         else
-            self.style = 'Regular'
+            vwStyle.selectItems(function(Item)
+               if Item.id is self.style then return true end
+            end)
+
+            refreshExample()
+
+            sizes = lFonts[Item.name].sizes
+            if (lFonts[Item.name].scalable) or (not sizes??) then
+               sizes = lSizes
+            end
+
+            showFontSizes(sizes)
+
+            if sizes[0] > self.pointSize then self.pointSize = sizes[0] end
+            highlightSize(self.pointSize)
          end
-
-         vwStyle.selectItems(function(Item)
-            if Item.id is self.style then return true end
-         end)
-
-         refreshExample()
-
-         sizes = lFonts[Item.name].sizes
-         if (lFonts[Item.name].scalable) or (not sizes??) then
-            sizes = lSizes
-         end
-
-         showFontSizes(sizes)
-
-         if sizes[0] > self.pointSize then self.pointSize = sizes[0] end
-         highlightSize(self.pointSize)
-      end
+      }
    })
 
    faces = { }
