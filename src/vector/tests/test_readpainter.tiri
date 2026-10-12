@@ -160,6 +160,16 @@ end
    assert(checkRGB(painter, 0, 0, 0, 1.0), 'Failed named colour "black"')
 end
 
+@Test function ReadNamedCssColour4()
+   -- Names added in CSS Color Level 4
+   painter = struct.new('VectorPainter')
+   check mVec.ReadPainter(nil, "rebeccapurple", painter)
+   assert(checkRGB(painter, 102/255, 51/255, 153/255, 1.0), 'Failed named colour "rebeccapurple"')
+
+   check mVec.ReadPainter(nil, "Transparent", painter)
+   assert(checkRGB(painter, 0, 0, 0, 0), 'Failed named colour "transparent"')
+end
+
 -----------------------------------------------------------------------------------------------------------------------
 -- hsl() and hsla()
 -----------------------------------------------------------------------------------------------------------------------
@@ -210,6 +220,38 @@ end
    assert(result is ";blue", f'hsla() result should point at next painter, got {result}')
 end
 
+@Test function ReadHSLSpaceSeparated()
+   painter = struct.new('VectorPainter')
+   check mVec.ReadPainter(nil, "hsl(120 100% 50%)", painter)
+   assert(checkRGB(painter, 0, 1.0, 0, 1.0), 'Failed space-separated hsl() green')
+end
+
+@Test function ReadHSLSpaceSeparatedAlpha()
+   painter = struct.new('VectorPainter')
+   local err, result = mVec.ReadPainter(nil, "hsl(240 100% 50% / 25%);blue", painter)
+   check err
+   assert(checkRGB(painter, 0, 0, 1.0, 0.25), 'Failed space-separated hsl() with percentage alpha')
+   assert(result is ";blue", f'Space-separated hsl() result should point at next painter, got {result}')
+
+   check mVec.ReadPainter(nil, "hsl(0 100% 50% / 0.5)", painter)
+   assert(checkRGB(painter, 1.0, 0, 0, 0.5), 'Failed space-separated hsl() with numeric alpha')
+end
+
+@Test function ReadHSLHueUnitsAndWrapping()
+   painter = struct.new('VectorPainter')
+   check mVec.ReadPainter(nil, "hsl(120deg, 100%, 50%)", painter)
+   assert(checkRGB(painter, 0, 1.0, 0, 1.0), 'Failed hsl() with deg unit')
+
+   check mVec.ReadPainter(nil, "hsl(0.5turn 100% 50%)", painter)
+   assert(checkRGB(painter, 0, 1.0, 1.0, 1.0), 'Failed hsl() with turn unit')
+
+   check mVec.ReadPainter(nil, "hsl(480 100% 50%)", painter)
+   assert(checkRGB(painter, 0, 1.0, 0, 1.0), 'A hue of 480 must wrap to 120')
+
+   check mVec.ReadPainter(nil, "hsl(-120 100% 50%)", painter)
+   assert(checkRGB(painter, 0, 0, 1.0, 1.0), 'A hue of -120 must wrap to 240')
+end
+
 -----------------------------------------------------------------------------------------------------------------------
 -- hsv()
 -----------------------------------------------------------------------------------------------------------------------
@@ -232,6 +274,49 @@ end
    check err
    assert(checkRGB(painter, 1.0, 0, 0, 1.0), 'Failed hsv() red with percentage suffixes')
    assert(result is ";blue", f'hsv() result should point at next painter, got {result}')
+end
+
+@Test function ReadHSVSpaceSeparated()
+   painter = struct.new('VectorPainter')
+   check mVec.ReadPainter(nil, "hsv(240 100% 100% / 0.3)", painter)
+   assert(checkRGB(painter, 0, 0, 1.0, 0.3), 'Failed space-separated hsv() with alpha')
+end
+
+@Test function ReadHueUnitCase()
+   painter = struct.new('VectorPainter')
+   for _, angle in { '120DEG', '133.33333333333333GrAd', '2.0943951023931953rAd', '0.3333333333333333TuRn' } do
+      for _, model in { 'hsl', 'hsv' } do
+         third = model is 'hsl' ? 50 : 100
+         err, result = mVec.ReadPainter(nil, f'{model}({angle} 100% {third}% / 25%);blue', painter)
+         check err
+         assert(checkRGB(painter, 0, 1, 0, 0.25), f'Failed mixed-case hue unit {model}({angle})')
+         assert(result is ';blue', f'Mixed-case hue unit lost the next painter: {result}')
+      end
+   end
+end
+
+@Test function ReadLargeHue()
+   painter = struct.new('VectorPainter')
+   for _, angle in { '1e308turn', '-1e308turn' } do
+      for _, model in { 'hsl', 'hsv' } do
+         third = model is 'hsl' ? 50 : 100
+         err, result = mVec.ReadPainter(nil, f'{model}({angle} 100% {third}%);blue', painter)
+         check err
+         assert(checkRGB(painter, 1, 0, 0, 1), f'Large integral turn must wrap to red: {model}({angle})')
+         assert(result is ';blue', f'Large hue lost the next painter: {result}')
+      end
+   end
+end
+
+@Test function RejectNonFiniteHue()
+   painter = struct.new('VectorPainter')
+   for _, angle in { 'inf', '-inf', 'nan' } do
+      for _, model in { 'hsl', 'hsv' } do
+         err, result = mVec.ReadPainter(nil, f'{model}({angle},100%,50%);blue', painter)
+         assert(err is ERR_Syntax, f'Non-finite hue must return ERR_Syntax: {model}({angle})')
+         assert(not result or result is '', 'Failed hue parsing must clear the next painter')
+      end
+   end
 end
 
 -----------------------------------------------------------------------------------------------------------------------
