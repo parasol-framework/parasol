@@ -16,7 +16,7 @@
       end
    }
 
-rxPixel    <const> = <{ r[[^(\d+)([a-zA-Z]*)$]] }>
+rxPixel    <const> = <{ r[[^(\d+(?:\.\d+)?)([a-zA-Z]*)$]] }>
 rxFontSize <const> = <{ r[[^(-?\d+)%$]] }>
 
 glStyleConfig = 'user:config/style.cfg'
@@ -365,15 +365,27 @@ end
 
 ----------------------------------------------------------------------------------------------------------------------
 
-gui.getFontHeight = function(Font:table):<num,num>
-   try<trace>
-      if not Font.height then
-         err, handle = mVec.GetFontHandle(Font.face, 'Regular', 0, tonumber(Font.size))
+gui.getFontHeight = function(Font:table, Cache:bool):<num,num>
+   try <trace>
+      if Cache is nil then Cache = true end
+
+      if Cache != true or Font.height is nil then
+         size = Font.fontSize ?? Font.size
+         -- Match VectorText's fixed 96 DPI conversion for font-size units.
+         if not (size is <num>) then size = gui.pixel(tostring(size), 96) end
+
+         err, handle = check mVec.GetFontHandle(Font.face, Font.fontStyle ?? Font.style ?? 'Regular', 0, size)
          metrics = struct<FontMetrics>
-         mVec.GetFontMetrics(handle, metrics)
-         Font.height  = metrics.height
-         Font.spacing = metrics.lineSpacing
+         check mVec.GetFontMetrics(handle, metrics)
+
+         if Cache then
+            Font.height  = metrics.height
+            Font.spacing = metrics.lineSpacing
+         else
+            return metrics.lineSpacing, metrics.height
+         end
       end
+
       return Font.spacing, Font.height
    except ex
       raise f'{ex.message}\n{ex.stackTrace}'
@@ -383,17 +395,18 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 -- Read a style value and return it in pixel units.  Supports px, in, mm, pt, dp
 
-gui.pixel = function(val:str):num
-   val ?! return 0
-   num, alpha = rxPixel.extract(val)
+gui.pixel = function(Val:str, Density:num):num
+   Val ?! return 0
+   num, alpha = rxPixel.extract(Val)
    num = tonumber(num)
-   assert(num, f'Invalid graphics unit \'{val}\'')
+   assert(num, f'Invalid graphics unit \'{Val}\'')
+   dpi = Density ?? gui.interface.dpi
    return choose alpha from
       'px' -> num
-      'in' -> gui.interface.dpi * num
-      'mm' -> gui.interface.dpi * (num / 25.4) -- 25.4 units per inch
-      'pt' -> gui.interface.dpi * (num / 72) -- 72 units per inch
-      'dp' -> num * (gui.interface.dpi * 0.00625) -- 160dpi relative value
+      'in' -> dpi * num
+      'mm' -> dpi * (num / 25.4) -- 25.4 units per inch
+      'pt' -> dpi * (num / 72) -- 72 units per inch
+      'dp' -> num * (dpi * 0.00625) -- 160dpi relative value
       else -> num
    end
 end
@@ -872,7 +885,8 @@ gui.themes = {
             stroke      = gui.palette.dark.contrast,
             strokeWidth = 2
          },
-         text = { fill = gui.palette.dark.text },       -- Default colour for text drawn over 'bkgd'
+         text = { fill = gui.palette.dark.text, face = gui.fonts.page.face, fontSize = string.format('%.2fpt', gui.fonts.page.size), fontStyle = gui.fonts.page.style }, -- Default colour for text drawn over 'bkgd'
+         -- The following are for text colour changes only; face is already defined by text {}
          textHighlight     = gui.palette.dark.altText,  -- Colour for 'text' during user hover
          textHighlightBkgd = gui.palette.dark.contrast, -- Background fill for 'text' during user hover
          textSelect        = gui.palette.dark.altText,  -- Colour for 'text' when selected
@@ -911,7 +925,7 @@ gui.themes = {
       },
       menubar = {
          bkgd = { fill = 'rgb(0 0 0 / .5)' },
-         text = { fill = gui.palette.dark.text },
+         text = { fill = gui.palette.dark.text, face = gui.fonts.menu.face, fontSize = string.format('%.2fpt', gui.fonts.menu.size), fontStyle = gui.fonts.menu.style },
          highlight = { fill = gui.palette.dark.contrast }
          -- 'menu' item reference is inserted post-construction
       },
@@ -968,7 +982,7 @@ gui.themes = {
             stroke = gui.palette.light.contrast,
             strokeWidth = 2
          },
-         text = { fill = gui.palette.light.text },
+         text = { fill = gui.palette.light.text, face = gui.fonts.page.face, fontSize = string.format('%.2fpt', gui.fonts.page.size), fontStyle = gui.fonts.page.style },
          textHighlight     = gui.palette.light.altText,
          textHighlightBkgd = gui.palette.light.contrast,
          textSelect        = gui.palette.light.altText,
@@ -1007,7 +1021,7 @@ gui.themes = {
       },
       menubar = {
          bkgd      = { fill = gui.palette.light.inverse, },
-         text      = { fill = gui.palette.light.altText },
+         text      = { fill = gui.palette.light.altText, face = gui.fonts.menu.face, fontSize = string.format('%.2fpt', gui.fonts.menu.size), fontStyle = gui.fonts.menu.style },
          highlight = { fill = gui.palette.light.contrast }
          -- 'menu' item reference is inserted post-construction
       },

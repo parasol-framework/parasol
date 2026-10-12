@@ -6,16 +6,14 @@ Documentation is available in the Kotuku Wiki.
 
 @Package(name="gui/view", version="1.0")
 
-   import 'gui'
-   import 'gui/libview'
+   import 'gui', 'gui/libview'
 
    namespace gui
 
-ICON_SIZE <const> = 16
-VSPACING  <const> = 1
-EDGE      <const> = 4
+VSPACING <const> = 1
+EDGE     <const> = 4
 
-local LINE_HEIGHT:num, FONT_HEIGHT:num, LINE_OFFSET:num
+local LINE_HEIGHT:num, FONT_HEIGHT:num, LINE_OFFSET:num, ICON_SIZE:num
 
 extern itemHoverCallback
 
@@ -168,13 +166,10 @@ gui.listView = function(Options:table!):table
          item_name = item[lTextAttrib]
          if item_name then
             if not item._vectors.text then
-               item._vectors.text = vp.new('VectorText', {
-                  face      = View.fontFace,
-                  fontSize  = string.format('%.2fpt', View.fontSize),
-                  fontStyle = View.fontStyle,
+               item._vectors.text = vp.new('VectorText', table.merge({
                   align     = 'left',
                   y         = LINE_OFFSET
-               })
+               }, View.theme.page.text))
             end
 
             item._vectors.text.x = MARGIN + ICON_MARGIN
@@ -232,9 +227,10 @@ gui.listView = function(Options:table!):table
    end
 
    function constructListView(View)
-      LINE_HEIGHT, FONT_HEIGHT = gui.getFontHeight({ face=View.fontFace, size=View.fontSize, style=View.fontStyle })
-      LINE_HEIGHT = math.round(LINE_HEIGHT * 1.5)
-      LINE_OFFSET = math.round((LINE_HEIGHT + FONT_HEIGHT) * 0.5)
+      LINE_HEIGHT, FONT_HEIGHT = gui.getFontHeight(View.theme.page.text, false)
+      LINE_HEIGHT = math.round(LINE_HEIGHT)
+      LINE_OFFSET = math.round(FONT_HEIGHT)
+      ICON_SIZE   = FONT_HEIGHT
 
       View.icons ?= { }
       View.hIcons ?= { }
