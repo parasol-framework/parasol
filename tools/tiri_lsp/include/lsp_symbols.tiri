@@ -1,4 +1,4 @@
-extern maskNonCode
+extern maskNonCode, maskDeclarationTypeParameters
 
 ----------------------------------------------------------------------------------------------------------------------
 -- Document Symbol Support
@@ -15,7 +15,7 @@ rx_symbol_assign          = <{ regex.new(
 rx_symbol_struct          = <{ regex.new([[^\s*struct\s+([A-Za-z_][A-Za-z0-9_]*)\b]]) }>
 rx_symbol_weak_empty = <{ regex.new(
    [[^\s*([A-Za-z_]\w*)(?:\s*:\s*[A-Za-z_]\w*(?:<(?!\s*weak\s*>)[^>\n]*>)?)?\s*<\s*weak\s*>]] ..
-   [[(?:\s*:\s*[A-Za-z_]\w*(?:<(?!\s*weak\s*>)[^>\n]*>)?)?\s*$]]) }>
+   [[(?:\s*:\s*[A-Za-z_]\w*(?:<(?!\s*weak\s*>)[^>\n]*>)?)?\s*(?:;|$)]]) }>
 rx_symbol_struct_field    = <{ regex.new([[([A-Za-z_][A-Za-z0-9_]*)\s*:]]) }>
 rx_symbol_struct_end      = <{ regex.new([[\s+end\s*$]]) }>
 rx_symbol_module_decl = <{ regex.new(
@@ -304,7 +304,8 @@ function symbolDetectModuleValue(LineCode:str, LineText:str, LineNo:num):table
          'module ' .. module_name, nil)
    end
 
-   start_pos, stop_pos, cap = rx_symbol_decl.findFirst(LineCode)
+   declaration_code = maskDeclarationTypeParameters(LineCode)
+   start_pos, stop_pos, cap = rx_symbol_decl.findFirst(declaration_code)
    if start_pos then
       scope = cap[0]
       name = cap[1]
@@ -318,14 +319,14 @@ function symbolDetectModuleValue(LineCode:str, LineText:str, LineNo:num):table
       return symbolMakeDocumentSymbol(name, kind, LineNo, LineText, name_start, detail, nil)
    end
 
-   start_pos, stop_pos, cap = rx_symbol_weak_empty.findFirst(LineCode)
+   start_pos, stop_pos, cap = rx_symbol_weak_empty.findFirst(declaration_code)
    if start_pos then
       name = cap[0]
       name_start = LineText.find(name, start_pos, true) or start_pos
       return symbolMakeDocumentSymbol(name, SYMBOL_KIND.VARIABLE, LineNo, LineText, name_start, 'weak', nil)
    end
 
-   start_pos, stop_pos, cap = rx_symbol_assign.findFirst(LineCode)
+   start_pos, stop_pos, cap = rx_symbol_assign.findFirst(declaration_code)
    if start_pos then
       line_start = symbolSkipSpaces(LineCode, 0)
       if start_pos != line_start then return nil end

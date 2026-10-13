@@ -48,10 +48,13 @@ end
    source = 'local owner = {}\nlocal target <weak>:table = owner\n' ..
       'other:table < weak > = target\nlocal empty <weak>\n' ..
       'local weak = 1\nlocal comparison = 0 < weak and weak > 0\n' ..
-      'local text = "<weak>"\n-- <weak>\nconditional <weak> ?= owner\n'
+      'local text = "<weak>"\n-- <weak>\nconditional <weak> ?= owner\n' ..
+      'local commented <weak> -- starts empty\nlocal compact < weak >-- starts empty\n' ..
+      'local block <weak> --[[ starts empty ]]\n'
    tokens = tokenizeTiri(source)
    for entry in values(array<table> {
-      { line=1, char=14 }, { line=2, char=14 }, { line=3, char=13 }, { line=8, char=13 }
+      { line=1, char=14 }, { line=2, char=14 }, { line=3, char=13 }, { line=8, char=13 },
+      { line=9, char=17 }, { line=10, char=16 }, { line=11, char=13 }
    }) do
       token = findToken(tokens, entry.line, entry.char, 'weak')
       assert(token and token.type is 0 and token.modifiers is 0,
@@ -65,6 +68,18 @@ end
    end
    result = computeDiagnostics(makeDoc('global target <weak> = {}\n'))
    assert(#result.diagnostics > 0, 'Diagnostics must reject unsupported global weak bindings')
+end
+
+@Test function UsingBlocksReceiveKeywordHighlightingAndDiagnostics()
+   source = 'local context = {}\nusing context do\n   print(&name, &&)\nend\n' ..
+      'local text = "using context do"\n-- using context do\nprint(text)\n'
+   tokens = tokenizeTiri(source)
+   token = findToken(tokens, 1, 0, 'using')
+   assert(token and token.type is 0, 'Using must receive keyword highlighting.')
+   assertNoToken(tokens, 4, 14, 'using', 'Using inside a string must not receive a keyword token.')
+   assertNoToken(tokens, 5, 3, 'using', 'Using inside a comment must not receive a keyword token.')
+   result = computeDiagnostics(makeDoc(source))
+   assert(#result.diagnostics is 0, 'LSP diagnostics must accept using context blocks.')
 end
 
 @Test function CurrentContextReceivesOneSemanticToken()

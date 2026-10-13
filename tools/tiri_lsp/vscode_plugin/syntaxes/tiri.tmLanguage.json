@@ -22,7 +22,7 @@
          "patterns": [
             {
                "name": "meta.declaration.attribute.tiri",
-               "match": "(<)[ \\t]*(weak)[ \\t]*(>)(?=[ \\t]*(?::|\\?\\??=|=|,|;|$))",
+               "match": "(<)[ \\t]*(weak)[ \\t]*(>)(?=[ \\t]*(?::|\\?\\??=|=|,|;|--|$))",
                "captures": {
                   "1": { "name": "punctuation.definition.attribute.begin.tiri" },
                   "2": { "name": "storage.modifier.tiri" },
@@ -342,7 +342,7 @@
             },
             {
                "name": "keyword.control.tiri",
-               "match": "\\b(return|end|goto)\\b"
+               "match": "\\b(return|end|goto|using)\\b"
             },
             {
                "name": "storage.type.function.tiri",
