@@ -449,13 +449,14 @@ end
       global sndAlarm = obj.new('sound', { path=glPath .. 'data/alarm.mp3', volume=0.2 })
    end
 
-   gui.icon({
+   glAlarmIcon = gui.icon({
       target = viewport,
       x      = 20,
       y      = y,
       image  = 'time/alarm',
       text   = 'Alarm',
       size   = 80,
+      draggable = true,
       events = {
          show = function()
             vfx.fadeIn(&viewport, { seconds=1.0, delay=0.1 })
@@ -479,12 +480,13 @@ end
       global sndWilhelm = obj.new('sound', { path=glPath .. 'data/wilhelm.mp3', volume=0.2 })
    end
 
-   gui.icon({
+   glHouseIcon = gui.icon({
       target = viewport,
       x      = 120,
       y      = y,
       image  = 'programs/filemanager',
       text   = 'Wilhelm\'s House',
+      draggable = true,
       events = {
          show = function()
             vfx.rotate(&viewport, { seconds=0.8 })
