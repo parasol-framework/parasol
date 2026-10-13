@@ -6,6 +6,7 @@ Spiral Demonstration
    import 'gui', 'gui/window', 'gui/combobox', 'gui/slider', 'gui/checkbox'
 
    local glWindow, glViewport, glSpiralView, glSpiral
+   sliders = array<table>
    glY = 14
 
 ----------------------------------------------------------------------------------------------------------------------
@@ -24,7 +25,7 @@ function addSlider(Label:str, Value:num, Min:num, Max:num, Apply:func)
       string = string.format('%s: %.2f', Label, Value)
    }, gui.getTheme(glViewport).window.text))
 
-   gui.slider({
+   sliders.push(gui.slider({
       target = glViewport, x = 16, y = glY + 20, size = 270,
       min = Min, max = Max, value = Value,
       events = {
@@ -35,7 +36,7 @@ function addSlider(Label:str, Value:num, Min:num, Max:num, Apply:func)
             redraw()
          end
       }
-   })
+   }))
    glY += 52
 end
 
