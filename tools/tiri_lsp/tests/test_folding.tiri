@@ -43,6 +43,23 @@ end
    assert(findRange(ranges, 0, 6), 'Using blocks must not close the enclosing function early.')
 end
 
+@Test function SplitUsingHeadersPreserveFunctionFolding()
+   doc = makeDoc('function update()\n   using\n      outer\n      -- opener\n   do\n' ..
+      '      using outer.inner\n      do\n         print(&name)\n      end\n   end\nend\n')
+   ranges = extractFoldingRanges(doc)
+   assert(#ranges is 3, 'Each split using header and its enclosing function should fold once.')
+   assert(findRange(ranges, 5, 8), 'The inner split header must fold from using to its own end.')
+   assert(findRange(ranges, 1, 9), 'The outer split header must fold from using to its own end.')
+   assert(findRange(ranges, 0, 10), 'A split using header must not close its enclosing function early.')
+end
+
+@Test function UsingMembersDoNotOpenFoldingBlocks()
+   doc = makeDoc("function update()\n   local value = { using='member' }\n" ..
+      '   using = value\n   value.using()\nend\n')
+   ranges = extractFoldingRanges(doc)
+   assert(#ranges is 1 and findRange(ranges, 0, 4), 'Using members and assignments must preserve function folding.')
+end
+
 @Test function UsingInStringsAndCommentsDoesNotFold()
    doc = makeDoc('local text = "using context do"\n-- using context do\nprint(1)\n')
    ranges = extractFoldingRanges(doc)

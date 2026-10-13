@@ -285,7 +285,7 @@ global FLUID_KEYWORDS = {
    ['import'] = true, ['as'] = true, ['enum'] = true,
 
    -- Special
-   ['defer'] = true, ['catch'] = true, ['raise'] = true, ['check'] = true, ['using'] = true
+   ['defer'] = true, ['catch'] = true, ['raise'] = true, ['check'] = true
 }
 
 -- Logical/comparison operators (highlighted as operators)

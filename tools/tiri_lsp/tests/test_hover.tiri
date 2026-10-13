@@ -132,6 +132,21 @@ end
    assertContains(hover, 'ResolvePath', 'Declared module hover should use generated module documentation.')
 end
 
+@Test function UsingMemberHoverIsContextual()
+   for source in values(array<str> {
+      "local value = { us|ing = 'member' }\n",
+      "local value = { using = 'member' }\nprint(value.us|ing)\n",
+      "local value = { using = function() end }\nvalue.us|ing()\n",
+      'local us|ing = {}\n', 'local text = "us|ing context do"\n'
+   }) do
+      hover = hoverAt(source)
+      assert(not hover or not hover.find('**using** _(Keyword)_'),
+         'Ordinary using names and strings must not receive context keyword hover.')
+   end
+   hover = hoverAt('local context = {}\nus|ing context\n-- opener\ndo\nend\n')
+   assertContains(hover, '**using** _(Keyword)_', 'Split using headers must retain keyword hover.')
+end
+
 @Test function UsingKeywordHover()
    hover, token = hoverAt('us|ing context do\nend\n')
    assert(token and token.text is 'using', 'Hover token extraction should identify using.')

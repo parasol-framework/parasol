@@ -11,6 +11,7 @@
       { "include": "#choose-type-patterns" },
       { "include": "#weak-bindings" },
       { "include": "#functions" },
+      { "include": "#using-blocks" },
       { "include": "#keywords" },
       { "include": "#operators" },
       { "include": "#numbers" },
@@ -18,6 +19,36 @@
       { "include": "#variables" }
    ],
    "repository": {
+      "using-blocks": {
+         "patterns": [
+            {
+               "name": "meta.context.header.tiri",
+               "begin": "(?<![.\\w&])\\b(using)\\b(?=[ \\t]*(?:$|--|[ \\t]+[A-Za-z_][A-Za-z0-9_]*\\b))",
+               "beginCaptures": {
+                  "1": {
+                     "name": "keyword.control.tiri"
+                  }
+               },
+               "end": "\\b(do)\\b|(?=[=;])",
+               "endCaptures": {
+                  "1": {
+                     "name": "keyword.control.tiri"
+                  }
+               },
+               "patterns": [
+                  {
+                     "include": "#comments"
+                  },
+                  {
+                     "include": "#strings"
+                  },
+                  {
+                     "include": "#variables"
+                  }
+               ]
+            }
+         ]
+      },
       "weak-bindings": {
          "patterns": [
             {
@@ -342,7 +373,7 @@
             },
             {
                "name": "keyword.control.tiri",
-               "match": "\\b(return|end|goto|using)\\b"
+               "match": "\\b(return|end|goto)\\b"
             },
             {
                "name": "storage.type.function.tiri",

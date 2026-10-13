@@ -8,7 +8,9 @@ rx_kw_then     = <{ regex.new([[\bthen\b]]) }>
 rx_kw_for      = <{ regex.new([[\bfor\b]]) }>
 rx_kw_do       = <{ regex.new([[\bdo\b]]) }>
 rx_kw_while    = <{ regex.new([[\bwhile\b]]) }>
-rx_kw_using    = <{ regex.new([[^\s*using\s+[A-Za-z_][A-Za-z0-9_]*\b]]) }>
+rx_using_header = <{ regex.new([[\busing\s+([A-Za-z_][A-Za-z0-9_]*)\b]]) }>
+rx_using_member = <{ regex.new([[^\.\s*[A-Za-z_][A-Za-z0-9_]*]]) }>
+rx_using_do = <{ regex.new([[^do\b]]) }>
 rx_kw_repeat   = <{ regex.new([[\brepeat\b]]) }>
 rx_kw_defer    = <{ regex.new([[\bdefer\b]]) }>
 rx_kw_end      = <{ regex.new([[\bend\b]]) }>
@@ -53,6 +55,60 @@ global function maskDeclarationTypeParameters(LineCode:str):str
    return result .. LineCode.sub(copied)
 end
 
+-- Share context-header recognition between semantic tokens and folding.  Mask trivia before matching so comments
+-- and quoted indices cannot supply keywords, and keep offsets across newlines for split headers.
+global function findUsingHeaders(Doc:table):array<table>
+   headers = array<table>
+   if not Doc.content.find('using') then return headers end
+   code = ''
+   in_non_code = false
+   for line_num in {0 to getTotalLines(Doc)} do
+      line_code, in_non_code = maskNonCode(getLine(Doc, line_num), in_non_code)
+      code ..= line_code .. '\n'
+   end
+
+   offset = 0
+   while offset < #code do
+      start_pos, stop_pos = rx_using_header.findFirst(code, offset)
+      if not start_pos then break end
+      offset = stop_pos
+      -- A member named using cannot start a context block.
+      before = code.sub(0, start_pos).rtrim()
+      if before.endsWith('.') or before.endsWith('&') then continue end
+      pos = stop_pos
+      while pos < #code do
+         char = code.sub(pos, pos + 1)
+         if char is ' ' or char is '\t' or char is '\r' or char is '\n' then
+            pos++
+         elseif char is '.' then
+            member_start, member_stop = rx_using_member.findFirst(code.sub(pos))
+            if not member_start then break end
+            pos += member_stop
+         elseif char is '[' then
+            depth = 1
+            pos++
+            while pos < #code and depth > 0 do
+               char = code.sub(pos, pos + 1)
+               if char is '[' then depth++
+               elseif char is ']' then depth -= 1 end
+               pos++
+            end
+            if depth > 0 then break end
+         else
+            if rx_using_do.test(code.sub(pos)) then
+               headers.push({
+                  offset = start_pos,
+                  line = code.sub(0, start_pos).count('\n'),
+                  doLine = code.sub(0, pos).count('\n')
+               })
+            end
+            break
+         end
+      end
+   end
+   return headers
+end
+
 -- Multi-byte (non-ASCII) operators recognised by the Tiri lexer, keyed by their UTF-8 byte sequence.  These are
 -- scanned byte-at-a-time by .sub(), so the tokeniser cannot match them with a single-character comparison and must
 -- look them up by their full sequence.  The value is the number of UTF-8 bytes the operator occupies.
@@ -77,6 +133,10 @@ global function tokenizeTiri(Source:str, ModulePrefixes:table):array<table>
    library_namespaces = { }
    import_state = nil
    import_path_line = nil
+   using_headers = {}
+   for header in values(findUsingHeaders({ content=Source, lineIndex=nil })) do
+      using_headers[header.offset] = true
+   end
 
    -- Helper to add a token (skips zero-length tokens)
    function addToken(TokenLine, TokenCol, TokenLen, TokenType, TokenMod)
@@ -1011,6 +1071,8 @@ global function tokenizeTiri(Source:str, ModulePrefixes:table):array<table>
                col = probe_col
                line = probe_line
             end
+         elseif ident is 'using' and using_headers[pos - ident_len] then
+            addToken(line, ident_start, ident_len, 0, 0)
          elseif FLUID_KEYWORDS[ident] then
             if import_state then import_state = nil end
             addToken(line, ident_start, ident_len, 0, 0)  -- keyword
@@ -1395,6 +1457,15 @@ global function extractFoldingRanges(Doc:table):array<table>
    in_non_code = false
    in_block_comment = false
    block_comment_start = 0
+   using_headers = {}
+   for header in values(findUsingHeaders(Doc)) do
+      headers = using_headers[header.doLine]
+      if not headers then
+         headers = array<table>
+         using_headers[header.doLine] = headers
+      end
+      headers.push(header)
+   end
 
    for line_num in {0 to total_lines} do
       line_text = getLine(Doc, line_num)
@@ -1457,8 +1528,10 @@ global function extractFoldingRanges(Doc:table):array<table>
       end
 
       -- using reference do (opens a context block)
-      if checkKeyword(rx_kw_using) and checkKeyword(rx_kw_do) then
-         block_stack.push({ line = line_num, kind = 'using' })
+      if using_headers[line_num] then
+         for header in values(using_headers[line_num]) do
+            block_stack.push({ line = header.line, kind = 'using' })
+         end
       end
 
       -- repeat (opens a block, closed by until)

@@ -82,6 +82,30 @@ end
    assert(#result.diagnostics is 0, 'LSP diagnostics must accept using context blocks.')
 end
 
+@Test function UsingMembersRemainOrdinaryIdentifiers()
+   source = "local value = { using = 'member' }\nprint(value.using)\nvalue.using()\n" ..
+      "using = value\nusing(value)\n"
+   tokens = tokenizeTiri(source)
+   for entry in values(array<table> {
+      { line=0, char=16 }, { line=1, char=12 }, { line=2, char=6 }, { line=3, char=0 }, { line=4, char=0 }
+   }) do
+      token = findToken(tokens, entry.line, entry.char, 'using')
+      assert(not token or token.type != 0,
+         'Using keys, members, variables and calls must not receive keyword tokens.')
+   end
+end
+
+@Test function SplitUsingHeadersReceiveKeywordHighlighting()
+   source = 'local context = { using={} }\nusing\n-- reference\ncontext.using\n-- opener\ndo\nend\n'
+   tokens = tokenizeTiri(source)
+   keyword = findToken(tokens, 1, 0, 'using')
+   member = findToken(tokens, 3, 8, 'using')
+   assert(keyword and keyword.type is 0, 'Using headers must allow newlines and comments before the reference and do.')
+   assert(not member or member.type != 0, 'A using member within a header must retain member highlighting.')
+   result = computeDiagnostics(makeDoc(source))
+   assert(#result.diagnostics is 0, 'Split using headers must remain valid Tiri.')
+end
+
 @Test function CurrentContextReceivesOneSemanticToken()
    source = 'local current = &&\n' ..
       'local field = &name\n' ..
