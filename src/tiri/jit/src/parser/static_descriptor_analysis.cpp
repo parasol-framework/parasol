@@ -2306,6 +2306,12 @@ private:
          }
          else value = this->descriptor_of(*Initialiser);
       }
+      else if (Name.type IS TiriType::Unknown) {
+         // A declaration without an initialiser stores nil, not an unconstrained runtime value.
+         value.primary = TiriType::Nil;
+         value.proof = StaticProof::Closed;
+         value.nullable = true;
+      }
 
       // An explicit `any` binding may later receive a different table identity, including one designated elsewhere.
       // Preserve useful value-shape information but never bake the initial table's contextuality into member calls.
@@ -2325,8 +2331,9 @@ private:
 
       auto &binding = this->catalogue_.binding(reference.binding_id);
       StaticValueDescriptor previous = this->catalogue_.value(binding.value);
-      StaticValueDescriptor joined = previous.primary IS TiriType::Unknown and not previous.array_element.known ?
-         Assigned : join_static_descriptors(previous, Assigned);
+      // Unknown may come from a dynamic factory result.  It is not proof that the binding has never been assigned;
+      // in particular, a later closure assigning nil must not narrow that runtime value to a proved nil.
+      StaticValueDescriptor joined = join_static_descriptors(previous, Assigned);
       binding.value = this->add_value(joined);
       binding.callable = {};
       reference.identifier.static_value = binding.value;

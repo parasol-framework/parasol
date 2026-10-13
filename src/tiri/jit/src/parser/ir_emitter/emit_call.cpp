@@ -191,9 +191,8 @@ ParserResult<ExpDesc> IrEmitter::emit_runtime_builtin_method_pipe(
          }
       }
       if (arguments_use_context) {
-         bcemit_AD(state, BC_CTXGET, call_base.raw(), 0);
          argument_context_scope.activate(this,
-            ContextSource{ .slot = call_base, .kind = ContextSourceKind::ContextualArgument });
+            ContextSource{ .kind = ContextSourceKind::DynamicArgument });
       }
    }
 
@@ -346,9 +345,8 @@ ParserResult<ExpDesc> IrEmitter::emit_pipe_expr(const PipeExprPayload &Payload)
          }
       }
       if (arguments_use_context) {
-         bcemit_AD(fs, BC_CTXGET, context_result_base.raw(), 0);
          context_scope.activate(this,
-            ContextSource{ .slot = context_result_base, .kind = ContextSourceKind::ContextualArgument });
+            ContextSource{ .kind = ContextSourceKind::DynamicArgument });
       }
 
       auto finish_unreachable = [&]() -> ParserResult<ExpDesc> {
@@ -758,9 +756,8 @@ ParserResult<ExpDesc> IrEmitter::emit_runtime_builtin_method_call(const CallExpr
          }
       }
       if (arguments_use_context) {
-         bcemit_AD(state, BC_CTXGET, call_base.raw(), 0);
          argument_context_scope.activate(this,
-            ContextSource{ .slot = call_base, .kind = ContextSourceKind::ContextualArgument });
+            ContextSource{ .kind = ContextSourceKind::DynamicArgument });
       }
    }
 
@@ -1063,9 +1060,8 @@ ParserResult<ExpDesc> IrEmitter::emit_call_expr(const CallExprPayload &Payload)
          }
       }
       if (arguments_use_context) {
-         bcemit_AD(&this->func_state, BC_CTXGET, context_result_base.raw(), 0);
          argument_context_scope.activate(this,
-            ContextSource{ .slot = context_result_base, .kind = ContextSourceKind::ContextualArgument });
+            ContextSource{ .kind = ContextSourceKind::DynamicArgument });
       }
    }
 

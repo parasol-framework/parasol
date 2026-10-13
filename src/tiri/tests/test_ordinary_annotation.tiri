@@ -397,7 +397,7 @@ end
    assert(&name is nil, 'Tail completion must restore root context')
 end
 
-@Test function JITNativeBoundaryMaterialisesInheritedCaller()
+@Test function JITOrdinaryNativeCallbackRunsAtRoot()
    local caller = entity { name='client' }
    local helper = entity { name='helper' }
    local timer
@@ -432,7 +432,7 @@ end
    jit.opt.start('hotloop=1', 'hotexit=1', 'minstitch=0')
    assert(caller.run(96) is 4560)
    check processing.sleep(1.0)
-   assert(observed is caller, 'A native boundary inside an ordinary helper must materialise the inherited caller')
+   assert(observed is _G, 'An ordinary native callback must run at the root after hot helper dispatch')
    local traces = 0
    for number in {1 into 100} do
       if jit.util.traceInfo(number) != nil then traces++ end
