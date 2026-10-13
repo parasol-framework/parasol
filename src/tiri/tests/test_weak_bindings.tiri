@@ -287,6 +287,24 @@ end
    assert(debug.setUpvalue(stripped_read, 0, nil) is nil, 'Stripped captures must reject debugger writes')
 end
 
+@Test function JitUpvalueNamesPreserveSourceNames()
+   function factory():func
+      local strong = { value=7 }
+      local weak <weak> = strong
+      return function():<table, table> return weak, strong end
+   end
+   local read = factory()
+   assert(jit.util.funcUName(read, 0) is 'weak', 'JIT reflection must hide the internal weak marker')
+   assert(jit.util.funcUName(read, 1) is 'strong', 'Ordinary upvalue names must remain unchanged')
+   assert(jit.util.funcUName(read, 2) is nil, 'An invalid upvalue index must still return nil')
+   local reloaded = exec(string.dump(factory, false))
+   assert(jit.util.funcUName(reloaded, 0) is 'weak', 'Bytecode reload must preserve weak source names')
+   assert(jit.util.funcUName(reloaded, 1) is 'strong', 'Bytecode reload must preserve ordinary source names')
+   local stripped = exec(string.dump(factory, true))
+   assert(jit.util.funcUName(stripped, 0) is '', 'Stripped weak captures must have no source name')
+   assert(jit.util.funcUName(stripped, 1) is '', 'Stripped ordinary captures must have no source name')
+end
+
 @Test function CompilerConstructionIgnoresShadowedSetmetatable()
    local setmetatable = function() raise 'Shadowed function must not be called' end
    local target = {}

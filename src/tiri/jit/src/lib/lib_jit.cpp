@@ -279,7 +279,9 @@ LJLIB_CF(jit_util_funcUName)
    GCproto *pt = check_Lproto(L, 0);
    auto idx = (uint32_t)lj_lib_checkint(L, 2);
    if (idx < pt->sizeuv) {
-      setstrV(L, L->top - 1, lj_str_newz(L, lj_debug_uvname(pt, idx)));
+      auto name = lj_debug_uvname(pt, idx);
+      if (strncmp(name, "!weak:", 6) IS 0) name += 6;
+      setstrV(L, L->top - 1, lj_str_newz(L, name));
       return 1;
    }
    else return 0;
