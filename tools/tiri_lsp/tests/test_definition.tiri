@@ -60,11 +60,32 @@ end
    for declaration in values(array<str> {
       'local target <weak>:table = {}', 'target <weak>:table = {}', 'target:table <weak> = {}',
       'target <weak>:table', 'local target <weak>', 'target:table<weak> = {}',
-      'target <weak>:table ?= {}', 'target <weak> ??= {}'
+      'target <weak>:table ?= {}', 'target <weak> ??= {}',
+      'target <weak>;', 'target <weak>:table ; -- starts empty',
+      'target:table <weak>; print(target)'
    }) do
       doc = makeDoc(declaration .. '\nprint(target)\n')
       locations = resolveDefinition(doc, { line=1, character=8 })
       assertLocationLine(locations, 0, 'Weak reads must resolve to the source binding declaration')
+   end
+end
+
+@Test function NestedWeakBindingDefinitions()
+   for declaration in values(array<str> {
+      'target:array<array<int>> <weak> = nil',
+      'target <weak>:array<array<int>> = nil',
+      'target:array<array<array<int>>> <weak> ?= nil',
+      'target <weak>:array<array<array<int>>> ??= nil',
+      'target:array<array<int>> <weak> -- starts empty',
+      'target <weak>:array<array<int>>; -- starts empty',
+      'local target:array<array<int>> <weak> = nil',
+      'local target <weak>:array<array<int>> = nil'
+   }) do
+      doc = makeDoc(declaration .. '\nprint(target)\n')
+      locations = resolveDefinition(doc, { line=1, character=8 })
+      assertLocationLine(locations, 0, f'Nested weak reads must resolve to {declaration}')
+      assert(locations[0].range.start.character is declaration.find('target'),
+         'Nested annotations must preserve the binding source column')
    end
 end
 

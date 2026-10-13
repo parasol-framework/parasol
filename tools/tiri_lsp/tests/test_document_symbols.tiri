@@ -42,15 +42,41 @@ end
 
 @Test function WeakBindingsAppearInDocumentSymbols()
    doc = makeDoc('local first <weak>:table = {}\nsecond:table <weak> = first\nthird <weak> = first\n' ..
-      'empty <weak>:table\nadjacent:table<weak> = first\n')
+      'empty <weak>:table\nadjacent:table<weak> = first\n' ..
+      'terminated <weak>;\ntyped <weak>:table ; -- starts empty\n' ..
+      'followed:table <weak>; print(followed)\n')
    symbols = extractDocumentSymbols(doc)
-   for name in values(array<str> { 'first', 'second', 'third', 'empty', 'adjacent' }) do
+   for name in values(array<str> { 'first', 'second', 'third', 'empty', 'adjacent',
+      'terminated', 'typed', 'followed' }) do
       symbol = findSymbol(symbols, name)
       assert(symbol and symbol.kind is SYMBOL_KIND.VARIABLE,
          f'Weak binding {name} must remain a variable symbol, got {symbol?.kind}')
       assert(symbol.detail and symbol.detail.find('weak'), 'Weak symbols must identify their binding attribute')
       assert(symbol.selectionRange['end'].character - symbol.selectionRange.start.character is #name,
          'Weak symbol selections must contain only the source binding name')
+   end
+end
+
+@Test function NestedWeakBindingsAppearInDocumentSymbols()
+   for declaration in values(array<str> {
+      'target:array<array<int>> <weak> = nil',
+      'target <weak>:array<array<int>> = nil',
+      'target:array<array<array<int>>> <weak> ?= nil',
+      'target <weak>:array<array<array<int>>> ??= nil',
+      'target:array<array<int>> <weak> -- starts empty',
+      'target <weak>:array<array<int>>; -- starts empty',
+      'local target:array<array<int>> <weak> = nil',
+      'local target <weak>:array<array<int>> = nil'
+   }) do
+      symbols = extractDocumentSymbols(makeDoc(declaration .. '\n'))
+      symbol = findSymbol(symbols, 'target')
+      assert(symbol and symbol.kind is SYMBOL_KIND.VARIABLE,
+         f'Nested weak declaration must produce a variable symbol: {declaration}')
+      assert(symbol.detail and symbol.detail.find('weak'),
+         'Nested annotations must preserve the weak binding attribute')
+      assert(symbol.selectionRange.start.character is declaration.find('target') and
+         symbol.selectionRange['end'].character - symbol.selectionRange.start.character is 6,
+         'Nested annotations must preserve the binding selection range')
    end
 end
 

@@ -492,7 +492,8 @@ global function resolveHoverContent(TokenInfo, Doc, Position):str
    end
 
    -- Check for keywords
-   if glDefs?.keywords?[token] and (token != 'version' or isContextualKeywordAt(TokenInfo, Doc)) then
+   if glDefs?.keywords?[token] and
+         ((token != 'version' and token != 'using') or isContextualKeywordAt(TokenInfo, Doc)) then
       return formatKeywordHover(token, glDefs.keywords[token])
    end
 
