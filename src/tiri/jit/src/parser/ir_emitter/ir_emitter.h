@@ -40,7 +40,7 @@ enum class ContextSourceKind : uint8_t {
    Inherited,
    UsingReference,
    MethodArgument,
-   ContextualArgument
+   DynamicArgument // Resolve at the point of use; slot is unused.
 };
 
 struct ContextSource {

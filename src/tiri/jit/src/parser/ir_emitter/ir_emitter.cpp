@@ -3362,7 +3362,10 @@ ParserResult<ExpDesc> IrEmitter::emit_literal_expr(const LiteralValue& literal)
 
 ParserResult<ExpDesc> IrEmitter::emit_current_context_expr()
 {
-   if (not this->context_sources.empty()) {
+   // Argument context follows CTXENTER policy and may differ from the retained call receiver.  Materialise it
+   // into an expression temporary instead of overwriting that receiver, which CTXCALL and CTXCALLT still need.
+   if (not this->context_sources.empty() and
+       this->context_sources.back().kind != ContextSourceKind::DynamicArgument) {
       const ContextSource &source = this->context_sources.back();
       ExpDesc expr(ExpKind::NonReloc, source.slot.raw());
       expr.result_type = TiriType::Table;

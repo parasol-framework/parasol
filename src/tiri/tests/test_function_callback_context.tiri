@@ -260,3 +260,67 @@ end
       'An async callback should observe the context active when it was registered')
    assert(&name is nil, 'An async callback should restore the root context after it returns')
 end
+
+@Test function OrdinaryModuleCallbackDoesNotRetainRegistrationContext()
+   local timer
+   local observed
+   local finalised = false
+   local owner = setmetatable(entity { name='registration owner' }, {
+      __gc=function() finalised = true end
+   })
+   local weak = setmetatable({ owner=owner }, { __mode='v' })
+   @Ordinary
+   local function callback()
+      observed = &&
+      processing.signal()
+   end
+   defer clear_timer(timer) end
+   using owner do
+      local err
+      err, timer = mCore.SubscribeTimer(0.01, callback)
+      check err
+   end
+   owner = nil
+   processing.collect()
+   processing.collect()
+   assert(weak.owner is nil and finalised, 'An ordinary callback must allow its registration owner to be collected')
+   wait_for_callback('ordinary module callback')
+   assert(observed is _G, 'An ordinary timer callback must run in the script root context')
+end
+
+@Test function OrdinaryObjectFieldCallbackRunsAtRoot()
+   local current_task = mSys.CurrentTask()
+   local observed
+   local owner = entity { name='object callback registration' }
+   @Ordinary
+   local function callback()
+      observed = &&
+      processing.signal()
+   end
+   local task:obj
+   using owner do
+      task = obj.new('task', {
+         location=current_task.processPath .. 'origo', args='--version', exitCallback=callback
+      })
+   end
+   defer task?.free() end
+   check task.acActivate()
+   wait_for_callback('ordinary object-field callback')
+   assert(observed is _G, 'An ordinary object-field callback must run in the script root context')
+end
+
+@Test function OrdinarySynchronousCallbackRestoresInterruptedContext()
+   local owner = entity { name='interrupted caller' }
+   local observed
+   @Ordinary
+   local function callback()
+      observed = &&
+   end
+   defer mSys.DeleteFile('temp:function_callback_ordinary.tiri') end
+   using owner do
+      check mCore.CopyFile('temp:function_callback_source.tiri', 'temp:function_callback_ordinary.tiri', callback)
+      assert(observed is _G, 'An ordinary synchronous callback must start at the script root')
+      assert(&& is owner, 'Callback completion must restore the interrupted caller context')
+   end
+   assert(&name is nil, 'The registration context must not leak after leaving using')
+end

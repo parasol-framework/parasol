@@ -63,6 +63,7 @@
 #include "lj_obj.h"
 #include "lj_err.h"
 #include "lj_debug.h"
+#include "filesource.h"
 #include "lj_str.h"
 #include "lj_func.h"
 #include "lj_state.h"
@@ -1923,15 +1924,27 @@ static void lj_assert_stacktrace(global_State *g)
          GCfunc *fn = &gc->fn;
          if (isluafunc(fn)) {
             GCproto *pt = funcproto(fn);
-            GCstr *cname = proto_chunk_name(pt);
+            GCstr *cname = pt ? proto_chunk_name(pt) : nullptr;
             if (pt and cname) {
-               int ln = 0;
+               BCLine line = BCLine::encode(pt->file_source_idx, 0);
                if (nextframe) {
                   const BCIns *pc = frame_pc(nextframe);
-                  if (pc > proto_bc(pt) and pc <= proto_bc(pt) + pt->sizebc)
-                     ln = lj_debug_line(pt, proto_bcpos(pt, pc - 1)).lineNumber();
+                  if (pc > proto_bc(pt) and pc <= proto_bc(pt) + pt->sizebc) {
+                     BCLine current_line = lj_debug_line(pt, proto_bcpos(pt, pc - 1));
+                     if (current_line.isValid() and current_line.lineNumber() > 0) line = current_line;
+                  }
                }
-               fprintf(stderr, "    #%d: %s:%d", depth, strdata(cname), ln);
+
+               // Cached imports can retain their producer's chunk name. Resolve the instruction's source identity
+               // without allocating, falling back to the prototype's source when line information is unavailable.
+               const FileSource *source = get_file_source(L, line.fileIndex());
+               const char *filename = strdata(cname);
+               if (source) {
+                  if (not source->path.empty()) filename = source->path.c_str();
+                  else if (not source->filename.empty()) filename = source->filename.c_str();
+               }
+
+               fprintf(stderr, "    #%d: %s:%d", depth, filename, line.lineNumber());
                if (pt->firstline.lineNumber()) fprintf(stderr, " (function defined at line %d)", pt->firstline.lineNumber());
                fprintf(stderr, "\n");
             }

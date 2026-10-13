@@ -3,6 +3,115 @@
 import 'json'
 module core as mCore
 
+@Test function UnannotatedFactoryResultSurvivesCapturedNilAssignment()
+   local factory = {
+      create = function()
+         return entity {
+            surface = { value = 17 },
+            show = function():num return &surface.value end,
+            read = function():num return &surface.value end
+         }
+      end
+   }
+
+   local window
+   window = factory.create()
+   function clear_window()
+      window = nil
+   end
+
+   local caller = entity { surface = { value = 99 } }
+   using caller do
+      assert(window.show() is 17, 'A dynamic method fallback must establish the unannotated factory receiver')
+      assert(window.read() is 17, 'A named call must establish the unannotated factory receiver')
+      assert(window['read']() is 17, 'A computed call must establish the unannotated factory receiver')
+      assert(&surface.value is 99, 'Factory member calls must restore the caller context')
+   end
+   clear_window()
+   assert(window is nil, 'The captured local must remain writable by its cleanup callback')
+
+   local initialised = factory.create()
+   function clear_initialised()
+      initialised = nil
+   end
+   assert(initialised.show() is 17, 'A declaration with a dynamic initialiser must also retain receiver context')
+   clear_initialised()
+   assert(initialised is nil, 'A dynamically initialised local must remain writable by its cleanup callback')
+end
+
+@Test function NativeTailCallPreservesReceiverDuringContextArguments()
+   function margin()
+      return math.round(&examplePage.width * 0.05)
+   end
+
+   local caller = entity { examplePage = { width = 100 } }
+   using caller do
+      for {0 to 200} do
+         assert(margin() is 5, 'Native tail calls must retain their ordinary namespace receiver')
+         assert(&& is caller, 'Native tail calls must restore the caller context')
+      end
+   end
+end
+
+@Test function OrdinaryReceiversSurviveContextArguments()
+   local caller = entity { value = 7 }
+   local target = {
+      consume = function(Value:num):<num, table> return Value, && end,
+      add = function(Value:num):<num, table> return Value, && end
+   }
+
+   function direct(Target:any):<any, ...>
+      return Target.consume(&value)
+   end
+
+   function fallback(Target:any):<any, ...>
+      return Target.add(&value)
+   end
+
+   function pipe(Target:any):<any, ...>
+      return &value |> Target.consume()
+   end
+
+   function fallback_pipe(Target:any):<any, ...>
+      return &value |> Target.add()
+   end
+
+   using caller do
+      for {0 to 200} do
+         local value:num, context:table = direct(target)
+         assert(value is 7 and context is caller, 'Direct calls must inherit ordinary receiver context')
+         value, context = fallback(target)
+         assert(value is 7 and context is caller, 'Method fallbacks must retain the ordinary receiver')
+         value, context = pipe(target)
+         assert(value is 7 and context is caller, 'Pipes must retain the ordinary receiver')
+         value, context = fallback_pipe(target)
+         assert(value is 7 and context is caller, 'Method fallback pipes must retain the ordinary receiver')
+         assert(&& is caller, 'Each call must restore the enclosing context')
+      end
+   end
+end
+
+@Test function NestedArgumentContextsRestoreBeforeLaterArguments()
+   local caller = entity { value = 100 }
+   local inner = entity { value = 3 }
+   function inner.read(Value:num):num return Value end
+   local target:any = {
+      consume = function(First:num, Second:num, Third:num):<num, num, num, table>
+         return First, Second, Third, &&
+      end
+   }
+
+   function invoke():<any, ...>
+      return target.consume(&value, inner.read(&value), &value)
+   end
+
+   using caller do
+      local first, second, third, context = invoke()
+      assert(first is 100 and second is 3 and third is 100 and context is caller,
+         'Nested argument calls must restore context without overwriting the outer receiver')
+   end
+end
+
 @Test function StandaloneCurrentContextPreservesDynamicReceiverIdentity()
    local inner = entity { name = 'inner', value = 0 }
    local outer = entity { name = 'outer' }

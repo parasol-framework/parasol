@@ -167,9 +167,10 @@ ERR capture_tiri_function(lua_State *Lua, int ValueIndex, FUNCTION &Function)
    }
 
    GCtab *context = lj_context_current(Lua);
-   bool capture_context = context != tabref(Lua->env);
-   lj_state_checkstack(Lua, capture_context ? 2 : 1);
+   lj_state_checkstack(Lua, context != tabref(Lua->env) ? 2 : 1);
    lua_pushvalue(Lua, value_index);
+   // Ordinary callbacks start from the script root without retaining the registration context.
+   bool capture_context = not func_is_ordinary(funcV(Lua->top - 1)) and context != tabref(Lua->env);
    int procedure_id = luaL_ref(Lua, LUA_REGISTRYINDEX);
    int context_id = 0;
    if (capture_context) {
