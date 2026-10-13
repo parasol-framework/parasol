@@ -44,6 +44,29 @@ function assertNoToken(Tokens:array<table>, Line:num, Char:num, Text:str, Messag
    assert(not token, Message)
 end
 
+@Test function WeakBindingsReceiveContextualHighlightingAndDiagnostics()
+   source = 'local owner = {}\nlocal target <weak>:table = owner\n' ..
+      'other:table < weak > = target\nlocal empty <weak>\n' ..
+      'local weak = 1\nlocal comparison = 0 < weak and weak > 0\n' ..
+      'local text = "<weak>"\n-- <weak>\nconditional <weak> ?= owner\n'
+   tokens = tokenizeTiri(source)
+   for entry in values(array<table> {
+      { line=1, char=14 }, { line=2, char=14 }, { line=3, char=13 }, { line=8, char=13 }
+   }) do
+      token = findToken(tokens, entry.line, entry.char, 'weak')
+      assert(token and token.type is 0 and token.modifiers is 0,
+         'Weak attributes must receive keyword highlighting without a readonly modifier')
+   end
+   assertNoToken(tokens, 4, 6, 'weak', 'An ordinary weak identifier must not be a keyword')
+   assertNoToken(tokens, 5, 23, 'weak', 'A comparison operand named weak must not be an attribute')
+   result = computeDiagnostics(makeDoc(source))
+   for diagnostic in values(result.diagnostics) do
+      assert(diagnostic.severity != 1, 'Diagnostics must accept weak declarations with either annotation order')
+   end
+   result = computeDiagnostics(makeDoc('global target <weak> = {}\n'))
+   assert(#result.diagnostics > 0, 'Diagnostics must reject unsupported global weak bindings')
+end
+
 @Test function CurrentContextReceivesOneSemanticToken()
    source = 'local current = &&\n' ..
       'local field = &name\n' ..

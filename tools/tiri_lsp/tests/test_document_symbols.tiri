@@ -40,6 +40,20 @@ function hasTag(Symbol:table, Tag:num):bool
    return false
 end
 
+@Test function WeakBindingsAppearInDocumentSymbols()
+   doc = makeDoc('local first <weak>:table = {}\nsecond:table <weak> = first\nthird <weak> = first\n' ..
+      'empty <weak>:table\nadjacent:table<weak> = first\n')
+   symbols = extractDocumentSymbols(doc)
+   for name in values(array<str> { 'first', 'second', 'third', 'empty', 'adjacent' }) do
+      symbol = findSymbol(symbols, name)
+      assert(symbol and symbol.kind is SYMBOL_KIND.VARIABLE,
+         f'Weak binding {name} must remain a variable symbol, got {symbol?.kind}')
+      assert(symbol.detail and symbol.detail.find('weak'), 'Weak symbols must identify their binding attribute')
+      assert(symbol.selectionRange['end'].character - symbol.selectionRange.start.character is #name,
+         'Weak symbol selections must contain only the source binding name')
+   end
+end
+
 @Test function HandlerAdvertisesDocumentSymbols()
    server = {
       _handlers = {},

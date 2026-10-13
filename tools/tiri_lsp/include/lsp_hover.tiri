@@ -482,6 +482,15 @@ global function resolveHoverContent(TokenInfo, Doc, Position):str
    token = TokenInfo.text
    context = TokenInfo.context
 
+   -- Declaration attributes remain ordinary identifiers outside their angle-delimited syntax.
+   if token is 'weak' and context is 'identifier' and isContextualKeywordAt(TokenInfo, Doc) then
+      return '**<weak>** _(Declaration attribute)_\n\n' ..
+         'Creates a local weak-value binding. Collectible targets become nil when their last strong owner ' ..
+         'is released. Reading the binding acquires a strong reference; captured closures share its cell. ' ..
+         'Sticky target types survive collection. Globals, parameters and combinations with <const>, ' ..
+         '<close> or <view> are not supported.'
+   end
+
    -- Check for keywords
    if glDefs?.keywords?[token] and (token != 'version' or isContextualKeywordAt(TokenInfo, Doc)) then
       return formatKeywordHover(token, glDefs.keywords[token])
