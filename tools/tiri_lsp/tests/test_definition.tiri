@@ -56,6 +56,18 @@ end
    assertLocationLine(locations, 0, 'Variable use should resolve to local declaration')
 end
 
+@Test function WeakBindingDefinitions()
+   for declaration in values(array<str> {
+      'local target <weak>:table = {}', 'target <weak>:table = {}', 'target:table <weak> = {}',
+      'target <weak>:table', 'local target <weak>', 'target:table<weak> = {}',
+      'target <weak>:table ?= {}', 'target <weak> ??= {}'
+   }) do
+      doc = makeDoc(declaration .. '\nprint(target)\n')
+      locations = resolveDefinition(doc, { line=1, character=8 })
+      assertLocationLine(locations, 0, 'Weak reads must resolve to the source binding declaration')
+   end
+end
+
 @Test function CurrentDocumentLibraryNamespace()
    doc = makeDoc('namespace toolkit { version = "1.0" }\nprint(toolkit.version)\n')
    locations = resolveDefinition(doc, { line = 1, character = 8 })

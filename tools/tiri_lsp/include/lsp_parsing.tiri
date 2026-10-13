@@ -16,6 +16,7 @@ rx_kw_until    = <{ regex.new([[\buntil\b]]) }>
 rx_kw_struct   = <{ regex.new([[^\s*struct\s+[A-Za-z_][A-Za-z0-9_]*\b]]) }>
 
 -- Deferred regex patterns for token parsing
+rx_weak_attribute = <{ regex.new([[^<([ \t]*)(weak)[ \t]*>(?=[ \t]*(?::|\?\??=|=|,|;|\r|\n|$))]]) }>
 rx_global_var   = <{ regex.new("^gl[A-Z]") }>
 rx_starts_upper = <{ regex.new("^[A-Z]") }>
 rx_all_upper    = <{ regex.new([[^[A-Z0-9_]+$]]) }>
@@ -1213,7 +1214,22 @@ global function tokenizeTiri(Source:str, ModulePrefixes:table):array<table>
             col++
          end
       elseif c is '<' then
-         if tokenizeTypeTest(nil, nil, true, true) then
+         -- Avoid copying the remaining document for ordinary comparisons and type descriptors.
+         local attribute_pos = pos + 1
+         while attribute_pos < len and (Source.sub(attribute_pos, attribute_pos + 1) is ' ' or
+               Source.sub(attribute_pos, attribute_pos + 1) is '\t') do
+            attribute_pos++
+         end
+         local attribute_stop:num
+         local attribute:array<str>
+         if Source.sub(attribute_pos, attribute_pos + 4) is 'weak' then
+            _, attribute_stop, attribute = rx_weak_attribute.findFirst(Source.sub(pos))
+         end
+         if attribute_stop then
+            addToken(line, col + 1 + #attribute[0], 4, 0, 0) -- declaration attribute
+            pos += attribute_stop
+            col += attribute_stop
+         elseif tokenizeTypeTest(nil, nil, true, true) then
             -- A descriptor-shaped choose arm was emitted by tokenizeTypeTest().
          else
             op_start = col

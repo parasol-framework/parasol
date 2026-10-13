@@ -53,6 +53,17 @@ function assertContains(Text:str, Needle:str, Message:str)
    assert(Text and Text.find(Needle, 0, true), Message .. f' Expected "{Needle}" in "{Text}".')
 end
 
+@Test function WeakAttributeHoverIsContextual()
+   hover, token = hoverAt('local target <we|ak>:table = {}\n')
+   assertContains(hover, '**<weak>**', 'Weak attributes must have hover documentation')
+   assertContains(hover, 'strong reference', 'Hover must explain strong acquisition')
+   assertContains(hover, 'Sticky target types', 'Hover must describe the target type contract')
+   hover, token = hoverAt('local we|ak = 1\n')
+   assert(not hover or not hover.find('Declaration attribute'), 'Ordinary weak identifiers must retain their hover')
+   hover, token = hoverAt('local text = "<we|ak>"\n')
+   assert(not hover or not hover.find('Declaration attribute'), 'Strings must not receive weak attribute hover')
+end
+
 @Test function HandlerAdvertisesHover()
    server = {
       _handlers = {},

@@ -9,6 +9,7 @@
       { "include": "#annotations" },
       { "include": "#typetests" },
       { "include": "#choose-type-patterns" },
+      { "include": "#weak-bindings" },
       { "include": "#functions" },
       { "include": "#keywords" },
       { "include": "#operators" },
@@ -17,6 +18,19 @@
       { "include": "#variables" }
    ],
    "repository": {
+      "weak-bindings": {
+         "patterns": [
+            {
+               "name": "meta.declaration.attribute.tiri",
+               "match": "(<)[ \\t]*(weak)[ \\t]*(>)(?=[ \\t]*(?::|\\?\\??=|=|,|;|$))",
+               "captures": {
+                  "1": { "name": "punctuation.definition.attribute.begin.tiri" },
+                  "2": { "name": "storage.modifier.tiri" },
+                  "3": { "name": "punctuation.definition.attribute.end.tiri" }
+               }
+            }
+         ]
+      },
       "versioned-imports": {
          "patterns": [
             {
