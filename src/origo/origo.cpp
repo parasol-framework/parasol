@@ -71,6 +71,7 @@ The following options are available:
  --jit-options   Development options that control the behaviour of the compiler.
  --version       Prints the version, git branch and commit, and build type on separate lines.
  --cache         Enables automatic caching of script results.
+ --clear-cache   Removes temp:tiri/cache/ before running a script.
 
 Logging options; messages are printed to stderr:
 
@@ -127,6 +128,7 @@ constexpr uint32_t ARG_LOG_FILE     = kt::strhash("--log-file");
 constexpr uint32_t ARG_C            = kt::strhash("-c");
 constexpr uint32_t ARG_E            = kt::strhash("-e");
 constexpr uint32_t ARG_CACHE        = kt::strhash("--cache");
+constexpr uint32_t ARG_CLEAR_CACHE  = kt::strhash("--clear-cache");
 
 static ERR process_args(void)
 {
@@ -161,6 +163,13 @@ static ERR process_args(void)
          }
          else if (hash IS ARG_CACHE) {
             glCache = true;
+         }
+         else if (hash IS ARG_CLEAR_CACHE) {
+            auto error = AnalysePath("temp:tiri/cache/", nullptr);
+            if (error IS ERR::Okay) error = DeleteFile("temp:tiri/cache/", nullptr);
+            if (error != ERR::Okay and error != ERR::FileNotFound) {
+               log.warning("Failed to clear temp:tiri/cache/: %s", GetErrorMsg(error));
+            }
          }
          else if (hash IS ARG_BACKSTAGE) {
             glBackstage = true;
