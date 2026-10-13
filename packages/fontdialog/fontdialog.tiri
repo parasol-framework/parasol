@@ -12,13 +12,15 @@ Documentation is available in the Kotuku Wiki.
 
    gui.dialog ?= { }
 
+SIZES <const> = array<int> { 6, 8, 10, 12, 14, 18, 24, 30, 36, 42, 50, 70, 90, 100, 120 }
+
 gui.dialog.font = function(Options)
    self = entity { -- Public interface
-      windowID    = nil,
-      face        = 'Noto Sans',
-      pointSize   = 12,
-      style       = 'Regular',
-      colour      = { r=0, g=0, b=0, a=255 }
+      face      = 'Noto Sans',
+      pointSize = 12,
+      style     = 'Regular',
+      feedback  = Options.feedback,
+      colour    = gui.srgb(0, 0, 0)
    }
 
    lLongText = [[
@@ -33,20 +35,10 @@ Fusce auctor metus egestas commodo laoreet. Morbi sed venenatis augue. Maecenas 
 Ĉras metus mi, ultricies nec blandit condimentum, congue dapibus libero. Nulla eget ornare ante, ac efficitur turpis. Proin venenatis eget sapien vitae volutpat. In interdum id ante in aliquet. Quisque convallis lacus in gravida fringilla. Nam porta pellentesque turpis, ut efficitur neque suscipit vel. Morbi vitae consequat nisl. Donec turpis lorem, dapibus eget scelerisque quis, porttitor bibendum leo.
 ]]
 
-   local lWindow, lFonts, vwSize, vwStyle, vwFace
-   lShortText = 'The Quick Brown Fox Jumped Over The Lazy Dog'
-   lOptions   = Options
-   lSizes     = array<int> { 6, 8, 10, 12, 14, 18, 24, 30, 36, 42, 50, 70, 90, 100, 120 }
+   local vwSize, vwStyle, vwFace
 
    function exampleMargin()
       return math.round(&examplePage.width * 0.05)
-   end
-
-   self.sendFeedback = function(Accepted)
-      lOptions?.feedback(Accepted)
-      lWindow = nil
-      processing.collect('defer')
-      return true
    end
 
    self.refreshGuidelines = function()
@@ -73,7 +65,7 @@ Fusce auctor metus egestas commodo laoreet. Morbi sed venenatis augue. Maecenas 
 
    function refreshExample()
       if not &guidelines then
-         local page_colour = gui.strToRGB(lWindow.theme.page.bkgd.fill)
+         local page_colour = gui.strToRGB(&window.theme.page.bkgd.fill)
          line_col = (page_colour.luminance(page_colour) > 0.5) ? 'rgb(0 0 0 / .25)' :
             'rgb(255 255 255 / .15)'
          &guidelines = &examplePage.new('VectorPath', { strokeWidth = 0.5, stroke = line_col })
@@ -88,12 +80,12 @@ Fusce auctor metus egestas commodo laoreet. Morbi sed venenatis augue. Maecenas 
       try
          &exampleText = &examplePage.new('VectorText', {
             x          = gap,
-            fill       = lWindow.theme.page.text.fill,
+            fill       = Options.colour ? tostring(&colour) : &window.theme.page.text.fill,
             inlineSize = pageWidth - (gap * 2),
             face       = &face,
             fontSize   = &pointSize .. 'pt',
             fontStyle  = &style,
-            string     = lLongText,
+            string     = Options.example ?? lLongText,
             textFlags  = VTXF_RASTER
          })
       except ex
@@ -111,7 +103,7 @@ Fusce auctor metus egestas commodo laoreet. Morbi sed venenatis augue. Maecenas 
    -- Load the system font catalogue and convert its Config strings to values used by the dialog.
 
    function getFonts()
-      lFonts = resolve(gui.fontList)
+      &prvFonts = resolve(gui.fontList)
    end
 
    function showFontSizes(List)
@@ -126,8 +118,8 @@ Fusce auctor metus egestas commodo laoreet. Morbi sed venenatis augue. Maecenas 
 
    function showStyles(Face)
       styles = array<table> { }
-      if lFonts[Face].alias then Face = lFonts[Face].alias end
-      for v in values(lFonts[Face].styles) do
+      if &prvFonts[Face].alias then Face = &prvFonts[Face].alias end
+      for v in values(&prvFonts[Face].styles) do
          styles.push({ id=v, name=v })
       end
       vwStyle.loadItems(styles)
@@ -135,17 +127,9 @@ Fusce auctor metus egestas commodo laoreet. Morbi sed venenatis augue. Maecenas 
 
    function highlightSize(Size)
       Size ?! return
-      selectSize = Size
-      for i in {0 to #lSizes} do
-         if lSizes[i] <= Size then
-            selectSize = lSizes[i]
-         else
-            break
-         end
-      end
-
+      vwSize.deselectAll()
       vwSize.selectItems(function(Item)
-         if Item.id is selectSize then return true end
+         if Item.id is Size then return true end
       end)
    end
 
@@ -155,18 +139,27 @@ Fusce auctor metus egestas commodo laoreet. Morbi sed venenatis augue. Maecenas 
       -- Disassemble any compact font face definition.  Trailing and empty parts are optional, e.g. 'Noto Sans' or
       -- 'Noto Sans::Bold'.
 
-      if lOptions.face then
-         s = string.split(lOptions.face, ':') -- FaceName, Size, Style, Colour
+      if Options.face then
+         s = string.split(Options.face, ':') -- FaceName, Size, Style, Colour
          s.resize(4) -- Missing parts are padded with nil
-         if s[0]?? then lOptions.face      = s[0] end
-         if s[1]?? then lOptions.pointSize = tonumber(s[1]) ?? lOptions.pointSize end
-         if s[2]?? then lOptions.style     = s[2] end
-         if s[3]?? then lOptions.colour    = s[3] end
+         if s[0]?? then Options.face      = s[0] end
+         if s[1]?? then Options.pointSize = tonumber(s[1]) ?? Options.pointSize end
+         if s[2]?? then Options.style     = s[2] end
+         if s[3]?? then Options.colour    = s[3] end
       end
 
-      if lOptions.pointSize then &pointSize = math.clamp(tonumber(lOptions.pointSize) ?? &pointSize, 4, 400) end
+      if Options.pointSize then
+         &pointSize = math.clamp(tonumber(Options.pointSize) ?? &pointSize, 4, 400)
+      end
 
-      lWindow = gui.window({
+      &style = Options.style ?? &style
+      if Options.colour is <str> then
+         &colour = gui.strToRGB(Options.colour)
+      elseif Options.colour is <table> then
+         &colour = gui.nrgb(Options.colour.r, Options.colour.g, Options.colour.b, Options.colour.a)
+      end
+
+      &window = gui.window({
          insideWidth  = 700,
          insideHeight = 600,
          minWidth     = 500,
@@ -174,24 +167,21 @@ Fusce auctor metus egestas commodo laoreet. Morbi sed venenatis augue. Maecenas 
          maxWidth     = 1024,
          maxHeight    = 800,
          quit         = false,
-         popOver      = lOptions.popOver,
+         popOver      = Options.popOver,
          icon         = 'items/font',
-         title        = lOptions.title ?? 'Select a font',
-         modal        = lOptions.modal ?? false,
+         title        = Options.title ?? 'Select a font',
+         modal        = Options.modal ?? false,
          events = {
             close = function()
-               print('Closing font dialog')
                using self do
-                  lOptions?.feedback()
-                  lWindow = nil
+                  if &feedback then &feedback(false) end
+                  &window = nil
                end
             end
          }
       })
 
-      &windowID = lWindow.surface.id
-
-      &viewport = lWindow.clientViewport({
+      &viewport = &window.clientViewport({
          resizeEvent = function()
             self.refreshGuidelines()
          end
@@ -199,7 +189,7 @@ Fusce auctor metus egestas commodo laoreet. Morbi sed venenatis augue. Maecenas 
 
       -- Okay and cancel buttons
 
-      footer = lWindow.margins.bottom
+      footer = &window.margins.bottom
 
       cancel = gui.button({
          target  = &viewport,
@@ -210,8 +200,8 @@ Fusce auctor metus egestas commodo laoreet. Morbi sed venenatis augue. Maecenas 
          events = {
             activate = function()
                using self do
-                  lOptions?.feedback(false)
-                  lWindow = nil
+                  if &feedback then &feedback(false) end
+                  &window = nil
                   processing.collect('defer')
                end
             end
@@ -227,8 +217,8 @@ Fusce auctor metus egestas commodo laoreet. Morbi sed venenatis augue. Maecenas 
          events = {
             activate = function()
                using self do
-                  lOptions?.feedback(true)
-                  lWindow = nil
+                  if &feedback then &feedback(true) end
+                  &window = nil
                   processing.collect('defer')
                end
             end
@@ -241,14 +231,14 @@ Fusce auctor metus egestas commodo laoreet. Morbi sed venenatis augue. Maecenas 
 
       &exampleVP = &viewport.new('VectorViewport', {
          x       = 210,
-         y       = lWindow.margins.top,
-         xOffset = lWindow.margins.right,
+         y       = &window.margins.top,
+         xOffset = &window.margins.right,
          yOffset = footer
       })
 
       &exampleBkgd = &exampleVP.new('VectorRectangle', table.merge({
          x = 0, y = 0, width = '100%', height = '100%'
-      }, table.merge(lWindow.theme.page.bkgd, lWindow.theme.page.border)))
+      }, table.merge(&window.theme.page.bkgd, &window.theme.page.border)))
 
       &exampleView = &exampleVP.new('VectorViewport', {
          x = 4, y = 4, xOffset = 4, yOffset = 4, overflow = VOF_HIDDEN
@@ -284,15 +274,15 @@ Fusce auctor metus egestas commodo laoreet. Morbi sed venenatis augue. Maecenas 
          }
       })
 
-      showFontSizes(lSizes)
+      showFontSizes(SIZES)
 
       -- Font style selection
 
       vwStyle = gui.listView({
-         x            = lWindow.margins.left,
+         x            = &window.margins.left,
          yOffset      = footer,
          height       = 140,
-         width        = vwSize.viewport.x - gui.sizing.widget.gap - lWindow.margins.left,
+         width        = vwSize.viewport.x - gui.sizing.widget.gap - &window.margins.left,
          target       = &viewport,
          sensitive    = true,
          noIcons      = true,
@@ -313,9 +303,9 @@ Fusce auctor metus egestas commodo laoreet. Morbi sed venenatis augue. Maecenas 
       -- Available font faces
 
       vwFace = gui.listView({
-         x          = lWindow.margins.left,
-         y          = lWindow.margins.top,
-         width      = &exampleVP.x - gui.sizing.widget.gap - lWindow.margins.left,
+         x          = &window.margins.left,
+         y          = &window.margins.top,
+         width      = &exampleVP.x - gui.sizing.widget.gap - &window.margins.left,
          yOffset    = footer,
          target     = &viewport,
          sensitive  = true,
@@ -323,7 +313,7 @@ Fusce auctor metus egestas commodo laoreet. Morbi sed venenatis augue. Maecenas 
          events = {
             itemSelected = function(View, Reason, Item)
                using self do
-                  assert(lFonts[Item.name], f'Font "{Item.name}" not recognised.')
+                  assert(&prvFonts[Item.name], f'Font "{Item.name}" not recognised.')
 
                   &face = Item.name
 
@@ -331,12 +321,12 @@ Fusce auctor metus egestas commodo laoreet. Morbi sed venenatis augue. Maecenas 
 
                   -- Highlight the correct style, trying to keep the current setting if possible.
 
-                  if &style and lFonts[&face] then
+                  if &style and &prvFonts[&face] then
                      supported = false
                      face = &face
-                     if lFonts[face].alias then face = lFonts[face].alias end
+                     if &prvFonts[face].alias then face = &prvFonts[face].alias end
 
-                     for v in values(lFonts[face].styles) do
+                     for v in values(&prvFonts[face].styles) do
                         if v is &style then
                            supported = true
                            break
@@ -352,28 +342,39 @@ Fusce auctor metus egestas commodo laoreet. Morbi sed venenatis augue. Maecenas 
                      if Item.id is &style then return true end
                   end)
 
-                  refreshExample()
-
-                  sizes = lFonts[Item.name].sizes
-                  if (lFonts[Item.name].scalable) or (not sizes??) then
-                     sizes = lSizes
+                  font = &prvFonts[Item.name]
+                  if font.alias then font = &prvFonts[font.alias] end
+                  sizes = font.sizes
+                  if font.scalable or (not sizes??) then
+                     sizes = SIZES
+                  else
+                     -- Bitmap fonts must use an available size, preferring the largest not above the request.
+                     selected_size = sizes[0]
+                     for size in values(sizes) do
+                        if size <= &pointSize and (selected_size > &pointSize or size > selected_size) then
+                           selected_size = size
+                        elseif selected_size > &pointSize and size < selected_size then
+                           selected_size = size
+                        end
+                     end
+                     &pointSize = selected_size
                   end
 
                   showFontSizes(sizes)
 
-                  if sizes[0] > &pointSize then &pointSize = sizes[0] end
                   highlightSize(&pointSize)
+                  refreshExample()
                end
             end
          }
       })
 
       faces = { }
-      for _, font in lFonts.sortByKeys() do
+      for _, font in &prvFonts.sortByKeys() do
          if font.hidden?? then continue end
 
          new_font = { id=font.name, name=font.name }
-         if font.alias then font = lFonts[font.alias] end
+         if font.alias then font = &prvFonts[font.alias] end
          new_font.icon = font.scalable ? 'items/font' : 'layout/text_sans'
          faces.insert(new_font)
       end
@@ -382,17 +383,18 @@ Fusce auctor metus egestas commodo laoreet. Morbi sed venenatis augue. Maecenas 
       -- Preselect list items based on the preferences supplied by the client.
 
       vwFace.selectItems(function(Item)
-         if Item.id is (lOptions.face ?? 'Noto Sans') then return true end
+         if Item.id is (Options.face ?? 'Noto Sans') then return true end
       end)
 
+      vwStyle.deselectAll()
       vwStyle.selectItems(function(Item)
-         if Item.id is (lOptions.style ?? 'Regular') then return true end
+         if Item.id is &style then return true end
       end)
 
       highlightSize(&pointSize)
 
-      lWindow.moveToFront()
-      lWindow.show(true)
+      &window.moveToFront()
+      &window.show(true)
       --vwFace.acFocus()
 
       return &&
@@ -411,5 +413,5 @@ end
       icon       = arg('icon')
    })
 
-   return dlg.windowID
+   return dlg.window.surface.id
 @end

@@ -154,3 +154,43 @@ end
    sendKey(KEY_END)
    assert(slider.value is 1 and activations is 2, 'Re-enabling must restore keyboard input')
 end
+
+function abandonedSlider():<obj, func, array<int>>
+   local surface, slider = newSlider({ value=0.5 })
+   local weak_slider <weak> = slider
+   return surface, function():table return weak_slider end,
+      array<int> { slider.viewport.id, slider.prvSliderHostVP.id, slider.prvSliderVP.id, slider.button.id }
+end
+
+@Test function NativeCallbacksDoNotRetainSlider()
+   local surface <close>, read, ids = abandonedSlider()
+   processing.collect('full')
+   assert(read() is nil, 'Native callbacks must not retain an unreferenced slider')
+   for id in values(ids) do
+      assert(not obj.find(id), 'Slider finalisation must release its native vectors')
+   end
+   assert(obj.find(surface.id), 'Slider finalisation must preserve the hosting surface')
+   sendKey(KEY_END)
+end
+
+@Test function CollectionDuringActivationRetainsSliderContext()
+   local slider:table
+   local viewport_id:num
+   local activated = false
+   function activate(Value)
+      slider = nil
+      processing.collect('full')
+      assert(&value is Value and &viewport.id is viewport_id, 'Activation must execute in the slider context')
+      assert(obj.find(viewport_id), 'The active callback must retain the acquired slider during collection')
+      activated = true
+   end
+   local surface <close>, created = newSlider({ value=0.5, events={ activate=activate } })
+   slider = created
+   viewport_id = slider.viewport.id
+   created = nil
+   sendKey(KEY_END)
+   assert(activated, 'Keyboard input must dispatch activation')
+   processing.collect('full')
+   assert(not obj.find(viewport_id), 'Returning from the callback must release its acquired slider')
+   sendKey(KEY_HOME)
+end
