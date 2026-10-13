@@ -456,7 +456,7 @@ ParserResult<std::vector<Identifier>> AstBuilder::parse_name_list()
          GCstr *maybe_attr = this->ctx.tokens().current().identifier();
          if (maybe_attr) {
             std::string_view attr_view(strdata(maybe_attr), maybe_attr->len);
-            if ((attr_view IS "const" or attr_view IS "close" or attr_view IS "view") and
+            if ((attr_view IS "const" or attr_view IS "close" or attr_view IS "view" or attr_view IS "weak") and
                   this->ctx.tokens().peek(1).raw() IS '<') {
                is_buffered_attribute = true;
             }
@@ -467,6 +467,7 @@ ParserResult<std::vector<Identifier>> AstBuilder::parse_name_list()
          bool is_close_attribute = false;
          bool is_const_attribute = false;
          bool is_view_attribute = false;
+         bool is_weak_attribute = false;
 
          if (is_buffered_attribute) {
             // Current token is already the attribute name.
@@ -475,6 +476,7 @@ ParserResult<std::vector<Identifier>> AstBuilder::parse_name_list()
             if (view IS "close") is_close_attribute = true;
             else if (view IS "const") is_const_attribute = true;
             else if (view IS "view") is_view_attribute = true;
+            else if (view IS "weak") is_weak_attribute = true;
 
             this->ctx.tokens().advance();  // Advance past the attribute name
             this->ctx.tokens().advance();  // Advance past '<'
@@ -491,6 +493,7 @@ ParserResult<std::vector<Identifier>> AstBuilder::parse_name_list()
                if (view IS std::string_view("close")) is_close_attribute = true;
                else if (view IS std::string_view("const")) is_const_attribute = true;
                else if (view IS std::string_view("view")) is_view_attribute = true;
+               else if (view IS std::string_view("weak")) is_weak_attribute = true;
             }
          }
 
@@ -504,9 +507,18 @@ ParserResult<std::vector<Identifier>> AstBuilder::parse_name_list()
          if (is_close_attribute) identifier.has_close = true;
          else if (is_const_attribute) identifier.has_const = true;
          else if (is_view_attribute) identifier.has_view = true;
+         else if (is_weak_attribute) identifier.has_weak = true;
          else {
             this->ctx.emit_error(ParserErrorCode::UnexpectedToken, this->ctx.tokens().current(), "unknown attribute");
          }
+      }
+
+      if ((identifier.has_weak or identifier.has_const or identifier.has_close or identifier.has_view) and
+          (this->ctx.tokens().current().raw() IS '<' or
+           (this->ctx.tokens().current().kind() IS TokenKind::Identifier and
+            this->ctx.tokens().peek(1).raw() IS '<'))) {
+         return this->fail<Identifier>(ParserErrorCode::UnexpectedToken, this->ctx.tokens().current(),
+            "Declaration attributes cannot be combined; <weak> excludes <const>, <close> and <view>");
       }
 
       // Parse optional type annotation (:type) after attribute (supports `name <const>:type` syntax)
@@ -581,6 +593,12 @@ ParserResult<AstBuilder::ParameterListResult> AstBuilder::parse_parameter_list(b
                this->ctx.emit_tip(1, TipCategory::TypeSafety, std::move(message), name.value_ref());
                #endif
             }
+         }
+         if (this->ctx.tokens().current().raw() IS '<' or
+             (this->ctx.tokens().current().kind() IS TokenKind::Identifier and
+              this->ctx.tokens().peek(1).raw() IS '<')) {
+            return this->fail<ParameterListResult>(ParserErrorCode::UnexpectedToken, this->ctx.tokens().current(),
+               "Declaration attributes, including <weak>, are not permitted on function parameters");
          }
          result.parameters.push_back(param);
       } while (this->ctx.match(TokenKind::Comma).ok());

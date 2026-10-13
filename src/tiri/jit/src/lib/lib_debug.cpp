@@ -873,6 +873,9 @@ LJLIB_CF(debug_upvalueJoin)
       n = debug_idx(lj_lib_checkint(L, 2 * i + 2)) - 1;
       if ((uint32_t)n >= fn[i]->l.nupvalues) lj_err_arg(L, 2 * i + 2, ErrMsg::IDXRNG);
       p[i] = &fn[i]->l.uvptr[n];
+      if (lj_tab_is_weak_binding(uvval(gco_to_upval(gcref(*p[i]))))) {
+         lj_err_callermsg(L, ERR::InvalidValue, "Cannot join a weak binding through the debugger");
+      }
    }
    setgcrefr(*p[0], *p[1]);
    lj_gc_objbarrier(L, fn[0], gcref(*p[1]));

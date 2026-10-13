@@ -262,6 +262,8 @@ LJLIB_CF(jit_util_funcK)
    }
    else if (~idx < (ptrdiff_t)pt->sizekgc) {
       GCobj *gc = proto_kgc(pt, idx);
+      // Weak-cell metatable templates are compiler-private; exposing one would allow future cells to become strong.
+      if (gc->gch.gct IS ~LJ_TTAB and (gco_to_table(gc)->flags & TAB_WEAK_BINDING)) return 0;
       setgcV(L, L->top - 1, gc, ~gc->gch.gct);
       return 1;
    }

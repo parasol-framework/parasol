@@ -480,6 +480,7 @@ ParserResult<ExpDesc> IrEmitter::emit_assignment_identifier(const NameRef &Refer
          return invariant("lexical assignment target disagrees with its emitted binding");
       }
       if (resolved.k IS ExpKind::Local) resolved.u.s.aux = this->func_state.varmap[resolved.u.s.info];
+      expr_weak_cell(&this->func_state, &resolved);
       return ParserResult<ExpDesc>::success(resolved);
    }
 

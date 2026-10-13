@@ -231,6 +231,7 @@ static inline BCPOS bcemit_tsets(FuncState *fs, BCREG Value, BCREG Table, BCREG 
    }
 }
 
+static void expr_weak_cell(FuncState *, ExpDesc *);
 static void expr_discharge(FuncState *, ExpDesc* e);
 static void bcemit_nil(FuncState *, BCREG from, BCREG n);
 static void expr_toreg_nobranch(FuncState *, ExpDesc* e, BCREG reg);

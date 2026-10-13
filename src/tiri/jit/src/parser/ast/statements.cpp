@@ -150,7 +150,7 @@ ParserResult<StmtNodePtr> AstBuilder::parse_local_name_list(const Token &StartTo
 
    if (BareAnnotatedSyntax) {
       bool has_declaration_attribute = std::ranges::any_of(name_list, [](const Identifier &Identifier) {
-         return Identifier.has_close or Identifier.has_const or Identifier.has_view;
+         return Identifier.has_close or Identifier.has_const or Identifier.has_view or Identifier.has_weak;
       });
 
       if (not has_declaration_attribute) {
@@ -231,6 +231,11 @@ ParserResult<StmtNodePtr> AstBuilder::parse_global()
    if (not names.ok()) return ParserResult<StmtNodePtr>::failure(names.error_ref());
 
    for (const Identifier &identifier : names.value_ref()) {
+      if (identifier.has_weak) {
+         return this->fail<StmtNodePtr>(ParserErrorCode::UnexpectedToken,
+            Token::from_span(identifier.span, TokenKind::Identifier),
+            "The <weak> attribute is only valid on local declarations");
+      }
       if (identifier.has_view) {
          return this->fail<StmtNodePtr>(ParserErrorCode::UnexpectedToken,
             Token::from_span(identifier.span, TokenKind::Identifier),
@@ -324,7 +329,8 @@ ParserResult<StmtNodePtr> AstBuilder::parse_extern()
             Token::from_span(identifier.span, TokenKind::Identifier), "extern declarations require named symbols");
       }
 
-      if (identifier.type != TiriType::Unknown or identifier.has_const or identifier.has_close or identifier.has_view) {
+      if (identifier.type != TiriType::Unknown or identifier.has_const or identifier.has_close or
+          identifier.has_view or identifier.has_weak) {
          return this->fail<StmtNodePtr>(ParserErrorCode::UnexpectedToken,
             Token::from_span(identifier.span, TokenKind::Identifier),
             "Extern declarations cannot have type annotations or attributes");
@@ -748,7 +754,7 @@ static bool is_prefixed_attribute_token(TokenStreamAdapter &Tokens)
    if (not symbol) return false;
 
    std::string_view name(strdata(symbol), symbol->len);
-   if (name != "const" and name != "close" and name != "view") return false;
+   if (name != "const" and name != "close" and name != "view" and name != "weak") return false;
    return Tokens.peek(1).raw() IS '<';
 }
 

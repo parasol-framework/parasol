@@ -1997,6 +1997,10 @@ void TypeAnalyser::analyse_local_decl(const LocalDeclStmtPayload &Payload)
       this->check_shadowing(name.symbol, name.span);
       #endif
 
+      if (name.has_weak) {
+         inferred.is_nullable = true;
+         inferred.is_constant = false;
+      }
       this->current_scope().declare_local(name.symbol, inferred, name.span, name.has_const);
       if (name.type IS TiriType::Unknown and initialiser and
           is_table_read_expression(*initialiser->expression) and name.binding_id) {
@@ -2871,7 +2875,13 @@ InferredType TypeAnalyser::infer_expression_type(const ExprNode& Expr)
             // Mark the variable as used
             this->mark_identifier_used(payload->identifier.symbol);
             auto resolved = this->resolve_identifier(payload->identifier.symbol);
-            if (resolved) return *resolved;
+            if (resolved) {
+               if (payload->binding_id and this->ctx_.descriptors().binding(payload->binding_id).is_weak) {
+                  resolved->is_nullable = true;
+                  resolved->is_constant = false;
+               }
+               return *resolved;
+            }
             if (type_is_registered_constant(payload->identifier.symbol)) {
                result.primary = TiriType::Num;
                result.is_constant = true;
