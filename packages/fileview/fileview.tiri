@@ -1550,13 +1550,13 @@ gui.fileview = function(Options)
                         cancelText = 'Exit',
                         modal      = true,
                         popOver    = self._surface,
-                        feedback = function(Dialog, Accepted)
+                        feedback = function(Accepted)
                            if Accepted then
                               ViewOptions.theme = table.merge(ViewOptions.theme, {
                                  page = { text = {
-                                    face = Dialog.face,
-                                    fontSize = string.format('%.2fpt', Dialog.pointSize),
-                                    fontStyle = Dialog.style
+                                    face = &face,
+                                    fontSize = string.format('%.2fpt', &pointSize),
+                                    fontStyle = &style
                                  } }
                               }, true, true)
                               self.view.free()

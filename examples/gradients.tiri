@@ -312,7 +312,7 @@ function buildScene()
          { item='Gouraud' }
       },
       events = {
-         activate = function(Widget, Text)
+         activate = function(Text)
             glActiveGradient = selectGradient(Text)
          end
       }
@@ -326,7 +326,7 @@ function buildScene()
       y      = 10,
       items  = array<table> { { item='Pad' }, { item='Repeat' }, { item='Reflect' }, { item='Clip' } },
       events = {
-         activate = function(Widget, Text)
+         activate = function(Text)
             glSpreadMethod = choose Text from
                'Pad'     -> VSPREAD_PAD
                'Reflect' -> VSPREAD_REFLECT
@@ -351,7 +351,7 @@ function buildScene()
          { item='Flare' }, { item='Crest' }, { item='Viridis' }, { item='Plasma' }, { item='Inferno' }
       },
       events = {
-         activate = function(Widget, Text)
+         activate = function(Text)
             glColourMap = 'cmap:' .. Text.lower()
             glActiveGradient.colourMap = glColourMap
             gradientVP.scene.surface.mtScheduleRedraw()
@@ -370,7 +370,7 @@ function buildScene()
          { item='In' }, { item='In Out' }, { item='Linear' }, { item='Out' }
       },
       events = {
-         activate = function(Widget:table, Text:str!)
+         activate = function(Text:str!)
             glEasing = choose Text from
                'Cubic In'     -> GEZ_CUBIC_IN
                'Cubic In Out' -> GEZ_CUBIC_IN_OUT

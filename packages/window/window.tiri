@@ -39,7 +39,7 @@ function setDisplayIcon(Display:obj, Icon:str)
 end
 
 gui.window = function(Options:table!)
-   self = setmetatable({
+   self = setmetatable(entity {
       -- Public variables
       events       = Options.events ?? { },
       aspectRatio  = Options.aspectRatio??,
@@ -65,69 +65,69 @@ gui.window = function(Options:table!)
    -- Callbacks retain this record, not the public window table. Weak-value clearing may remove `window` before
    -- `__gc` runs, while the construction-time quit policy remains available to the surface free callback.
 
-   lifecycle = setmetatable(entity { window=self, quit=self.quit }, { __mode='v' })
+   lifecycle = setmetatable({ window=self, quit=self.quit }, { __mode='v' })
 
+   -- Use @Ordinary so that function callbacks pass-through with the original client context
+
+   @Ordinary
    self.clientViewport = function(Options:table):obj
       if self._clientViewport then return self._clientViewport end
       Options ?= { }
-
       Options.aspectRatio ?= 'XMid|YMid|Meet'
-
       Options.x = 0
       Options.y = 0
       Options.xOffset = 0
       Options.yOffset = 0
 
       self._clientViewport = self.viewport.new('VectorViewport', Options)
-
       return self._clientViewport
    end
 
    self.getSize = function()
       return {
-         x      = self.surface.x - self.client.left,
-         y      = self.surface.y - self.client.top,
-         width  = self.surface.width + self.client.left + self.client.right,
-         height =  self.surface.height + self.client.top + self.client.bottom
+         x      = &surface.x - &client.left,
+         y      = &surface.y - &client.top,
+         width  = &surface.width + &client.left + &client.right,
+         height =  &surface.height + &client.top + &client.bottom
       }
    end
 
    self.getClientSize = function()
       return {
-         x = self.surface.x, y = self.surface.y, width = self.surface.width, height = self.surface.height
+         x = &surface.x, y = &surface.y, width = &surface.width, height = &surface.height
       }
    end
 
    -- Resize the window via the client area
 
    self.resizeClientArea = function(ClientWidth:num, ClientHeight:num)
-      ClientWidth ?= self.surface.width
-      ClientHeight ?= self.surface.height
-      self.surface.acResize(ClientWidth, ClientHeight, 0)
+      ClientWidth ?= &surface.width
+      ClientHeight ?= &surface.height
+      &surface.acResize(ClientWidth, ClientHeight, 0)
    end
 
    -- Changes the size of the position of the window in relation to its parent.  All dimensions refer to the
    -- border of the window.
 
    self.resize = function(X:num, Y:num, Width:num, Height:num)
-      Width ?= self.surface.width
-      Height ?= self.surface.height
+      Width ?= &surface.width
+      Height ?= &surface.height
 
-      X ?= self.surface.x
-      Y ?= self.surface.y
-      self.surface.acRedimension(X + self.client.left, Y + self.client.top, 0,
-         Width - self.client.left - self.client.right,
-         Height - self.client.top - self.client.bottom, 0)
+      X ?= &surface.x
+      Y ?= &surface.y
+      &surface.acRedimension(X + &client.left, Y + &client.top, 0,
+         Width - &client.left - &client.right,
+         Height - &client.top - &client.bottom, 0)
    end
 
    -- Define window sizing limits.
 
    self.sizeHints = function(MinWidth, MinHeight, MaxWidth, MaxHeight, EnforceAspect)
-      if self.surface.display.mtSizeHints(MinWidth, MinHeight, MaxWidth, MaxHeight, EnforceAspect) != ERR_Okay then
-         self.surface.maxWidth  = MaxWidth
-         self.surface.minWidth  = MinWidth
-         self.surface.maxHeight = MaxHeight
-         self.surface.minHeight = MinHeight
+      if &surface.display.mtSizeHints(MinWidth, MinHeight, MaxWidth, MaxHeight, EnforceAspect) != ERR_Okay then
+         &surface.maxWidth  = MaxWidth
+         &surface.minWidth  = MinWidth
+         &surface.maxHeight = MaxHeight
+         &surface.minHeight = MinHeight
       end
    end
 
@@ -138,267 +138,279 @@ gui.window = function(Options:table!)
    -- If Toggle is true, the window is restored to its original position if the window is already maximised.
 
    self.maximise = function(Toggle)
-      self.maximiseEnabled ?! return
+      &maximiseEnabled ?! return
 
-      self.events?.maximise(self)
+      &events?.maximise()
 
       -- Send the maximisation request to the display
-      display = obj.find(self.surface.display)
+      display = obj.find(&surface.display)
       display.flags = display.flags | SCR_MAXIMISE
    end
 
    self.moveToBack = function()
-      self.surface.acMoveToBack()
+      &surface.acMoveToBack()
    end
 
    self.moveToFront = function()
-      self.surface.acMoveToFront()
+      &surface.acMoveToFront()
    end
 
    self.parentSize = function():<num, num>
-      err, info = mGfx.GetDisplayInfo(self.surface.display)
+      err, info = mGfx.GetDisplayInfo(&surface.display)
       return info.monitorWidth, info.monitorHeight
    end
 
    self.show = function(Centre:bool)
       if Centre then
          x, y = (function()
-            if self.surface.popOver then
-               err, x, y, powidth, poheight = [*__*]mGfx.GetSurfaceCoords(self.surface.popOver)
+            if &surface.popOver then
+               err, x, y, powidth, poheight = [*__*]mGfx.GetSurfaceCoords(&surface.popOver)
                if err is ERR_Okay then
-                  x += ((powidth - self.surface.width) / 2)
-                  y += ((poheight - self.surface.height) / 2)
-                  err, px, py = [*__**__]mGfx.GetSurfaceCoords(self.surface.parent)
+                  x += ((powidth - &surface.width) / 2)
+                  y += ((poheight - &surface.height) / 2)
+                  err, px, py = [*__**__]mGfx.GetSurfaceCoords(&surface.parent)
                   if err is ERR_Okay then
                      return x - px, y - py
                   end
                end
-            elseif self.surface.parent then
-               err, vx, vy, vwidth, vheight = [***__**]mGfx.GetVisibleArea(self.surface.parent)
+            elseif &surface.parent then
+               err, vx, vy, vwidth, vheight = [***__**]mGfx.GetVisibleArea(&surface.parent)
                if err is ERR_Okay then
-                  x = vx + ((vwidth - self.surface.width) / 2)
-                  y = vy + ((vheight - self.surface.height) / 2)
-                  --check_overlap(self, x, y, 0, 0)
+                  x = vx + ((vwidth - &surface.width) / 2)
+                  y = vy + ((vheight - &surface.height) / 2)
+                  --check_overlap(&&, x, y, 0, 0)
                   return x, y
                end
             else
-               err, info = mGfx.GetDisplayInfo(self.surface.display)
+               err, info = mGfx.GetDisplayInfo(&surface.display)
                if err is ERR_Okay then
-                  return (info.monitorWidth - self.surface.width) / 2, (info.monitorHeight - self.surface.height) / 2
+                  return (info.monitorWidth - &surface.width) / 2, (info.monitorHeight - &surface.height) / 2
                end
             end
          end)()
 
          if x and y then
-            err, info = mGfx.GetDisplayInfo(self.surface.display)
+            err, info = mGfx.GetDisplayInfo(&surface.display)
             if err is ERR_Okay then
-               err, l_frame, t_frame, r_frame, b_frame = self.surface.display.mtGetFrame(0)
+               err, l_frame, t_frame, r_frame, b_frame = &surface.display.mtGetFrame(0)
 
                if y - t_frame < info.virtualY then y = info.virtualY + t_frame end
                if x - l_frame < info.virtualX then x = info.virtualX + l_frame end
-               if x + l_frame + r_frame + self.surface.width > info.virtualX + info.virtualWidth then x = info.virtualX + info.virtualWidth - self.surface.width - l_frame - r_frame end
-               if y + t_frame + b_frame + self.surface.height > info.virtualY + info.virtualHeight then y = info.virtualY + info.virtualHeight - self.surface.height - t_frame - b_frame end
+               if x + l_frame + r_frame + &surface.width > info.virtualX + info.virtualWidth then x = info.virtualX + info.virtualWidth - &surface.width - l_frame - r_frame end
+               if y + t_frame + b_frame + &surface.height > info.virtualY + info.virtualHeight then y = info.virtualY + info.virtualHeight - &surface.height - t_frame - b_frame end
             end
-            self.surface.acMoveToPoint(x, y, 0, MTF_X|MTF_Y)
+            &surface.acMoveToPoint(x, y, 0, MTF_X|MTF_Y)
          end
       end
 
-      self.visible = true
-      self.surface.acShow()
-      if self.surface.flags has RNF_HAS_FOCUS then
-         self.surface.acFocus()
+      &visible = true
+      &surface.acShow()
+      if &surface.flags has RNF_HAS_FOCUS then
+         &surface.acFocus()
       end
 
-      self.events?.show(self)
+      &events?.show()
    end
 
    self.hide = function()
-      self.visible = false
-      self.surface.acHide()
-      self.events?.hide(self)
+      &visible = false
+      &surface.acHide()
+      &events?.hide()
    end
 
    self.setTitle = function(Title:str!)
-      self.surface.display.title = Title
-      self.title = Title
+      &surface.display.title = Title
+      &title = Title
    end
 
    -- Main entry point --
 
-   self._desktop = obj.find('desktop')
+   using self do
+      &_desktop = obj.find('desktop')
 
-   surface_opts = {
-      name      = 'winsurface',
-      parent    = surfaceReference(Options.parent) ?? self._desktop,
-      width     = Options.insideWidth ?? Options.width ?? DEFAULT_WIDTH,
-      height    = Options.insideHeight ?? Options.height ?? DEFAULT_HEIGHT,
-      type      = RT_ROOT,
-      modal     = Options.modal ?? false,
-      popOver   = surfaceReference(Options.popOver),
-      presence  = Options.presence, -- SPT HOST/NONE/TASKBAR/ICON_TRAY
-      flags = (function()
-         local flags = 0
-         if Options.composite then
-            flags = flags | RNF_COMPOSITE
-         end
-         if Options.aspectRatio then
-            flags = flags | RNF_ASPECT_RATIO
-         end
-         if Options.stickToFront then
-            flags = flags | RNF_STICK_TO_FRONT
-         end
-         return flags
-      end)()
-   }
-
-   if Options.aspectRatio then
-      -- The host derives the aspect ratio from the minimum size, so a minimum that is not fully specified takes the
-      -- window's proportions.  It defaults to a quarter of the window's size.
-
-      ratio = surface_opts.width / surface_opts.height
-      if Options.minWidth and Options.minHeight then
-         surface_opts.minWidth  = Options.minWidth
-         surface_opts.minHeight = Options.minHeight
-      elseif Options.minWidth then
-         surface_opts.minWidth  = Options.minWidth
-         surface_opts.minHeight = math.round(Options.minWidth / ratio)
-      elseif Options.minHeight then
-         surface_opts.minWidth  = math.round(Options.minHeight * ratio)
-         surface_opts.minHeight = Options.minHeight
-      else
-         surface_opts.minWidth  = math.round(surface_opts.width / 4)
-         surface_opts.minHeight = math.round(surface_opts.height / 4)
-      end
-   else
-      surface_opts.minWidth  = Options.minWidth or 20
-      surface_opts.minHeight = Options.minHeight or 10
-   end
-
-   if Options.maxWidth  then surface_opts.maxWidth  = Options.maxWidth end
-   if Options.maxHeight then surface_opts.maxHeight = Options.maxHeight end
-
-   self.surface = obj.new('surface', surface_opts)
-
-   if Options.enableControllers then
-      self.surface.display.flags = self.surface.display.flags | SCR_GRAB_CONTROLLERS
-   end
-
-   parent_width, parent_height = self.parentSize()
-   self.surface.x = Options.x ?? ((parent_width - self.surface.width) * 0.1)
-   self.surface.y = Options.y ?? ((parent_height - self.surface.height) * 0.1)
-
-   if (self.surface.minWidth is self.surface.maxWidth) and (self.surface.minHeight is self.surface.maxHeight) then
-      self.maximiseEnabled = false
-   end
-
-   -- The margins are the recommended gap in addition to the client area.  The client
-   -- area denotes the space afforded by the window frame.
-
-   if Options.noMargins or Options.borderless then
-      self.margins = { left = 0, top = 0, right = 0, bottom = 0 }
-      self.client = { left = 0, top = 0, right = 0, bottom = 0 }
-   else
-      self.margins = { left = 6, top = 6, right = 6, bottom = 6 }
-
-      -- Retrieve the available client area from the host
-      local display = self.surface.display
-      self.client = {
-         left   = display.leftMargin,
-         top    = display.topMargin,
-         right  = display.rightMargin,
-         bottom = display.bottomMargin
+      surface_opts = {
+         name      = 'winsurface',
+         parent    = surfaceReference(Options.parent) ?? &_desktop,
+         width     = Options.insideWidth ?? Options.width ?? DEFAULT_WIDTH,
+         height    = Options.insideHeight ?? Options.height ?? DEFAULT_HEIGHT,
+         type      = RT_ROOT,
+         modal     = Options.modal ?? false,
+         popOver   = surfaceReference(Options.popOver),
+         presence  = Options.presence, -- SPT HOST/NONE/TASKBAR/ICON_TRAY
+         flags = (function()
+            local flags = 0
+            if Options.composite then
+               flags = flags | RNF_COMPOSITE
+            end
+            if Options.aspectRatio then
+               flags = flags | RNF_ASPECT_RATIO
+            end
+            if Options.stickToFront then
+               flags = flags | RNF_STICK_TO_FRONT
+            end
+            return flags
+         end)()
       }
 
-      if Options.width and not Options.insideWidth then
-         self.surface.width = Options.width - self.client.left - self.client.right
-      end
+      if Options.aspectRatio then
+         -- The host derives the aspect ratio from the minimum size, so a minimum that is not fully specified takes the
+         -- window's proportions.  It defaults to a quarter of the window's size.
 
-      if Options.height and not Options.insideHeight then
-         self.surface.height = Options.height - self.client.top - self.client.bottom
-      end
-   end
-
-   self.scene = self.surface.new('VectorScene', { flags=VPF_RESIZE, surface=self.surface })
-
-   self.theme = gui.setTheme(self.scene, Options.theme ?? gui.theme)
-
-   gui.configureScene(self, self.scene) -- Support GUI customisation
-
-   self.viewport = self.scene.new('VectorViewport', {
-      x = 0, y = 0, width = '100%', height = '100%', aspectRatio = 'XMid|YMid|Meet'
-   })
-
-   self.bkgd = self.viewport.new('VectorRectangle', table.merge({
-      x = 0, y = 0, width = '100%', height = '100%'
-   }, self.theme.window.bkgd))
-
-   self.surface.display.title = self.title
-
-   if self.icon then setDisplayIcon(self.surface.display, self.icon) end
-
-   if self.surface.popOver != 0 then
-      -- If a pop-over surface is stick-to-front, we also need that status to avoid being behind it.
-
-      info = struct.new('SurfaceInfo')
-      if mGfx.GetSurfaceInfo(self.surface.popOver, info) is ERR_Okay then
-         if info.flags has RNF_STICK_TO_FRONT then
-            self.surface.flags = self.surface.flags | RNF_STICK_TO_FRONT
+         ratio = surface_opts.width / surface_opts.height
+         if Options.minWidth and Options.minHeight then
+            surface_opts.minWidth  = Options.minWidth
+            surface_opts.minHeight = Options.minHeight
+         elseif Options.minWidth then
+            surface_opts.minWidth  = Options.minWidth
+            surface_opts.minHeight = math.round(Options.minWidth / ratio)
+         elseif Options.minHeight then
+            surface_opts.minWidth  = math.round(Options.minHeight * ratio)
+            surface_opts.minHeight = Options.minHeight
+         else
+            surface_opts.minWidth  = math.round(surface_opts.width / 4)
+            surface_opts.minHeight = math.round(surface_opts.height / 4)
          end
-      end
-   end
-
-   self.viewport.mtSubscribeFeedback(FM_HAS_FOCUS | FM_CHILD_HAS_FOCUS | FM_LOST_FOCUS, function(Viewport, Event)
-      local window = lifecycle.window
-      window ?! return ERR_Terminate
-
-      if Event is FM_LOST_FOCUS then
-         window.events?.lostFocus(window)
       else
-         if not window.disabled then
-            window.events?.focus(window)
+         surface_opts.minWidth  = Options.minWidth or 20
+         surface_opts.minHeight = Options.minHeight or 10
+      end
+
+      if Options.maxWidth  then surface_opts.maxWidth  = Options.maxWidth end
+      if Options.maxHeight then surface_opts.maxHeight = Options.maxHeight end
+
+      &surface = obj.new('surface', surface_opts)
+
+      if Options.enableControllers then
+         &surface.display.flags = &surface.display.flags | SCR_GRAB_CONTROLLERS
+      end
+
+      parent_width, parent_height = &parentSize()
+      &surface.x = Options.x ?? ((parent_width - &surface.width) * 0.1)
+      &surface.y = Options.y ?? ((parent_height - &surface.height) * 0.1)
+
+      if (&surface.minWidth is &surface.maxWidth) and (&surface.minHeight is &surface.maxHeight) then
+         &maximiseEnabled = false
+      end
+
+      -- The margins are the recommended gap in addition to the client area.  The client
+      -- area denotes the space afforded by the window frame.
+
+      if Options.noMargins or Options.borderless then
+         &margins = { left = 0, top = 0, right = 0, bottom = 0 }
+         &client = { left = 0, top = 0, right = 0, bottom = 0 }
+      else
+         &margins = { left = 6, top = 6, right = 6, bottom = 6 }
+
+         -- Retrieve the available client area from the host
+         local display = &surface.display
+         &client = {
+            left   = display.leftMargin,
+            top    = display.topMargin,
+            right  = display.rightMargin,
+            bottom = display.bottomMargin
+         }
+
+         if Options.width and not Options.insideWidth then
+            &surface.width = Options.width - &client.left - &client.right
+         end
+
+         if Options.height and not Options.insideHeight then
+            &surface.height = Options.height - &client.top - &client.bottom
          end
       end
 
-      Viewport.acDraw()
-   end)
+      &scene = &surface.new('VectorScene', { flags=VPF_RESIZE, surface=&surface })
 
-   mGfx.WindowHook(self.surface.id, WH_CLOSE, function()
-      local window = lifecycle.window
-      window ?! return ERR_Terminate
+      &theme = gui.setTheme(&scene, Options.theme ?? gui.theme)
 
-      result = window.events?.close(window)
-      if result then
-         msg('Client requested that the window stay open.')
-         raise ERR_Cancelled
+      gui.configureScene(&&, &scene) -- Support GUI customisation
+
+      &viewport = &scene.new('VectorViewport', {
+         x = 0, y = 0, width = '100%', height = '100%', aspectRatio = 'XMid|YMid|Meet'
+      })
+
+      &bkgd = &viewport.new('VectorRectangle', table.merge({
+         x = 0, y = 0, width = '100%', height = '100%'
+      }, &theme.window.bkgd))
+
+      &surface.display.title = &title
+
+      if &icon then setDisplayIcon(&surface.display, &icon) end
+
+      if &surface.popOver != 0 then
+         -- If a pop-over surface is stick-to-front, we also need that status to avoid being behind it.
+
+         info = struct.new('SurfaceInfo')
+         if mGfx.GetSurfaceInfo(&surface.popOver, info) is ERR_Okay then
+            if info.flags has RNF_STICK_TO_FRONT then
+               &surface.flags = &surface.flags | RNF_STICK_TO_FRONT
+            end
+         end
       end
-      processing.collect('defer')
-   end)
+   end -- using self
 
-   self.surface.subscribe('focus', function(Surface, Args, Lifecycle)
-      local window = Lifecycle.window
-      window ?! return
+   -- Native callbacks retain only the weak lifecycle record. Restore window context while dispatching events.
 
-      Surface.acMoveToFront()
-      if window.visible and not (Surface.flags has RNF_VISIBLE) then
-         Surface.acShow()
+   using lifecycle do
+      if &window.events.lostFocus or &window.events.focus then
+         self.viewport.mtSubscribeFeedback(FM_HAS_FOCUS | FM_CHILD_HAS_FOCUS | FM_LOST_FOCUS, function(Viewport, Event)
+            local window = lifecycle.window
+            window ?! return ERR_Terminate
+
+            using window do
+               if Event is FM_LOST_FOCUS then
+                  &events?.lostFocus()
+               elseif not &disabled then
+                  &events?.focus()
+               end
+            end
+         end)
       end
 
-      window.events?.focus(window)
-   end, lifecycle)
+      if &window.events.close then
+         mGfx.WindowHook(self.surface.id, WH_CLOSE, function()
+            local window = lifecycle.window
+            window ?! return ERR_Terminate
 
-   self.surface.subscribe('lostfocus', function(Surface, Args, Lifecycle)
-      local window = Lifecycle.window
-      window ?! return
-      window.events?.lostFocus(window)
-   end, lifecycle)
-
-   self.surface.subscribe('free', function(Surface, Args, Lifecycle)
-      if Lifecycle.quit then
-         mSys.SendMessage(MSGID_QUIT)
+            using window do
+               result = &events?.close()
+               if result then
+                  msg('Client requested that the window stay open.')
+                  raise ERR_Cancelled
+               end
+            end
+            processing.collect('defer')
+         end)
       end
 
-      Lifecycle.window?.clear()
-   end, lifecycle)
+      self.surface.subscribe('focus', function(Surface, Args, Lifecycle)
+         local window = Lifecycle.window
+         window ?! return
 
-   return self
+         Surface.acMoveToFront()
+         if window.visible and not (Surface.flags has RNF_VISIBLE) then
+            Surface.acShow()
+         end
+
+         using window do &events?.focus() end
+      end, lifecycle)
+
+      if &window.events.lostFocus then
+         self.surface.subscribe('lostfocus', function(Surface, Args, Lifecycle)
+            local window = Lifecycle.window
+            window ?! return
+            using window do &events?.lostFocus() end
+         end, lifecycle)
+      end
+
+      self.surface.subscribe('free', function(Surface, Args, Lifecycle)
+         if Lifecycle.quit then
+            mSys.SendMessage(MSGID_QUIT)
+         end
+
+         Lifecycle.window?.clear()
+      end, lifecycle)
+
+      return self
+   end
 end

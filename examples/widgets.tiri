@@ -325,12 +325,11 @@ end
                cancelText = 'Exit',
                modal      = true,
                popOver    = win.surface,
-               feedback = function(Dialog, Accepted)
+               feedback = function(Accepted)
                   if not Accepted then
                      print('Dialog was cancelled.')
                   else
-                     print("The user selected '" .. Dialog.face .. "', size " .. Dialog.pointSize .. ", style '" .. Dialog.style .. "'")
-                     print("This can be compacted to '" .. Dialog.compactFace .. "'")
+                     print("The user selected '" .. &face .. "', size " .. &pointSize .. ", style '" .. &style .. "'")
                   end
                end
             })

@@ -114,7 +114,7 @@ function buildScene()
       target = glViewport, label = 'Mode:', text = glMode, x = 16, y = glY,
       items = array<table> { { item = 'Shape' }, { item = 'Repeat' }, { item = 'Spiral' } },
       events = {
-         activate = function(Widget:table, Text:str)
+         activate = function(Text:str)
             glMode = Text
             applyMode()
             redraw()
@@ -130,7 +130,7 @@ function buildScene()
       target = glViewport, label = 'Mod:', text = MODS[0], x = 16, y = glY,
       items = mod_items,
       events = {
-         activate = function(Widget:table, Text:str)
+         activate = function(Text:str)
             for i in {0 to #MODS} do
                if MODS[i] is Text then glShape.mod = i end
             end
