@@ -277,9 +277,29 @@ BCPOS bcemit_INS(FuncState *fs, BCIns ins)
 
 // Discharge non-constant expression to any register.
 
+// Lower a source binding to its private cell slot.  Lookup still resolves the ordinary local/upvalue so capture
+// metadata describes the cell, while type contracts describe the retrieved target.
+static void expr_weak_cell(FuncState *Fs, ExpDesc *Expression)
+{
+   if (Expression->k != ExpKind::Local and Expression->k != ExpKind::Upval) return;
+   uint32_t variable = Expression->u.s.aux;
+   if (not has_flag(Fs->ls->vstack[variable].info, VarInfoFlag::Weak)) return;
+   BCREG cell = Expression->u.s.info;
+   if (Expression->k IS ExpKind::Upval) {
+      cell = Fs->freereg;
+      bcreg_reserve(Fs, 1);
+      bcemit_AD(Fs, BC_UGET, cell, Expression->u.s.info);
+   }
+   Expression->k = ExpKind::Indexed;
+   Expression->u.s.info = cell;
+   Expression->u.s.aux = IndexOperand::byte_constant(0).raw();
+   Expression->weak_variable = variable;
+}
+
 static void expr_discharge(FuncState *fs, ExpDesc *e)
 {
    BCIns ins;
+   e->weak_variable = UINT32_MAX;
    if (e->k IS ExpKind::Upval) {
       ins = BCINS_AD(BC_UGET, 0, e->u.s.info);
    }
@@ -738,6 +758,20 @@ static void bcemit_store(FuncState *fs, ExpDesc *LHS, ExpDesc *RHS,
 {
    if (RHS->is_unreachable()) return;
    BCIns ins;
+   if (LHS->weak_variable != UINT32_MAX) {
+      VarInfo &variable = fs->ls->vstack[LHS->weak_variable];
+      check_object_class_assignment(fs, variable, *RHS);
+      RuntimeContract contract{
+         .type = variable.fixed_type,
+         .object_class_id = variable.object_class_id,
+         .struct_def = variable.struct_def,
+         .array_element = variable.array_element,
+         .label = strref(variable.name),
+         .boundary = ContractBoundary::Local,
+         .position = uint8_t(variable.slot + 1)
+      };
+      bcemit_value_contract(fs, RHS, contract);
+   }
    RuntimeContract global_declaration_finaliser;
    BCREG global_declaration_base = 0;
    bool finalise_global_declaration = false;

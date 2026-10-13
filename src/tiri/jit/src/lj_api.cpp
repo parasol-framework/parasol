@@ -1172,6 +1172,13 @@ extern CSTRING lua_getupvalue(lua_State *L, int idx, int n)
    GCobj *o;
    auto name = lj_debug_uvnamev(index2adr(L, idx), (uint32_t)(n - 1), &val, &o);
    if (name) {
+      if (lj_tab_is_weak_binding(val)) {
+         if (strncmp(name, "!weak:", 6) IS 0) name += 6;
+         cTValue *target = lj_tab_getint(tabV(val), 0);
+         copyTV(L, L->top, target);
+         incr_top(L);
+         return name;
+      }
       copyTV(L, L->top, val);
       incr_top(L);
    }
@@ -1201,6 +1208,10 @@ extern void lua_upvaluejoin(lua_State *L, int idx1, int n1, int idx2, int n2)
    lj_checkapi(isluafunc(fn2), "stack slot %d is not a Lua function", idx2);
    lj_checkapi((uint32_t)n1 < fn1->l.nupvalues, "bad upvalue %d", n1 + 1);
    lj_checkapi((uint32_t)n2 < fn2->l.nupvalues, "bad upvalue %d", n2 + 1);
+   if (lj_tab_is_weak_binding(uvval(gco_to_upval(gcref(fn1->l.uvptr[n1])))) or
+       lj_tab_is_weak_binding(uvval(gco_to_upval(gcref(fn2->l.uvptr[n2]))))) {
+      lj_err_callermsg(L, ERR::InvalidValue, "Cannot join a weak binding through the debugger");
+   }
    setgcrefr(fn1->l.uvptr[n1], fn2->l.uvptr[n2]);
    lj_gc_objbarrier(L, fn1, gcref(fn1->l.uvptr[n1]));
 }
@@ -1425,6 +1436,8 @@ extern CSTRING lua_setupvalue(lua_State *L, int idx, int n)
 
    lj_checkapi_slot(1);
    auto name = lj_debug_uvnamev(f, (uint32_t)(n - 1), &val, &o);
+   // Source assignment runs target contracts; debugger writes cannot safely reproduce them from stripped bytecode.
+   if (name and lj_tab_is_weak_binding(val)) name = nullptr;
    if (name) {
       L->top--;
       copyTV(L, val, L->top);

@@ -256,6 +256,7 @@ struct Identifier {
    bool has_close = false;
    bool has_const = false;  // Const attribute flag - variable cannot be reassigned
    bool has_view = false;   // View attribute flag - first object array read is non-owning
+   bool has_weak = false;   // Weak-value cell backing for a local target
    bool is_future_reserved = false;  // True when parsed from a keyword reserved for future syntax
    TiriType type = TiriType::Unknown;  // Explicit type annotation (Unknown = no annotation)
    struct_record *struct_def = nullptr; // Resolved layout for struct<Name> annotations
@@ -285,6 +286,7 @@ struct Identifier {
       id.has_close = false;
       id.has_const = false;
       id.has_view = false;
+      id.has_weak = false;
       id.is_future_reserved = false;
       return id;
    }

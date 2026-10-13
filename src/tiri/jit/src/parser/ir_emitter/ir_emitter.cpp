@@ -2145,6 +2145,35 @@ ParserResult<IrEmitUnit> IrEmitter::emit_local_decl_stmt(const LocalDeclStmtPayl
       // If no initialiser and no annotation, fixed_type remains Unknown (set in var_add)
    }
 
+   // Build each cell only after multiple-result adjustment and initial target contract checks.  The target remains
+   // rooted in its local slot throughout allocation; replacing that slot removes the last compiler-owned strong copy.
+   for (auto i = BCReg(0); i < nvars; ++i) {
+      if (not Payload.names[i.raw()].has_weak) continue;
+      BCREG slot = base.raw() + i.raw();
+      auto *fs = &this->func_state;
+      BCREG call = fs->freereg;
+      BCREG cell = call + 1 + LJ_FR2;
+      BCREG meta = cell + 1;
+      bcreg_reserve(fs, 3 + LJ_FR2);
+      (void)bcemit_builtin_callable(fs, builtin_callable_id(FastFunc::setmetatable), call);
+      bcemit_AD(fs, BC_TNEW, cell, 1);
+      GCtab *template_table = lj_tab_new(fs->L, 0, 1);
+      template_table->flags |= TAB_WEAK_BINDING;
+      BCREG constant = const_gc(fs, obj2gco(template_table), LJ_TTAB);
+      GCstr *mode = lj_str_newlit(fs->L, "__mode");
+      GCstr *weak = lj_str_newlit(fs->L, "v");
+      setstrV(fs->L, lj_tab_setstr(fs->L, template_table, mode), weak);
+      lj_gc_anybarriert(fs->L, template_table);
+      bcemit_AD(fs, BC_TDUP, meta, constant);
+      bcemit_ABC(fs, BC_CALL, call, 2, 3);
+      bcemit_ABC(fs, BC_TSETB, slot, call, 0);
+      bcemit_AD(fs, BC_MOV, slot, call);
+      // Call arguments can remain in unused frame slots.  Explicitly clear them rather than depending on the next call.
+      bcemit_AD(fs, BC_KNIL, call, meta);
+      fs->var_get(slot).info |= VarInfoFlag::Weak;
+      fs->reset_freereg();
+   }
+
    for (auto i = BCReg(0); i < nvars; ++i) {
       const Identifier& identifier = Payload.names[i.raw()];
       if (is_blank_symbol(identifier)) continue;
@@ -3467,6 +3496,7 @@ ParserResult<ExpDesc> IrEmitter::emit_identifier_expr(const NameRef& reference, 
       }
    }
 
+   expr_weak_cell(&this->func_state, &resolved);
    return ParserResult<ExpDesc>::success(resolved);
 }
 

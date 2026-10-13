@@ -658,8 +658,10 @@ size_t LexState::fs_prep_var(FuncState* FunctionState, size_t* OffsetVar)
    auto uvmap_range = std::span(fs->uvmap.data(), fs->nuv);
    for (auto uv_idx : uvmap_range) {
       GCstr *s = strref(vs[uv_idx].name);
+      bool weak = has_flag(vs[uv_idx].info, VarInfoFlag::Weak);
       MSize len = s->len + 1;
-      char *p = lj_buf_more(&this->sb, len);
+      char *p = lj_buf_more(&this->sb, len + (weak ? 6 : 0));
+      if (weak) p = lj_buf_wmem(p, "!weak:", 6);
       p = lj_buf_wmem(p, strdata(s), len);
       this->sb.w = p;
    }
@@ -679,7 +681,9 @@ size_t LexState::fs_prep_var(FuncState* FunctionState, size_t* OffsetVar)
          }
          else {
             MSize len = s->len + 1;
-            p = lj_buf_more(&this->sb, len + 2 * 5);
+            bool weak = has_flag(vs->info, VarInfoFlag::Weak);
+            p = lj_buf_more(&this->sb, len + 2 * 5 + (weak ? 6 : 0));
+            if (weak) p = lj_buf_wmem(p, "!weak:", 6);
             p = lj_buf_wmem(p, strdata(s), len);
          }
          startpc = vs->startpc;

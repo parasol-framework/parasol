@@ -252,7 +252,7 @@ static void bcwrite_ktab(BCWriteCtx* ctx, char* p, const GCtab* t)
 
    // Write classification flags, number of array slots and number of hash slots.
 
-   p = lj_strfmt_wuleb128(p, t->flags & TAB_NOT_SEQUENCE);
+   p = lj_strfmt_wuleb128(p, t->flags & (TAB_NOT_SEQUENCE | TAB_WEAK_BINDING));
    p = lj_strfmt_wuleb128(p, narray);
    p = lj_strfmt_wuleb128(p, nhash);
    ctx->sb.w = p;

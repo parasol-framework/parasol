@@ -262,6 +262,8 @@ LJLIB_CF(jit_util_funcK)
    }
    else if (~idx < (ptrdiff_t)pt->sizekgc) {
       GCobj *gc = proto_kgc(pt, idx);
+      // Weak-cell metatable templates are compiler-private; exposing one would allow future cells to become strong.
+      if (gc->gch.gct IS ~LJ_TTAB and (gco_to_table(gc)->flags & TAB_WEAK_BINDING)) return 0;
       setgcV(L, L->top - 1, gc, ~gc->gch.gct);
       return 1;
    }
@@ -277,7 +279,9 @@ LJLIB_CF(jit_util_funcUName)
    GCproto *pt = check_Lproto(L, 0);
    auto idx = (uint32_t)lj_lib_checkint(L, 2);
    if (idx < pt->sizeuv) {
-      setstrV(L, L->top - 1, lj_str_newz(L, lj_debug_uvname(pt, idx)));
+      auto name = lj_debug_uvname(pt, idx);
+      if (strncmp(name, "!weak:", 6) IS 0) name += 6;
+      setstrV(L, L->top - 1, lj_str_newz(L, name));
       return 1;
    }
    else return 0;

@@ -321,7 +321,7 @@ static void bcread_ktabk(LexState *State, TValue* o)
 static GCtab* bcread_ktab(LexState *State)
 {
    MSize flags = bcread_uleb128(State);
-   if (flags & ~MSize(TAB_NOT_SEQUENCE)) bcread_error(State, ErrMsg::BCBAD);
+   if (flags & ~MSize(TAB_NOT_SEQUENCE | TAB_WEAK_BINDING)) bcread_error(State, ErrMsg::BCBAD);
    MSize narray = bcread_uleb128(State);
    MSize nhash = bcread_uleb128(State);
    if (narray > LJ_MAX_ASIZE or nhash > (uint32_t(1) << LJ_MAX_HBITS)) bcread_error(State, ErrMsg::BCBAD);

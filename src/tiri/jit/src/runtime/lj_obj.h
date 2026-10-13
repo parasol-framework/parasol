@@ -1381,6 +1381,9 @@ inline constexpr uint8_t  TAB_METHOD_COMPATIBLE = (uint8_t)(1u << TAB_METHOD_COM
 inline constexpr uint32_t TAB_CONTEXTUAL_BIT = 3; // Bit index for permanently designated contextual tables.
 inline constexpr uint8_t  TAB_CONTEXTUAL = (uint8_t)(1u << TAB_CONTEXTUAL_BIT);
 
+// Compiler-private weak-cell metatables.  Retained in table templates even in stripped bytecode.
+inline constexpr uint8_t TAB_WEAK_BINDING = uint8_t(1u << 4);
+
 // Either flag makes the sequence length meaningless, so '#' reports nil and sequence library functions refuse to
 // infer a boundary.  Backends test this composite mask in one operation.
 

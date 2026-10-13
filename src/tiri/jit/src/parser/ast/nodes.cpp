@@ -1224,6 +1224,6 @@ size_t ast_expression_child_count(const ExprNode &Node)
 
 Identifier::Identifier(lua_State* L, const char* Name, SourceSpan Span)
    : symbol(lj_str_new(L, Name, std::strlen(Name))), span(Span), is_blank(false), has_close(false), has_const(false),
-     has_view(false), type(TiriType::Unknown)
+     has_view(false), has_weak(false), type(TiriType::Unknown)
 {
 }

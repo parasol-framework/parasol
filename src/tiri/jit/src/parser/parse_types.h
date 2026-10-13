@@ -110,7 +110,8 @@ enum class VarInfoFlag : uint8_t {
    Defer = 0x08u,
    DeferArg = 0x10u,
    Close = 0x20u,
-   Const = 0x40u  // Variable is const (cannot be reassigned)
+   Const = 0x40u,  // Variable is const (cannot be reassigned)
+   Weak = 0x80u    // Local register/upvalue contains an internal weak-value cell
 };
 
 // Transient parser-side form of a runtime contract.  The raw structure definition is used only while compiling;
@@ -238,6 +239,7 @@ struct ExpDesc {
    struct_record *struct_def = nullptr; // Resolved layout for Struct result types
    StaticValueHandle static_value{};
    StaticResultSetHandle static_results{};
+   uint32_t weak_variable = UINT32_MAX; // VarInfo index for a weak binding store, never a member store
    uint32_t struct_field_index = 0xFFFFFFFFu; // Pre-resolved field index for STGETF/STSETF
    BCPOS alternate_call = NO_JMP; // Alternate call block used by runtime built-in method dispatch
    BCPOS safe_nil_init = NO_JMP; // Nil initialiser for a skipped safe call; widened with fixed result requests
@@ -305,6 +307,7 @@ struct ExpDesc {
       this->result_type = TiriType::Unknown;
       this->static_value = {};
       this->static_results = {};
+      this->weak_variable = UINT32_MAX;
       this->alternate_call = NO_JMP;
       this->safe_nil_init = NO_JMP;
       this->alternate_safe_nil_init = NO_JMP;
