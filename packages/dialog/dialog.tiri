@@ -6,8 +6,8 @@ Display a dialog message to the user.
 Documentation is available in the Kotuku Wiki.
 --]]
 
-   import 'gui'
-   import 'gui/window'
+   import 'gui', 'gui/window'
+
    include 'document', 'xml'
 
    namespace gui
@@ -31,9 +31,9 @@ ICONS <const> = {
 
    gui.dialog ?= { }
 
-function defaultIcon(self):str
-   if self.type and ICONS[self.type] then
-      return ICONS[self.type]
+function defaultIcon():str
+   if &type and ICONS[&type] then
+      return ICONS[&type]
    end
    return 'items/question'
 end
@@ -60,32 +60,32 @@ gui.dialog.message = function(Options)
 
    -- Configure the window according to initial doc size
 
-   function matchWindowToDocSize(self, Document)
+   function matchWindowToDocSize(Document)
       page_width  = Document.pageWidth
       page_height = Document.pageHeight
 
       if page_width < 100 then page_width = 100 end
       if page_height < 100 then page_height = 100 end
 
-      self.window.sizeHints(page_width/4, page_height/4, page_width * 3, page_height * 3, self.scaleWindow)
-      self.window.surface.width  = page_width
-      self.window.surface.height = page_height
+      &window.sizeHints(page_width/4, page_height/4, page_width * 3, page_height * 3, &scaleWindow)
+      &window.surface.width  = page_width
+      &window.surface.height = page_height
 
       -- If the viewport dimensions are set, the dialog will scale with the window.
-      if self.scaleWindow then
-         self.viewport.aspectRatio = 'XMin|YMin'
-         self.viewport.viewWidth  = page_width
-         self.viewport.viewHeight = page_height
-         Document.view.width = page_width
-         Document.view.height = page_height
+      if &scaleWindow then
+         &viewport.aspectRatio = 'XMin|YMin'
+         &viewport.viewWidth   = page_width
+         &viewport.viewHeight  = page_height
+         Document.view.width   = page_width
+         Document.view.height  = page_height
       end
    end
 
    function docEvent(Document, EventFlag, Parameters)
       if EventFlag has DEF_LINK_ACTIVATED then
-         if self.feedback then
+         if &feedback then
             responseIndex = tonumber(Parameters.response)
-            response = self.options[responseIndex]
+            response = &options[responseIndex]
             state = { }
 
             state.checkbox = Document.getKey('checkbox') is '1' ? true : false
@@ -93,16 +93,16 @@ gui.dialog.message = function(Options)
             local input = Document.getKey('input')
             if input?? then state.input = input end
 
-            if self.inputRequired and not state.input then
+            if &inputRequired and not state.input then
                -- If input is mandatory, the response is cancelled when no input is given
                response = nil
             end
 
-            self.feedback(self, response, state)
+            &feedback(self, response, state)
          end
 
-         if self.waiting then processing.signal() end
-         self.clear()
+         if &waiting then processing.signal() end
+         &clear()
          processing.collect('defer')
       else
          print('Document event received')
@@ -114,11 +114,11 @@ gui.dialog.message = function(Options)
 
       -- At minimum, there must be an OK option.
 
-      if not ((self.options is <table>) and (#self.options > 0)) then
-         self.options = { { id=1, text='Close Dialog', icon='items/cancel' } }
+      if not ((&options is <table>) and (#&options > 0)) then
+         &options = { { id=1, text='Close Dialog', icon='items/cancel' } }
       end
 
-      for i, option in ipairs(self.options) do
+      for i, option in ipairs(&options) do
          if option['icon'] then
             if option_icons?? then option_icons ..= '\n' end
             option_icons ..= f'    <image id="{option.icon}" xlink:href="icons:{option.icon}" width="48" height="48"/>\n'
@@ -130,7 +130,7 @@ gui.dialog.message = function(Options)
 
 <svg xmlns="http://www.w3.org/2000/svg">
   <defs>
-    <image id="icon" xlink:href="icons:]] .. (Options.image ?? defaultIcon(self)) .. [[" width="256" height="256"/>]]
+    <image id="icon" xlink:href="icons:]] .. (Options.image ?? defaultIcon()) .. [[" width="256" height="256"/>]]
     .. option_icons .. [[
   </defs>
 </svg>
@@ -149,11 +149,11 @@ gui.dialog.message = function(Options)
          doc ..= '<include src="' .. Options.template .. '"/>\n'
       end
 
-      icon = Options.image ?? defaultIcon(self)
+      icon = Options.image ?? defaultIcon()
       icon = rx_sanitise_icon.replace(icon, '$1/$2')
-      local msg:str = self.fmtMessage
+      local msg:str = &fmtMessage
       if not msg?? then
-         msg = string.escXML(self.message ?? '')
+         msg = string.escXML(&message ?? '')
          msg = msg.replace('\n', '<br/>')
       end
 
@@ -187,14 +187,14 @@ gui.dialog.message = function(Options)
       end
 
       doc ..= '<p no-wrap>'
-      for i, option in ipairs(self.options) do
+      for i, option in ipairs(&options) do
          if option['icon'] then
             doc ..= f'<image src="url(#{option.icon})" width="16" height="16" padding="0 0 4 0"/>\n'
          end
 
          doc ..= f'<a @response="{i}">{option.text}</a>\n'
 
-         if i < #self.options then
+         if i < #&options then
             doc ..= '<advance x="30"/>'
          end
       end
@@ -213,7 +213,7 @@ gui.dialog.message = function(Options)
 
    -- Change the message in the dialog
 
-   self.setMessage = function(Message, Formatted)
+   self.setMessage = function(Message:str!, Formatted:bool)
       if Formatted then
          &message = nil
          &fmtMessage = Message
@@ -261,17 +261,16 @@ gui.dialog.message = function(Options)
          title        = Options.title ?? 'Confirmation Required',
          modal        = Options.modal ?? false,
          events = {
-            close = function(Window)
+            close = function()
                self?.feedback(self, nil, nil)
 
-               if &waiting then processing.signal() end
-               &clear()
+               if self.waiting then processing.signal() end
+               self.clear()
             end
          }
       })
 
       &viewport = &window.clientViewport()
-      &windowID = &window.surface.id
 
       lDoc = &viewport.new('document', {
          eventMask     = 'LinkActivated',
@@ -283,17 +282,16 @@ gui.dialog.message = function(Options)
 
       lDoc.acDataFeed(nil, DATA_XML, buildDocument())
 
-      self?.input?.textinput?.mtSelectArea(0, 0, 20000, 20000)
+      &input?.textinput?.mtSelectArea(0, 0, 20000, 20000)
 
-      matchWindowToDocSize(self, lDoc)
+      matchWindowToDocSize(lDoc)
 
       &window.moveToFront()
       &window.show(true)
 
       &document = lDoc
+      return &&
    end
-
-   return self
 end
 
 gui.dialog.error = function(Title:str!, Message:str!, Options:table):table
@@ -322,5 +320,5 @@ end
       secret     = arg('secret')
    })
 
-   return dlg.windowID, dlg.document.id
+   return dlg.window.surface.id, dlg.document.id
 @end

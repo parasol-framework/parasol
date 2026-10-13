@@ -66,7 +66,7 @@ function buildScene()
          { item = 'Square' }
       },
       events = {
-         activate = function(Widget:table, Text:str!)
+         activate = function(Text:str!)
             selectWave(Text)
          end
       }
@@ -85,7 +85,7 @@ function buildScene()
          { item = 'Exponential' }
       },
       events = {
-         activate = function(Widget:table, Text:str!)
+         activate = function(Text:str!)
             glWave.envelope = choose Text from
                'Linear'      -> WVE_LINEAR
                'Quadratic'   -> WVE_QUADRATIC

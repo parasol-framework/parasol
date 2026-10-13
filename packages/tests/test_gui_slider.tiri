@@ -1,0 +1,156 @@
+   import 'gui', 'gui/slider'
+   include 'display', 'vector'
+
+function newSlider(Options:table!):<obj, table>
+   local surface = obj.new('Surface', { width=500, height=300 })
+   local scene = surface.new('VectorScene', { surface=surface })
+   Options.target = scene.new('VectorViewport', { width='100%', height='100%' })
+   local slider = gui.slider(Options)
+   surface.acShow()
+   surface.acFocus()
+   slider.viewport.acFocus()
+   surface.acDraw()
+   processing.sleep(0)
+   return surface, slider
+end
+
+function sendKey(Code:num!, Qualifiers:num)
+   local ev = array<int, 6>
+   ev[0] = ('keypress').hash()
+   ev[1] = (EVG_IO << 24) | (('keyboard').hash() & 0xffffff)
+   ev[2] = (Qualifiers != nil) ? Qualifiers : KQ_PRESSED
+   ev[3] = Code
+   check mSys.BroadcastEvent(ev, 24)
+   processing.sleep(0)
+end
+
+function putDouble(Buffer:array<byte>!, Offset:num!, Value:num!)
+   if Value is 0 then return end
+   local mantissa, exponent = math.frexp(Value)
+   local fraction = ((mantissa * 2) - 1) * 1048576
+   local high = ((exponent + 1022) * 1048576) + math.floor(fraction)
+   local low = (fraction - math.floor(fraction)) * 4294967296
+   for i in {0 to 4} do
+      Buffer[Offset + i] = math.floor(low / (256 ** i)) % 256
+      Buffer[Offset + 4 + i] = math.floor(high / (256 ** i)) % 256
+   end
+end
+
+function feed(Type:num!, X:num!, Y:num!)
+   local input = array<byte, 40>
+   putDouble(input, 0, X)
+   putDouble(input, 8, Y)
+   input[32] = Type
+   check obj.find('SystemPointer').acDataFeed(nil, DATA_DEVICE_INPUT, input)
+   processing.sleep(0)
+end
+
+@BeforeEach function resetPointer()
+   if obj.find('SystemPointer') then feed(JET_ABS_XY, 1000, 1000) end
+end
+
+@Test function KeyboardUsesStepsAndRangeEndpoints()
+   for orientation in values(array<str> { 'horizontal', 'vertical' }) do
+      local hits = 0
+      local surface <close>, slider = newSlider({ orientation=orientation, min=5, max=100, step=3, value=50,
+         events={ activate=function(Value) hits++ end }
+      })
+      assert(slider.hasFocus, 'The root viewport must receive keyboard focus')
+      sendKey(KEY_RIGHT)
+      assert(slider.value is 53, 'Right must increase by one step')
+      sendKey(KEY_UP)
+      assert(slider.value is 56, 'Up must increase by one step in either orientation')
+      sendKey(KEY_LEFT)
+      sendKey(KEY_DOWN)
+      assert(slider.value is 50, 'Left and Down must decrease by one step')
+      sendKey(KEY_PAGE_UP)
+      assert(slider.value is 80, 'Page Up must increase by ten steps')
+      sendKey(KEY_PAGE_DOWN)
+      assert(slider.value is 50, 'Page Down must decrease by ten steps')
+      sendKey(KEY_HOME)
+      assert(slider.value is 5, 'Home must reach the minimum')
+      sendKey(KEY_LEFT)
+      assert(slider.value is 5 and hits is 7, 'An unchanged value must not emit activation')
+      sendKey(KEY_END)
+      assert(slider.value is 100, 'End must reach an endpoint outside the step grid')
+      sendKey(KEY_RIGHT)
+      sendKey(KEY_LEFT, KQ_RELEASED)
+      sendKey(KEY_ENTER)
+      assert(slider.value is 100 and hits is 8, 'Bounds, key releases and unrelated keys must not activate')
+      sendKey(KEY_DOWN)
+      assert(slider.value is 98, 'Moving from an irregular endpoint must return to the step grid')
+   end
+end
+
+@Test function ArrowsLeaveMaximumWithoutSkippingSteps()
+   for orientation in values(array<str> { 'horizontal', 'vertical' }) do
+      for limits in values(array<table> {
+         { min=0, max=10, step=3, previous=9 },
+         { min=5, max=100, step=3, previous=98 },
+         { min=5, max=101, step=3, previous=98 },
+         { min=0, max=1, step=3, previous=0 },
+         { min=0.1, max=1, step=0.2, previous=0.9 },
+         { min=0, max=0.07, step=0.01, previous=0.06 },
+         { min=-0.07, max=0, step=0.01, previous=-0.01 },
+         { min=0, max=0.07000001, step=0.01, previous=0.07 }
+      }) do
+         local surface <close>, slider = newSlider({ orientation=orientation,
+            min=limits.min, max=limits.max, step=limits.step, value=limits.max
+         })
+         for code in values(array<int> { KEY_LEFT, KEY_DOWN }) do
+            sendKey(KEY_END)
+            sendKey(code)
+            assert(slider.value < limits.max and math.abs(slider.value - limits.previous) < 0.000000001,
+               f'Arrow from {limits.max} must reach {limits.previous}, got {slider.value}')
+         end
+      end
+   end
+end
+
+@Test function ContinuousKeyboardAndTabTraversal()
+   local surface <close>, slider = newSlider({ min=-1, max=1, value=0 })
+   sendKey(KEY_UP)
+   assert(math.abs(slider.value - 0.02) < 0.000001, 'Continuous arrows must move one percent of the range')
+   sendKey(KEY_PAGE_UP)
+   assert(math.abs(slider.value - 0.22) < 0.000001, 'Continuous page keys must move ten percent')
+   slider.setRange(0, 10)
+   slider.setValue(5)
+   sendKey(KEY_DOWN)
+   assert(math.abs(slider.value - 4.9) < 0.000001, 'Keyboard increments must follow range changes')
+
+   local second = gui.slider({ target=slider.viewport.parent, x=200, value=0.5 })
+   sendKey(KEY_TAB, KQ_RELEASED)
+   assert(second.hasFocus and not slider.hasFocus,
+      f'Tab must advance to the next slider: first={slider.hasFocus}, second={second.hasFocus}')
+   sendKey(KEY_RIGHT)
+   assert(math.abs(second.value - 0.51) < 0.000001, 'Tab focus must route keyboard input to the next slider')
+end
+
+@Test function DisabledSliderRejectsInputAndRestoresStyle()
+   local activations, disables, enables = 0, 0, 0
+   local surface <close>, slider = newSlider({ value=0.5,
+      events={ activate=function(Value) activations++ end,
+         disable=function() disables++ end, enable=function() enables++ end }
+   })
+   slider.disable()
+   assert(slider.disabled and disables is 1, 'disable() must expose state and emit its event')
+   assert(slider.prvBarBkgd.opacity is 0.5, 'Disabled styling must be applied immediately')
+   sendKey(KEY_END)
+   feed(JET_ABS_XY, surface.absX + 50, surface.absY + 10)
+   feed(JET_LMB, 1, 0)
+   feed(JET_ABS_XY, surface.absX + 90, surface.absY + 10)
+   feed(JET_LMB, 0, 0)
+   assert(slider.value is 0.5 and activations is 0, 'Disabled sliders must reject keyboard, clicks and drag input')
+   assert(slider.prvBarBkgd.opacity is 0.5 and slider.button.opacity is slider.prvTheme.slider.fore.opacity,
+      'Disabled pointer crossing must not apply highlight styling')
+
+   slider.setValue(0.25)
+   assert(slider.value is 0.25 and activations is 1, 'Disabled sliders must still allow programmatic updates')
+   slider.enable()
+   slider.viewport.acFocus()
+   processing.sleep(0)
+   assert(not slider.disabled and enables is 1, 'enable() must restore state and emit its event')
+   assert(slider.prvBarBkgd.opacity is 1, 'enable() must restore the original opacity')
+   sendKey(KEY_END)
+   assert(slider.value is 1 and activations is 2, 'Re-enabling must restore keyboard input')
+end

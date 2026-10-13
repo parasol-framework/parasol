@@ -52,11 +52,7 @@ gui.fontList = thunk():table
 
       if entry.Alias then font.alias = entry.Alias end
 
-      if entry.Styles then
-         font.styles = entry.Styles.split(',')
-      else
-         font.styles = array<str> { 'Regular' }
-      end
+      font.styles = entry.Styles ? entry.Styles.split(',') : array<str> { 'Regular' }
 
       if entry.Points then
          local sizes = array<int>
@@ -556,7 +552,7 @@ gui.createIcon = function(Scene:obj!, Path:str!, Size:num, Theme:any!, Name:str)
 
    icon.pattern  = Scene.new('VectorPattern', { pageWidth=Size, pageHeight=Size, spreadMethod=VSPREAD_PAD })
    icon.gradient = gui.simpleGradient(icon.pattern.scene, gname, { lGradient.first, lGradient.last }, 0, 0, 0, 1, 'boundingbox', true)
-   icon.svg = obj.new('svg', { target=icon.pattern.viewport, path=Path })
+   icon.svg      = obj.new('svg', { target=icon.pattern.viewport, path=Path })
 
    gui.forVector(icon.pattern.viewport, function(Vector)
       if Vector.fill != 'none' then
