@@ -761,7 +761,20 @@ ERR RegisterFD(int FD, RFD Flags, void (*Routine)(HOSTHANDLE, APTR), APTR Data)
    if (FD IS -1) return log.warning(ERR::Args);
 #endif
 
-   if (glFDProtected) { // Cache the request while glFDTable is in use.
+   auto events = RFD::READ|RFD::WRITE|RFD::EXCEPT|RFD::ALWAYS_CALL;
+   if ((Flags & RFD::REMOVE) != RFD::NIL) {
+      if ((Flags & events) IS RFD::NIL) Flags |= events;
+   }
+   else if ((Flags & events) IS RFD::NIL) Flags |= RFD::READ;
+
+   if (glFDProtected) { // Defer structural edits, but retire callback identities immediately.
+      for (auto &record : glFDTable) {
+         if (record.FD != FD or (record.Flags & Flags & events) IS RFD::NIL) continue;
+         if ((Flags & RFD::REMOVE) != RFD::NIL) {
+            if (not Routine or record.Routine IS Routine) record.Flags |= RFD::REMOVE;
+         }
+         else if (record.Routine != Routine or record.Data != Data) record.Flags |= RFD::REMOVE;
+      }
       glRegisterFD.emplace_back(FD, Routine, Data, Flags);
       return ERR::Okay;
    }

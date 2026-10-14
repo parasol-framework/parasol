@@ -1040,18 +1040,20 @@ ERR sleep_task(int Timeout)
    //log.trace("Time-out: %d", Timeout);
 
    int maxfd = -1;
+   auto flush_requests = []() {
+      if (glFDProtected or glRegisterFD.empty()) return;
+      for (auto &record : glRegisterFD) RegisterFD(record.FD, record.Flags, record.Routine, record.Data);
+      glRegisterFD.clear();
+   };
    if (!glFDTable.empty()) {
-      FD_ZERO(&fread);
-      FD_ZERO(&fwrite);
+      ++glFDProtected;
       for (auto &fd : glFDTable) {
-         if ((fd.Flags & RFD::STOP_RECURSE) != RFD::NIL) continue; // This is an internally managed flag to prevent recursion
-         if ((fd.Flags & RFD::READ) != RFD::NIL) FD_SET(fd.FD, &fread);
-         if ((fd.Flags & RFD::WRITE) != RFD::NIL) FD_SET(fd.FD, &fwrite);
+         if ((fd.Flags & (RFD::STOP_RECURSE|RFD::REMOVE)) != RFD::NIL) continue;
          //log.trace("Listening to %d, Read: %d, Write: %d, Routine: %p, Flags: $%.2x", fd.FD, (fd.Flags & RFD::READ) ? 1 : 0, (fd.Flags & RFD::WRITE) ? 1 : 0, fd.Routine, fd.Flags);
-         if (fd.FD > maxfd) maxfd = fd.FD;
-
          if ((fd.Flags & RFD::ALWAYS_CALL) != RFD::NIL) {
+            if ((fd.Flags & RFD::ALLOW_RECURSION) IS RFD::NIL) fd.Flags |= RFD::STOP_RECURSE;
             if (fd.Routine) fd.Routine(fd.FD, fd.Data);
+            fd.Flags &= ~RFD::STOP_RECURSE;
          }
          else if ((fd.Flags & RFD::RECALL) != RFD::NIL) {
             // If the RECALL flag is set against an FD, it was done so because the subscribed routine needs to manually check
@@ -1079,6 +1081,18 @@ ERR sleep_task(int Timeout)
             fd.Flags &= ~RFD::STOP_RECURSE;
          }
       }
+      --glFDProtected;
+      flush_requests();
+   }
+   // Pre-poll callbacks may close other descriptors. Build the selection only from surviving registrations.
+   FD_ZERO(&fread);
+   FD_ZERO(&fwrite);
+   for (const auto &fd : glFDTable) {
+      if ((fd.Flags & (RFD::STOP_RECURSE|RFD::REMOVE)) != RFD::NIL) continue;
+      if ((fd.Flags & RFD::RECALL) != RFD::NIL and Timeout > 10) Timeout = 10;
+      if ((fd.Flags & RFD::READ) != RFD::NIL) FD_SET(fd.FD, &fread);
+      if ((fd.Flags & RFD::WRITE) != RFD::NIL) FD_SET(fd.FD, &fwrite);
+      if (fd.FD > maxfd) maxfd = fd.FD;
    }
 
    int result = 0;
@@ -1111,6 +1125,7 @@ ERR sleep_task(int Timeout)
    if (result > 0) {
       glFDProtected++;
       for (auto &fd : glFDTable) {
+         if ((fd.Flags & (RFD::STOP_RECURSE|RFD::REMOVE)) != RFD::NIL) continue;
          if ((fd.Flags & RFD::READ) != RFD::NIL) {  // Readable FD support
             if (FD_ISSET(fd.FD, &fread)) {
                if ((fd.Flags & RFD::ALLOW_RECURSION) IS RFD::NIL) {
@@ -1131,7 +1146,7 @@ ERR sleep_task(int Timeout)
             fd.Flags &= ~RFD::STOP_RECURSE;
          }
 
-         if ((fd.Flags & RFD::WRITE) != RFD::NIL) { // Writeable FD support
+         if ((fd.Flags & RFD::WRITE) != RFD::NIL and (fd.Flags & RFD::REMOVE) IS RFD::NIL) {
             if (FD_ISSET(fd.FD, &fwrite)) {
                if ((fd.Flags & RFD::ALLOW_RECURSION) IS RFD::NIL) fd.Flags |= RFD::STOP_RECURSE;
                if (fd.Routine) fd.Routine(fd.FD, fd.Data);
@@ -1142,12 +1157,7 @@ ERR sleep_task(int Timeout)
       }
       glFDProtected--;
 
-      if ((!glRegisterFD.empty()) and (!glFDProtected)) {
-         for (auto &record : glRegisterFD) {
-            RegisterFD(record.FD, record.Flags, record.Routine, record.Data);
-         }
-         glRegisterFD.clear();
-      }
+      flush_requests();
    }
    else if (result IS -1) {
       if (errno IS EINTR); // Interrupt caught during sleep
