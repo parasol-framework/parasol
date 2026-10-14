@@ -2,8 +2,7 @@
 
 @Package(name="gui/view", version="1.0")
 
-   import 'gui'
-   import 'gui/scrollbar'
+   import 'gui', 'gui/scrollbar'
 
    namespace gui
 
@@ -21,6 +20,7 @@ function checkCursorImage(View:table)
 end
 
 -- Simplifies the process of highlighting an item.  Item can be nil for deselection.
+
 function highlightItem(View:table!, Item:table)
    if Item is View.hItem then return end
 
@@ -46,24 +46,26 @@ function clearItems(View)
 end
 
 ----------------------------------------------------------------------------------------------------------------------
-
 -- Membership remains in item flags.  Commit every delta before calling client code, and stop an
 -- obsolete notification batch when a callback replaces contents or destroys the view.  Per-item versions suppress
 -- superseded membership notifications while preserving pending notifications for unchanged items.
+
 function selectionEligible(View:table!, Item:table):bool
    return Item != nil and not Item.hidden and View.lookup[Item._id] is Item
 end
 
 function selectionTransaction(View:table!, Wanted:table!, Lead:table, Anchor:table, Reason:str!,
    Active:table, BeforeNotify:func, Removed:table):bool
-   local selected = array<table>
-   local deselected = array<table>
-   local first:table = nil
-   local snapshot = array<table>
+   selected = array<table>
+   deselected = array<table>
+   first:table = nil
+   snapshot = array<table>
+
    for item in values(View.items) do snapshot.push(item) end
    View._selectionVersion = (View._selectionVersion ?? 0) + 1
-   local version = View._selectionVersion
-   local old_active = View.activeItem
+   version = View._selectionVersion
+   old_active = View.activeItem
+
    for item in values(snapshot) do
       local wanted = selectionEligible(View, item) and Wanted[item._id] is true
       if wanted and not View.multiSelect and first then wanted = false end
@@ -74,13 +76,19 @@ function selectionTransaction(View:table!, Wanted:table!, Lead:table, Anchor:tab
          if wanted then selected.push(item) else deselected.push(item) end
       end
    end
+
    View.sItem = Lead?._selected and selectionEligible(View, Lead) ? Lead : first
    View.selectionAnchor = selectionEligible(View, Anchor) ? Anchor : nil
    View.activeItem = Active
+
    for item in values(deselected) do item?._selectEvent(View, item) end
+
    for item in values(selected) do item?._selectEvent(View, item) end
+
    if #selected > 0 or #deselected > 0 then View.scene.surface.mtScheduleRedraw() end
+
    if BeforeNotify then BeforeNotify() end
+
    local contents_version = View._contentsVersion
    for item in values(deselected) do
       if View._contentsVersion != contents_version or not View.viewport then return false end
@@ -89,14 +97,17 @@ function selectionTransaction(View:table!, Wanted:table!, Lead:table, Anchor:tab
          View.events?.itemDeselected(View, Reason, item)
       end
    end
+
    for item in values(selected) do
       if View._contentsVersion != contents_version or not View.viewport then return false end
       if item._selectionVersion is version and item._selected and View.lookup[item._id] is item then
          View.events?.itemSelected(View, Reason, item)
       end
    end
+
    if View._selectionVersion != version or not View.viewport then return false end
    if old_active != Active then View.events?.activeChange(View, Reason, Active) end
+
    return View._selectionVersion is version and View.viewport != nil
 end
 

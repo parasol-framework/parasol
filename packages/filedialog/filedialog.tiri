@@ -37,6 +37,7 @@ gui.dialog.file = function(Options)
       local window = self.window
       self.window = nil
       window?.surface?.free()
+      self.clear()
    end
 
    function processFeedback()
