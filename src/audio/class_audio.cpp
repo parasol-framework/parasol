@@ -811,11 +811,7 @@ static ERR AUDIO_OpenChannels(extAudio *Self, struct snd::OpenChannels *Args)
 
    ChannelSet channels;
    channels.Channel.resize(Args->Total);
-   #ifdef AUDIO_WORKER
-   channels.Shadow.resize(Args->Total); // Quality may enable linear resampling during playback.
-   #else
-   if ((Self->Flags & ADF::OVER_SAMPLING) != ADF::NIL) channels.Shadow.resize(Args->Total);
-   #endif
+   channels.Shadow.resize(Args->Total); // De-clicking is independent of source resampling quality.
    channels.Tempo = 125;
    channels.MixLeft = channels.TickFrames(Self->OutputRate);
    channels.Commands.reserve(1024);

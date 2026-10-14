@@ -207,6 +207,9 @@ struct AudioChannel {
    double   RVolume;        // Current right speaker volume after applying Pan (0 - 1.0)
    double   LVolumeTarget;  // Volume target when fading or ramping
    double   RVolumeTarget;  // Volume target when fading or ramping
+   float    LastLeft = 0, LastRight = 0; // Most recent contribution before master gain, effects and smoothing.
+   float    HeldLeft = 0, HeldRight = 0; // Fixed-frame tail for streams and overlapping retriggers.
+   int      HeldFrames = 0;
    double   Volume;         // Playing volume (0 - 1.0)
    double   Pan;            // Pan value (-1.0 - 1.0)
    int64_t  EndTime;        // Anticipated end-time of playing the current sample, if OnStop is defined in the sample.
@@ -404,7 +407,7 @@ static bool effects_pending(const AudioEffectChain &);
 
 struct ChannelSet {
    std::vector<AudioChannel> Channel;  // Array of channel objects
-   std::vector<AudioChannel> Shadow;   // Array of shadow channels for oversampling
+   std::vector<AudioChannel> Shadow;   // Array of preallocated fade-out channels
    std::vector<AudioCommand> Commands; // Buffered commands.
    std::shared_ptr<AudioEffectChain> Effects;
    std::vector<float> ScratchBuffer;

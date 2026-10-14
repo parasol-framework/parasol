@@ -1,5 +1,7 @@
 
-const double RAMPSPEED = 0.01;  // Default ramping speed - volume steps per output sample.  Keeping this value very low prevents clicks from occurring
+// Slew by 0.01 gain per output frame: a full-scale transition takes 100 frames at every source rate.
+constexpr double glRampStep = 0.01;
+constexpr int glRampFrames = 100;
 
 #include <type_traits>  // For SFINAE and template metaprogramming
 #include "mixer_dispatch.h"
@@ -229,7 +231,7 @@ static ERR set_channel_volume(extAudio *Self, AudioChannel *Channel)
    // Start volume ramping if necessary
 
    Channel->Flags &= ~CHF::VOL_RAMP;
-   if (((Self->Flags & ADF::OVER_SAMPLING) != ADF::NIL) and ((Self->Flags & ADF::VOL_RAMPING) != ADF::NIL)) {
+   if ((Self->Flags & ADF::VOL_RAMPING) != ADF::NIL) {
       if ((Channel->LVolume != leftvol) or (Channel->LVolumeTarget != leftvol)) {
          Channel->Flags |= CHF::VOL_RAMP;
          Channel->LVolumeTarget = leftvol;
@@ -677,11 +679,16 @@ static void mix_stream(extAudio *Self, AudioChannel &Channel, AudioSample &Sampl
          .mix_dest = &dest
       };
 
+      const float previous_left = dest[0];
+      const float previous_right = Self->Stereo ? dest[1] : 0;
       AudioMixer::dispatch_mix(Self->WindowConfig, Sample.SampleType, params);
+      const double cache_master = Self->MasterVolume > 0 ? Self->MasterVolume : 1;
+      Channel.LastLeft = float((dest[-channels] - previous_left) / cache_master);
+      Channel.LastRight = Self->Stereo ? float((dest[-1] - previous_right) / cache_master) : 0;
       Self->SourceFrames = std::max(Self->SourceFrames, i + 1);
       if ((Channel.Flags & CHF::VOL_RAMP) != CHF::NIL) {
-         const bool left = adjust_volume_ramp(Channel.LVolume, Channel.LVolumeTarget, RAMPSPEED);
-         const bool right = adjust_volume_ramp(Channel.RVolume, Channel.RVolumeTarget, RAMPSPEED);
+         const bool left = adjust_volume_ramp(Channel.LVolume, Channel.LVolumeTarget, glRampStep);
+         const bool right = adjust_volume_ramp(Channel.RVolume, Channel.RVolumeTarget, glRampStep);
          if (!left and !right) Channel.Flags &= ~CHF::VOL_RAMP;
       }
 
@@ -708,6 +715,32 @@ static void mix_channel(extAudio *Self, AudioChannel &Channel, int TotalSamples,
 {
    AudioLog log(__FUNCTION__);
 
+   if (Channel.isStopped()) return;
+
+   // A stream cannot share its consuming ring with a shadow.  A held output frame also folds a busy shadow
+   // into a rapid retrigger without discarding its audible contribution.  Storage belongs to the channel set.
+   if (Channel.HeldFrames) {
+      auto dest = (float *)Dest;
+      const int channels = Self->Stereo ? 2 : 1;
+      const int frames = std::min(TotalSamples, Channel.HeldFrames);
+      for (int i = 0; i < frames; ++i) {
+         const double gain = double(Channel.HeldFrames) / glRampFrames;
+         Channel.LastLeft = float(Channel.HeldLeft * gain);
+         Channel.LastRight = float(Channel.HeldRight * gain);
+         const double master = Self->Mute ? 0 : Self->MasterVolume;
+         dest[i * channels] += float(Channel.LastLeft * master);
+         if (Self->Stereo) dest[i * channels + 1] += float(Channel.LastRight * master);
+         --Channel.HeldFrames;
+      }
+      Self->SourceFrames = std::max(Self->SourceFrames, frames);
+      if (!Channel.HeldFrames) {
+         Channel.LastLeft = Channel.LastRight = 0;
+         Channel.State = CHS::FINISHED;
+         Channel.Flags &= ~CHF::VOL_RAMP;
+      }
+      return;
+   }
+
    auto &sample = Self->Samples[Channel.SampleHandle];
 
    // Check that we have something to mix
@@ -731,6 +764,7 @@ static void mix_channel(extAudio *Self, AudioChannel &Channel, int TotalSamples,
    // Calculate stereo multiplier using template information
    const double stereo_mul = (!Self->Stereo and sample_is_stereo) ? 0.5 : 1.0;
    double mastervol = Self->Mute ? 0 : Self->MasterVolume * stereo_mul;
+   const double cache_master = Self->MasterVolume > 0 ? Self->MasterVolume : 1;
 
    const int requested_frames = TotalSamples;
    float *mix_dest = (float *)Dest;
@@ -763,7 +797,7 @@ static void mix_channel(extAudio *Self, AudioChannel &Channel, int TotalSamples,
          const int mix_step = ((Channel.Flags & CHF::BACKWARD) != CHF::NIL) ? -step : step;
          set_mix_step(mix_step);
 
-         // If volume ramping is enabled, mix one sample element at a time and adjust volume by RAMPSPEED.
+         // If volume ramping is enabled, mix one sample element at a time and adjust volume by glRampStep.
          // Using helper function to reduce code duplication
 
          while (((Channel.Flags & CHF::VOL_RAMP) != CHF::NIL) and (mix_now > 0)) {
@@ -777,21 +811,28 @@ static void mix_channel(extAudio *Self, AudioChannel &Channel, int TotalSamples,
                .mix_dest = &mix_dest
             };
 
+            auto frame = mix_dest;
+            const float previous_left = frame[0];
+            const float previous_right = Self->Stereo ? frame[1] : 0;
             mix_pos = AudioMixer::dispatch_mix(Self->WindowConfig, sample.SampleType, params);
+            Channel.LastLeft = float((frame[0] - previous_left) / cache_master);
+            Channel.LastRight = Self->Stereo ? float((frame[1] - previous_right) / cache_master) : 0;
             mix_now--;
 
             // Use helper function for cleaner volume ramping logic
-            const bool left_ramping = adjust_volume_ramp(Channel.LVolume, Channel.LVolumeTarget, RAMPSPEED);
-            const bool right_ramping = adjust_volume_ramp(Channel.RVolume, Channel.RVolumeTarget, RAMPSPEED);
+            const bool left_ramping = adjust_volume_ramp(Channel.LVolume, Channel.LVolumeTarget, glRampStep);
+            const bool right_ramping = adjust_volume_ramp(Channel.RVolume, Channel.RVolumeTarget, glRampStep);
 
             if (!left_ramping and !right_ramping) {
                Channel.Flags &= ~CHF::VOL_RAMP;
             }
          }
 
-         if ((Channel.LVolume <= 0.01) and (Channel.RVolume <= 0.01)) {
+         if ((Channel.LVolume IS 0) and (Channel.RVolume IS 0)) {
             // If the volume is zero we can just increment the position and not mix anything
             mix_pos += mix_now * mix_step;
+            mix_dest += mix_now * (Self->Stereo ? 2 : 1);
+            if (mix_now) Channel.LastLeft = Channel.LastRight = 0;
             if (Channel.State IS CHS::FADE_OUT) {
                Self->finish(Channel, true);
                Channel.Flags &= ~CHF::VOL_RAMP;
@@ -818,7 +859,12 @@ static void mix_channel(extAudio *Self, AudioChannel &Channel, int TotalSamples,
                   .mix_dest = &mix_dest
                };
 
+               auto frame = mix_dest + (params.total_samples - 1) * (Self->Stereo ? 2 : 1);
+               const float previous_left = frame[0];
+               const float previous_right = Self->Stereo ? frame[1] : 0;
                mix_pos = AudioMixer::dispatch_mix(Self->WindowConfig, sample.SampleType, params);
+               Channel.LastLeft = float((frame[0] - previous_left) / cache_master);
+               Channel.LastRight = Self->Stereo ? float((frame[1] - previous_right) / cache_master) : 0;
                mix_now -= num;
             }
 
@@ -833,7 +879,12 @@ static void mix_channel(extAudio *Self, AudioChannel &Channel, int TotalSamples,
                   .mix_dest = &mix_dest
                };
 
+               auto frame = mix_dest + (params.total_samples - 1) * (Self->Stereo ? 2 : 1);
+               const float previous_left = frame[0];
+               const float previous_right = Self->Stereo ? frame[1] : 0;
                mix_pos = AudioMixer::dispatch_mix(Self->WindowConfig, sample.SampleType, params);
+               Channel.LastLeft = float((frame[0] - previous_left) / cache_master);
+               Channel.LastRight = Self->Stereo ? float((frame[1] - previous_right) / cache_master) : 0;
             }
          }
 

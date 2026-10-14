@@ -5,7 +5,7 @@ module({ name="Audio", copyright="Paul Manias © 2002-2026", version=1.0, timest
     "OVER_SAMPLING: Legacy indication of linear source interpolation, derived from Audio.Quality.",
     "FILTER_LOW: Low fixed post-mix smoothing, derived from Audio.Quality.",
     "FILTER_HIGH: High fixed post-mix smoothing, derived from Audio.Quality.",
-    "VOL_RAMPING: Enable volume ramping for softer playback when a sample is played multiple times (enabled by default).",
+    "VOL_RAMPING: Enable de-clicking for channel gain and voice changes independently of Quality (enabled by default).",
     "AUTO_SAVE: Save configuration information on exit.",
     "SYSTEM_WIDE: Mixer changes should be applied system-wide.")
 

@@ -27,8 +27,8 @@ conversion is the only stage that clips and quantises samples for the selected h
 <list type="bullet">
 <li>Nearest-neighbour source resampling, or linear interpolation when `ADF::OVER_SAMPLING` is enabled.  Linear
 interpolation is not a ratio-dependent anti-alias filter.</li>
-<li>Volume ramping to avoid clicks when channel volumes change, enabled by `ADF::VOL_RAMPING` in combination with
-`ADF::OVER_SAMPLING`.</li>
+<li>Volume ramping to avoid clicks when channel volumes change, enabled by `ADF::VOL_RAMPING` independently of Quality.
+Gains move by at most 0.01 per output frame, so a full-scale transition takes 100 output frames.</li>
 <li>Two levels of low-pass output smoothing, selected with `ADF::FILTER_LOW` or `ADF::FILTER_HIGH`.  The @Audio.Quality
 field selects nearest-neighbour or linear resampling and fixed smoothing as a group.  The legacy bits reflect that
 selection and cannot override it; Quality changes do not alter arithmetic precision or perform true oversampling.</li>
