@@ -4,6 +4,7 @@
 #include <kotuku/modules/crypto.h>
 #include <span>
 #include <cstdint>
+#include <limits>
 #include <memory>
 #include <string_view>
 
@@ -16,9 +17,27 @@ ERR checked_output(std::span<int8_t> Output, Operation Run, Wipe Clear) {
 }
 
 ERR random(std::span<int8_t> Output);
+#ifdef _WIN32
+ERR generate_p256_certificate(std::string_view CommonName, std::string &CertificatePEM,
+   std::string &PrivateKeyPEM, std::string &Fingerprint);
+#endif
 size_t digest_size(HASH Algorithm);
 ERR hash(HASH Algorithm, std::span<const int8_t> Input, std::span<int8_t> Output);
 ERR hmac(HASH Algorithm, std::span<const int8_t> Key, std::span<const int8_t> Input, std::span<int8_t> Output);
+
+// In-place AES operations for protocol layers.  CTR uses a 96-bit nonce followed by a big-endian 32-bit counter.
+// The caller must never reuse a key/nonce/counter stream or a GCM key/nonce pair.
+inline bool valid_ctr_range(uint32_t Counter, size_t Size) {
+   auto blocks = Size / 16 + size_t(Size % 16 != 0);
+   return blocks <= uint64_t(std::numeric_limits<uint32_t>::max()) - Counter + 1;
+}
+
+ERR aes_ctr(std::span<const uint8_t> Key, std::span<const uint8_t, 12> Nonce,
+   uint32_t Counter, std::span<uint8_t> Data);
+ERR aes_gcm_encrypt(std::span<const uint8_t> Key, std::span<const uint8_t, 12> Nonce,
+   std::span<const uint8_t> AAD, std::span<uint8_t> Data, std::span<uint8_t, 16> Tag);
+ERR aes_gcm_decrypt(std::span<const uint8_t> Key, std::span<const uint8_t, 12> Nonce,
+   std::span<const uint8_t> AAD, std::span<uint8_t> Data, std::span<const uint8_t, 16> Tag);
 
 class HashContext {
 public:
