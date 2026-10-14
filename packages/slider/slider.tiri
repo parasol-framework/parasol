@@ -14,7 +14,21 @@ DEFAULT_THICKNESS <const> = math.floor(FONT_MAX_HEIGHT * 1.35) + 1
 MARGIN <const> = math.floor(FONT_HEIGHT * 0.5) + 1
 VALUE_INSET <const> = 2 -- Minimum space between vertical value text and the track's sides
 DIGITS <const> = r'[0-9]'
+MAX_PLACES <const> = 10 -- Maximum decimal places in the value readout
 TEXT_METRICS <const> = { } -- Cache of line spacing and cap height, keyed by font
+
+-- Count the decimal places needed to write a value exactly, or nil if it does not terminate within MAX_PLACES.
+
+function decimalPlaces(Value:num!):num
+   for places in {0 into MAX_PLACES} do
+      -- The tolerance is relative so that tiny steps are not mistaken for whole numbers, and the search stops before
+      -- the scaled value is large enough for that tolerance to accept a non-terminating fraction.
+      scaled = math.abs(Value) * (10 ** places)
+      if math.abs(scaled - math.round(scaled)) <= scaled * 1e-13 then return places end
+      if scaled >= 1e12 then return nil end
+   end
+   return nil
+end
 
 -- Measure the font that a label or value text actually renders with.  Theme text styles can override the label font,
 -- and gui.getFontHeight() treats numeric gui.fonts sizes as pixels whereas the text renders them as points.
@@ -133,22 +147,28 @@ gui.slider = function(Options:table!)
       -- Convert a slider position within the track to a value.  Vertical sliders place max at the top.
 
       prvTrackValue = function(Position:num):num
+         track = ((&orientation is 'V') ? &prvSliderHostVP.height : &prvSliderHostVP.width) - &prvThumbSize
+         if track <= 0 then return &value end -- Pointer input cannot adjust a thumb with no room to travel.
+
          if &orientation is 'V' then
-            track = &prvSliderHostVP.height - &prvThumbSize
             return &min + ((&max - &min) * math.clamp((track - Position) / track, 0, 1))
          else
-            track = &prvSliderHostVP.width - &prvThumbSize
             return &min + ((&max - &min) * math.clamp(Position / track, 0, 1))
          end
       end,
 
+      -- Reachable values are min + (n * step) and max, so the readout needs the decimal places of all three.
+
       prvValueFormat = function():str
          if &step <= 0 then return '%.2f' end
-         if (&step >= 1) and (math.abs(&step - math.round(&step)) < 0.000000001) then return '%.0f' end
-         if (&step >= 0.1) and (math.abs((&step * 10) - math.round(&step * 10)) < 0.000000001) then
-            return '%.1f'
+         places = decimalPlaces(&step)
+         if not places then
+            -- A step with no terminating decimal form gets one digit more than is needed to separate adjacent values.
+            places = 1
+            while (places < MAX_PLACES) and ((&step * (10 ** places)) < 10) do places++ end
          end
-         return '%.2f'
+         places = math.max(places, decimalPlaces(&min) ?? 0, decimalPlaces(&max) ?? 0)
+         return f'%.{places}f'
       end,
 
       -- Reserve a stable width for all digits in the range, so value changes do not resize the track.  Vertical
@@ -173,19 +193,24 @@ gui.slider = function(Options:table!)
 
          &valueText.fontSize = f'{&prvValueFontSize}px'
          &prvValueWidth = widest()
+         &valueText.acShow()
 
          -- Font sizes are whole pixels and hinted widths are not proportional, so step down from the estimate.
 
          if (&orientation is 'V') and (&valuePos != 'out-centre') then
-            available = &thickness - (VALUE_INSET * 2)
-            if (&prvValueWidth > available) and (available > 0) then
-               size = math.floor(&prvValueFontSize * available / &prvValueWidth)
+            available = math.max(0, &thickness - (VALUE_INSET * 2))
+            if &prvValueWidth > available then
+               size = math.max(1, math.floor(&prvValueFontSize * available / &prvValueWidth))
                while size >= 1 do
                   &valueText.fontSize = f'{size}px'
                   &prvValueWidth = widest()
                   if &prvValueWidth <= available then break end
                   size -= 1
                end
+
+               -- A one-pixel font is the minimum; hide values that still cannot fit within the track.
+
+               if &prvValueWidth > available then &valueText.acHide() end
             end
          end
 
@@ -301,12 +326,12 @@ gui.slider = function(Options:table!)
          fraction = (&value - &min) / (&max - &min)
 
          if &orientation is 'V' then
-            track = height - &prvThumbSize
+            track = math.max(0, height - &prvThumbSize)
             &prvSliderVP.y = track - (fraction * track)
             &prvSliderVP.x = math.floor((width - &prvThumbSize) * 0.5)
             &prvBarBkgd.x = math.floor((width - &thickness) * 0.5)
          else
-            &prvSliderVP.x = fraction * (width - &prvThumbSize)
+            &prvSliderVP.x = fraction * math.max(0, width - &prvThumbSize)
             &prvSliderVP.y = math.floor((height - &prvThumbSize) * 0.5)
             &prvBarBkgd.y = math.floor((height - &thickness) * 0.5)
          end
