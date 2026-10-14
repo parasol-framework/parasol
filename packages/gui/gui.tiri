@@ -361,11 +361,14 @@ end
 
 ----------------------------------------------------------------------------------------------------------------------
 
-gui.getFontHeight = function(Font:table, Cache:bool):<num,num>
+-- Returns the line spacing, height and ascent (cap height) of a font in pixels.  Text is centred vertically in a box by
+-- placing its baseline at (BoxHeight + Ascent) / 2.
+
+gui.getFontHeight = function(Font:table, Cache:bool):<num,num,num>
    try <trace>
       if Cache is nil then Cache = true end
 
-      if Cache != true or Font.height is nil then
+      if Cache != true or Font.height is nil or Font.ascent is nil then
          size = Font.fontSize ?? Font.size
          -- Match VectorText's fixed 96 DPI conversion for font-size units.
          if not (size is <num>) then size = gui.pixel(tostring(size), 96) end
@@ -377,12 +380,13 @@ gui.getFontHeight = function(Font:table, Cache:bool):<num,num>
          if Cache then
             Font.height  = metrics.height
             Font.spacing = metrics.lineSpacing
+            Font.ascent  = metrics.ascent
          else
-            return metrics.lineSpacing, metrics.height
+            return metrics.lineSpacing, metrics.height, metrics.ascent
          end
       end
 
-      return Font.spacing, Font.height
+      return Font.spacing, Font.height, Font.ascent
    except ex
       raise f'{ex.message}\n{ex.stackTrace}'
    end
@@ -468,7 +472,6 @@ end
 
 gui.simpleGradient = function(Scene:obj!, Name:str!, Colours:any!, X1:num!, Y1:num!, X2:num!, Y2:num!, Units:str,
    IgnoreClashes:bool)
-   assert(Name, 'A name for the gradient is required.')
 
    local colours:any
 
@@ -518,7 +521,6 @@ end
 
 gui.createIcon = function(Scene:obj!, Path:str!, Size:num, Theme:any!, Name:str):table
    Size ??= 16
-   assert(Path, 'No Path specified.')
    lGradient = gui.iconThemes.default
    icon = { size=Size }
 

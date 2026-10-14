@@ -385,14 +385,33 @@ end
       }
    })
 
-   slider = gui.slider({
+   vslider = gui.slider({
       target = viewport,
       label  = 'Slider:',
+      labelPos = 'bottom',
       orientation = 'vertical',
       value  = 1,
+      valuePos = 'in-centre',
       min    = 0.5,
       max    = 1,
       x      = win.viewport.width / 2,
+      y      = y,
+      events = {
+         activate = function(Value)
+         end
+      }
+   })
+
+   hslider = gui.slider({
+      target = viewport,
+      label  = 'Slider:',
+      labelPos = 'left',
+      orientation = 'horizontal',
+      valuePos = 'in-centre',
+      value  = 1,
+      min    = 0.5,
+      max    = 1,
+      x      = (win.viewport.width / 2) + 40,
       y      = y,
       events = {
          activate = function(Value)

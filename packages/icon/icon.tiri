@@ -90,7 +90,9 @@ gui.icon = function(Options:table!)
          end
 
          if activation then
-            using icon do &events?.activate({ name=activation }) end
+            using icon do
+               &events?.activate({ name=activation })
+            end
          end
 
          if icon.disabled then return end
@@ -200,25 +202,30 @@ gui.icon = function(Options:table!)
       &viewport.width = icon_width
       &iconVP.x = (icon_width - icon_size) * 0.5
       &viewport.height = icon_size
+
       if #lines > 0 then
          &viewport.height += math.max(icon_size * 0.1, 2) + margin + (line_height * #lines)
       end
+
       initText()
       &viewport.acDraw()
    end
 
    self.setText = function(Text:str)
       &text = Text
+
       if Text != nil and Text.trim() != '' then
          text_words = rx_whitespace.replace(Text.trim(), ' ').split(' ')
       else
          text_words = nil
       end
+
       arrangeText()
    end
 
    self.setImage = function(Path:str!)
       assert(Path??, 'An image path is required.')
+
       -- Stage the replacement so a failed load cannot clear the current image.
       replacement_vp = &viewport.new('VectorViewport', {
          x = (icon_width - icon_size) * 0.5, y = 0, width = icon_size, height = icon_size

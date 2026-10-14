@@ -352,6 +352,7 @@ gui.dropdown = function(Options)
       widestItem = 0
       widestKey = 0
       y = VMARGIN
+      _, _, ascent = gui.getFontHeight(dropdown.text, false)
       for item in values(Options.config) do
          if item['item'] then
             mi = { y=y, config=item }
@@ -363,8 +364,12 @@ gui.dropdown = function(Options)
 
             bw = [___*_]vText.mtGetBoundary(0)
 
+            -- Rows are whole pixels so that they meet the highlight exactly.  Text capitals and icons are centred
+            -- in the row.
+
             mi.text = vText
-            mi.textY = math.floor(y + ((vText.lineSpacing + vText.displayHeight) * 0.5))
+            mi.height = math.round(vText.lineSpacing * ITEM_SPACING)
+            mi.textY = y + math.floor((mi.height + ascent) * 0.5)
 
             if bw > widestItem then widestItem = bw end
 
@@ -381,14 +386,14 @@ gui.dropdown = function(Options)
                   end
 
                   mi.iconView = &page.new('VectorRectangle', {
-                     x = HMARGIN, y = math.ceil(y + (ITEM_HEIGHT - ICON_SIZE) * 0.5), width = ICON_SIZE, height = ICON_SIZE, fill = info.fill
+                     x = HMARGIN, y = y + math.floor((mi.height - ICON_SIZE) * 0.5), width = ICON_SIZE,
+                     height = ICON_SIZE, fill = info.fill
                   })
                end
             end
 
             vText.y = mi.textY
-            mi.height = vText.lineSpacing * ITEM_SPACING
-            y = math.floor(y + mi.height)
+            y += mi.height
 
             &items.insert(mi)
          end

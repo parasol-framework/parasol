@@ -8,6 +8,8 @@ Gradient Demonstration
 
 local win, viewport, gradientVP, rect
 local focalEllipse, contourShape, distalShape, uiEvent
+-- Keep the controls alive after buildScene() returns; slider callbacks hold only weak widget references.
+local slResolution, slRadius, slGamma
 
 radiusChanged  = function() end
 glColourMap    = 'cmap:magma'
@@ -126,8 +128,8 @@ function selectGradient(Text):obj
       })
 
       uiEvent = function(ev:table!)
-         gradient.cX = (ev.x / gradientVP.width * 100) .. '%'
-         gradient.cY = (ev.y / gradientVP.height * 100) .. '%'
+         gradient.cx = (ev.x / gradientVP.width * 100) .. '%'
+         gradient.cy = (ev.y / gradientVP.height * 100) .. '%'
       end
 
       radiusChanged = function(Radius:num!)
@@ -140,8 +142,8 @@ function selectGradient(Text):obj
       })
 
       uiEvent = function(ev:table!)
-         gradient.cX = (ev.x / gradientVP.width * 100) .. '%'
-         gradient.cY = (ev.y / gradientVP.height * 100) .. '%'
+         gradient.cx = (ev.x / gradientVP.width * 100) .. '%'
+         gradient.cy = (ev.y / gradientVP.height * 100) .. '%'
       end
 
       radiusChanged = function(Radius:num!)

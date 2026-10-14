@@ -5,6 +5,7 @@ Documentation is available in the Kotuku Wiki.
 --]]
 
    import 'gui'
+
    include 'display', 'vector'
 
    namespace gui
@@ -398,6 +399,7 @@ gui.window = function(Options:table!)
 
       using window do &events?.focus() end
    end
+
    self.surface.subscribe('focus', surfaceFocus)
 
    if self.events.lostFocus then
@@ -419,6 +421,7 @@ gui.window = function(Options:table!)
 
       window?.clear()
    end
+
    self.surface.subscribe('free', surfaceFree)
 
    return self
