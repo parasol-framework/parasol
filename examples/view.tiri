@@ -2,6 +2,7 @@
 --[[
 Basic demo of the View widget with an Include checkbox column.
 Click a checkbox or highlight a row and press Space to toggle whether it is included.
+Ctrl-click toggles row membership; Shift-click selects a range; Ctrl+Space selects a row.
 --]]
 
    import 'gui/columnview'
@@ -13,16 +14,19 @@ Click a checkbox or highlight a row and press Space to toggle whether it is incl
    glView = gui.columnView({
       target     = lViewport,
       textAttrib = 'name',
+      multiSelect = true,
       x = 10,
       y = 10,
       xOffset = 10,
       yOffset = 10,
       events = {
          itemSelected = function(View, Reason, Item)
-            print('Item selected: ' .. Item.name)
+            local names = array<str>
+            for item in values(View.selectedItems()) do names.push(item.name) end
+            print('Selected rows: ' .. names.concat(', '))
          end,
          activeChange = function(View, Reason, Item)
-            print('Active item changed: ' .. Item.name)
+            print('Active item changed: ' .. (Item?.name ?? 'none'))
          end,
          itemDeselected = function(View, Reason, Item)
             print('Item deselected: ' .. Item.name)
