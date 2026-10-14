@@ -495,7 +495,8 @@ end
    for example in values(array<table> {
       { step=1, expected='1' }, { step=10, expected='0' }, { step=0.1, expected='1.0' },
       { step=0.25, expected='1.00' }, { step=0.01, expected='1.00' },
-      { step=0.005, expected='1.00' }, { step=0.0000000001, expected='1.00' }, { step=0, expected='1.00' }
+      { step=0.005, expected='1.000' }, { step=0.0000000001, expected='1.0000000000' }, { step=1 / 3, expected='1.00' },
+      { step=0, expected='1.00' }
    }) do
       local slider:table
       local hits = 0
@@ -520,6 +521,24 @@ end
    end
    local surface <close>, slider = newSlider({ value=0.5 })
    assert(slider.valueText is nil, 'The default valuePos must not create value text')
+end
+
+@Test function ValuePrecisionFollowsStepGridOrigin()
+   for example in values(array<table> {
+      { min=0.5, max=10, step=1, values=array<double> { 1.5, 2.5 }, expected=array<str> { '1.5', '2.5' } },
+      { min=0.05, max=1, step=0.1, values=array<double> { 0.15, 0.25 }, expected=array<str> { '0.15', '0.25' } },
+      { min=0, max=10.25, step=1, values=array<double> { 10, 10.25 }, expected=array<str> { '10.00', '10.25' } },
+      { min=0.001, max=1, step=0.25, values=array<double> { 0.251, 0.501 }, expected=array<str> { '0.251', '0.501' } }
+   }) do
+      local surface <close>, slider = newSlider({ min=example.min, max=example.max, step=example.step,
+         value=example.min, valuePos='in-centre' })
+      for i, value in example.values do
+         slider.setValue(value)
+         assert(slider.valueText.string is example.expected[i],
+            f'Value {value} on a grid from {example.min} by {example.step} must display as {example.expected[i]}, ' ..
+            f'not {slider.valueText.string}')
+      end
+   end
 end
 
 @Test function ValuePositionsFollowRangeDirectionAndReserveOutsideSpace()
@@ -592,15 +611,95 @@ end
    end
 end
 
-@Test function DefaultVerticalBreadthFitsValueText()
+@Test function VerticalValuesScaleToTrack()
    for position in values(array<str> { 'in-min', 'in-centre', 'in-max', 'out-min', 'out-max' }) do
-      local surface <close>, slider = newSlider({ orientation='vertical', valuePos=position })
-      assert(slider.prvSliderHostVP.width >= slider.valueText.textWidth,
-         'Default vertical dimensions must make room for the value width')
-      slider.setRange(-1000, 1000)
-      slider.setValue(-1000)
-      assert(slider.prvSliderHostVP.width >= slider.valueText.textWidth,
-         'Default vertical dimensions must fit a wider range display')
+      local surface <close>, slider = newSlider({ orientation='vertical', valuePos=position, label='Gain:',
+         labelPos='bottom' })
+      local full_size = tonumber(slider.labelText.fontSize)
+      for range in values(array<table> { { 0, 1 }, { -1000, 1000 } }) do
+         slider.setRange(range[0], range[1])
+         local text, bar = slider.valueText, slider.prvBarBkgd
+         assert(slider.viewport.width is slider.thickness and bar.x is 0 and bar.width is slider.thickness,
+            f'{position}: values must not widen a vertical slider or its track')
+         assert(tonumber(text.fontSize) < full_size, f'{position}: a value wider than the track must be scaled down')
+
+         -- Every value in the range must fit, so check both ends with their widest digits
+
+         for value in values(array<double> { range[0], range[1] }) do
+            slider.setValue(value)
+            text.string = regex.new('[0-9]').replace(text.string, '8')
+            assert(text.textWidth <= slider.thickness - 4,
+               f'{position}: {text.string} must fit across the track at {text.fontSize}px')
+            slider.setValue(range[0] + ((range[1] - range[0]) * 0.5)) -- Restore real text before placing it
+         end
+
+         local text_centre = text.x - slider.prvSliderHostVP.x + (text.textWidth * 0.5)
+         assert(math.abs(text_centre - (bar.width * 0.5)) <= 0.5,
+            f'{position}: value text must be centred on the track ({text_centre})')
+      end
+   end
+
+   local surface <close>, wide = newSlider({ orientation='vertical', valuePos='in-centre', thickness=48 })
+   assert(tonumber(wide.valueText.fontSize) is wide.prvValueFontSize and wide.prvValueWidth <= 44,
+      'A track wide enough for the value must not need scaling')
+   local surface2 <close>, beside = newSlider({ orientation='vertical', valuePos='out-centre' })
+   assert(beside.prvValueWidth > beside.thickness, 'Values beside the track must keep their full size')
+end
+
+@Test function NonPositiveThumbTravelPreservesValueAndRecoversAfterResizing()
+   for orientation in values(array<str> { 'horizontal', 'vertical' }) do
+      local hits = 0
+      local surface <close>, slider = newSlider({ orientation=orientation, width=100, height=100,
+         thickness=20, value=0.5, events={ activate=function(Value) hits++ end }
+      })
+      local dimension = (orientation is 'vertical') ? 'height' : 'width'
+      for length in values(array<int> { 20, 10 }) do
+         slider.viewport[dimension] = length
+         slider.viewport.scene.bitmap = surface.buffer
+         check slider.viewport.scene.acDraw()
+         processing.sleep(0)
+         local position = (orientation is 'vertical') ? slider.prvSliderVP.y : slider.prvSliderVP.x
+         assert(position is 0, 'A thumb without room to travel must stay at the track origin')
+         for coordinate in values(array<int> { -10, 0, 10 }) do
+            slider.setValue(slider.prvTrackValue(coordinate))
+            assert(slider.value is 0.5 and hits is 0,
+               'Zero or negative thumb travel must preserve the value without activation')
+         end
+         pointAtSlider(surface, slider, false)
+         feed(JET_LMB, 1, 0)
+         feed(JET_LMB, 0, 0)
+         assert(slider.value is 0.5 and hits is 0, 'Track clicks must remain harmless when travel is unavailable')
+      end
+
+      slider.viewport[dimension] = 100
+      slider.viewport.scene.bitmap = surface.buffer
+      check slider.viewport.scene.acDraw()
+      processing.sleep(0)
+      slider.setValue(slider.prvTrackValue((orientation is 'vertical') ? 0 : 80))
+      assert(slider.value is 1 and hits is 1, 'Pointer adjustment must recover when resizing restores thumb travel')
+   end
+end
+
+@Test function NarrowVerticalValuesUseMinimumFontAndHideWhenTheyCannotFit()
+   for thickness in values(array<int> { 1, 4, 5, 8 }) do
+      local surface <close>, slider = newSlider({ orientation='vertical', thickness=thickness,
+         min=-100000000, max=100000000, step=1, value=-100000000, valuePos='in-centre'
+      })
+      assert(tonumber(slider.valueText.fontSize) is 1,
+         'A narrow track must reach the minimum font size even when the estimate rounds to zero')
+      assert(slider.valueText.visibility is VIS_HIDDEN,
+         'A value that cannot fit at the minimum font size must be hidden')
+      slider.setValue(100000000)
+      assert(slider.valueText.string is '100000000' and slider.valueText.visibility is VIS_HIDDEN,
+         'Hidden value text must continue to update without overflowing the track')
+      assert(slider.viewport.width is thickness, 'Value text must preserve the configured track breadth')
+
+      if thickness is 8 then
+         slider.setRange(0, 1)
+         assert(slider.valueText.string is '1' and slider.valueText.visibility is VIS_VISIBLE
+            and slider.prvValueWidth <= thickness - 4,
+            'A range change must restore value text when it fits within the track')
+      end
    end
 end
 
