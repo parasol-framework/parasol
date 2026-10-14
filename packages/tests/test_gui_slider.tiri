@@ -779,3 +779,348 @@ end
          f'Centred vertical label capitals must centre on the track ({cap_centre} vs {track_centre})')
    end
 end
+
+-- Parse a tick path into lines in the slider viewport's coordinates.
+
+function tickLines(Path:obj!):array<table>
+   local lines = array<table>
+   for part in values(Path.sequence.split('M')) do
+      part = part.trim()
+      if #part > 0 then
+         local ends = part.split('L')
+         local a, b = ends[0].split(','), ends[1].split(',')
+         lines.push({ x0=tonumber(a[0]), y0=tonumber(a[1]), x1=tonumber(b[0]), y1=tonumber(b[1]) })
+      end
+   end
+   return lines
+end
+
+function tickAt(Lines:array<table>!, Vertical:bool, Position:num!):table
+   for line in values(Lines) do
+      if math.abs((Vertical ? line.y0 : line.x0) - Position) <= 0.5 then return line end
+   end
+   return nil
+end
+
+function thumbCentre(Slider:table!):num
+   local host = Slider.prvSliderHostVP
+   if Slider.orientation is 'V' then return host.y + Slider.prvSliderVP.y + (Slider.prvThumbSize * 0.5) end
+   return host.x + Slider.prvSliderVP.x + (Slider.prvThumbSize * 0.5)
+end
+
+@Test function TicksAlignWithThumbInBothOrientations()
+   for orientation in values(array<str> { 'horizontal', 'vertical' }) do
+      local vertical = orientation is 'vertical'
+      local surface <close>, slider = newSlider({ orientation=orientation, min=-20, max=80, ticks=10,
+         thickness=8, thumbSize='250%', width=vertical ? nil : 300, height=vertical ? 260 : nil
+      })
+      assert(slider.ticks is 10 and slider.tickPos is 'end', 'The tick configuration must be readable')
+      local host = slider.prvSliderHostVP
+      local lines = tickLines(slider.prvTickPaths[vertical ? 'xOffset' : 'yOffset'])
+      assert(#lines is 11 and #slider.prvTickStops is 11, f'Every interval must have a tick, got {#lines}')
+
+      for value in values(slider.prvTickStops) do
+         slider.setValue(value)
+         assert(tickAt(lines, vertical, thumbCentre(slider)),
+            f'A {orientation} tick must be drawn at the thumb centre for {value}')
+      end
+
+      for line in values(lines) do
+         local along = vertical ? line.y0 : line.x0
+         assert(along - math.floor(along) is 0.5, 'Tick positions must be snapped to pixel centres')
+         if vertical then
+            assert(math.min(line.x0, line.x1) > host.x + host.width, 'End ticks must be right of a vertical track')
+         else
+            assert(math.min(line.y0, line.y1) > host.y + host.height, 'End ticks must be below a horizontal track')
+         end
+      end
+   end
+end
+
+@Test function TickIntervalsKeepRangeEnds()
+   local surface <close>, slider = newSlider({ width=300, min=0, max=95, ticks=10 })
+   local stops = slider.prvTickStops
+   assert(stops[0] is 0 and stops.last() is 95 and (90 in stops),
+      'min and max must receive ticks when the range is not a multiple of the interval')
+
+   slider.setRange(-3, 7.5)
+   assert(#slider.prvTickStops is 3 and slider.prvTickStops[0] is -3 and slider.prvTickStops[1] is 7
+      and slider.prvTickStops[2] is 7.5, 'setRange() must regenerate interval ticks from the new min')
+
+   slider.setTicks(2)
+   assert(#slider.prvTickStops is 7 and slider.prvTickStops[1] is -1 and slider.prvTickStops[5] is 7
+      and slider.prvTickStops.last() is 7.5, 'Interval ticks must be counted from min')
+
+   slider.setTicks(array<double> { 20, -10, 0, 5 })
+   assert(#slider.prvTickStops is 2 and slider.prvTickStops[0] is 0 and slider.prvTickStops[1] is 5,
+      'Explicit values outside the range must be ignored rather than clamped')
+   slider.setRange(-20, 30)
+   assert(#slider.prvTickStops is 4 and slider.prvTickStops[0] is -10 and slider.prvTickStops.last() is 20,
+      'Explicit values must reappear when the range includes them')
+
+   local stepped = gui.slider({ target=slider.viewport.parent, y=60, width=300, min=0, max=1, step=0.25,
+      ticks=true })
+   assert(#stepped.prvTickStops is 5 and stepped.prvTickStops[1] is 0.25, 'ticks=true must draw one tick per step')
+end
+
+@Test function InvalidTickOptionsAreRejected()
+   local surface <close>, slider = newSlider({ })
+   local parent = slider.viewport.parent
+   local invalid = array<any> { true, 0, -5, 'abc', { major=0 }, { major=5, minor=5 }, { minor=2 },
+      array<str> { 'a' } }
+   for spec in values(invalid) do
+      local raised = false
+      try
+         gui.slider({ target=parent, ticks=spec })
+      except
+         raised = true
+      end
+      assert(raised, f'An invalid ticks option of {spec} must be rejected')
+   end
+
+   local raised = false
+   try
+      gui.slider({ target=parent, ticks=10, tickPos='middle' })
+   except
+      raised = true
+   end
+   assert(raised, 'An invalid tickPos must be rejected')
+
+   slider.setTicks(0.1)
+   raised = false
+   try
+      slider.setTicks(-1)
+   except
+      raised = true
+   end
+   assert(raised and slider.ticks is 0.1, 'setTicks() must reject an invalid specification and keep the existing one')
+end
+
+@Test function TicksReserveSpaceOutsideTheTrack()
+   local surface <close>, plain = newSlider({ })
+   local parent = plain.viewport.parent
+   local breadth = plain.viewport.height
+   local layouts = array<table> { { pos='start', count=1 }, { pos='end', count=1 }, { pos='both', count=2 } }
+
+   for layout in values(layouts) do
+      local h = gui.slider({ target=parent, ticks=0.1, tickPos=layout.pos })
+      local space = h.prvTickSpace
+      assert(space > 0 and h.viewport.height is breadth + (space * layout.count),
+         f'The default horizontal breadth must grow for {layout.pos} ticks')
+      assert(h.prvSliderHostVP.y is ((layout.pos != 'end') ? space : 0)
+         and h.prvSliderHostVP.yOffset is ((layout.pos != 'start') ? space : 0),
+         f'Horizontal {layout.pos} ticks must reserve the matching sides of the host')
+
+      local explicit = gui.slider({ target=parent, height=60, ticks=0.1, tickPos=layout.pos })
+      local host = explicit.prvSliderHostVP
+      assert(explicit.viewport.height is 60 and host.height is 60 - (space * layout.count),
+         f'An explicit height must absorb {layout.pos} tick space')
+      assert(explicit.prvBarBkgd.y is math.floor((host.height - explicit.thickness) * 0.5),
+         'The track must remain centred within the remaining host')
+
+      local v = gui.slider({ target=parent, orientation='vertical', ticks=0.1, tickPos=layout.pos })
+      assert(v.viewport.width is v.thickness + (space * layout.count),
+         f'The default vertical breadth must grow for {layout.pos} ticks')
+      assert(v.prvSliderHostVP.x is ((layout.pos != 'end') ? space : 0)
+         and v.prvSliderHostVP.xOffset is ((layout.pos != 'start') ? space : 0),
+         f'Vertical {layout.pos} ticks must reserve the matching sides of the host')
+   end
+end
+
+@Test function TicksSitBetweenTrackValueAndLabel()
+   local surface <close>, slider = newSlider({ width=300, ticks=0.1, valuePos='out-centre', label='Gain:',
+      labelPos='bottom'
+   })
+   local vertical = gui.slider({ target=slider.viewport.parent, x=400, orientation='vertical', ticks=0.1,
+      valuePos='out-centre'
+   })
+   slider.viewport.scene.bitmap = surface.buffer
+   check slider.viewport.scene.acDraw()
+
+   local _, _, tick_y, _, tick_height = check slider.prvTickPaths['yOffset'].mtGetBoundary(0)
+   local _, _, value_y, _, value_height = check slider.valueText.mtGetBoundary(0)
+   local _, _, label_y = check slider.labelText.mtGetBoundary(0)
+   assert(value_y >= tick_y + tick_height,
+      f'out-centre text must be below end ticks ({value_y} vs {tick_y + tick_height})')
+   assert(label_y >= value_y + value_height, 'A bottom label must be placed outside the ticks and value text')
+
+   -- Glyph bounds exclude the empty ascent above the digits, so also confirm the whole text line moved outward.
+
+   local plain = gui.slider({ target=slider.viewport.parent, y=150, width=300, valuePos='out-centre' })
+   assert(slider.valueText.y - slider.prvSliderHostVP.height
+      is plain.valueText.y - plain.prvSliderHostVP.height + slider.prvTickSpace,
+      'out-centre text must move outward by the tick space')
+
+   local _, tick_x, _, tick_width = check vertical.prvTickPaths['xOffset'].mtGetBoundary(0)
+   local _, value_x = check vertical.valueText.mtGetBoundary(0)
+   assert(value_x >= tick_x + tick_width, 'Vertical out-centre text must be right of end ticks')
+end
+
+@Test function TicksFollowResizingAndThinWhenDense()
+   local surface <close>, slider = newSlider({ x=0, xOffset=0, min=0, max=100, ticks=10 })
+   local host = slider.prvSliderHostVP
+   local function lastTick():num
+      local lines = tickLines(slider.prvTickPaths['yOffset'])
+      return lines[#lines - 1].x0
+   end
+   assert(math.abs(lastTick() - (host.x + host.width - (slider.prvThumbSize * 0.5))) <= 0.5,
+      'The max tick must sit at the end of the thumb travel')
+   slider.viewport.parent.width = 300
+   slider.viewport.scene.bitmap = surface.buffer
+   check slider.viewport.scene.acDraw()
+   processing.sleep(0)
+   assert(host.width is 300 and math.abs(lastTick() - (300 - (slider.prvThumbSize * 0.5))) <= 0.5,
+      'Resizing must reposition the ticks')
+
+   local dense = gui.slider({ target=slider.viewport.parent, y=60, width=100, step=0.01, ticks=true })
+   local lines = tickLines(dense.prvTickPaths['yOffset'])
+   assert(#lines > 2 and #lines < 101, f'Dense ticks must be thinned, got {#lines}')
+   assert(dense.prvTickStops[0] is 0 and dense.prvTickStops.last() is 1, 'Thinning must keep min and max')
+   for i in {1 to #lines} do
+      assert(lines[i].x0 - lines[i - 1].x0 >= 4, 'Thinned ticks must be at least four pixels apart')
+   end
+
+   local minor = gui.slider({ target=slider.viewport.parent, y=120, width=100, min=0, max=100,
+      ticks={ major=25, minor=1 }
+   })
+   assert(#minor.prvTickStops is 5, 'Minor ticks must be dropped when they are too dense')
+
+   local explicit = gui.slider({ target=slider.viewport.parent, y=180, width=100,
+      ticks=array<double> { 0, 0.01, 0.02, 0.03, 0.04, 0.05, 0.5, 0.97, 0.98, 0.99, 1 }
+   })
+   local stops = explicit.prvTickStops
+   assert(stops[0] is 0 and stops.last() is 1 and #stops < 11, 'Dense explicit ticks must be thinned to the ends')
+end
+
+@Test function TicksDoNotInterceptInput()
+   local surface <close>, slider = newSlider({ width=300, min=0, max=100, value=0, ticks=10 })
+   local host = slider.prvSliderHostVP
+   local lines = tickLines(slider.prvTickPaths['yOffset'])
+   local tick = lines[7] -- Value 70
+   feed(JET_ABS_XY, surface.absX + slider.viewport.x + tick.x0,
+      surface.absY + slider.viewport.y + host.y + (slider.thickness * 0.5))
+   feed(JET_LMB, 1, 0)
+   feed(JET_LMB, 0, 0)
+   assert(math.abs(slider.value - 70) < 1, f'A track click at a tick position must move the value, got {slider.value}')
+
+   slider.viewport.scene.bitmap = surface.buffer
+   check slider.viewport.scene.acDraw()
+   pointAtSlider(surface, slider, true)
+   feed(JET_LMB, 1, 0)
+   local x = surface.absX + slider.viewport.x + thumbCentre(slider)
+   local y = surface.absY + slider.viewport.y + host.y + (slider.thickness * 0.5)
+   feed(JET_ABS_XY, x - 60, y)
+   feed(JET_LMB, 0, 0)
+   assert(slider.value < 60, f'The thumb must be draggable across ticks, got {slider.value}')
+
+   local before = slider.value
+   feed(JET_ABS_XY, surface.absX + slider.viewport.x + tick.x0, surface.absY + slider.viewport.y + tick.y0 + 2)
+   feed(JET_WHEEL, 1, 0)
+   assert(slider.value > before, 'Wheel input over the ticks must reach the slider')
+end
+
+@Test function DisabledStateAppliesToTicks()
+   local surface <close>, slider = newSlider({ ticks=0.1, tickPos='both' })
+   local tick_opacity = slider.prvTheme.slider.tick.opacity
+   for _, path in slider.prvTickPaths do
+      assert(path.opacity is tick_opacity, 'Tick paths must use the theme tick style')
+   end
+   slider.disable()
+   for _, path in slider.prvTickPaths do
+      assert(path.opacity is slider.prvTheme.slider.disabled.opacity, 'Disabling must apply the disabled style')
+   end
+   slider.enable()
+   for _, path in slider.prvTickPaths do
+      assert(path.opacity is tick_opacity, 'Enabling must restore the tick style')
+   end
+end
+
+@Test function MinorTicksAndPageKeysVisitTicks()
+   local surface <close>, slider = newSlider({ width=400, min=0, max=100, value=0, ticks={ major=25, minor=5 } })
+   local lines = tickLines(slider.prvTickPaths['yOffset'])
+   assert(#lines is 21, f'Minor ticks that coincide with major ticks must be drawn once, got {#lines}')
+   local major_length = math.abs(lines[0].y1 - lines[0].y0)
+   local majors = 0
+   for line in values(lines) do
+      if math.abs(line.y1 - line.y0) is major_length then majors++ end
+   end
+   assert(majors is 5, 'Major ticks must be longer than minor ticks')
+   assert(lines[0].y0 is lines[#lines - 1].y0, 'Major and minor ticks must share a baseline')
+
+   sendKey(KEY_PAGE_UP)
+   sendKey(KEY_PAGE_UP)
+   assert(slider.value is 10, f'Page Up must move to the next tick, got {slider.value}')
+   slider.setValue(12)
+   sendKey(KEY_PAGE_DOWN)
+   assert(slider.value is 10, 'Page Down must move to the previous tick')
+   slider.setValue(98)
+   sendKey(KEY_PAGE_UP)
+   assert(slider.value is 100, 'Page Up must reach max')
+
+   local stepped = gui.slider({ target=slider.viewport.parent, y=60, width=300, step=0.5, value=0,
+      ticks=array<double> { 0, 0.33, 0.8 }
+   })
+   stepped.viewport.acFocus()
+   processing.sleep(0)
+   sendKey(KEY_PAGE_UP)
+   assert(stepped.value is 0.5, 'Page Up targets must snap to the step')
+   sendKey(KEY_PAGE_UP)
+   assert(stepped.value is 1, 'Ticks that snap to the current value must be skipped')
+   sendKey(KEY_PAGE_DOWN)
+   assert(stepped.value is 0.5, 'Page Down must skip ticks that snap back to the current value')
+end
+
+@Test function UnevenTickIntervalsKeepMinimumSpacing()
+   for orientation in values(array<str> { 'horizontal', 'vertical' }) do
+      local vertical = orientation is 'vertical'
+      local surface <close>, slider = newSlider({ orientation=orientation, min=0, max=100,
+         thickness=10, thumbSize=10, width=vertical ? nil : 110, height=vertical ? 110 : nil,
+         ticks={ major=10, minor=6 }
+      })
+      local stops = slider.prvTickStops
+      for major in {0 into 100 by 10} do
+         assert(major in stops, f'Major tick {major} must be preserved')
+      end
+      assert((6 in stops) and (24 in stops), 'Minor ticks with enough space must be preserved')
+      assert(not (12 in stops) and not (18 in stops), 'Minor ticks too close to major ticks must be omitted')
+
+      local positions = array<double>
+      for line in values(tickLines(slider.prvTickPaths[vertical ? 'xOffset' : 'yOffset'])) do
+         positions.push(vertical ? line.y0 : line.x0)
+      end
+      positions.sort()
+      for i in {1 to #positions} do
+         assert(positions[i] - positions[i - 1] >= 4,
+            f'Adjacent {orientation} ticks must be at least four pixels apart')
+      end
+
+      slider.setRange(0, 98)
+      assert((98 in slider.prvTickStops) and not (96 in slider.prvTickStops),
+         'Minor ticks must also keep clear of a range end outside the major interval grid')
+   end
+end
+
+@Test function SetTicksAddsAndRemovesReservation()
+   local surface <close>, slider = newSlider({ })
+   local breadth = slider.viewport.height
+   slider.setTicks({ major=0.25, minor=0.05 })
+   local space = slider.prvTickSpace
+   assert(space > 0 and slider.viewport.height is breadth + space, 'Adding ticks must grow the default breadth')
+   assert(#slider.prvTickStops > 0, 'Adding ticks must draw them')
+   slider.setTicks(nil)
+   assert(slider.viewport.height is breadth and slider.prvTickSpace is 0, 'Removing ticks must release their space')
+   local cleared = true
+   try
+      cleared = (slider.prvTickPaths['yOffset'].sequence ?? '') is ''
+   except e when ERR_NoData
+      cleared = true -- An empty path has no sequence to read
+   end
+   assert(#slider.prvTickStops is 0 and cleared, 'Removing ticks must clear the tick path')
+
+   local explicit = gui.slider({ target=slider.viewport.parent, y=60, height=50 })
+   explicit.setTicks(0.1)
+   slider.viewport.scene.bitmap = surface.buffer
+   check slider.viewport.scene.acDraw()
+   assert(explicit.viewport.height is 50 and explicit.prvSliderHostVP.height is 50 - explicit.prvTickSpace,
+      'Ticks added to an explicit height must be absorbed by the host')
+end

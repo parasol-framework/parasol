@@ -16,6 +16,10 @@ VALUE_INSET <const> = 2 -- Minimum space between vertical value text and the tra
 DIGITS <const> = r'[0-9]'
 MAX_PLACES <const> = 10 -- Maximum decimal places in the value readout
 TEXT_METRICS <const> = { } -- Cache of line spacing and cap height, keyed by font
+TICK_LENGTH <const> = math.floor(FONT_HEIGHT * 0.5) -- Length of major ticks
+TICK_MINOR_LENGTH <const> = math.round(TICK_LENGTH * 0.6)
+TICK_GAP <const> = math.floor(FONT_HEIGHT * 0.25) -- Space between the track's host and its ticks
+TICK_MIN_SPACING <const> = 4 -- Minimum distance between adjacent ticks, in pixels, before ticks are thinned
 
 -- Count the decimal places needed to write a value exactly, or nil if it does not terminate within MAX_PLACES.
 
@@ -46,6 +50,40 @@ function textMetrics(Text:obj!):<num, num>
    return cached.lineSpacing, cached.ascent
 end
 
+-- Thin a sorted list of tick values until adjacent ticks are at least TICK_MIN_SPACING pixels apart.  Every Nth tick
+-- is kept for the smallest N that satisfies the spacing, and the first and last ticks are always kept.
+
+function thinTicks(List:array<double>!, Scale:num!):array<double>
+   unique = array<double>
+   for v in values(List) do
+      if (#unique is 0) or (v != unique.last()) then unique.push(v) end
+   end
+
+   function spaced(Kept:array<double>!):bool
+      for i in {1 to #Kept} do
+         if ((Kept[i] - Kept[i - 1]) * Scale) < TICK_MIN_SPACING then return false end
+      end
+      return true
+   end
+
+   count = #unique
+   if (count < 3) or spaced(unique) then return unique end
+
+   for stride in {2 to count} do
+      kept = array<double>
+      i = 0
+      while i < count - 1 do
+         kept.push(unique[i])
+         i += stride
+      end
+      if (#kept > 1) and (((unique[count - 1] - kept.last()) * Scale) < TICK_MIN_SPACING) then kept.pop() end
+      kept.push(unique[count - 1])
+      if spaced(kept) then return kept end
+   end
+
+   return array<double> { unique[0], unique[count - 1] }
+end
+
 gui.slider = function(Options:table!)
    min = (Options.min != nil) ? Options.min : 0
    max = (Options.max != nil) ? Options.max : 1
@@ -60,7 +98,9 @@ gui.slider = function(Options:table!)
       labelPos   = Options.labelPos ?? 'left',
       labelAlign = Options.labelAlign ?? 'left',
       thickness  = Options.thickness ?? DEFAULT_THICKNESS, -- Breadth of the track
-      thumbSize  = (Options.thumbSize != nil) ? Options.thumbSize : '100%', -- Pixels or % of thickness
+      thumbSize  = Options.thumbSize ? Options.thumbSize : '100%', -- Pixels or % of thickness
+      ticks      = Options.ticks, -- true, an interval, { major, minor } or an array of values
+      tickPos    = Options.tickPos ?? 'end',
       events     = Options.events ?? { },
       viewport   = nil,
       disabled   = false,
@@ -76,6 +116,19 @@ gui.slider = function(Options:table!)
          &prvPlaceSlider()
          &viewport.acDraw()
          &setValue(&value) -- Clamp and snap the existing value to the new range
+      end,
+
+      -- Replace the tick specification.  Tick space is reserved outside the track, so adding or removing ticks
+      -- relayouts the widget.
+
+      setTicks = function(Ticks:any)
+         &prvCheckTicks(Ticks)
+         &ticks = Ticks
+         &prvReserveTicks(&prvSliderHostVP)
+         &prvTickKey = nil
+         if &labelText then &prvPlaceLabel(&viewport.width, &viewport.height) end
+         &prvPlaceSlider()
+         &viewport.acDraw()
       end,
 
       -- Change the active state of the slider.  A disabled slider ignores pointer and keyboard input.
@@ -108,6 +161,199 @@ gui.slider = function(Options:table!)
             if &prvHover then gui.applyStyle(&button, theme.foreHighlight) end
             if &hasFocus then gui.applyStyle(&button, theme.foreFocus) end
          end
+
+         for _, path in &prvTickPaths do &prvStyleTicks(path) end
+      end,
+
+      prvStyleTicks = function(Path:obj!)
+         theme = &prvTheme.slider
+         gui.applyStyle(Path, table.merge({ opacity = 1 }, theme.tick ?? { }))
+         if &disabled then gui.applyStyle(Path, theme.disabled) end
+      end,
+
+      prvCheckTicks = function(Ticks:any)
+         if (Ticks is nil) or (Ticks is false) then return end
+         if Ticks is true then
+            assert(&step > 0, 'ticks=true requires a step greater than zero.')
+         elseif Ticks is <num> then
+            assert(Ticks > 0, f"Invalid tick interval '{Ticks}'")
+         elseif Ticks is <array> then
+            for v in values(Ticks) do assert(v is <num>, 'Explicit tick values must be numbers.') end
+         elseif Ticks is <table> then
+            assert((Ticks.major is <num>) and (Ticks.major > 0), f"Invalid major tick interval '{Ticks.major}'")
+            minor = Ticks.minor
+            assert((minor is nil) or ((minor is <num>) and (minor > 0) and (minor < Ticks.major)),
+               f"Invalid minor tick interval '{minor}'")
+         else
+            raise f"Invalid ticks '{Ticks}'"
+         end
+      end,
+
+      -- Reserve TICK_GAP + TICK_LENGTH on each side that carries ticks.  The reservation is adjusted by delta so that
+      -- space reserved for the label and value text is preserved.  Host is the host viewport or its pending options.
+
+      prvReserveTicks = function(Host:any!)
+         space = &ticks ? (TICK_GAP + TICK_LENGTH) : 0
+         delta = space - &prvTickSpace
+         if delta is 0 then return end
+
+         for side in values(&prvTickSides) do
+            Host[side] = Host[side] + delta
+            if &orientation is 'V' then
+               if &prvAutoWidth then &viewport.width += delta end
+            elseif &prvAutoHeight then
+               &viewport.height += delta
+            end
+         end
+
+         &prvTickSpace = space
+      end,
+
+      -- Generate major and minor tick values for a thumb travel in pixels, thinned so that adjacent ticks are at least
+      -- TICK_MIN_SPACING apart.  Interval ticks are counted from min, and max always receives a tick.
+
+      prvTickLayout = function(Travel:num!):<array<double>, array<double>>
+         majors = array<double>
+         minors = array<double>
+         spec = &ticks
+         if (not spec) or (Travel <= 0) then return majors, minors end
+
+         span = &max - &min
+         scale = Travel / span -- Pixels per value unit
+         tolerance = span * 1e-9
+
+         -- Explicit values outside the range are ignored rather than clamped.
+
+         if spec is <array> then
+            for v in values(spec) do
+               if (v >= &min) and (v <= &max) then majors.push(v) end
+            end
+            majors.sort()
+            return thinTicks(majors, scale), minors
+         end
+
+         major = (spec is true) ? &step : ((spec is <num>) ? spec : spec.major)
+         stride = math.max(1, math.ceil((TICK_MIN_SPACING / (major * scale)) - 1e-9))
+         k = 0
+         value = &min
+         while value < (&max - tolerance) do
+            majors.push(value)
+            k += stride
+            value = &min + (k * major) -- Multiply rather than accumulate, as prvSnap() does
+         end
+
+         if (#majors > 1) and (((&max - majors.last()) * scale) < TICK_MIN_SPACING) then majors.pop() end
+         majors.push(&max)
+
+         -- Minor ticks are dropped entirely when too dense.  Keep them clear of neighbouring major ticks, including
+         -- the range ends, even when the major and minor intervals are not multiples of one another.
+
+         minor = (spec is <table>) ? spec.minor : nil
+         if minor and (stride is 1) and ((minor * scale) >= (TICK_MIN_SPACING - 1e-9)) then
+            j = 1
+            major_index = 0
+            origin = (&orientation is 'V') ? &prvSliderHostVP.y : &prvSliderHostVP.x
+            previous = nil
+            value = &min + minor
+            while value < (&max - tolerance) do
+               while (major_index < #majors - 2) and (majors[major_index + 1] <= value) do major_index++ end
+               position = &prvTickPosition(value, Travel, origin)
+               before = math.abs(position - &prvTickPosition(majors[major_index], Travel, origin))
+               after = math.abs(&prvTickPosition(majors[major_index + 1], Travel, origin) - position)
+               if (before >= TICK_MIN_SPACING) and (after >= TICK_MIN_SPACING)
+                  and ((previous is nil) or (math.abs(position - previous) >= TICK_MIN_SPACING)) then
+                  minors.push(value)
+                  previous = position
+               end
+               j++
+               value = &min + (j * minor)
+            end
+         end
+
+         return majors, minors
+      end,
+
+      -- Use the same pixel-centre rounding for tick spacing checks and path coordinates.
+
+      prvTickPosition = function(Value:num!, Travel:num!, Origin:num!):num
+         fraction = (Value - &min) / (&max - &min)
+         if &orientation is 'V' then fraction = 1 - fraction end
+         return math.floor(Origin + (&prvThumbSize * 0.5) + (fraction * Travel)) + 0.5
+      end,
+
+      -- Each tick is drawn where the thumb centre sits for its value, snapped to a pixel centre.  Paths are rebuilt
+      -- only when the host geometry, range or tick specification changes, not on every value change.
+
+      prvPlaceTicks = function(Width:num!, Height:num!)
+         if (not &ticks) and (#&prvTickStops is 0) then return end
+         host = &prvSliderHostVP
+         host_x = host.x
+         host_y = host.y
+         key = f'{Width}|{Height}|{host_x}|{host_y}|{&min}|{&max}'
+         if key is &prvTickKey then return end
+         &prvTickKey = key
+
+         vertical = &orientation is 'V'
+         travel = (vertical ? Height : Width) - &prvThumbSize
+         majors, minors = &prvTickLayout(travel)
+
+         &prvTickStops = majors.clone()
+         for v in values(minors) do &prvTickStops.push(v) end
+         &prvTickStops.sort()
+
+         for side in values(&prvTickSides) do
+            path = &prvTickPaths[side]
+            if not path then
+               path = &viewport.new('VectorPath', { name = 'Ticks' })
+               path.acDisable() -- Ticks must not intercept track clicks, thumb dragging or wheel input.
+               &prvStyleTicks(path)
+               &prvTickPaths[side] = path
+            end
+
+            outward = ((side is 'xOffset') or (side is 'yOffset')) ? 1 : -1
+            base = vertical ? host_x : host_y
+            if outward > 0 then base += (vertical ? Width : Height) end
+            base = math.round(base + (TICK_GAP * outward))
+
+            sequence = ''
+            function addTicks(Values:array<double>!, Length:num!)
+               tip = base + (Length * outward)
+               for v in values(Values) do
+                  p = &prvTickPosition(v, travel, vertical ? host_y : host_x)
+                  if vertical then
+                     sequence ..= f'M{base} {p} L{tip} {p} '
+                  else
+                     sequence ..= f'M{p} {base} L{p} {tip} '
+                  end
+               end
+            end
+
+            addTicks(majors, TICK_LENGTH)
+            addTicks(minors, TICK_MINOR_LENGTH)
+            path.sequence = sequence
+         end
+      end,
+
+      -- Move to the next drawn tick in a direction, skipping ticks that snap back to the current value.  Without a
+      -- tick in that direction, the value moves to the end of the range.
+
+      prvTickStep = function(Direction:num!)
+         tolerance = (&max - &min) * 1e-9
+         stops = &prvTickStops
+         count = #stops
+         i = (Direction > 0) ? 0 : count - 1
+         while (i >= 0) and (i < count) do
+            stop = stops[i]
+            ahead = (Direction > 0) ? (stop > (&value + tolerance)) : (stop < (&value - tolerance))
+            if ahead then
+               if &prvSnap(stop) != &value then
+                  &setValue(stop)
+                  return
+               end
+            end
+            i += Direction
+         end
+         &setValue((Direction > 0) ? &max : &min)
       end,
 
       setValue = function(Value:num)
@@ -246,6 +492,7 @@ gui.slider = function(Options:table!)
          text_width = &valueText.textWidth
          outside = &valuePos.startsWith('out-')
          position = &valuePos.sub(outside ? 4 : 3)
+         tick_space = (&tickPos != 'start') ? &prvTickSpace : 0 -- out-centre text is placed beyond end ticks
 
          if &orientation is 'H' then
             if outside and (position is 'min') then
@@ -260,10 +507,10 @@ gui.slider = function(Options:table!)
                end
             end
 
-            y += (outside and (position is 'centre')) ? Height + MARGIN + &prvValueBaseline :
+            y += (outside and (position is 'centre')) ? Height + tick_space + MARGIN + &prvValueBaseline :
                &prvValueBaseline + ((Height - &prvValueHeight) * 0.5)
          else
-            x += (outside and (position is 'centre')) ? Width + MARGIN : (Width - text_width) * 0.5
+            x += (outside and (position is 'centre')) ? Width + tick_space + MARGIN : (Width - text_width) * 0.5
             y += choose position from
                'min' -> (outside ? Height + MARGIN + &prvValueBaseline :
                   Height - &prvValueHeight - MARGIN + &prvValueBaseline)
@@ -337,6 +584,7 @@ gui.slider = function(Options:table!)
          end
 
          if &valueText then &prvPlaceValue(width, height) end
+         &prvPlaceTicks(width, height)
       end
    }, {
       __gc = function()
@@ -362,10 +610,22 @@ gui.slider = function(Options:table!)
       assert((&valuePos is nil) or (&valuePos is 'in-min') or (&valuePos is 'in-centre')
          or (&valuePos is 'in-max') or (&valuePos is 'out-min') or (&valuePos is 'out-centre')
          or (&valuePos is 'out-max'), f"Invalid valuePos '{&valuePos}'")
+      assert((&tickPos is 'start') or (&tickPos is 'end') or (&tickPos is 'both'), f"Invalid tickPos '{&tickPos}'")
+      &prvCheckTicks(&ticks)
 
       base_theme = gui.getTheme(target)
       &prvTheme = Options.theme ? table.merge(base_theme, { slider = table.merge(base_theme.slider, Options.theme, true, true) }) : base_theme
       &orientation = (Options.orientation is 'vertical') ? 'V' : 'H'
+
+      -- Ticks occupy the host's start and/or end side across the track: below a horizontal track or to the right of a
+      -- vertical track for 'end'.
+
+      &prvTickSides = array<str>
+      if &tickPos != 'end' then &prvTickSides.push((&orientation is 'V') ? 'x' : 'y') end
+      if &tickPos != 'start' then &prvTickSides.push((&orientation is 'V') ? 'xOffset' : 'yOffset') end
+      &prvTickPaths = { }
+      &prvTickStops = array<double>
+      &prvTickSpace = 0
       &prvLabelSize = 0
       &value = &prvSnap(&value)
 
@@ -498,6 +758,7 @@ gui.slider = function(Options:table!)
          if &labelText then &prvPlaceLabel(&viewport.width, &viewport.height) end
       end
 
+      &prvReserveTicks(host) -- Ticks sit between the track and any outside value text or label
       &prvSliderHostVP = &viewport.new('VectorViewport', host)
       if &labelText then &prvPlaceLabel(&viewport.width, &viewport.height) end -- Centre on the track
       &prvBarBkgd = &prvSliderHostVP.new('VectorRectangle', table.merge({
@@ -566,7 +827,8 @@ gui.slider = function(Options:table!)
       &viewport.mtSubscribeFeedback(FM_HAS_FOCUS | FM_CHILD_HAS_FOCUS | FM_LOST_FOCUS, focusFeedback)
 
       -- Keyboard registration makes the whole widget a single stop in the scene's tab order.  Continuous sliders
-      -- use one percent of the range per arrow press; Page Up/Down move ten increments.
+      -- use one percent of the range per arrow press; Page Up/Down move to the next tick, or ten increments if the
+      -- slider has no ticks.
 
       @Ordinary
       function keyboardInput(Viewport:obj!, Qualifiers:num!, Code:num!, Unicode)
@@ -582,9 +844,9 @@ gui.slider = function(Options:table!)
             elseif (Code is KEY_LEFT) or (Code is KEY_DOWN) then
                &prvAdjust(-1)
             elseif Code is KEY_PAGE_UP then
-               &setValue(&value + (increment * 10))
+               if #&prvTickStops > 0 then &prvTickStep(1) else &setValue(&value + (increment * 10)) end
             elseif Code is KEY_PAGE_DOWN then
-               &setValue(&value - (increment * 10))
+               if #&prvTickStops > 0 then &prvTickStep(-1) else &setValue(&value - (increment * 10)) end
             elseif Code is KEY_HOME then
                &setValue(&min)
             elseif Code is KEY_END then
