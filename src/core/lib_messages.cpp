@@ -1214,6 +1214,25 @@ ERR sleep_task(int Timeout, int8_t SystemOnly)
       //   The thread-lock is released by another task (see wake_task).
       //   A window message is received (if tlMessageBreak is true)
 
+      if ((SystemOnly) and (!tlMessageBreak)) {
+         log.trace("Sleeping on process semaphore only.");
+      }
+      else {
+         ++glFDProtected;
+         for (auto &fd : glFDTable) {
+            if ((fd.Flags & (RFD::REMOVE|RFD::SOCKET)) != RFD::NIL) continue;
+            if ((fd.Flags & RFD::ALWAYS_CALL) != RFD::NIL) {
+               if (fd.Routine) fd.Routine(fd.FD, fd.Data);
+            }
+         }
+         --glFDProtected;
+
+         if ((!glRegisterFD.empty()) and (!glFDProtected)) {
+            for (auto &record : glRegisterFD) RegisterFD(record.FD, record.Flags, record.Routine, record.Data);
+            glRegisterFD.clear();
+         }
+      }
+
       WINHANDLE stack_handles[32];
       auto heap_storage = (glFDTable.size() + 1 > 32)
          ? std::make_unique<WINHANDLE[]>(glFDTable.size() + 1) : nullptr;
@@ -1221,29 +1240,21 @@ ERR sleep_task(int Timeout, int8_t SystemOnly)
       handles[0] = get_threadlock();
       int total = 1;
 
-      if ((SystemOnly) and (!tlMessageBreak)) {
-         log.trace("Sleeping on process semaphore only.");
-      }
-      else {
+      if ((not SystemOnly) or tlMessageBreak) {
          for (auto it = glFDTable.begin(); it != glFDTable.end(); ) {
             auto &fd = *it;
-            if ((fd.Flags & RFD::REMOVE) != RFD::NIL) {
+            if ((fd.Flags & (RFD::REMOVE|RFD::SOCKET|RFD::ALWAYS_CALL)) != RFD::NIL) {
                ++it;
                continue;
             }
-            if ((fd.Flags & RFD::SOCKET) != RFD::NIL); // Network sockets are managed by the Network module backend.
-            else if ((fd.Flags & RFD::ALWAYS_CALL) != RFD::NIL) {
-               if (fd.Routine) fd.Routine(fd.FD, fd.Data);
-            }
-            else if ((fd.Flags & (RFD::READ|RFD::WRITE|RFD::EXCEPT)) != RFD::NIL) {
+            if ((fd.Flags & (RFD::READ|RFD::WRITE|RFD::EXCEPT)) != RFD::NIL) {
                handles[total++] = fd.FD;
+               ++it;
             }
             else {
                log.warning("FD %" PRId64 " has no READ/WRITE/EXCEPT flag setting - de-registering.", (int64_t)fd.FD);
                it = glFDTable.erase(it);
-               continue;
             }
-            it++;
          }
       }
 

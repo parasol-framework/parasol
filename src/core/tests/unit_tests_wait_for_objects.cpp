@@ -434,6 +434,52 @@ static bool fd_combined_replacement_check(kt::Log &Log)
 }
 #endif
 
+#ifdef _WIN32
+struct FDWindowsReplaceContext {
+   unsigned calls = 0;
+   ERR error = ERR::Okay;
+};
+
+static void fd_windows_replace_callback(HOSTHANDLE FD, APTR Data)
+{
+   auto &context = *(FDWindowsReplaceContext *)Data;
+   ++context.calls;
+   context.error = RegisterFD(FD, RFD::READ|RFD::WRITE, fd_windows_replace_callback, Data);
+}
+
+// The pre-wait callback must be able to replace its own record after an earlier overlapping record.
+static bool fd_windows_combined_replacement_check(kt::Log &Log)
+{
+   WINHANDLE handle = nullptr;
+   if (alloc_public_waitlock(&handle, nullptr) != ERR::Okay) return false;
+   auto cleanup = kt::Defer([&]() {
+      (void)RegisterFD(handle, RFD::REMOVE, nullptr, nullptr);
+      free_public_waitlock(handle);
+   });
+
+   FDWindowsReplaceContext context;
+   if (RegisterFD(handle, RFD::READ, fd_windows_replace_callback, &context) != ERR::Okay or
+       RegisterFD(handle, RFD::WRITE|RFD::ALWAYS_CALL, fd_windows_replace_callback, &context) != ERR::Okay) {
+      return false;
+   }
+
+   if (ProcessMessages(PMF::NIL, 0) != ERR::Okay) return false;
+
+   unsigned matches = 0;
+   bool correct = true;
+   for (const auto &record : glFDTable) {
+      if (record.FD != handle) continue;
+      ++matches;
+      correct = correct and record.Routine IS fd_windows_replace_callback and record.Data IS &context and
+         (record.Flags & (RFD::READ|RFD::WRITE)) IS (RFD::READ|RFD::WRITE) and
+         (record.Flags & (RFD::ALWAYS_CALL|RFD::REMOVE)) IS RFD::NIL;
+   }
+   if (context.calls IS 1 and context.error IS ERR::Okay and matches IS 1 and correct) return true;
+   Log.warning("Windows combined FD replacement called %u times and left %u records.", context.calls, matches);
+   return false;
+}
+#endif
+
 void wait_for_objects_unit_tests(int &Passed, int &Total)
 {
    kt::Log log("WaitForObjects");
@@ -465,5 +511,9 @@ void wait_for_objects_unit_tests(int &Passed, int &Total)
    }
    ++Total;
    if (fd_combined_replacement_check(log)) ++Passed;
+#endif
+#ifdef _WIN32
+   ++Total;
+   if (fd_windows_combined_replacement_check(log)) ++Passed;
 #endif
 }
