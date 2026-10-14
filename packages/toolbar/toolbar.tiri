@@ -179,7 +179,7 @@ gui.toolbar = function(Options)
             item.height = toolbar_theme.iconSize + (self._cellMargin * 2)
 
             seq = string.format('M%f,%f l0,%f', x+(item.width-1) * 0.5, y+1, item.height)
-            dash_size = gui.pixel(f'{(toolbar_theme.groupBorder.strokeWidth ?? 2)/2}pt')
+            dash_size = toolbar_theme.groupBorder.strokeWidth ?? gui.pixel('1.5pt')
 
             self.vg.new('VectorPath', table.merge({
                name = 'break', sequence = seq, dashArray = array<double> { dash_size, dash_size }
