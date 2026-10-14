@@ -26,7 +26,7 @@ end
 gui.toolbar = function(Options)
    local theme, toolbar_theme
 
-   self = { -- Public variables
+   self = entity { -- Public variables
       host           = nil,
       viewport       = nil,  -- The main viewport for the toolbar
       _groupMargin   = 6,
@@ -176,12 +176,14 @@ gui.toolbar = function(Options)
             item.x      = x
             item.y      = y
             item.width  = 6
-            item.height = self._iconSize + (self._cellMargin * 2)
+            item.height = toolbar_theme.iconSize + (self._cellMargin * 2)
 
             seq = string.format('M%f,%f l0,%f', x+(item.width-1) * 0.5, y+1, item.height)
-            self.vg.new('VectorPath', {
-               name = 'break', stroke = self._groupBorder, sequence = seq, dashArray = array<double> { 1, 1 }
-            })
+            dash_size = gui.pixel(f'{(toolbar_theme.groupBorder.strokeWidth ?? 2)/2}pt')
+
+            self.vg.new('VectorPath', table.merge({
+               name = 'break', sequence = seq, dashArray = array<double> { dash_size, dash_size }
+            }, toolbar_theme.groupBorder))
 
             if self._horizontal then
                x += item.width
@@ -191,9 +193,9 @@ gui.toolbar = function(Options)
          elseif item.type is TI_GROUP then
             if not Options.flush then
                if self._horizontal then
-                  x += not item.prev ? groupOffset : (self._iconSize * 0.25)
+                  x += not item.prev ? groupOffset : (toolbar_theme.iconSize * 0.25)
                else
-                  y += not item.prev ? groupOffset : (self._iconSize * 0.25)
+                  y += not item.prev ? groupOffset : (toolbar_theme.iconSize * 0.25)
                end
 
                currentGroup = item
@@ -202,9 +204,9 @@ gui.toolbar = function(Options)
                item.x = x
                item.y = y
                if self._horizontal then
-                  item.height = self._iconSize + (self._cellMargin * 2)
+                  item.height = toolbar_theme.iconSize + (self._cellMargin * 2)
                else
-                  item.width = self._iconSize + (self._cellMargin * 2)
+                  item.width = toolbar_theme.iconSize + (self._cellMargin * 2)
                end
 
                item.bkgd = self.vg.new('VectorRectangle', table.merge({
@@ -226,8 +228,8 @@ gui.toolbar = function(Options)
          elseif item.type is TI_ICON then
             item.x      = x
             item.y      = y
-            item.width  = self._iconSize + (self._cellMargin * 2)
-            item.height = self._iconSize + (self._cellMargin * 2)
+            item.width  = toolbar_theme.iconSize + (self._cellMargin * 2)
+            item.height = toolbar_theme.iconSize + (self._cellMargin * 2)
 
             if item.icon then
                item.icon.x = x + self._cellMargin
@@ -250,7 +252,7 @@ gui.toolbar = function(Options)
                item.vectorText = self.vg.new('VectorText', {
                   x        = x + self._cellMargin,
                   face     = gui.fonts.widget.face,
-                  fontSize = self._iconSize * 0.75,
+                  fontSize = toolbar_theme.iconSize * 0.75,
                   weight   = 500,
                   fill     = item.textFill,
                   string   = item.displayName
@@ -347,16 +349,16 @@ gui.toolbar = function(Options)
 
       if Icon then
          try
-            info = gui.createIcon(self.viewport.scene, Icon, self._iconSize, self._iconTheme)
+            info = gui.createIcon(self.viewport.scene, Icon, toolbar_theme.iconSize, self._iconTheme)
             item.iconFill = info.fill
 
             if self._iconHighlight and (self._iconTheme != self._iconHighlight) then
-               local info = gui.createIcon(self.viewport.scene, Icon, self._iconSize, self._iconHighlight)
+               local info = gui.createIcon(self.viewport.scene, Icon, toolbar_theme.iconSize, self._iconHighlight)
                item.iconAltFill = info.fill
             end
 
             item.icon = self.viewport.new('VectorRectangle', {
-               fill = info.fill, x=0, y=0, width=self._iconSize, height=self._iconSize
+               fill = info.fill, x=0, y=0, width=toolbar_theme.iconSize, height=toolbar_theme.iconSize
             })
          end
       end
@@ -416,7 +418,7 @@ gui.toolbar = function(Options)
       item = self._lookup[ID]
       item ?! return
 
-      sticker_size = math.floor(self._iconSize * 0.5)
+      sticker_size = math.floor(toolbar_theme.iconSize * 0.5)
 
       item.sticker ?= { }
 
@@ -426,7 +428,7 @@ gui.toolbar = function(Options)
          })
 
          item.sticker.bkgd = item.sticker.viewport.new('VectorEllipse', {
-            cx='50%', cy='50%', radius=self._iconSize * 0.25, fill=theme.palette.prime
+            cx='50%', cy='50%', radius=toolbar_theme.iconSize * 0.25, fill=theme.palette.prime
          })
       end
 
@@ -438,7 +440,7 @@ gui.toolbar = function(Options)
       if Content then
          if Content is <num> then
             if Content > 9 then
-               size = math.floor(self._iconSize * 0.33)
+               size = math.floor(toolbar_theme.iconSize * 0.33)
                gui.createIcon(self.viewport.scene, 'items/add', size, 'pearl', 'sticker_plus')
                item.sticker.content = item.sticker.viewport.new('VectorRectangle', {
                   fill = 'url(#sticker_plus)', x=math.floor((sticker_size - size)*0.5), y=math.floor((sticker_size - size)*0.5), width=size, height=size
@@ -612,12 +614,10 @@ gui.toolbar = function(Options)
    theme = gui.getTheme(Options.target)
    toolbar_theme = table.merge(theme.toolbar, Options.theme, true, true)
 
-   self._iconSize      = Options.iconSize      ?? gui.interface.iconSize
-   self._iconTheme     = Options.iconTheme     ?? toolbar_theme.icon
-   self._iconHighlight = Options.iconHighlight ?? toolbar_theme.iconHighlight
-   self._hoverFill     = Options.hoverFill     ?? theme.button.highlight.fill
-   self._selectFill    = Options.selectFill    ?? theme.palette.prime
-   self._groupBorder   = Options.groupBorder   ?? theme.window.stroke.stroke
+   self._iconTheme     = toolbar_theme.icon
+   self._iconHighlight = toolbar_theme.iconHighlight
+   self._hoverFill     = Options.hoverFill  ?? theme.button.highlight.fill
+   self._selectFill    = Options.selectFill ?? theme.palette.prime
 
    if Options.groupMargin then
       self._groupMargin = Options.groupMargin
@@ -717,7 +717,7 @@ gui.toolbar = function(Options)
 
    Options.createItems(self)
 
-   self._colBreadth = self._iconSize + (self._cellMargin * 2)
+   self._colBreadth = toolbar_theme.iconSize + (self._cellMargin * 2)
    if self._groupCount > 0 then
       self._colBreadth += (self._groupMargin*2)
    end

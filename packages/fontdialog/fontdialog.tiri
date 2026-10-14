@@ -338,12 +338,15 @@ Fusce auctor metus egestas commodo laoreet. Morbi sed venenatis augue. Maecenas 
                      &style = 'Regular'
                   end
 
+                  -- The callback runs in the view's context, so &style must be read beforehand.
+
                   vwStyle.selectItems(function(Item)
                      if Item.id is &style then return true end
                   end)
 
                   font = &prvFonts[Item.name]
                   if font.alias then font = &prvFonts[font.alias] end
+
                   sizes = font.sizes
                   if font.scalable or (not sizes??) then
                      sizes = SIZES
@@ -387,6 +390,7 @@ Fusce auctor metus egestas commodo laoreet. Morbi sed venenatis augue. Maecenas 
       end)
 
       vwStyle.deselectAll()
+
       vwStyle.selectItems(function(Item)
          if Item.id is &style then return true end
       end)

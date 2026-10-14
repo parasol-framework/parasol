@@ -188,7 +188,7 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 
 gui.initView = function(Options:table!, BuildUI, NewItems)
-   vw = {
+   vw = entity {
       lookup     = { }, -- Lookup items by ID
       activeZone = nil,
       zones      = { },
@@ -526,9 +526,11 @@ gui.initView = function(Options:table!, BuildUI, NewItems)
 
    -- Add visible matches in multiple mode, or replace with the first match in single mode.
 
-   vw.selectItems = function(Conditional)
+   @Ordinary -- Ensures callback runs in caller's context
+   vw.selectItems = function(Conditional:func)
       local wanted = vw.multiSelect ? currentSelection(vw) : {}
       local lead:table = nil
+
       for item in values(vw.items) do
          if not item.hidden and Conditional(item) is true then
             wanted[item._id] = true
@@ -536,6 +538,7 @@ gui.initView = function(Options:table!, BuildUI, NewItems)
             if not vw.multiSelect then break end
          end
       end
+
       if lead then selectionTransaction(vw, wanted, lead, vw.selectionAnchor, 'manual', lead) end
    end
 
