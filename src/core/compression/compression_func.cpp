@@ -1,12 +1,11 @@
 
 template<class T> void wrb(T Value, APTR Target) {
-   if constexpr (std::endian::native IS std::endian::little) {
-      ((T *)Target)[0] = Value;
+   T encoded = Value;
+   if constexpr (std::endian::native != std::endian::little) {
+      if constexpr (sizeof(T) IS 2) encoded = __builtin_bswap16(Value);
+      else encoded = __builtin_bswap32(Value);
    }
-   else if constexpr (sizeof(T) IS 2) {
-      ((T *)Target)[0] = __builtin_bswap16(Value);
-   }
-   else ((T *)Target)[0] = __builtin_bswap32(Value);
+   copymem(&encoded, Target, sizeof(encoded));
 }
 
 //*********************************************************************************************************************
@@ -533,17 +532,16 @@ static ERR fast_scan_zip(extCompression *Self)
          return scan_zip(Self);
       }
 
-      #pragma GCC diagnostic ignored "-Waddress-of-packed-member"
-      auto head = (uint32_t *)list_pos;
-      #pragma GCC diagnostic warning "-Waddress-of-packed-member"
+      uint32_t signature;
+      copymem(list_pos, &signature, sizeof(signature));
 
-      if (0x02014b50 != head[0]) {
+      if (0x02014b50 != signature) {
          log.warning("Zip file has corrupt end-of-file signature.");
          Self->Files.clear();
          return scan_zip(Self);
       }
 
-      auto scan = (zipentry *)(head + 1);
+      auto scan = (zipentry *)(list_pos + sizeof(signature));
 
 #ifndef REVERSE_BYTEORDER
       scan->deflatemethod  = le16_cpu(scan->deflatemethod);
