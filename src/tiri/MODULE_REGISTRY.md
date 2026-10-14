@@ -49,11 +49,14 @@ may retry.  Once a binding exists, definition loading stages its constants and s
 under `glConstantMutex`.  A failed commit rolls back entries from that batch and records the error on the binding;
 later requests return the same failure rather than exposing a partial definition set.
 
-`MODExpunge()` first prevents Tiri states from executing and releases the Tiri class.  `expunge_modules()` then marks
+`MODExpunge()` calls `expunge_modules()` while the Tiri class and its dependencies are still live.  This marks
 the registry permanently expunging, clears the non-owning index and moves the owned bindings out while holding the
-registry mutex.  The flag prevents an in-flight resolver from publishing after teardown begins.  The bindings are
-destroyed after the mutex is released because `FreeResource()` invokes external module teardown code that may re-enter
-registry-facing paths; such resolution is rejected with `ERR::InvalidState`.
+registry mutex.  The flag prevents an in-flight resolver from publishing after teardown begins.  After releasing the
+mutex, expunge releases every binding's module object while retaining all bindings, callable records and signatures.
+Module-owned Tiri states can therefore run shutdown finalisers using callables from any binding.  Only after all
+module objects have been released are the bindings destroyed; `MODExpunge()` then releases the Tiri class and its
+dependencies.  `FreeResource()` runs outside the mutex because external module teardown code may re-enter
+registry-facing paths; new resolution is rejected with `ERR::InvalidState`.
 
 ## Locking
 

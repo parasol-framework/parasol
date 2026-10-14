@@ -56,7 +56,8 @@ void LexState::var_new(BCREG n_unused, GCstr *name, BCLine Line, BCLine Column)
 
    // NOBARRIER: name is anchored in fs->kt and ls->vstack is not a GCobj.
 
-   setgcref(this->vstack[vtop].name, obj2gco(name));
+   // Fixed variable names are small pointer sentinels, not GC objects.  Store their bits without forming a GC header.
+   setgcrefp(this->vstack[vtop].name, obj2gco(name));
 
    // Store the vstack index in the pending area. var_add() will move these to varmap.
    fs->pending_varmap[fs->pending_vars++] = uint16_t(vtop);
