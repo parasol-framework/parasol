@@ -5,12 +5,13 @@
   <info>
     <name>Crypto</name>
     <type>module</type>
-    <comment>Provides hashing, secure random data, base64 coding, RSA signature verification and protected persistence.</comment>
+    <comment>Provides hashing, secure random data, base64 coding, certificate generation, signature verification and
+protected persistence.</comment>
     <version>1</version>
     <copyright>Paul Manias © 2026</copyright>
     <description>
-<p>The Crypto module provides a small set of cryptographic primitives for binary data.  All inputs are treated as raw byte arrays and may contain null bytes.  Hashing and signature verification use BearSSL on Linux and CNG on Windows; random data is obtained from the host platform.  MD5 and SHA-1 are available only for compatibility uses such as checksums, ETags, git object identifiers, UUID version 5 and HTTP digest authentication.  They are not suitable for security purposes; use SHA-256 or SHA-512 for new designs.</p>
-<p>Each input array argument is limited to 1 MiB (1048576 bytes).  The functions do not allocate memory for results; any output is written to an array supplied by the caller.</p>
+<p>The Crypto module provides a small set of cryptographic primitives for binary data.  All inputs are treated as raw byte arrays and may contain null bytes.  Hashing and signature verification use BearSSL on Linux and CNG on Windows. Certificate generation uses OpenSSL on Linux and CNG on Windows.  Random data is obtained from the host platform. MD5 and SHA-1 are available only for compatibility uses such as checksums, ETags, git object identifiers, UUID version 5 and HTTP digest authentication.  They are not suitable for security purposes; use SHA-256 or SHA-512 for new designs.</p>
+<p>Each input array argument is limited to 1 MiB (1048576 bytes).  Array results are written to caller-supplied buffers. Certificate generation instead returns PEM and fingerprint strings supplied by the caller.</p>
 <p><function>WriteProtectedFile</function> is the exception to the otherwise in-memory API.  It is a small persistence primitive for security-sensitive records that need owner-only access and atomic replacement.</p></description>
     <source>
       <file path="src/crypto/">crypto.cpp</file>
@@ -73,6 +74,25 @@
   </function>
 
   <function>
+    <name>CRC32</name>
+    <comment>Computes the IEEE CRC-32 checksum of a byte array.</comment>
+    <prototype>ERR crypto::CRC32(const std::span&lt;const int8_t&gt; &amp;Input, UINT * Result)</prototype>
+    <tiriPrototype>err, Result:num = CRC32(Input:array)</tiriPrototype>
+    <tags>thread-safe</tags>
+    <input>
+      <param type="std::span&lt;const int8_t&gt;" name="Input">The bytes to checksum, up to 1 MiB.</param>
+      <param type="UINT *" name="Result">Receives the checksum.</param>
+    </input>
+    <description>
+<p>The result uses the polynomial and initial/final complement required by STUN FINGERPRINT.  An empty array produces zero.  This checksum detects accidental corruption; it is not an authentication code.</p>
+    </description>
+    <result type="ERR">
+      <error code="Okay">Operation successful.</error>
+      <error code="Args"><code>Result</code> is null or <code>Input</code> exceeds 1 MiB.</error>
+    </result>
+  </function>
+
+  <function>
     <name>ConstantTimeEqual</name>
     <comment>Compares two byte arrays in constant time.</comment>
     <prototype>ERR crypto::ConstantTimeEqual(const std::span&lt;const int8_t&gt; &amp;A, const std::span&lt;const int8_t&gt; &amp;B, INT * Equal)</prototype>
@@ -90,6 +110,30 @@
     <result type="ERR">
       <error code="Okay">The comparison completed and the outcome is in <code>Equal</code>.</error>
       <error code="Args"><code>Equal</code> is <code>NULL</code>, or either array exceeds 1 MiB.</error>
+    </result>
+  </function>
+
+  <function>
+    <name>GenerateP256Certificate</name>
+    <comment>Creates a self-signed ECDSA P-256 certificate for a DTLS peer.</comment>
+    <prototype>ERR crypto::GenerateP256Certificate(STRVIEW CommonName, STRING * CertificatePEM, STRING * PrivateKeyPEM, STRING * Fingerprint)</prototype>
+    <tiriPrototype>err, CertificatePEM:str, PrivateKeyPEM:str, Fingerprint:str = GenerateP256Certificate(CommonName:str)</tiriPrototype>
+    <tags>thread-safe, mutates-input</tags>
+    <input>
+      <param type="STRVIEW" name="CommonName">Certificate subject name, one to 128 bytes with no null bytes.</param>
+      <param type="STRING *" name="CertificatePEM">Receives the certificate in PEM format.</param>
+      <param type="STRING *" name="PrivateKeyPEM">Receives the unencrypted private key in PEM format.</param>
+      <param type="STRING *" name="Fingerprint">Receives the SHA-256 certificate fingerprint.</param>
+    </input>
+    <description>
+<p>Each call generates a new private key and a certificate valid for 30 days.  The certificate and unencrypted private key are returned as PEM strings.  Keep the private key secret and clear it when it is no longer needed.  The SHA-256 fingerprint is returned as 32 upper-case hexadecimal octets separated by colons, suitable for an SDP fingerprint.</p>
+    </description>
+    <result type="ERR">
+      <error code="Okay">Operation successful.</error>
+      <error code="Failed">Certificate generation or encoding failed.</error>
+      <error code="Args">The common name is invalid or output strings alias.</error>
+      <error code="NoSupport">No certificate backend is available on this platform.</error>
+      <error code="NullArgs">An output string pointer is null.</error>
     </result>
   </function>
 

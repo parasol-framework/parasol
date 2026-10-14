@@ -8,12 +8,18 @@ idl_gen ("${MOD}.tdl" NAME ${MOD}_defs OUTPUT "${INCLUDE_OUTPUT}/modules/${MOD}.
 
 add_library (${MOD})
 set_module_defaults (${MOD} "Crypto")
-target_sources (${MOD} PRIVATE crypto.cpp)
+target_sources (${MOD} PRIVATE crypto.cpp protocol_primitives.cpp)
 
 if (WIN32)
-   target_sources (${MOD} PRIVATE backend_windows.cpp backend_windows_native.cpp)
-   target_link_libraries (${MOD} PRIVATE bcrypt advapi32)
+   target_compile_definitions (${MOD} PRIVATE WIN32_LEAN_AND_MEAN NOMINMAX)
+   target_sources (${MOD} PRIVATE backend_windows.cpp backend_windows_native.cpp backend_aes_windows.cpp
+      backend_certificate_windows.cpp)
+   target_link_libraries (${MOD} PRIVATE bcrypt advapi32 ncrypt crypt32)
 else ()
+   if (OpenSSL_FOUND AND NOT DISABLE_SSL)
+      target_compile_definitions (${MOD} PRIVATE CRYPTO_PROTOCOL_OPENSSL=1)
+      target_link_libraries (${MOD} PRIVATE OpenSSL::Crypto)
+   endif ()
    include (FetchContent)
    FetchContent_Declare (bearssl
       GIT_REPOSITORY https://www.bearssl.org/git/BearSSL
@@ -26,6 +32,8 @@ else ()
    target_include_directories (${MOD} PRIVATE "${BEARSSL_ROOT}/inc" "${BEARSSL_ROOT}/src")
    target_sources (${MOD} PRIVATE
       backend_bearssl.cpp
+      backend_aes_bearssl.cpp
+      "${BEARSSL_ROOT}/src/aead/gcm.c"
       "${BEARSSL_ROOT}/src/codec/ccopy.c"
       "${BEARSSL_ROOT}/src/codec/dec32be.c"
       "${BEARSSL_ROOT}/src/codec/dec32le.c"
@@ -34,6 +42,7 @@ else ()
       "${BEARSSL_ROOT}/src/codec/enc32le.c"
       "${BEARSSL_ROOT}/src/codec/enc64be.c"
       "${BEARSSL_ROOT}/src/hash/md5.c"
+      "${BEARSSL_ROOT}/src/hash/ghash_ctmul64.c"
       "${BEARSSL_ROOT}/src/hash/sha1.c"
       "${BEARSSL_ROOT}/src/hash/sha2big.c"
       "${BEARSSL_ROOT}/src/hash/sha2small.c"
@@ -54,6 +63,10 @@ else ()
       "${BEARSSL_ROOT}/src/rsa/rsa_i31_pkcs1_vrfy.c"
       "${BEARSSL_ROOT}/src/rsa/rsa_i31_pub.c"
       "${BEARSSL_ROOT}/src/rsa/rsa_pkcs1_sig_unpad.c")
+   target_sources (${MOD} PRIVATE
+      "${BEARSSL_ROOT}/src/symcipher/aes_ct64.c"
+      "${BEARSSL_ROOT}/src/symcipher/aes_ct64_enc.c"
+      "${BEARSSL_ROOT}/src/symcipher/aes_ct64_ctr.c")
 endif ()
 
 if (BUILD_TESTS)
@@ -67,6 +80,16 @@ if (UNIT_TESTS)
    endif ()
    add_executable (test_crypto_native tests/test_primitives.cpp)
    target_link_libraries (test_crypto_native PRIVATE crypto)
+   if (WIN32)
+      find_package (OpenSSL 1.1.1 QUIET)
+      if (OpenSSL_FOUND)
+         target_compile_definitions (test_crypto_native PRIVATE CRYPTO_PROTOCOL_OPENSSL=1)
+         target_link_libraries (test_crypto_native PRIVATE OpenSSL::Crypto)
+      endif ()
+   elseif (OpenSSL_FOUND AND NOT DISABLE_SSL)
+      target_compile_definitions (test_crypto_native PRIVATE CRYPTO_PROTOCOL_OPENSSL=1)
+      target_link_libraries (test_crypto_native PRIVATE OpenSSL::Crypto)
+   endif ()
    add_test (NAME crypto_native COMMAND test_crypto_native)
    if (WIN32)
       set_tests_properties (crypto_native PROPERTIES
