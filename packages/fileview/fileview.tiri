@@ -1394,7 +1394,6 @@ gui.fileview = function(Options)
                KEY_C -> self.copyFiles()
                KEY_X -> self.cutFiles()
                KEY_V -> self.pasteFiles()
-               KEY_A -> self.view.selectAll()
             end
          elseif Value is KEY_DELETE then
             self.deleteFiles()
@@ -1803,6 +1802,23 @@ gui.fileview = function(Options)
          self.watch = nil
          err, self.timer = mSys.SubscribeTimer(self.refreshRate, incrementalRefresh)
       end
+   end
+
+   -- File-system subscriptions belong to the host viewport, which survives view-style recreation.
+   local released = false
+   function releaseSubscriptions()
+      if released then return end
+      released = true
+      if self.timer then mSys.UpdateTimer(self.timer, 0); self.timer = nil end
+      if self.evVolumeCreated then unsubscribeEvent(self.evVolumeCreated); self.evVolumeCreated = nil end
+      if self.evVolumeDeleted then unsubscribeEvent(self.evVolumeDeleted); self.evVolumeDeleted = nil end
+      self.watch = nil
+      drag_clipboard.free()
+   end
+   Options.target.subscribe('free', releaseSubscriptions)
+   self.free = function()
+      releaseSubscriptions()
+      self.view?.free()
    end
 
    self._surface = Options.target.scene.surface
