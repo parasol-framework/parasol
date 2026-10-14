@@ -9,8 +9,9 @@ Windows.
 **********************************************************************************************************************
 
 -MODULE-
-Crypto: Provides hashing, secure random data, base64 coding, certificate generation, signature verification and
-protected persistence.
+Crypto: Provides cryptographic primitives for binary data.
+
+BETA: This module is not finalised for production use.
 
 The Crypto module provides a small set of cryptographic primitives for binary data.  All inputs are treated as raw
 byte arrays and may contain null bytes.  Hashing and signature verification use BearSSL on Linux and CNG on Windows.

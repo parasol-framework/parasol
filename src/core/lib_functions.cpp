@@ -794,13 +794,22 @@ ERR RegisterFD(int FD, RFD Flags, void (*Routine)(HOSTHANDLE, APTR), APTR Data)
 
    if ((Flags & (RFD::READ|RFD::WRITE|RFD::EXCEPT|RFD::REMOVE|RFD::ALWAYS_CALL)) IS RFD::NIL) Flags |= RFD::READ;
 
-   for (auto &fd : glFDTable) {
-      if ((fd.FD IS FD) and ((Flags & (fd.Flags & (RFD::READ|RFD::WRITE|RFD::EXCEPT|RFD::ALWAYS_CALL))) != RFD::NIL)) {
-         fd.Routine = Routine;
-         fd.Flags   = Flags;
-         fd.Data    = Data;
-         return ERR::Okay;
+   auto replacement = glFDTable.end();
+   for (auto it = glFDTable.begin(); it != glFDTable.end();) {
+      if ((it->FD IS FD) and ((Flags & (it->Flags & events)) != RFD::NIL)) {
+         if (replacement IS glFDTable.end()) {
+            replacement = it;
+            ++it;
+         }
+         else it = glFDTable.erase(it); // A replacement may cover several existing subscriptions.
       }
+      else ++it;
+   }
+   if (replacement != glFDTable.end()) {
+      replacement->Routine = Routine;
+      replacement->Flags   = Flags;
+      replacement->Data    = Data;
+      return ERR::Okay;
    }
 
    log.function("FD: %" PRId64 ", Routine: %p, Flags: $%.2x (New)", (MAXINT)FD, Routine, int(Flags));
