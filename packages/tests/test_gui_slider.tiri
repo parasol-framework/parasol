@@ -1,10 +1,12 @@
    import 'gui', 'gui/slider'
    include 'display', 'vector'
+   module vector as mVec
 
 function newSlider(Options:table!):<obj, table>
    local surface = obj.new('Surface', { width=500, height=300 })
    local scene = surface.new('VectorScene', { surface=surface })
-   Options.target = scene.new('VectorViewport', { width='100%', height='100%' })
+   local root = scene.new('VectorViewport', { width='100%', height='100%' })
+   Options.target = root.new('VectorViewport', { width='100%', height='100%' })
    local slider = gui.slider(Options)
    surface.acShow()
    surface.acFocus()
@@ -26,9 +28,11 @@ end
 
 function putDouble(Buffer:array<byte>!, Offset:num!, Value:num!)
    if Value is 0 then return end
+   local sign = (Value < 0) ? 2147483648 : 0
+   Value = math.abs(Value)
    local mantissa, exponent = math.frexp(Value)
    local fraction = ((mantissa * 2) - 1) * 1048576
-   local high = ((exponent + 1022) * 1048576) + math.floor(fraction)
+   local high = sign + ((exponent + 1022) * 1048576) + math.floor(fraction)
    local low = (fraction - math.floor(fraction)) * 4294967296
    for i in {0 to 4} do
       Buffer[Offset + i] = math.floor(low / (256 ** i)) % 256
@@ -47,6 +51,185 @@ end
 
 @BeforeEach function resetPointer()
    if obj.find('SystemPointer') then feed(JET_ABS_XY, 1000, 1000) end
+end
+
+@Test function ExplicitDimensionsIncludeLabel()
+   local surface <close>, slider = newSlider({ width=240, height=40, label='Resolution:', value=0.5 })
+   assert(slider.viewport.width is 240 and slider.viewport.height is 40,
+      'Explicit dimensions must describe the whole labelled widget')
+   assert(slider.prvSliderHostVP.width is 240 - slider.prvLabelSize,
+      'The horizontal track must occupy the width remaining after the label')
+   assert(slider.prvSliderVP.y is math.floor((40 - slider.prvThumbSize) * 0.5),
+      'The horizontal thumb must be centred within an explicit height')
+   slider.setValue(1)
+   assert(slider.prvSliderVP.x is slider.prvSliderHostVP.width - slider.prvThumbSize,
+      'The maximum must place the thumb at the end of the explicit track')
+
+   local vertical = gui.slider({ target=slider.viewport.parent, orientation='vertical',
+      width=40, height=240, value=0.5
+   })
+   assert(vertical.viewport.width is 40 and vertical.viewport.height is 240,
+      'Vertical sliders must honour both explicit dimensions')
+   assert(vertical.prvSliderVP.x is math.floor((40 - vertical.prvThumbSize) * 0.5),
+      'The vertical thumb must be centred within an explicit width')
+
+   local default_slider = gui.slider({ target=slider.viewport.parent, label='Resolution:' })
+   assert(default_slider.prvSliderHostVP.width is 100
+      and default_slider.viewport.width is 100 + default_slider.prvLabelSize,
+      'The default horizontal track must remain 100 pixels long, excluding the label')
+   local default_vertical = gui.slider({ target=slider.viewport.parent, orientation='vertical' })
+   assert(default_vertical.viewport.height is 100
+      and default_vertical.viewport.width is default_vertical.thickness,
+      'Vertical sliders must default to a 100 pixel track and the configured breadth')
+end
+
+@Test function OffsetsAnchorAndStretchWithParent()
+   for orientation in values(array<str> { 'horizontal', 'vertical' }) do
+      local surface <close>, slider = newSlider({ orientation=orientation, width=120, height=80,
+         xOffset=10, yOffset=20
+      })
+      assert(slider.viewport.x is 370 and slider.viewport.y is 200,
+         'Offsets without x or y must anchor fixed dimensions to the right and bottom')
+      slider.viewport.parent.width = 600
+      slider.viewport.parent.height = 400
+      slider.viewport.scene.bitmap = surface.buffer
+      check slider.viewport.scene.acDraw()
+      processing.sleep(0)
+      assert(slider.viewport.x is 470 and slider.viewport.y is 300,
+         'Anchored widgets must follow parent resizing')
+
+      local stretched = gui.slider({ target=slider.viewport.parent, orientation=orientation,
+         x=0, xOffset=0, y=10, yOffset=20, value=0.25,
+         label=(orientation is 'horizontal') ? 'Resolution:' : nil
+      })
+      slider.viewport.scene.bitmap = surface.buffer
+      check slider.viewport.scene.acDraw()
+      processing.sleep(0)
+      assert(stretched.viewport.width is 600 and stretched.viewport.height is 370,
+         'Zero offsets and paired coordinates must stretch without inserting default dimensions')
+      slider.viewport.parent.width = 700
+      slider.viewport.parent.height = 500
+      slider.viewport.scene.bitmap = surface.buffer
+      check slider.viewport.scene.acDraw()
+      processing.sleep(0)
+      assert(stretched.viewport.width is 700 and stretched.viewport.height is 470,
+         'Stretched dimensions must follow parent resizing')
+      local track = (orientation is 'vertical') ? stretched.prvSliderHostVP.height : stretched.prvSliderHostVP.width
+      local position = (orientation is 'vertical') ? stretched.prvSliderVP.y : stretched.prvSliderVP.x
+      local fraction = (orientation is 'vertical') ? 0.75 : 0.25
+      assert(math.abs(position - ((track - stretched.prvThumbSize) * fraction)) < 0.000001,
+         'Resizing must preserve the thumb position for the current value')
+      assert(stretched.value is 0.25, 'Layout changes must preserve the slider value')
+   end
+end
+
+@Test function PercentageDimensionsResizeTrackAndThumb()
+   for orientation in values(array<str> { 'horizontal', 'vertical' }) do
+      local surface <close>, slider = newSlider({ orientation=orientation, x='10%', y='10%',
+         width='50%', height='50%', value=0.5, label=(orientation is 'horizontal') ? 'Resolution:' : nil
+      })
+      assert(slider.viewport.width is 250 and slider.viewport.height is 150,
+         'Percentage dimensions must remain relative to the parent, including labelled sliders')
+      slider.viewport.parent.width = 600
+      slider.viewport.parent.height = 400
+      slider.viewport.scene.bitmap = surface.buffer
+      check slider.viewport.scene.acDraw()
+      processing.sleep(0)
+      assert(slider.viewport.width is 300 and slider.viewport.height is 200,
+         'Percentage dimensions must follow parent resizing')
+      local x_space = slider.prvSliderHostVP.width - slider.prvThumbSize
+      local y_space = slider.prvSliderHostVP.height - slider.prvThumbSize
+      local expect_x = (orientation is 'vertical') ? math.floor(x_space * 0.5) : x_space * 0.5
+      local expect_y = (orientation is 'vertical') ? y_space * 0.5 : math.floor(y_space * 0.5)
+      assert(math.abs(slider.prvSliderVP.x - expect_x) < 0.000001
+         and math.abs(slider.prvSliderVP.y - expect_y) < 0.000001,
+         'Resizing must keep a midpoint thumb centred on both axes')
+   end
+end
+
+function pointAtSlider(Surface:obj!, Slider:table!, Thumb:bool)
+   local x, y = Slider.viewport.x + Slider.prvSliderHostVP.x, Slider.viewport.y + Slider.prvSliderHostVP.y
+   if Thumb then
+      x += Slider.prvSliderVP.x + (Slider.prvThumbSize * 0.5)
+      y += Slider.prvSliderVP.y + (Slider.prvThumbSize * 0.5)
+   elseif Slider.orientation is 'V' then
+      x += Slider.thickness * 0.5
+      y += 5
+   else
+      x += 5
+      y += Slider.thickness * 0.5
+   end
+   feed(JET_ABS_XY, Surface.absX + x, Surface.absY + y)
+end
+
+@Test function WheelUsesStepsOverTrackAndThumb()
+   for orientation in values(array<str> { 'horizontal', 'vertical' }) do
+      local hits = 0
+      local surface <close>, slider = newSlider({ orientation=orientation, min=5, max=100, step=3, value=50,
+         events={ activate=function(Value)
+            assert(&value is Value, 'Wheel activation must execute in the slider context')
+            hits++
+         end }
+      })
+      for target in values(array<int> { 0, 1 }) do
+         slider.setValue(50)
+         pointAtSlider(surface, slider, target is 1)
+         local before = hits
+         feed(JET_WHEEL, 1, 0)
+         assert(slider.value is 53 and hits is before + 1, 'Wheel up must increase once over track and thumb')
+         feed(JET_WHEEL, -1, 0)
+         assert(slider.value is 50 and hits is before + 2, 'Wheel down must decrease once over track and thumb')
+         feed(JET_WHEEL, 3, 0)
+         assert(slider.value is 59, 'Multiple wheel notches must use the reported magnitude')
+      end
+      slider.setValue(100)
+      pointAtSlider(surface, slider, false)
+      local before = hits
+      feed(JET_WHEEL, 1, 0)
+      feed(JET_WHEEL, 0, 0)
+      assert(slider.value is 100 and hits is before, 'Clamped and zero wheel input must not activate')
+      feed(JET_WHEEL, -1, 0)
+      assert(slider.value is 98, 'Wheel down must leave an off-grid maximum for the preceding step')
+      slider.setValue(100)
+      feed(JET_WHEEL, -3, 0)
+      assert(slider.value is 92, 'Multiple downward notches must count steps from the off-grid maximum')
+      slider.setValue(5)
+      before = hits
+      feed(JET_WHEEL, -1, 0)
+      assert(slider.value is 5 and hits is before, 'Wheel down must clamp at the minimum without activation')
+      feed(JET_ABS_XY, surface.absX + 250, surface.absY + 200)
+      feed(JET_WHEEL, 1, 0)
+      assert(slider.value is 5 and hits is before, 'Wheel input outside the widget must not change its value')
+   end
+end
+
+@Test function ContinuousWheelFollowsRangeAndEnableState()
+   for orientation in values(array<str> { 'horizontal', 'vertical' }) do
+      local hits = 0
+      local surface <close>, slider = newSlider({ orientation=orientation, min=-1, max=1, value=0,
+         disabled=true, events={ activate=function(Value) hits++ end }
+      })
+      pointAtSlider(surface, slider, false)
+      feed(JET_WHEEL, 1, 0)
+      assert(slider.value is 0 and hits is 0, 'Initially disabled sliders must reject wheel input')
+      slider.enable()
+      pointAtSlider(surface, slider, true)
+      feed(JET_WHEEL, 1, 0)
+      assert(math.abs(slider.value - 0.02) < 0.000001 and hits is 1,
+         'Continuous wheel input must increase by one percent of the range')
+      feed(JET_WHEEL, -0.5, 0)
+      assert(math.abs(slider.value - 0.01) < 0.000001, 'Continuous sliders must preserve fractional wheel input')
+      slider.setRange(0, 10)
+      slider.setValue(5)
+      pointAtSlider(surface, slider, false)
+      feed(JET_WHEEL, -1, 0)
+      assert(math.abs(slider.value - 4.9) < 0.000001, 'Wheel increments must follow range changes')
+      slider.disable()
+      local before = hits
+      feed(JET_WHEEL, 1, 0)
+      assert(math.abs(slider.value - 4.9) < 0.000001 and hits is before,
+         'Disabling an active slider must reject wheel input')
+   end
 end
 
 @Test function KeyboardUsesStepsAndRangeEndpoints()
@@ -156,10 +339,12 @@ end
 end
 
 function abandonedSlider():<obj, func, array<int>>
-   local surface, slider = newSlider({ value=0.5 })
+   local surface, slider = newSlider({ orientation='vertical', value=0.5,
+      label='Gain:', labelPos='top', labelAlign='centre' })
    local weak_slider <weak> = slider
    return surface, function():table return weak_slider end,
-      array<int> { slider.viewport.id, slider.prvSliderHostVP.id, slider.prvSliderVP.id, slider.button.id }
+      array<int> { slider.viewport.id, slider.prvSliderHostVP.id, slider.prvSliderVP.id, slider.button.id,
+         slider.labelText.id }
 end
 
 @Test function NativeCallbacksDoNotRetainSlider()
@@ -193,4 +378,404 @@ end
    processing.collect('full')
    assert(not obj.find(viewport_id), 'Returning from the callback must release its acquired slider')
    sendKey(KEY_HOME)
+end
+
+@Test function LabelPositionsReserveTrackSpaceInBothOrientations()
+   for orientation in values(array<str> { 'horizontal', 'vertical' }) do
+      for position in values(array<str> { 'left', 'right', 'top', 'bottom' }) do
+         local surface <close>, slider = newSlider({ orientation=orientation, label='Gain:', labelPos=position,
+            width=240, height=180, value=0.5
+         })
+         local host = slider.prvSliderHostVP
+         local stacked = (position is 'top') or (position is 'bottom')
+         assert(slider.viewport.width is 240 and slider.viewport.height is 180,
+            'Label placement must preserve explicit widget dimensions')
+         assert(host.x is ((position is 'left') ? slider.prvLabelSize : 0)
+            and host.y is ((position is 'top') ? slider.prvLabelSize : 0),
+            'Left and top labels must shift the track origin')
+         assert(host.width is 240 - (stacked ? 0 : slider.prvLabelSize)
+            and host.height is 180 - (stacked ? slider.prvLabelSize : 0),
+            'Every label position must reserve space outside the track')
+         if orientation is 'horizontal' then
+            assert(slider.labelText.x is ((position is 'right') ? 240 - slider.labelText.textWidth : 0),
+               'Horizontal labels must use the expected text origin')
+            if position is 'top' then
+               assert(slider.labelText.y < host.y, 'The top label baseline must remain above the track')
+            elseif position is 'bottom' then
+               assert(slider.labelText.y > host.height, 'The bottom label baseline must remain below the track')
+            end
+         else
+            slider.viewport.scene.bitmap = surface.buffer
+            check slider.viewport.scene.acDraw()
+            local _, x, y, width, height = check slider.labelText.mtGetBoundary(0)
+            assert(height > width, 'Vertical labels must have a vertically oriented graphical boundary')
+            assert(x >= -1 and y >= -1 and x + width <= 241 and y + height <= 181,
+               'Rotated labels must stay within the widget')
+            if position is 'left' then
+               assert(x + width < host.x, 'Left labels must remain beside the track')
+            elseif position is 'right' then
+               assert(x > host.width, 'Right labels must remain beside the track')
+            elseif position is 'top' then
+               assert(y + height < host.y, 'Top labels must remain above the track')
+            else
+               assert(y > host.height, 'Bottom labels must remain below the track')
+            end
+         end
+
+         pointAtSlider(surface, slider, true)
+         feed(JET_WHEEL, 1, 0)
+         assert(math.abs(slider.value - 0.51) < 0.000001, 'Positioned labels must preserve wheel routing')
+         slider.viewport.acFocus()
+         processing.sleep(0)
+         sendKey(KEY_RIGHT)
+         assert(math.abs(slider.value - 0.52) < 0.000001, 'Positioned labels must preserve keyboard focus')
+         slider.setValue(0)
+         slider.viewport.scene.bitmap = surface.buffer
+         check slider.viewport.scene.acDraw()
+         feed(JET_ABS_XY, surface.absX + host.x + (host.width * 0.5),
+            surface.absY + host.y + (host.height * 0.5))
+         feed(JET_LMB, 1, 0)
+         feed(JET_LMB, 0, 0)
+         assert(math.abs(slider.value - 0.5) < 0.000001,
+            f'Track clicks with {orientation}/{position} labels must reach the midpoint, got {slider.value}')
+      end
+   end
+end
+
+@Test function TopAndBottomLabelAlignmentFollowsResizing()
+   for orientation in values(array<str> { 'horizontal', 'vertical' }) do
+      for position in values(array<str> { 'top', 'bottom' }) do
+         for alignment in values(array<str> { 'left', 'centre', 'right' }) do
+            local surface <close>, slider = newSlider({ orientation=orientation, label='Gain:', labelPos=position,
+               labelAlign=alignment, x=0, xOffset=0, y=0, yOffset=0
+            })
+            local anchor = (alignment is 'centre') ? 0.5 : ((alignment is 'right') ? 1 : 0)
+            local native_align = (alignment is 'centre') ? ALIGN_HORIZONTAL :
+               ((alignment is 'right') ? ALIGN_RIGHT : ALIGN_LEFT)
+            if orientation is 'horizontal' then
+               assert(slider.labelText.x is slider.viewport.width * anchor and slider.labelText.align is native_align,
+                  'Horizontal top/bottom labels must use the requested text anchor and alignment')
+            else
+               assert(slider.labelText.align is ALIGN_LEFT, 'Rotated labels must retain their baseline origin')
+            end
+            local initial_x = slider.labelText.x
+            local baseline = slider.labelText.y
+            slider.viewport.parent.width = 600
+            slider.viewport.parent.height = 400
+            slider.viewport.scene.bitmap = surface.buffer
+            check slider.viewport.scene.acDraw()
+            assert(math.abs(slider.labelText.x - initial_x - (100 * anchor)) < 0.000001,
+               'Resizing must preserve alignment against the whole widget width')
+            assert(slider.labelText.y is baseline + ((position is 'bottom') ? 100 : 0),
+               'Only bottom labels must move their baseline when height increases')
+         end
+      end
+   end
+end
+
+@Test function DefaultDimensionsMakeRoomForEveryLabelPosition()
+   for orientation in values(array<str> { 'horizontal', 'vertical' }) do
+      for position in values(array<str> { 'left', 'right', 'top', 'bottom' }) do
+         local surface <close>, slider = newSlider({ orientation=orientation, label='Resolution:', labelPos=position })
+         local host = slider.prvSliderHostVP
+         assert(slider.labelText and slider.labelPos is position and slider.labelAlign is 'left',
+            'Both orientations must create labels and default their alignment to left')
+         local length = (orientation is 'vertical') ? host.height : host.width
+         assert(length >= 100, 'Default dimensions must preserve at least a 100 pixel track')
+         local label_length = (orientation is 'vertical') ? slider.viewport.height : slider.viewport.width
+         assert(label_length >= slider.labelText.textWidth,
+            'Default dimensions must make room for the label along its reading direction')
+         assert(host.width >= slider.prvThumbSize and host.height >= slider.prvThumbSize,
+            'Default dimensions must keep enough space for the thumb')
+      end
+   end
+end
+
+@Test function ValuePrecisionFollowsStepAndUpdatesBeforeActivation()
+   for example in values(array<table> {
+      { step=1, expected='1' }, { step=10, expected='0' }, { step=0.1, expected='1.0' },
+      { step=0.25, expected='1.00' }, { step=0.01, expected='1.00' },
+      { step=0.005, expected='1.000' }, { step=0.0000000001, expected='1.0000000000' }, { step=1 / 3, expected='1.00' },
+      { step=0, expected='1.00' }
+   }) do
+      local slider:table
+      local hits = 0
+      local surface <close>, created = newSlider({ min=0, max=10, value=1, step=example.step, valuePos='in-centre',
+         events={ activate=function(Value)
+            assert(&valueText.string is string.format(&prvValueFormat(), Value),
+               'Activation must see the updated formatted value')
+            hits++
+         end }
+      })
+      slider = created
+      assert(slider.valueText.string is example.expected, 'Step precision must determine the initial value text')
+      slider.setValue(10)
+      assert(hits is 1 and slider.valueText.string is string.format(slider.prvValueFormat(), 10),
+         'Programmatic updates must synchronise text and emit activation once')
+      slider.setValue(10)
+      assert(hits is 1, 'An unchanged value must not emit activation')
+      slider.disable()
+      slider.setValue(0)
+      assert(slider.valueText.string is string.format(slider.prvValueFormat(), 0),
+         'Programmatic updates must refresh disabled value displays')
+   end
+   local surface <close>, slider = newSlider({ value=0.5 })
+   assert(slider.valueText is nil, 'The default valuePos must not create value text')
+end
+
+@Test function ValuePrecisionFollowsStepGridOrigin()
+   for example in values(array<table> {
+      { min=0.5, max=10, step=1, values=array<double> { 1.5, 2.5 }, expected=array<str> { '1.5', '2.5' } },
+      { min=0.05, max=1, step=0.1, values=array<double> { 0.15, 0.25 }, expected=array<str> { '0.15', '0.25' } },
+      { min=0, max=10.25, step=1, values=array<double> { 10, 10.25 }, expected=array<str> { '10.00', '10.25' } },
+      { min=0.001, max=1, step=0.25, values=array<double> { 0.251, 0.501 }, expected=array<str> { '0.251', '0.501' } }
+   }) do
+      local surface <close>, slider = newSlider({ min=example.min, max=example.max, step=example.step,
+         value=example.min, valuePos='in-centre' })
+      for i, value in example.values do
+         slider.setValue(value)
+         assert(slider.valueText.string is example.expected[i],
+            f'Value {value} on a grid from {example.min} by {example.step} must display as {example.expected[i]}, ' ..
+            f'not {slider.valueText.string}')
+      end
+   end
+end
+
+@Test function ValuePositionsFollowRangeDirectionAndReserveOutsideSpace()
+   for orientation in values(array<str> { 'horizontal', 'vertical' }) do
+      for position in values(array<str> { 'in-min', 'in-centre', 'in-max', 'out-min', 'out-centre', 'out-max' }) do
+         local surface <close>, slider = newSlider({ orientation=orientation, valuePos=position,
+            x=0, xOffset=0, y=0, yOffset=0, label='Gain:', labelPos='left', value=0.5
+         })
+         slider.viewport.scene.bitmap = surface.buffer
+         check slider.viewport.scene.acDraw()
+         local host, text = slider.prvSliderHostVP, slider.valueText
+         local _, x, y, width, height = check text.mtGetBoundary(0)
+         assert(text.next is nil, 'Value text must render in front of the track and thumb')
+         if position.startsWith('in-') then
+            assert(x >= host.x and y >= host.y and x + width <= host.x + host.width
+               and y + height <= host.y + host.height, 'Inside value text must fit within the track')
+         elseif orientation is 'horizontal' then
+            if position is 'out-min' then
+               assert(x + width < host.x, 'Horizontal out-min must be before the minimum end')
+            elseif position is 'out-max' then
+               assert(x > host.x + host.width, 'Horizontal out-max must be after the maximum end')
+            else
+               assert(y > host.y + host.height, 'Horizontal out-centre must be below the track')
+            end
+         elseif position is 'out-min' then
+            assert(y > host.y + host.height, 'Vertical out-min must be below the minimum end')
+         elseif position is 'out-max' then
+            assert(y + height < host.y, 'Vertical out-max must be above the maximum end')
+         else
+            assert(x > host.x + host.width, 'Vertical out-centre must be beside the track')
+         end
+         pointAtSlider(surface, slider, true)
+         feed(JET_WHEEL, 1, 0)
+         assert(slider.valueText.string is '0.51', 'Value text must preserve wheel routing and update immediately')
+         check slider.viewport.scene.acDraw()
+         pointAtSlider(surface, slider, true)
+         feed(JET_LMB, 1, 0)
+         local thumb_x = host.x + slider.prvSliderVP.x + (slider.prvThumbSize * 0.5)
+         local thumb_y = host.y + slider.prvSliderVP.y + (slider.prvThumbSize * 0.5)
+         feed(JET_ABS_XY, surface.absX + thumb_x + ((orientation is 'horizontal') ? 10 : 0),
+            surface.absY + thumb_y - ((orientation is 'vertical') ? 10 : 0))
+         feed(JET_LMB, 0, 0)
+         assert(slider.value > 0.51, 'Value text must not intercept thumb dragging')
+         slider.viewport.parent.width = 600
+         slider.viewport.parent.height = 400
+         check slider.viewport.scene.acDraw()
+         local width_before = host.width
+         slider.setValue(1)
+         assert(host.width is width_before, 'Changing the displayed value must not resize the track')
+         assert(slider.valueText.string is '1.00', 'Endpoint values must retain step-derived precision')
+      end
+   end
+end
+
+@Test function OutsideValueDisplayFollowsRangeChangesAndCollection()
+   local surface <close>, slider = newSlider({ valuePos='out-max', step=1, min=0, max=10, value=5 })
+   local track_width = slider.prvSliderHostVP.width
+   slider.setRange(-1000, 1000)
+   assert(slider.prvSliderHostVP.width is track_width,
+      'Default dimensions must expand for a wider readout while preserving the track length')
+   slider.setValue(-1000)
+   assert(slider.valueText.string is '-1000', 'Range changes must allow a wider signed value display')
+   slider.setRange(0, 10)
+   assert(slider.valueText.string is '0', 'Range clamping must refresh value text')
+   local ids = array<int> { slider.viewport.id, slider.valueText.id }
+   slider = nil
+   processing.collect('full')
+   for id in values(ids) do
+      assert(not obj.find(id), 'Collection must release the widget and its value text')
+   end
+end
+
+@Test function VerticalValuesScaleToTrack()
+   for position in values(array<str> { 'in-min', 'in-centre', 'in-max', 'out-min', 'out-max' }) do
+      local surface <close>, slider = newSlider({ orientation='vertical', valuePos=position, label='Gain:',
+         labelPos='bottom' })
+      local full_size = tonumber(slider.labelText.fontSize)
+      for range in values(array<table> { { 0, 1 }, { -1000, 1000 } }) do
+         slider.setRange(range[0], range[1])
+         local text, bar = slider.valueText, slider.prvBarBkgd
+         assert(slider.viewport.width is slider.thickness and bar.x is 0 and bar.width is slider.thickness,
+            f'{position}: values must not widen a vertical slider or its track')
+         assert(tonumber(text.fontSize) < full_size, f'{position}: a value wider than the track must be scaled down')
+
+         -- Every value in the range must fit, so check both ends with their widest digits
+
+         for value in values(array<double> { range[0], range[1] }) do
+            slider.setValue(value)
+            text.string = regex.new('[0-9]').replace(text.string, '8')
+            assert(text.textWidth <= slider.thickness - 4,
+               f'{position}: {text.string} must fit across the track at {text.fontSize}px')
+            slider.setValue(range[0] + ((range[1] - range[0]) * 0.5)) -- Restore real text before placing it
+         end
+
+         local text_centre = text.x - slider.prvSliderHostVP.x + (text.textWidth * 0.5)
+         assert(math.abs(text_centre - (bar.width * 0.5)) <= 0.5,
+            f'{position}: value text must be centred on the track ({text_centre})')
+      end
+   end
+
+   local surface <close>, wide = newSlider({ orientation='vertical', valuePos='in-centre', thickness=48 })
+   assert(tonumber(wide.valueText.fontSize) is wide.prvValueFontSize and wide.prvValueWidth <= 44,
+      'A track wide enough for the value must not need scaling')
+   local surface2 <close>, beside = newSlider({ orientation='vertical', valuePos='out-centre' })
+   assert(beside.prvValueWidth > beside.thickness, 'Values beside the track must keep their full size')
+end
+
+@Test function NonPositiveThumbTravelPreservesValueAndRecoversAfterResizing()
+   for orientation in values(array<str> { 'horizontal', 'vertical' }) do
+      local hits = 0
+      local surface <close>, slider = newSlider({ orientation=orientation, width=100, height=100,
+         thickness=20, value=0.5, events={ activate=function(Value) hits++ end }
+      })
+      local dimension = (orientation is 'vertical') ? 'height' : 'width'
+      for length in values(array<int> { 20, 10 }) do
+         slider.viewport[dimension] = length
+         slider.viewport.scene.bitmap = surface.buffer
+         check slider.viewport.scene.acDraw()
+         processing.sleep(0)
+         local position = (orientation is 'vertical') ? slider.prvSliderVP.y : slider.prvSliderVP.x
+         assert(position is 0, 'A thumb without room to travel must stay at the track origin')
+         for coordinate in values(array<int> { -10, 0, 10 }) do
+            slider.setValue(slider.prvTrackValue(coordinate))
+            assert(slider.value is 0.5 and hits is 0,
+               'Zero or negative thumb travel must preserve the value without activation')
+         end
+         pointAtSlider(surface, slider, false)
+         feed(JET_LMB, 1, 0)
+         feed(JET_LMB, 0, 0)
+         assert(slider.value is 0.5 and hits is 0, 'Track clicks must remain harmless when travel is unavailable')
+      end
+
+      slider.viewport[dimension] = 100
+      slider.viewport.scene.bitmap = surface.buffer
+      check slider.viewport.scene.acDraw()
+      processing.sleep(0)
+      slider.setValue(slider.prvTrackValue((orientation is 'vertical') ? 0 : 80))
+      assert(slider.value is 1 and hits is 1, 'Pointer adjustment must recover when resizing restores thumb travel')
+   end
+end
+
+@Test function NarrowVerticalValuesUseMinimumFontAndHideWhenTheyCannotFit()
+   for thickness in values(array<int> { 1, 4, 5, 8 }) do
+      local surface <close>, slider = newSlider({ orientation='vertical', thickness=thickness,
+         min=-100000000, max=100000000, step=1, value=-100000000, valuePos='in-centre'
+      })
+      assert(tonumber(slider.valueText.fontSize) is 1,
+         'A narrow track must reach the minimum font size even when the estimate rounds to zero')
+      assert(slider.valueText.visibility is VIS_HIDDEN,
+         'A value that cannot fit at the minimum font size must be hidden')
+      slider.setValue(100000000)
+      assert(slider.valueText.string is '100000000' and slider.valueText.visibility is VIS_HIDDEN,
+         'Hidden value text must continue to update without overflowing the track')
+      assert(slider.viewport.width is thickness, 'Value text must preserve the configured track breadth')
+
+      if thickness is 8 then
+         slider.setRange(0, 1)
+         assert(slider.valueText.string is '1' and slider.valueText.visibility is VIS_VISIBLE
+            and slider.prvValueWidth <= thickness - 4,
+            'A range change must restore value text when it fits within the track')
+      end
+   end
+end
+
+@Test function ThicknessSetsTrackAndThumbThicknessSetsThumb()
+   local surface <close>, slider = newSlider({ value=0 })
+   assert(slider.thumbSize is '100%' and slider.prvThumbSize is slider.thickness,
+      'The thumb must default to the track thickness')
+   assert(slider.prvBarBkgd.height is slider.thickness and slider.viewport.height is slider.thickness,
+      'The default breadth must match the track thickness')
+
+   local larger = gui.slider({ target=slider.viewport.parent, thickness=10, thumbSize='200%', value=1 })
+   assert(larger.prvThumbSize is 20 and larger.viewport.height is 20,
+      'A percentage must size the thumb relative to the track and expand the default breadth')
+   assert(larger.prvBarBkgd.height is 10 and larger.prvBarBkgd.y is 5 and larger.prvSliderVP.y is 0,
+      'The track and thumb must be centred across the widget')
+   assert(larger.prvSliderVP.width is 20 and larger.prvSliderVP.height is 20, 'The thumb must be square')
+   assert(larger.prvSliderVP.x is larger.prvSliderHostVP.width - 20,
+      'The thumb must travel the track length minus its own size')
+
+   local smaller = gui.slider({ target=slider.viewport.parent, thickness=20, thumbSize=8, height=40 })
+   assert(smaller.prvThumbSize is 8 and smaller.prvBarBkgd.y is 10 and smaller.prvSliderVP.y is 16,
+      'A pixel thumb must be centred on a track that is centred within an explicit height')
+
+   local vertical = gui.slider({ target=slider.viewport.parent, orientation='vertical', thickness=6,
+      thumbSize='300%', value=0
+   })
+   assert(vertical.viewport.width is 18 and vertical.prvBarBkgd.width is 6 and vertical.prvBarBkgd.x is 6,
+      'Vertical tracks must be centred within the thumb breadth')
+   assert(vertical.prvSliderVP.x is 0 and vertical.prvSliderVP.y is vertical.prvSliderHostVP.height - 18,
+      'The vertical thumb must sit at the bottom for the minimum value')
+
+   for invalid in values(array<any> { 0, -5, '0%', 'abc%', 'large' }) do
+      local raised = false
+      try
+         gui.slider({ target=slider.viewport.parent, thumbSize=invalid })
+      except
+         raised = true
+      end
+      assert(raised, f'An invalid thumbSize of {invalid} must be rejected')
+   end
+end
+
+-- Measure the label's font independently of the slider, from the text's own rendered size.
+
+function capHeight(Text:obj!):num
+   _, handle = check mVec.GetFontHandle(Text.face, Text.fontStyle, 0, tonumber(Text.fontSize))
+   metrics = struct<FontMetrics>
+   check mVec.GetFontMetrics(handle, metrics)
+   return metrics.ascent
+end
+
+@Test function LabelCapitalsCentreOnTrack()
+   local surface <close>, slider = newSlider({ label='Gain:', labelPos='left' })
+   local parent = slider.viewport.parent
+   local horizontal = array<table> {
+      slider,
+      gui.slider({ target=parent, y=60, label='Gain:', labelPos='right', valuePos='out-centre' }),
+      gui.slider({ target=parent, y=120, height=44, label='Gain:', thumbSize='150%' })
+   }
+   for s in values(horizontal) do
+      local track_centre = s.prvSliderHostVP.y + s.prvBarBkgd.y + (s.prvBarBkgd.height * 0.5)
+      local cap_centre = s.labelText.y - (capHeight(s.labelText) * 0.5)
+      assert(math.abs(cap_centre - track_centre) <= 0.5,
+         f'Side label capitals must centre on the track ({cap_centre} vs {track_centre})')
+   end
+
+   local vertical = array<table> {
+      gui.slider({ target=parent, x=300, orientation='vertical', label='Gain:', labelPos='bottom',
+         labelAlign='centre' }),
+      gui.slider({ target=parent, x=360, orientation='vertical', label='Gain:', labelPos='top',
+         labelAlign='centre', valuePos='out-centre' })
+   }
+   for s in values(vertical) do
+      local track_centre = s.prvSliderHostVP.x + s.prvBarBkgd.x + (s.prvBarBkgd.width * 0.5)
+      local cap_centre = s.labelText.x - (capHeight(s.labelText) * 0.5) -- Rotated capitals extend left
+      assert(math.abs(cap_centre - track_centre) <= 0.5,
+         f'Centred vertical label capitals must centre on the track ({cap_centre} vs {track_centre})')
+   end
 end

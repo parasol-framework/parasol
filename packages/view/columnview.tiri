@@ -703,12 +703,12 @@ gui.columnView = function(Options):table
    -- Callback function for constructing the view from scratch.  Can be called multiple times
 
    function constructColumnView(View)
-      LINE_HEIGHT, FONT_HEIGHT = gui.getFontHeight(View.theme.page.text, false)
+      LINE_HEIGHT, FONT_HEIGHT, ascent = gui.getFontHeight(View.theme.page.text, false)
       glIconSize  = FONT_HEIGHT
       MARGIN      = math.round(LINE_HEIGHT * 0.3) -- Min space between graphics elements
       LINE_HEIGHT = math.round(LINE_HEIGHT * 1.2)
       ICON_OFFSET = math.round((LINE_HEIGHT - glIconSize) * 0.5)
-      LINE_OFFSET = math.round(FONT_HEIGHT * 1.2)
+      LINE_OFFSET = math.round((LINE_HEIGHT + ascent) * 0.5) -- Baseline that centres capitals in the line
 
       View._fontHeight = FONT_HEIGHT
       View._lineHeight = LINE_HEIGHT

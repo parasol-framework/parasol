@@ -1,5 +1,6 @@
    import 'gui', 'gui/menu', 'gui/menubar', 'gui/dropdown'
    include 'display', 'vector'
+   module vector as mVec
 
 function sendKey(Code:num!, Qualifiers:num, Unicode:num)
    local ev = array<int, 6>
@@ -1250,4 +1251,41 @@ end
    bar.viewport.free()
    sendKey(KEY_F, KQ_PRESSED | KQ_ALT)
    assert(hits is 1, 'Freeing the menubar must release mnemonic handling')
+end
+
+-- Measure a text's font independently of the widget, from the text's own rendered size.
+
+function capHeight(Text:obj!):num
+   _, handle = check mVec.GetFontHandle(Text.face, Text.fontStyle, 0, tonumber(Text.fontSize))
+   metrics = struct<FontMetrics>
+   check mVec.GetFontMetrics(handle, metrics)
+   return metrics.ascent
+end
+
+@Test function DropdownRowsCentreTextAndIcons()
+   local surface <close>, target = newTarget()
+   local dropdown = gui.dropdown({
+      relative = target, x = 20, y = 20,
+      config = array<table> { { item='First', icon='items/cancel' }, { item='Second' }, { item='Third' } }
+   })
+   defer dropdown.surface?.free() end
+
+   local next_y = dropdown.items[0].y
+   for _, mi in dropdown.items do
+      assert(mi.height is math.floor(mi.height), 'Dropdown rows must be whole pixels')
+      assert(mi.y is next_y, 'Dropdown rows must follow each other without gaps or overlaps')
+      next_y = mi.y + mi.height
+
+      local cap_centre = mi.text.y - (capHeight(mi.text) * 0.5)
+      local row_centre = mi.y + (mi.height * 0.5)
+      assert(math.abs(cap_centre - row_centre) <= 0.5,
+         f'Dropdown capitals must centre in the row ({cap_centre} vs {row_centre})')
+
+      if mi.iconView then
+         local icon_centre = mi.iconView.y + (mi.iconView.height * 0.5)
+         assert(math.abs(icon_centre - row_centre) <= 0.5,
+            f'Dropdown icons must centre in the row ({icon_centre} vs {row_centre})')
+      end
+   end
+   assert(dropdown.items[0].iconView, 'The icon fixture must create an icon')
 end

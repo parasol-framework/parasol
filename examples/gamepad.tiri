@@ -36,11 +36,6 @@ Gamepad demonstration
    --})
 
    hardness = 0.75
-   if hardness < 0 then
-      hardness = 0
-   elseif hardness > 1 then
-      hardness = 1
-   end
 
    slHardness = gui.slider({
       target = viewport,
@@ -134,6 +129,7 @@ end
 
    controller_port = tonumber(arg('port', '-1'))
    ctrl = obj.new('controller', { port=controller_port })
+
    err, controllerTimer = mSys.SubscribeTimer(1/60, function(Subscriber, Elapsed, CurrentTime)
       query_error = ctrl.acQuery()
 

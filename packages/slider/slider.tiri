@@ -5,34 +5,74 @@ Documentation is available in the Kotuku Wiki.
 --]]
 
    import 'gui'
+   module vector as mVec
 
    namespace gui
 
 FONT_MAX_HEIGHT, FONT_HEIGHT = gui.getFontHeight(gui.fonts.widget)
 DEFAULT_THICKNESS <const> = math.floor(FONT_MAX_HEIGHT * 1.35) + 1
 MARGIN <const> = math.floor(FONT_HEIGHT * 0.5) + 1
+VALUE_INSET <const> = 2 -- Minimum space between vertical value text and the track's sides
+DIGITS <const> = r'[0-9]'
+MAX_PLACES <const> = 10 -- Maximum decimal places in the value readout
+TEXT_METRICS <const> = { } -- Cache of line spacing and cap height, keyed by font
+
+-- Count the decimal places needed to write a value exactly, or nil if it does not terminate within MAX_PLACES.
+
+function decimalPlaces(Value:num!):num
+   for places in {0 into MAX_PLACES} do
+      -- The tolerance is relative so that tiny steps are not mistaken for whole numbers, and the search stops before
+      -- the scaled value is large enough for that tolerance to accept a non-terminating fraction.
+      scaled = math.abs(Value) * (10 ** places)
+      if math.abs(scaled - math.round(scaled)) <= scaled * 1e-13 then return places end
+      if scaled >= 1e12 then return nil end
+   end
+   return nil
+end
+
+-- Measure the font that a label or value text actually renders with.  Theme text styles can override the label font,
+-- and gui.getFontHeight() treats numeric gui.fonts sizes as pixels whereas the text renders them as points.
+
+function textMetrics(Text:obj!):<num, num>
+   key = f'{Text.face}|{Text.fontStyle}|{Text.fontSize}'
+   cached = TEXT_METRICS[key]
+   if not cached then
+      _, handle = check mVec.GetFontHandle(Text.face, Text.fontStyle, 0, tonumber(Text.fontSize))
+      metrics = struct<FontMetrics>
+      check mVec.GetFontMetrics(handle, metrics)
+      cached = { lineSpacing = metrics.lineSpacing, ascent = metrics.ascent }
+      TEXT_METRICS[key] = cached
+   end
+   return cached.lineSpacing, cached.ascent
+end
 
 gui.slider = function(Options:table!)
    min = (Options.min != nil) ? Options.min : 0
    max = (Options.max != nil) ? Options.max : 1
 
    self = setmetatable(entity {
-      min    = min,
-      max    = max,
-      step   = (Options.step != nil) ? Options.step : 0,
-      value  = (Options.value != nil) ? Options.value : min + ((max - min) * 0.5),
-      label  = Options.label,
-      thickness = Options.thickness ?? DEFAULT_THICKNESS, -- Breadth of the slider, which is also the thumb's box size
-      events = Options.events ?? { },
-      viewport = nil,
-      disabled = false,
-      hasFocus = false,
-      prvHover = false,
+      min        = min,
+      max        = max,
+      step       = (Options.step != nil) ? Options.step : 0,
+      value      = (Options.value != nil) ? Options.value : min + ((max - min) * 0.5),
+      label      = Options.label,
+      valuePos   = Options.valuePos,
+      labelPos   = Options.labelPos ?? 'left',
+      labelAlign = Options.labelAlign ?? 'left',
+      thickness  = Options.thickness ?? DEFAULT_THICKNESS, -- Breadth of the track
+      thumbSize  = (Options.thumbSize != nil) ? Options.thumbSize : '100%', -- Pixels or % of thickness
+      events     = Options.events ?? { },
+      viewport   = nil,
+      disabled   = false,
+      hasFocus   = false,
+      prvHover   = false,
 
       setRange = function(Min:num!, Max:num!)
          assert(Max > Min, 'The min/max values are invalid.')
          &min = Min
          &max = Max
+         if &valueText then &prvMeasureValue() end
+         if &labelText then &prvPlaceLabel(&viewport.width, &viewport.height) end
          &prvPlaceSlider()
          &viewport.acDraw()
          &setValue(&value) -- Clamp and snap the existing value to the new range
@@ -61,6 +101,7 @@ gui.slider = function(Options:table!)
          theme = &prvTheme.slider
          gui.applyStyle(&prvBarBkgd, table.merge({ opacity = 1 }, theme.bkgd))
          gui.applyStyle(&button, theme.fore)
+
          if &disabled then
             gui.applyStyle(&prvBarBkgd, theme.disabled)
          else
@@ -78,6 +119,20 @@ gui.slider = function(Options:table!)
          &events?.activate(Value)
       end,
 
+      -- Keyboard and wheel input share increments and handling of a maximum outside the step grid.
+
+      prvAdjust = function(Steps:num!)
+         increment = (&step > 0) ? &step : ((&max - &min) / 100)
+         if (Steps <= -1) and (&step > 0) and (&value is &max) then
+            previous = &min + ((math.ceil((&max - &min) / &step) - 1) * &step)
+            -- Decimal round-off can reconstruct the maximum; ensure the snapped value actually decreases.
+            if &prvSnap(previous) is &max then previous -= &step end
+            &setValue(previous + (increment * (Steps + 1)))
+         else
+            &setValue(&value + (increment * Steps))
+         end
+      end,
+
       -- Clamp a value to the slider range and snap it to the nearest step.  Steps are counted from min, and max is
       -- always reachable even if the range is not an exact multiple of the step.
 
@@ -92,23 +147,196 @@ gui.slider = function(Options:table!)
       -- Convert a slider position within the track to a value.  Vertical sliders place max at the top.
 
       prvTrackValue = function(Position:num):num
+         track = ((&orientation is 'V') ? &prvSliderHostVP.height : &prvSliderHostVP.width) - &prvThumbSize
+         if track <= 0 then return &value end -- Pointer input cannot adjust a thumb with no room to travel.
+
          if &orientation is 'V' then
-            track = &prvSliderHostVP.height - &thickness
             return &min + ((&max - &min) * math.clamp((track - Position) / track, 0, 1))
          else
-            track = &prvSliderHostVP.width - &thickness
             return &min + ((&max - &min) * math.clamp(Position / track, 0, 1))
          end
       end,
 
-      prvPlaceSlider = function()
-         fraction = (&value - &min) / (&max - &min)
-         if &orientation is 'V' then
-            track = &prvSliderHostVP.height - &thickness
-            &prvSliderVP.y = track - (fraction * track)
-         else
-            &prvSliderVP.x = fraction * (&prvSliderHostVP.width - &thickness)
+      -- Reachable values are min + (n * step) and max, so the readout needs the decimal places of all three.
+
+      prvValueFormat = function():str
+         if &step <= 0 then return '%.2f' end
+         places = decimalPlaces(&step)
+         if not places then
+            -- A step with no terminating decimal form gets one digit more than is needed to separate adjacent values.
+            places = 1
+            while (places < MAX_PLACES) and ((&step * (10 ** places)) < 10) do places++ end
          end
+         places = math.max(places, decimalPlaces(&min) ?? 0, decimalPlaces(&max) ?? 0)
+         return f'%.{places}f'
+      end,
+
+      -- Reserve a stable width for all digits in the range, so value changes do not resize the track.  Vertical
+      -- values in line with the track are scaled down until the widest value fits across it.
+
+      prvMeasureValue = function()
+         -- The widest values are the range ends with every digit drawn as 8, e.g. 8.88 for 0.00
+
+         format = &prvValueFormat()
+         samples = array<str> {
+            DIGITS.replace(string.format(format, &min), '8'), DIGITS.replace(string.format(format, &max), '8')
+         }
+
+         function widest():num
+            width = 0
+            for sample in values(samples) do
+               &valueText.string = sample
+               width = math.max(width, &valueText.textWidth)
+            end
+            return width
+         end
+
+         &valueText.fontSize = f'{&prvValueFontSize}px'
+         &prvValueWidth = widest()
+         &valueText.acShow()
+
+         -- Font sizes are whole pixels and hinted widths are not proportional, so step down from the estimate.
+
+         if (&orientation is 'V') and (&valuePos != 'out-centre') then
+            available = math.max(0, &thickness - (VALUE_INSET * 2))
+            if &prvValueWidth > available then
+               size = math.max(1, math.floor(&prvValueFontSize * available / &prvValueWidth))
+               while size >= 1 do
+                  &valueText.fontSize = f'{size}px'
+                  &prvValueWidth = widest()
+                  if &prvValueWidth <= available then break end
+                  size -= 1
+               end
+
+               -- A one-pixel font is the minimum; hide values that still cannot fit within the track.
+
+               if &prvValueWidth > available then &valueText.acHide() end
+            end
+         end
+
+         &prvValueHeight, ascent = textMetrics(&valueText)
+         &prvValueBaseline = (&prvValueHeight + ascent) * 0.5
+         &valueText.string = string.format(format, &value)
+
+         if &prvValueSide and &prvSliderHostVP then
+            space = ((&prvValueSide is 'x') or (&prvValueSide is 'xOffset')) ? &prvValueWidth : &prvValueHeight
+            space += MARGIN
+            delta = space - &prvValueSpace
+            &prvSliderHostVP[&prvValueSide] = &prvSliderHostVP[&prvValueSide] + delta
+
+            if ((&prvValueSide is 'x') or (&prvValueSide is 'xOffset')) and &prvAutoWidth then
+               &viewport.width += delta
+            elseif ((&prvValueSide is 'y') or (&prvValueSide is 'yOffset')) and &prvAutoHeight then
+               &viewport.height += delta
+            end
+
+            &prvValueSpace = space
+         end
+
+         if &prvSliderHostVP and &prvAutoWidth and (&orientation is 'H') and &valuePos.startsWith('in-') then
+            extra = &prvValueWidth + (MARGIN * 2) - &prvSliderHostVP.width
+            if extra > 0 then &viewport.width += extra end
+         end
+      end,
+
+      prvPlaceValue = function(Width:num!, Height:num!)
+         &valueText.string = string.format(&prvValueFormat(), &value)
+         x = &prvSliderHostVP.x
+         y = &prvSliderHostVP.y
+         text_width = &valueText.textWidth
+         outside = &valuePos.startsWith('out-')
+         position = &valuePos.sub(outside ? 4 : 3)
+
+         if &orientation is 'H' then
+            if outside and (position is 'min') then
+               x -= MARGIN + text_width
+            elseif outside and (position is 'max') then
+               x += Width + MARGIN
+            else
+               x += choose position from
+                  'min' -> MARGIN
+                  'max' -> Width - text_width - MARGIN
+                  else  -> (Width - text_width) * 0.5
+               end
+            end
+
+            y += (outside and (position is 'centre')) ? Height + MARGIN + &prvValueBaseline :
+               &prvValueBaseline + ((Height - &prvValueHeight) * 0.5)
+         else
+            x += (outside and (position is 'centre')) ? Width + MARGIN : (Width - text_width) * 0.5
+            y += choose position from
+               'min' -> (outside ? Height + MARGIN + &prvValueBaseline :
+                  Height - &prvValueHeight - MARGIN + &prvValueBaseline)
+               'max' -> (outside ? -MARGIN - &prvValueHeight + &prvValueBaseline : MARGIN + &prvValueBaseline)
+               else  -> &prvValueBaseline + ((Height - &prvValueHeight) * 0.5)
+            end
+         end
+
+         &valueText.x = x
+         &valueText.y = y
+      end,
+
+      -- Labels are placed in a line of prvTextHeight across the reading direction, with their capitals centred in
+      -- it.  Centred labels follow the track, which excludes space reserved for outside value text.
+
+      prvPlaceLabel = function(Width:num!, Height:num!)
+         host = &prvSliderHostVP
+         if &orientation is 'V' then
+            label_height = &labelText.textWidth
+            side = (&labelPos is 'left') or (&labelPos is 'right')
+            track_x = host ? host.x : 0
+            track_width = Width - track_x - (host ? host.xOffset : 0)
+
+            x = side ? ((&labelPos is 'right') ? Width - &prvTextHeight : 0) :
+               ((&labelAlign is 'centre') ? track_x + ((track_width - &prvTextHeight) * 0.5) :
+                  ((&labelAlign is 'right') ? Width - &prvTextHeight : 0))
+
+            y = side ? (Height - label_height) * 0.5 :
+               ((&labelPos is 'bottom') ? Height - label_height : 0)
+
+            -- The rotated capitals extend to the left of the baseline.
+
+            &labelText.x = math.round(x + &prvTextBaseline)
+            &labelText.y = y + label_height
+
+            check mVec.ResetMatrix(&prvLabelMatrix)
+            check mVec.Rotate(&prvLabelMatrix, -90, &labelText.x, &labelText.y)
+         elseif (&labelPos is 'left') or (&labelPos is 'right') then
+            track_y = host ? host.y : 0
+            track_height = Height - track_y - (host ? host.yOffset : 0)
+            &labelText.x = (&labelPos is 'right') ? Width - &labelText.textWidth : 0
+            &labelText.y = math.round(track_y + &prvTextBaseline + ((track_height - &prvTextHeight) * 0.5))
+         else
+            &labelText.x = choose &labelAlign from
+               'centre' -> Width * 0.5
+               'right'  -> Width
+               else     -> 0
+            end
+
+            &labelText.y = math.round((&labelPos is 'top') ? &prvTextBaseline :
+               Height - &prvTextHeight + &prvTextBaseline)
+         end
+      end,
+
+      -- The track and thumb are centred across the host; whole-pixel offsets keep their edges sharp.
+
+      prvPlaceSlider = function(Width:num, Height:num)
+         width = (Width != nil) ? Width : &prvSliderHostVP.width
+         height = (Height != nil) ? Height : &prvSliderHostVP.height
+         fraction = (&value - &min) / (&max - &min)
+
+         if &orientation is 'V' then
+            track = math.max(0, height - &prvThumbSize)
+            &prvSliderVP.y = track - (fraction * track)
+            &prvSliderVP.x = math.floor((width - &prvThumbSize) * 0.5)
+            &prvBarBkgd.x = math.floor((width - &thickness) * 0.5)
+         else
+            &prvSliderVP.x = fraction * math.max(0, width - &prvThumbSize)
+            &prvSliderVP.y = math.floor((height - &prvThumbSize) * 0.5)
+            &prvBarBkgd.y = math.floor((height - &thickness) * 0.5)
+         end
+
+         if &valueText then &prvPlaceValue(width, height) end
       end
    }, {
       __gc = function()
@@ -126,6 +354,14 @@ gui.slider = function(Options:table!)
       assert(target, 'A target viewport is required.')
       assert(&max > &min, 'The min/max values are invalid.')
       assert(&step >= 0, 'The step value cannot be negative.')
+      assert((&labelPos is 'left') or (&labelPos is 'right') or (&labelPos is 'top') or (&labelPos is 'bottom'),
+         f"Invalid labelPos '{&labelPos}'")
+      assert((&labelAlign is 'left') or (&labelAlign is 'centre') or (&labelAlign is 'right'),
+         f"Invalid labelAlign '{&labelAlign}'")
+
+      assert((&valuePos is nil) or (&valuePos is 'in-min') or (&valuePos is 'in-centre')
+         or (&valuePos is 'in-max') or (&valuePos is 'out-min') or (&valuePos is 'out-centre')
+         or (&valuePos is 'out-max'), f"Invalid valuePos '{&valuePos}'")
 
       base_theme = gui.getTheme(target)
       &prvTheme = Options.theme ? table.merge(base_theme, { slider = table.merge(base_theme.slider, Options.theme, true, true) }) : base_theme
@@ -133,52 +369,149 @@ gui.slider = function(Options:table!)
       &prvLabelSize = 0
       &value = &prvSnap(&value)
 
-      if &orientation is 'V' then
-         &viewport = target.new('VectorViewport', {
-            x = Options.x, y = Options.y, height = (Options.size ?? 100), width = &thickness
-         })
+      assert((&thickness is <num>) and (&thickness > 0), f"Invalid thickness '{&thickness}'")
 
-         &prvSliderHostVP = &viewport.new('VectorViewport', { y = 0, width = '100%', yOffset = 0 })
-
-         &prvBarBkgd = &prvSliderHostVP.new('VectorRectangle', table.merge({
-            x = 0, y = 0, width = '100%', height = '100%',
-         }, &prvTheme.slider.bkgd))
+      if (&thumbSize is <str>) and &thumbSize.endsWith('%') then
+         percent = tonumber(&thumbSize.sub(0, -1))
+         assert(percent and (percent > 0), f"Invalid thumbSize '{&thumbSize}'")
+         &prvThumbSize = math.max(1, math.round(&thickness * percent / 100))
       else
-         &viewport = target.new('VectorViewport', {
-            x = Options.x, y = Options.y, width = (Options.size ?? 100), height = &thickness
-         })
-
-         if &label then
-            &labelText = &viewport.new('VectorText', table.merge({
-               name      = 'Label',
-               x         = 0,
-               y         = math.round(FONT_HEIGHT + math.floor((&thickness - FONT_HEIGHT) * 0.5)),
-               face      = gui.fonts.label.face,
-               fontSize  = string.format('%.2fpt', gui.fonts.label.size),
-               fontStyle = gui.fonts.label.style,
-               string    = &label,
-               lineLimit = 1
-            }, &prvTheme.window.text))
-
-            &prvLabelSize = &labelText.textWidth + MARGIN
-            &viewport.width += &prvLabelSize
-         end
-
-         &prvSliderHostVP = &viewport.new('VectorViewport', { x = &prvLabelSize, height = '100%', xOffset = 0 })
-
-         &prvBarBkgd = &prvSliderHostVP.new('VectorRectangle', table.merge({
-            x = 0, y = 0, width = '100%', height = '100%',
-         }, &prvTheme.slider.bkgd))
+         assert((&thumbSize is <num>) and (&thumbSize > 0), f"Invalid thumbSize '{&thumbSize}'")
+         &prvThumbSize = &thumbSize
       end
 
-      &prvSliderVP = &prvSliderHostVP.new('VectorViewport', { width = &thickness, height = &thickness })
+      breadth = math.max(&thickness, &prvThumbSize)
+
+      vps = {
+         x = Options.x, y = Options.y, width = Options.width, height = Options.height,
+         xOffset = Options.xOffset, yOffset = Options.yOffset
+      }
+
+      if vps.x is nil and vps.xOffset is nil then vps.x = 0 end
+      if vps.y is nil and vps.yOffset is nil then vps.y = 0 end
+
+      if vps.width is nil and not (vps.x != nil and vps.xOffset != nil) then
+         vps.width = (&orientation is 'V') ? breadth : 100
+      end
+
+      if vps.height is nil and not (vps.y != nil and vps.yOffset != nil) then
+         vps.height = (&orientation is 'V') ? 100 : breadth
+      end
+
+      &prvAutoWidth = Options.width is nil and not (Options.x != nil and Options.xOffset != nil)
+      &prvAutoHeight = Options.height is nil and not (Options.y != nil and Options.yOffset != nil)
+      &viewport = target.new('VectorViewport', vps)
+
+      host = { x = 0, y = 0, xOffset = 0, yOffset = 0 }
+      if &label then
+         stacked = (&labelPos is 'top') or (&labelPos is 'bottom')
+         &labelText = &viewport.new('VectorText', table.merge({
+            name      = 'Label',
+            x         = 0,
+            y         = 0,
+            face      = gui.fonts.label.face,
+            fontSize  = string.format('%.2fpt', gui.fonts.label.size),
+            fontStyle = gui.fonts.label.style,
+            string    = &label,
+            lineLimit = 1
+         }, &prvTheme.window.text))
+
+         &prvTextHeight, ascent = textMetrics(&labelText)
+         &prvTextBaseline = (&prvTextHeight + ascent) * 0.5
+
+         vertical_label = &orientation is 'V'
+         &labelText.align = (not vertical_label and stacked and (&labelAlign is 'centre')) ? 'middle' :
+            ((not vertical_label and stacked and (&labelAlign is 'right')) ? 'end' : 'start')
+         if vertical_label then
+            _, matrix = check &labelText.mtNewMatrix(false)
+            &prvLabelMatrix = matrix
+         end
+
+         label_width   = vertical_label ? &prvTextHeight : &labelText.textWidth
+         label_height  = vertical_label ? &labelText.textWidth : &prvTextHeight
+         &prvLabelSize = (stacked ? label_height : label_width) + MARGIN
+
+         choose &labelPos from
+            'left'   -> host.x       = &prvLabelSize
+            'right'  -> host.xOffset = &prvLabelSize
+            'top'    -> host.y       = &prvLabelSize
+            'bottom' -> host.yOffset = &prvLabelSize
+         end
+
+         -- Expand default dimensions for the label; explicit and stretched dimensions include it.
+
+         if Options.width is nil and not (Options.x != nil and Options.xOffset != nil) then
+            &viewport.width = stacked ? math.max(&viewport.width, label_width) : &viewport.width + &prvLabelSize
+         end
+
+         if Options.height is nil and not (Options.y != nil and Options.yOffset != nil) then
+            &viewport.height = stacked ? &viewport.height + &prvLabelSize : math.max(&viewport.height, label_height)
+         end
+
+         &prvPlaceLabel(&viewport.width, &viewport.height)
+
+         local label_text = &labelText
+
+         @Ordinary
+         label_text.resizeEvent = function(Viewport, Vector, X, Y, Width, Height)
+            local slider = weak_self
+            if not slider then return end
+            using slider do &prvPlaceLabel(Width, Height) end
+         end
+      end
+
+      if &valuePos then
+         &valueText = &viewport.new('VectorText', table.merge({
+            name='Value', x=0, y=0, face=gui.fonts.label.face,
+            fontSize=string.format('%.2fpt', gui.fonts.label.size), fontStyle=gui.fonts.label.style,
+            lineLimit=1
+         }, &prvTheme.window.text))
+
+         &prvValueFontSize = tonumber(&valueText.fontSize) -- Unscaled size in pixels
+         &valueText.align = 'start'
+         &valueText.acDisable() -- Value text must not intercept track clicks or thumb dragging.
+         &prvMeasureValue()
+
+         if &valuePos.startsWith('out-') then
+            position = &valuePos.sub(4)
+            &prvValueSide = (&orientation is 'H') ?
+               ((position is 'min') ? 'x' : ((position is 'max') ? 'xOffset' : 'yOffset')) :
+               ((position is 'min') ? 'yOffset' : ((position is 'max') ? 'y' : 'xOffset'))
+
+            horizontal_space = (&prvValueSide is 'x') or (&prvValueSide is 'xOffset')
+            &prvValueSpace = (horizontal_space ? &prvValueWidth : &prvValueHeight) + MARGIN
+            host[&prvValueSide] += &prvValueSpace
+
+            if horizontal_space and &prvAutoWidth then &viewport.width += &prvValueSpace end
+            if not horizontal_space and &prvAutoHeight then &viewport.height += &prvValueSpace end
+         end
+
+         -- A default width grows for horizontal inside values, which run along the track.  Vertical values are
+         -- scaled to the track's breadth instead.
+
+         if &prvAutoWidth and (&orientation is 'H') and &valuePos.startsWith('in-') then
+            available = &viewport.width - host.x - host.xOffset
+            needed = &prvValueWidth + (MARGIN * 2)
+            if needed > available then &viewport.width += needed - available end
+         end
+
+         if &labelText then &prvPlaceLabel(&viewport.width, &viewport.height) end
+      end
+
+      &prvSliderHostVP = &viewport.new('VectorViewport', host)
+      if &labelText then &prvPlaceLabel(&viewport.width, &viewport.height) end -- Centre on the track
+      &prvBarBkgd = &prvSliderHostVP.new('VectorRectangle', table.merge({
+         x = 0, y = 0,
+         width = (&orientation is 'V') ? &thickness : '100%',
+         height = (&orientation is 'V') ? '100%' : &thickness
+      }, &prvTheme.slider.bkgd))
+
+      &prvSliderVP = &prvSliderHostVP.new('VectorViewport', { width = &prvThumbSize, height = &prvThumbSize })
 
       -- Drag coordinates are relative to the drag origin, so snapping the slider does not impede its movement.
 
-      local slider_viewport = &prvSliderVP
-
       @Ordinary
-      slider_viewport.dragCallback = function(Viewport:obj!, X:num!, Y:num!)
+      self.prvSliderVP.dragCallback = function(Viewport:obj!, X:num!, Y:num!)
          local slider = weak_self
          if not slider then return end
 
@@ -190,11 +523,26 @@ gui.slider = function(Options:table!)
 
       &prvPlaceSlider()
 
+      @Ordinary
+      self.prvSliderVP.resizeEvent = function(Viewport, Vector, X, Y, Width, Height)
+         local slider = weak_self
+         if not slider then return end
+
+         using slider do
+            &prvPlaceSlider(Width, Height)
+         end
+      end
+
       GAP <const> = &prvTheme.slider.bkgd.strokeWidth
 
       &button = &prvSliderVP.new('VectorRectangle', table.merge({
          x = GAP, y = GAP, width = &prvSliderVP.width-(GAP*2), height = &prvSliderVP.height-(GAP*2)
       }, &prvTheme.slider.fore))
+
+      if &valueText then
+         &valueText.acMoveToFront()
+         &prvPlaceValue(&prvSliderHostVP.width, &prvSliderHostVP.height)
+      end
 
       @Ordinary
       function focusFeedback(Viewport, Event)
@@ -230,17 +578,9 @@ gui.slider = function(Options:table!)
 
             increment = (&step > 0) ? &step : ((&max - &min) / 100)
             if (Code is KEY_RIGHT) or (Code is KEY_UP) then
-               &setValue(&value + increment)
+               &prvAdjust(1)
             elseif (Code is KEY_LEFT) or (Code is KEY_DOWN) then
-               if (&step > 0) and (&value is &max) then
-                  -- The maximum can be off-grid; move to the preceding step instead of rounding past it.
-                  previous = &min + ((math.ceil((&max - &min) / &step) - 1) * &step)
-                  -- Decimal round-off can reconstruct the maximum; ensure the snapped value actually decreases.
-                  if &prvSnap(previous) is &max then previous -= &step end
-                  &setValue(previous)
-               else
-                  &setValue(&value - increment)
-               end
+               &prvAdjust(-1)
             elseif Code is KEY_PAGE_UP then
                &setValue(&value + (increment * 10))
             elseif Code is KEY_PAGE_DOWN then
@@ -254,6 +594,23 @@ gui.slider = function(Options:table!)
       end
 
       &viewport.mtSubscribeKeyboard(keyboardInput)
+
+      @Ordinary
+      function wheelInput(Viewport:obj!, Msg)
+         local slider = weak_self
+         if not slider then return ERR_Terminate end
+
+         using slider do
+            if &disabled then return end
+
+            repeat
+               if (Msg.type is JET_WHEEL) and (Msg.value != 0) then &prvAdjust(Msg.value) end
+               Msg = Msg.next
+            until not Msg
+         end
+      end
+
+      &viewport.mtSubscribeInput(JTYPE_EXT_MOVEMENT, wheelInput)
 
       @Ordinary
       function crossingInput(Viewport, Msg)
@@ -288,7 +645,7 @@ gui.slider = function(Options:table!)
             repeat
                if (Msg.type is JET_LMB) and (Msg.value > 0) and (not &disabled) then
                   -- Centre the slider on the click position.
-                  position = ((&orientation is 'V') ? Msg.y : Msg.x) - (&thickness * 0.5)
+                  position = ((&orientation is 'V') ? Msg.y : Msg.x) - (&prvThumbSize * 0.5)
                   &setValue(&prvTrackValue(position))
                end
                Msg = Msg.next

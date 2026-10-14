@@ -227,9 +227,9 @@ gui.listView = function(Options:table!):table
    end
 
    function constructListView(View)
-      LINE_HEIGHT, FONT_HEIGHT = gui.getFontHeight(View.theme.page.text, false)
+      LINE_HEIGHT, FONT_HEIGHT, ascent = gui.getFontHeight(View.theme.page.text, false)
       LINE_HEIGHT = math.round(LINE_HEIGHT)
-      LINE_OFFSET = math.round(FONT_HEIGHT)
+      LINE_OFFSET = math.round((LINE_HEIGHT + ascent) * 0.5) -- Baseline that centres capitals in the line
       ICON_SIZE   = FONT_HEIGHT
 
       View.icons ?= { }
