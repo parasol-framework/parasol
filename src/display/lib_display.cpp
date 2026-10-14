@@ -44,17 +44,17 @@ api-owns-result, volatile-result, blocking
 
 ERR GetDisplayInfo(OBJECTID DisplayID, DisplayInfo **Result)
 {
-   static thread_local DisplayInfo *t_info = nullptr;
+   static thread_local std::unique_ptr<DisplayInfo, decltype(&std::free)> t_info(nullptr, &std::free);
 
    if (!Result) return ERR::NullArgs;
 
-   if (!t_info) { // Each thread gets an allocation that can't be resource tracked
-      t_info = (DisplayInfo *)malloc(sizeof(DisplayInfo));
+   if (!t_info) { // Each thread owns its result until thread exit.
+      t_info.reset((DisplayInfo *)malloc(sizeof(DisplayInfo)));
       if (!t_info) return ERR::AllocMemory;
    }
 
-   if (auto error = get_display_info(DisplayID, t_info); !error) {
-      *Result = t_info;
+   if (auto error = get_display_info(DisplayID, t_info.get()); !error) {
+      *Result = t_info.get();
       return ERR::Okay;
    }
    else return error;
