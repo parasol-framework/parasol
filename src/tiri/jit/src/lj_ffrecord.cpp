@@ -657,6 +657,10 @@ static int recff_metacall(jit_State* J, RecordFFData* rd, MMS mm)
 static void recff_tostring(jit_State* J, RecordFFData* rd)
 {
    TRef tr = J->base[0];
+   if (not tr) {
+      J->base[0] = lj_ir_kstr(J, lj_str_newlit(J->L, "nil"));
+      return;
+   }
    if (tref_isstr(tr)) {
       // Ignore __tostring in the string base metatable.
       // Pass on result in J->base[0].

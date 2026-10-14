@@ -446,11 +446,14 @@ ParserResult<IrEmitUnit> IrEmitter::emit_plain_assignment(std::vector<PreparedAs
       std::vector<PreparedAssignment>::reverse_iterator last)
    {
       for (; first != last; ++first) {
-         // Skip blank identifiers - the value is discarded
+         ExpDesc stack_value;
+         stack_value.init(ExpKind::NonReloc, this->func_state.freereg - 1);
          if (not is_blank_target(first->storage)) {
-            ExpDesc stack_value;
-            stack_value.init(ExpKind::NonReloc, this->func_state.freereg - 1);
             bcemit_store(&this->func_state, &first->storage, &stack_value);
+         }
+         else {
+            // Discard the value's register so earlier targets retain their result positions.
+            expr_free(&this->func_state, &stack_value);
          }
          release_prepared_assignment(allocator, this->func_state, *first);
       }
@@ -470,6 +473,9 @@ ParserResult<IrEmitUnit> IrEmitter::emit_plain_assignment(std::vector<PreparedAs
       // Skip blank identifiers for the last target
       if (not is_blank_target(targets.back().storage)) {
          bcemit_store(&this->func_state, &targets.back().storage, &tail);
+      }
+      else {
+         expr_free(&this->func_state, &tail);
       }
       release_prepared_assignment(allocator, this->func_state, targets.back());
       if (targets.size() > 1) {

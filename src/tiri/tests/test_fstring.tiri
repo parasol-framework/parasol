@@ -58,6 +58,51 @@ end
    assert(result is "Value is nil", "Nil value failed: " .. tostring(result))
 end
 
+@Test function MissingFunctionResult()
+   local calls = 0
+   function no_result()
+      calls++
+   end
+   function bare_return()
+      return
+   end
+   function nil_result()
+      return nil
+   end
+
+   assert(tostring() is 'nil', 'A missing tostring argument should stringify as nil')
+   assert(tostring(nil) is 'nil', 'An explicit nil should stringify as nil')
+   assert(tostring(no_result()) is 'nil', 'A call returning no values should stringify as nil')
+   assert(f'{no_result()}' is 'nil', 'A missing interpolated result should stringify as nil')
+   assert(f'before {no_result()} after' is 'before nil after', 'Missing results should preserve surrounding text')
+   assert(f'{bare_return()}{nil_result()}' is 'nilnil', 'Bare and explicit nil returns should stringify as nil')
+   assert(calls is 3, 'Each call should execute exactly once')
+end
+
+@Test function MissingArgumentHotLoop()
+   for index in {0 to 200} do
+      assert(tostring() is 'nil', 'A missing argument should stringify as nil on compiled traces')
+      assert(tostring(nil) is 'nil', 'Explicit nil should stringify as nil on compiled traces')
+   end
+end
+
+@Test function StringificationErrorRecovery()
+   local value = setmetatable({}, {
+      __tostring = function():str
+         raise 'stringification failed'
+      end
+   })
+   local caught = false
+   try
+      local result = f'{value}'
+   except e
+      caught = true
+      assert('stringification failed' in e.message, 'Stringification errors should preserve their message')
+   end
+   assert(caught, 'Stringification errors should propagate')
+   assert(tostring() is 'nil', 'Stringification should remain usable after an error')
+end
+
 @Test function BooleanValue()
    flag = true
    result = f"Flag is {flag}"
