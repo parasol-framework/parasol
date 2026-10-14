@@ -382,10 +382,11 @@ static ERR MODExpunge(void)
 {
    if (glDelayedCallHandle) { FreeResource(glDelayedCallHandle); glDelayedCallHandle = nullptr; }
    if (glMsgThread) { FreeResource(glMsgThread); glMsgThread = nullptr; }
+   // Registered modules can own Tiri objects; destroy those children while their class and dependencies are live.
+   expunge_modules();
    if (clTiri)      { FreeResource(clTiri); clTiri = nullptr; }
    if (modDisplay)  { FreeResource(modDisplay); modDisplay = nullptr; }
    if (modRegex)    { FreeResource(modRegex); modRegex = nullptr; }
-   expunge_modules();
    expunge_package_index();
    return ERR::Okay;
 }
