@@ -551,6 +551,7 @@ gui.columnView = function(Options):table
          -- Ensure that the column banner is always aligned with the page.
 
          View.page.mtSubscribeFeedback(FM_PATH_CHANGED, function(Viewport, Event)
+            if not View.banner?.viewport or not View.viewport then return end
             View.banner.viewport.x = View.page.x
 
             page_width = View.page.width
@@ -559,6 +560,7 @@ gui.columnView = function(Options):table
          end)
 
          View.frame.mtSubscribeFeedback(FM_PATH_CHANGED, function(Viewport, Event)
+            if not View.banner?.clip then return end
             View.banner.clip.y = View.frame.y - LINE_HEIGHT
          end)
       end
