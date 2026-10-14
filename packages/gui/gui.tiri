@@ -819,7 +819,7 @@ gui.palettes = {
    -- contrast is a suitable complement to prime and should be of a strongly contrasting hue
    -- neutral is a default background colour for undefined areas (e.g. window background), usually a light grey tone
    -- mid is used for separating an area from bkgd without drawing attention.  E.g. scrollbar and slider tracks
-   -- text is the default colour for text drawn over 'bkgd'
+   -- text is the default colour for text drawn over 'bkgd'; often used for labels and sometimes stroked decorations
    -- altText is the default colour for text drawn over 'prime' when highlighted or selected.  Can be same as 'text'
    ocean = {
       light = { type = 'light', bkgd = 'oklch(0.952 0.004 214.329)', inverse = 'oklch(0.356 0.039 248.975)',
@@ -875,28 +875,28 @@ gui.palettes = {
 
    if not gui.theme then
       msg('No theme set, loading default from configuration file.')
-      gui.theme = 'light' -- Default
+      gui.theme        = 'light' -- Default
       gui.paletteTheme = 'light' -- 'light' or 'dark' only
-      gui.palette = gui.palettes.ocean
+      gui.palette      = gui.palettes.ocean
 
       if mSys.AnalysePath(glStyleConfig) is ERR_Okay then
          try
             local cfg <close> = obj.new('config', { path=glStyleConfig })
-            theme = [_*]cfg.mtReadValue('Style', 'Theme')
-            palette = [_*]cfg.mtReadValue('Style', 'Palette')
+            theme        = [_*]cfg.mtReadValue('Style', 'Theme')
+            palette      = [_*]cfg.mtReadValue('Style', 'Palette')
             paletteTheme = [_*]cfg.mtReadValue('Style', 'PaletteTheme')
-            gui.theme = theme
+            gui.theme    = theme
             if gui.palettes[palette] then
                gui.paletteTheme = gui.palettes?[palette]?[paletteTheme] ? paletteTheme : 'light'
-               gui.palette = gui.palettes[palette]
+               gui.palette      = gui.palettes[palette]
             end
          except ex
             print(f'Error in style configuration file {glStyleConfig}; delete to reset it')
             print(f'  Detail: {ex.message}')
          end
       else
-         local file <close> = obj.new('file', { path=glStyleConfig, flags=FL_WRITE|FL_NEW })
-         file.acWrite("[Style]\nTheme = light\nPalette = ocean\nPaletteTheme = light\n")
+         fl <close> = obj.new('file', { path=glStyleConfig, flags=FL_WRITE|FL_NEW })
+         fl.acWrite("[Style]\nTheme = light\nPalette = ocean\nPaletteTheme = light\n")
       end
    end
 
