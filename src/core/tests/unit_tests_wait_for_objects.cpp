@@ -396,6 +396,42 @@ static bool fd_retirement_check(int Mode, kt::Log &Log)
       Mode, initial.calls, old_target.calls, new_target.calls);
    return okay;
 }
+
+// A deferred replacement covering both event types must remove both old callback records.
+static bool fd_combined_replacement_check(kt::Log &Log)
+{
+   int sockets[2];
+   if (socketpair(AF_UNIX, SOCK_STREAM | SOCK_NONBLOCK, 0, sockets) != 0) return false;
+   auto cleanup = kt::Defer([&]() {
+      (void)RegisterFD(sockets[0], RFD::REMOVE, nullptr, nullptr);
+      close(sockets[0]);
+      close(sockets[1]);
+   });
+
+   FDDispatchContext read_context, write_context, replacement_context;
+   if (RegisterFD(sockets[0], RFD::READ, fd_target_callback, &read_context) != ERR::Okay or
+       RegisterFD(sockets[0], RFD::WRITE, fd_target_callback, &write_context) != ERR::Okay) return false;
+
+   ++glFDProtected;
+   auto error = RegisterFD(sockets[0], RFD::READ|RFD::WRITE, fd_target_callback, &replacement_context);
+   --glFDProtected;
+   if (error != ERR::Okay) return false;
+   for (auto &record : glRegisterFD) RegisterFD(record.FD, record.Flags, record.Routine, record.Data);
+   glRegisterFD.clear();
+
+   unsigned matches = 0;
+   bool correct = true;
+   for (const auto &record : glFDTable) {
+      if (record.FD != sockets[0]) continue;
+      ++matches;
+      correct = correct and record.Routine IS fd_target_callback and record.Data IS &replacement_context and
+         (record.Flags & (RFD::READ|RFD::WRITE)) IS (RFD::READ|RFD::WRITE) and
+         (record.Flags & RFD::REMOVE) IS RFD::NIL;
+   }
+   if (matches IS 1 and correct) return true;
+   Log.warning("Combined FD replacement left %u records or a retired callback.", matches);
+   return false;
+}
 #endif
 
 void wait_for_objects_unit_tests(int &Passed, int &Total)
@@ -427,5 +463,7 @@ void wait_for_objects_unit_tests(int &Passed, int &Total)
       ++Total;
       if (fd_retirement_check(mode, log)) ++Passed;
    }
+   ++Total;
+   if (fd_combined_replacement_check(log)) ++Passed;
 #endif
 }

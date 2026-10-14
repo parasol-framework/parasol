@@ -1227,6 +1227,10 @@ ERR sleep_task(int Timeout, int8_t SystemOnly)
       else {
          for (auto it = glFDTable.begin(); it != glFDTable.end(); ) {
             auto &fd = *it;
+            if ((fd.Flags & RFD::REMOVE) != RFD::NIL) {
+               ++it;
+               continue;
+            }
             if ((fd.Flags & RFD::SOCKET) != RFD::NIL); // Network sockets are managed by the Network module backend.
             else if ((fd.Flags & RFD::ALWAYS_CALL) != RFD::NIL) {
                if (fd.Routine) fd.Routine(fd.FD, fd.Data);
@@ -1265,7 +1269,7 @@ ERR sleep_task(int Timeout, int8_t SystemOnly)
 
          glFDProtected++;
          for (auto it = glFDTable.begin(); it != glFDTable.end(); it++) {
-            if (it->FD != handles[i]) continue;
+            if (it->FD != handles[i] or (it->Flags & RFD::REMOVE) != RFD::NIL) continue;
             if (it->Routine) it->Routine(it->FD, it->Data);
             glFDTable.splice(glFDTable.end(), glFDTable, it); // Move this record to the end of glFDTable
             break;
