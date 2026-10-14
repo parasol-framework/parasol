@@ -285,52 +285,52 @@ static void convert_float(float *buf, int TotalSamples, float *dest) {
 
 // Template dispatch table for loop types with compile-time optimization
 template<LTYPE loop_type>
-static int64_t samples_until_end_impl(int64_t position, int64_t sample_length, int64_t lp_start, int64_t lp_end,
-   bool over_sampling, bool is_backward, int &next_offset)
+static int64_t samples_until_end_impl(int64_t Position, int64_t SampleLength, int64_t LoopStart, int64_t LoopEnd,
+   bool Resampling, bool IsBackward, int &NextOffset)
 {
-   next_offset = 1;
+   NextOffset = 1;
 
    if constexpr (loop_type IS LTYPE::UNIDIRECTIONAL) {
-      if (over_sampling) {
-         if ((position + 1) < lp_end) {
-            return (lp_end - 1) - position;
+      if (Resampling) {
+         if ((Position + 1) < LoopEnd) {
+            return (LoopEnd - 1) - Position;
          }
          else {
-            next_offset = lp_start - position;
-            return lp_end - position;
+            NextOffset = LoopStart - Position;
+            return LoopEnd - Position;
          }
       }
-      else return lp_end - position;
+      else return LoopEnd - Position;
    }
    else if constexpr (loop_type IS LTYPE::BIDIRECTIONAL) {
-      if (is_backward) {
-         if (over_sampling) {
-            if (position IS (lp_end - 1)) {
-               next_offset = 0;
+      if (IsBackward) {
+         if (Resampling) {
+            if (Position IS (LoopEnd - 1)) {
+               NextOffset = 0;
                return 1;
             }
-            else return position - lp_start;
+            else return Position - LoopStart;
          }
-         else return position - lp_start;
+         else return Position - LoopStart;
       }
-      else if (over_sampling) {
-         if ((position + 1) < lp_end) return (lp_end - 1) - position;
+      else if (Resampling) {
+         if ((Position + 1) < LoopEnd) return (LoopEnd - 1) - Position;
          else {
-            next_offset = 0;
+            NextOffset = 0;
             return 1;
          }
       }
-      else return lp_end - position;
+      else return LoopEnd - Position;
    }
    else { // Default/no loop
-      if (over_sampling) {
-         if ((position + 1) < sample_length) return (sample_length - 1) - position;
+      if (Resampling) {
+         if ((Position + 1) < SampleLength) return (SampleLength - 1) - Position;
          else {
-            next_offset = 0;
-            return sample_length - position;
+            NextOffset = 0;
+            return SampleLength - Position;
          }
       }
-      else return sample_length - position;
+      else return SampleLength - Position;
    }
 }
 
@@ -347,7 +347,7 @@ static int samples_until_end(extAudio *Self, AudioChannel &Channel, int &NextOff
       std::make_tuple(sample.Loop2Start, sample.Loop2End, sample.Loop2Type) :
       std::make_tuple(sample.Loop1Start, sample.Loop1End, sample.Loop1Type);
 
-   const bool over_sampling = (Self->Flags & ADF::OVER_SAMPLING) != ADF::NIL;
+   const bool resampling = Self->WindowConfig.resampling;
    const bool is_backward = (Channel.Flags & CHF::BACKWARD) != CHF::NIL;
 
    // Template dispatch for compile-time optimization based on loop type
@@ -355,16 +355,16 @@ static int samples_until_end(extAudio *Self, AudioChannel &Channel, int &NextOff
    switch (lp_type) {
       case LTYPE::UNIDIRECTIONAL:
          num = samples_until_end_impl<LTYPE::UNIDIRECTIONAL>(
-            Channel.Position, sample.SampleLength, lp_start, lp_end, over_sampling, is_backward, NextOffset);
+            Channel.Position, sample.SampleLength, lp_start, lp_end, resampling, is_backward, NextOffset);
          break;
       case LTYPE::BIDIRECTIONAL:
          num = samples_until_end_impl<LTYPE::BIDIRECTIONAL>(
-            Channel.Position, sample.SampleLength, lp_start, lp_end, over_sampling, is_backward, NextOffset);
+            Channel.Position, sample.SampleLength, lp_start, lp_end, resampling, is_backward, NextOffset);
          break;
       default: // Handle all other loop types (SINGLE, etc.) using default template behavior
          // Use a compile-time value that triggers the else branch in the template
          if constexpr (true) {
-            if (over_sampling) {
+            if (resampling) {
                if ((Channel.Position + 1) < sample.SampleLength) {
                   num = (sample.SampleLength - 1) - Channel.Position;
                }
@@ -553,6 +553,8 @@ static bool handle_sample_end(extAudio *Self, AudioChannel &Channel)
    AudioLog log(__FUNCTION__);
 
    while (Elements > 0) {
+      Self->snapshot_quality();
+
       // Mix only as much as we can fit in our mixing buffer
 
       auto window = (Elements > Self->MixElements) ? Self->MixElements : Elements;
@@ -602,7 +604,7 @@ static bool handle_sample_end(extAudio *Self, AudioChannel &Channel)
 
       // Do optional post-processing
 
-      if ((Self->Flags & (ADF::FILTER_LOW|ADF::FILTER_HIGH)) != ADF::NIL) {
+      if ((Self->WindowFlags & (ADF::FILTER_LOW|ADF::FILTER_HIGH)) != ADF::NIL) {
          if (Self->Stereo) filter_float_stereo(Self, Self->MixBuffer.data(), window);
          else filter_float_mono(Self, Self->MixBuffer.data(), window);
       }
@@ -675,7 +677,7 @@ static void mix_stream(extAudio *Self, AudioChannel &Channel, AudioSample &Sampl
          .mix_dest = &dest
       };
 
-      AudioMixer::dispatch_mix(Self->MixConfig, Sample.SampleType, params);
+      AudioMixer::dispatch_mix(Self->WindowConfig, Sample.SampleType, params);
       Self->SourceFrames = std::max(Self->SourceFrames, i + 1);
       if ((Channel.Flags & CHF::VOL_RAMP) != CHF::NIL) {
          const bool left = adjust_volume_ramp(Channel.LVolume, Channel.LVolumeTarget, RAMPSPEED);
@@ -775,7 +777,7 @@ static void mix_channel(extAudio *Self, AudioChannel &Channel, int TotalSamples,
                .mix_dest = &mix_dest
             };
 
-            mix_pos = AudioMixer::dispatch_mix(Self->MixConfig, sample.SampleType, params);
+            mix_pos = AudioMixer::dispatch_mix(Self->WindowConfig, sample.SampleType, params);
             mix_now--;
 
             // Use helper function for cleaner volume ramping logic
@@ -816,7 +818,7 @@ static void mix_channel(extAudio *Self, AudioChannel &Channel, int TotalSamples,
                   .mix_dest = &mix_dest
                };
 
-               mix_pos = AudioMixer::dispatch_mix(Self->MixConfig, sample.SampleType, params);
+               mix_pos = AudioMixer::dispatch_mix(Self->WindowConfig, sample.SampleType, params);
                mix_now -= num;
             }
 
@@ -831,7 +833,7 @@ static void mix_channel(extAudio *Self, AudioChannel &Channel, int TotalSamples,
                   .mix_dest = &mix_dest
                };
 
-               mix_pos = AudioMixer::dispatch_mix(Self->MixConfig, sample.SampleType, params);
+               mix_pos = AudioMixer::dispatch_mix(Self->WindowConfig, sample.SampleType, params);
             }
          }
 
@@ -863,7 +865,7 @@ static void filter_float_mono(extAudio *Self, float *Data, int TotalSamples)
    static float d1l=0, d2l=0;
 #endif
 
-   if ((Self->Flags & ADF::FILTER_LOW) != ADF::NIL) {
+   if ((Self->WindowFlags & ADF::FILTER_LOW) != ADF::NIL) {
       while (TotalSamples > 0) {
          float s = (d1l + 2.0f * Data[0]) * (1.0f / 3.0f);
          d1l = Data[0];
@@ -871,7 +873,7 @@ static void filter_float_mono(extAudio *Self, float *Data, int TotalSamples)
          TotalSamples--;
       }
    }
-   else if ((Self->Flags & ADF::FILTER_HIGH) != ADF::NIL) {
+   else if ((Self->WindowFlags & ADF::FILTER_HIGH) != ADF::NIL) {
       while (TotalSamples > 0) {
          float s = (d1l + 3.0f * d2l + 4.0f * Data[0]) * (1.0f / 8.0f);
          d1l = d2l;
@@ -896,7 +898,7 @@ static void filter_float_stereo(extAudio *Self, float *Data, int TotalSamples)
    static double d1l = 0, d1r = 0, d2l = 0, d2r = 0;
 #endif
 
-   if ((Self->Flags & ADF::FILTER_LOW) != ADF::NIL) {
+   if ((Self->WindowFlags & ADF::FILTER_LOW) != ADF::NIL) {
       while (TotalSamples > 0) {
          float s = (d1l + 2.0 * Data[0]) * (1.0 / 3.0);
          d1l = Data[0];
@@ -909,7 +911,7 @@ static void filter_float_stereo(extAudio *Self, float *Data, int TotalSamples)
          TotalSamples--;
       }
    }
-   else if ((Self->Flags & ADF::FILTER_HIGH) != ADF::NIL) {
+   else if ((Self->WindowFlags & ADF::FILTER_HIGH) != ADF::NIL) {
       while (TotalSamples > 0) {
          float s = (d1l + 3.0 * d2l + 4.0 * Data[0]) * (1.0 / 8.0);
          d1l = d2l;

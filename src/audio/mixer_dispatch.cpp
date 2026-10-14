@@ -6,7 +6,7 @@
 int AudioMixer::dispatch_mix(const AudioConfig& config, PCM sample_format, const MixingParams& params)
 {
    // Try SIMD optimization first for supported mono-to-stereo cases
-   if (config.stereo_output and !config.use_interpolation and params.total_samples >= 8) {
+   if (config.stereo_output and !config.resampling and params.total_samples >= 8) {
       if (sample_format IS PCM::U8_MONO) {
 #ifdef __AVX2__
          return mix_vectorized_mono_to_stereo<uint8_t>(
@@ -27,13 +27,13 @@ int AudioMixer::dispatch_mix(const AudioConfig& config, PCM sample_format, const
    switch (sample_format) {
       case PCM::U8_MONO:
          if (config.stereo_output) {
-            if (config.use_interpolation) {
+            if (config.resampling) {
                return mix_template<uint8_t, false, true, true>(params.src, params.src_pos, params.total_samples, params.next_sample_offset, params.left_vol, params.right_vol, params.mix_dest);
             }
             else return mix_template<uint8_t, false, true, false>(params.src, params.src_pos, params.total_samples, params.next_sample_offset, params.left_vol, params.right_vol, params.mix_dest);
          }
          else {
-            if (config.use_interpolation) {
+            if (config.resampling) {
                return mix_template<uint8_t, false, false, true>(params.src, params.src_pos, params.total_samples, params.next_sample_offset, params.left_vol, params.right_vol, params.mix_dest);
             }
             else return mix_template<uint8_t, false, false, false>(params.src, params.src_pos, params.total_samples, params.next_sample_offset, params.left_vol, params.right_vol, params.mix_dest);
@@ -41,13 +41,13 @@ int AudioMixer::dispatch_mix(const AudioConfig& config, PCM sample_format, const
 
       case PCM::U8_STEREO:
          if (config.stereo_output) {
-            if (config.use_interpolation) {
+            if (config.resampling) {
                return mix_template<uint8_t, true, true, true>(params.src, params.src_pos, params.total_samples, params.next_sample_offset, params.left_vol, params.right_vol, params.mix_dest);
             }
             else return mix_template<uint8_t, true, true, false>(params.src, params.src_pos, params.total_samples, params.next_sample_offset, params.left_vol, params.right_vol, params.mix_dest);
          }
          else {
-            if (config.use_interpolation) {
+            if (config.resampling) {
                return mix_template<uint8_t, true, false, true>(params.src, params.src_pos, params.total_samples, params.next_sample_offset, params.left_vol, params.right_vol, params.mix_dest);
             }
             else return mix_template<uint8_t, true, false, false>(params.src, params.src_pos, params.total_samples, params.next_sample_offset, params.left_vol, params.right_vol, params.mix_dest);
@@ -55,13 +55,13 @@ int AudioMixer::dispatch_mix(const AudioConfig& config, PCM sample_format, const
 
       case PCM::S16_MONO:
          if (config.stereo_output) {
-            if (config.use_interpolation) {
+            if (config.resampling) {
                return mix_template<int16_t, false, true, true>(params.src, params.src_pos, params.total_samples, params.next_sample_offset, params.left_vol, params.right_vol, params.mix_dest);
             }
             else return mix_template<int16_t, false, true, false>(params.src, params.src_pos, params.total_samples, params.next_sample_offset, params.left_vol, params.right_vol, params.mix_dest);
          }
          else {
-            if (config.use_interpolation) {
+            if (config.resampling) {
                return mix_template<int16_t, false, false, true>(params.src, params.src_pos, params.total_samples, params.next_sample_offset, params.left_vol, params.right_vol, params.mix_dest);
             }
             else return mix_template<int16_t, false, false, false>(params.src, params.src_pos, params.total_samples, params.next_sample_offset, params.left_vol, params.right_vol, params.mix_dest);
@@ -69,13 +69,13 @@ int AudioMixer::dispatch_mix(const AudioConfig& config, PCM sample_format, const
 
       case PCM::S16_STEREO:
          if (config.stereo_output) {
-            if (config.use_interpolation) {
+            if (config.resampling) {
                return mix_template<int16_t, true, true, true>(params.src, params.src_pos, params.total_samples, params.next_sample_offset, params.left_vol, params.right_vol, params.mix_dest);
             }
             else return mix_template<int16_t, true, true, false>(params.src, params.src_pos, params.total_samples, params.next_sample_offset, params.left_vol, params.right_vol, params.mix_dest);
          }
          else {
-            if (config.use_interpolation) {
+            if (config.resampling) {
                return mix_template<int16_t, true, false, true>(params.src, params.src_pos, params.total_samples, params.next_sample_offset, params.left_vol, params.right_vol, params.mix_dest);
             }
             else return mix_template<int16_t, true, false, false>(params.src, params.src_pos, params.total_samples, params.next_sample_offset, params.left_vol, params.right_vol, params.mix_dest);

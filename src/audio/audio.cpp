@@ -25,12 +25,13 @@ A magnitude of 1.0 is 0 dBFS, while intermediate buses retain finite values abov
 conversion is the only stage that clips and quantises samples for the selected hardware format.  The mixer supports:
 
 <list type="bullet">
-<li>Linear interpolation between sample frames when `ADF::OVER_SAMPLING` is enabled, reducing aliasing when samples are
-played at rates that differ from the output rate.</li>
+<li>Nearest-neighbour source resampling, or linear interpolation when `ADF::OVER_SAMPLING` is enabled.  Linear
+interpolation is not a ratio-dependent anti-alias filter.</li>
 <li>Volume ramping to avoid clicks when channel volumes change, enabled by `ADF::VOL_RAMPING` in combination with
 `ADF::OVER_SAMPLING`.</li>
 <li>Two levels of low-pass output smoothing, selected with `ADF::FILTER_LOW` or `ADF::FILTER_HIGH`.  The @Audio.Quality
-field configures the filtering and oversampling flags as a group.</li>
+field selects nearest-neighbour or linear resampling and fixed smoothing as a group.  The legacy bits reflect that
+selection and cannot override it; Quality changes do not alter arithmetic precision or perform true oversampling.</li>
 <li>Unidirectional and bidirectional sample looping, including a secondary loop region.</li>
 <li>Per-channel and global effect chains built from @AudioEffect processors.</li>
 </list>
@@ -92,6 +93,7 @@ mixing.</li>
 #include <kotuku/modules/module.h>
 #include <kotuku/strings.hpp>
 #include <sstream>
+#include <cstdlib>
 #include <algorithm>
 
 static ERR MODInit(OBJECTPTR, struct CoreBase *);
@@ -314,6 +316,7 @@ static ERR MODExpunge(void)
 #include "tests/test_audio_analyser_dsp.cpp"
 #include "tests/test_mixers.cpp"
 #include "tests/test_audio_format.cpp"
+#include "tests/test_audio_quality.cpp"
 #ifdef ALSA_ENABLED
 #include "tests/test_audio_worker.cpp"
 #endif
@@ -360,6 +363,7 @@ static void MODTest(std::string_view Options, int *Passed, int *Total)
    run("analyser DSP", audio_tests_audio_analyser_dsp::run);
    run("mixer", audio_tests_mixers::run);
    run("format", audio_tests_audio_format::run);
+   run("quality", audio_tests_audio_quality::run);
 #ifdef ALSA_ENABLED
    run("ALSA worker", audio_tests_audio_worker::run);
 #endif

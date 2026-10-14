@@ -2,9 +2,9 @@
 
 module({ name="Audio", copyright="Paul Manias © 2002-2026", version=1.0, timestamp=20240611, src={ "audio.cpp", "commands.cpp" } }, function()
   flags("ADF", { comment="Optional flags for the Audio object." },
-    "OVER_SAMPLING: Enables oversampling for higher quality audio at the cost of slower mixing.",
-    "FILTER_LOW: Enable a low level of output filtering to minimise distortion.",
-    "FILTER_HIGH: Enable a high level of output filtering to minimise distortion.",
+    "OVER_SAMPLING: Legacy indication of linear source interpolation, derived from Audio.Quality.",
+    "FILTER_LOW: Low fixed post-mix smoothing, derived from Audio.Quality.",
+    "FILTER_HIGH: High fixed post-mix smoothing, derived from Audio.Quality.",
     "VOL_RAMPING: Enable volume ramping for softer playback when a sample is played multiple times (enabled by default).",
     "AUTO_SAVE: Save configuration information on exit.",
     "SYSTEM_WIDE: Mixer changes should be applied system-wide.")

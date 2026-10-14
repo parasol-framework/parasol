@@ -171,7 +171,11 @@ static void reopen_windows_audio(extAudio *Self)
       Self->DriverBitSize = Self->FrameBytes;
       Self->MixElements = SAMPLE(Self->BufferFrames);
       Self->MixBuffer.resize(Self->BufferFrames * (Self->Stereo ? 2 : 1));
-      Self->MixConfig = AudioConfig(Self->Stereo, (Self->Flags & ADF::OVER_SAMPLING) != ADF::NIL);
+      {
+         std::lock_guard lock(Self->MixerMutex);
+         Self->MixConfig = AudioConfig(Self->Stereo, Self->RequestedQuality.Resampling);
+         Self->snapshot_quality();
+      }
 
       // A reopened endpoint must provide the committed layout; a changed layout is left to explicit reactivation.
 

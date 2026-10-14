@@ -22,6 +22,7 @@ using namespace kt;
 #endif
 #include "audio_format.h"
 #include "mixer_dispatch.h"
+#include "audio_quality.h"
 #include "audio_completions.h"
 
 #define MIX_INTERVAL 0.01
@@ -487,7 +488,11 @@ class extAudio : public objAudio {
    std::shared_ptr<AudioEffectChain> GlobalEffects = std::make_shared<AudioEffectChain>(MixerLock);
 
    AudioCompletions BatchCompletions; // Pending batch callbacks; the worker completes and the client thread dispatches.
-   AudioConfig MixConfig; // Stereo/oversampling configuration used to select the mixing routine.
+   AudioConfig MixConfig; // Requested stereo/resampling dispatch, protected by MixerMutex.
+   AudioConfig WindowConfig; // Immutable dispatch for the current mixer window.
+   AudioQualityProfile RequestedQuality = glQualityProfiles[3];
+   AudioQualityProfile EffectiveQuality = glQualityProfiles[3];
+   ADF WindowFlags = ADF::NIL; // Processing flags captured at the mixer-window boundary.
    std::vector<int> OutputLayout = { int(SPK::FRONT_LEFT), int(SPK::FRONT_RIGHT) }; // Requested output layout
    std::vector<int> CommittedLayout; // Processing layout of the last successful activation; empty if none
    int CommittedRate = 0; // Sample rate of the last successful activation, independent of device negotiation
@@ -553,9 +558,16 @@ class extAudio : public objAudio {
    int     MaxChannels;    // Recommended maximum mixing channels for Sound class
    std::string Device;
    int8_t  DriverBitSize;  // Target sample bit size; accounts for stereo channel
-   bool    Stereo;
+   bool    Stereo = false;
    bool    Mute;
    bool    Initialising;   // Re-entrancy guard for Activate() while the device is being initialised.
+
+   // Call with MixerMutex held once published.  The worker writes only its effective window state.
+   void snapshot_quality() {
+      EffectiveQuality = *audio_quality_profile(Quality);
+      WindowFlags = (Flags & ~glQualityFlags) | EffectiveQuality.Flags;
+      WindowConfig = AudioConfig(Stereo, EffectiveQuality.Resampling);
+   }
 
    inline struct AudioChannel * GetChannel(int Handle) {
       const auto index = unsigned(Handle) >> 16;

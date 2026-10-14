@@ -44,7 +44,7 @@ struct InterpolationWeights {
 
 //********************************************************************************************************************
 // Template-based mixer core - handles all sample types and channel configurations
-// Interpolation is used when the Audio object has over-sampling enabled.
+// Linear resampling is selected by the legacy OVER_SAMPLING quality bit.
 
 template<typename SampleType, bool IsStereoSample, bool IsStereoOutput, bool UseInterpolation>
 static int mix_template(APTR Src, int SrcPos, int TotalSamples, int nextSampleOffset, float LeftVol, float RightVol, float **MixDest)

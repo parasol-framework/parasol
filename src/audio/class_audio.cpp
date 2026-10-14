@@ -7,10 +7,9 @@ The Audio class provides a comprehensive audio service that works across multipl
 design model. It serves as the foundation for all audio operations in Kōtuku framework, managing hardware resources,
 sample mixing, and output buffering.
 
-The Audio class supports 8/16/32 bit output, with advanced features including oversampling for enhanced quality,
-intelligent streaming for large samples, multiple simultaneous audio channels, and command sequencing for precise
-timing control. The internal floating-point mixer ensures high-quality audio processing regardless of the target
-hardware bit depth.
+The Audio class supports 8/16/32 bit output, nearest-neighbour or linear source resampling, fixed output smoothing,
+streaming for large samples, simultaneous audio channels, and command sequencing for precise timing control.  The
+internal mixer uses 32-bit floating-point arithmetic regardless of Quality or the hardware bit depth.
 
 <header>Formats and Layouts</header>
 
@@ -274,7 +273,11 @@ static ERR AUDIO_Activate(extAudio *Self)
    Self->MixBuffer.resize(mix_buffer_size / sizeof(float));
    Self->MixElements = SAMPLE(mix_buffer_size / mixbitsize);
 
-   Self->MixConfig = AudioConfig(Self->Stereo, (Self->Flags & ADF::OVER_SAMPLING) != ADF::NIL);
+   {
+      std::lock_guard mixer_lock(Self->MixerMutex);
+      Self->MixConfig = AudioConfig(Self->Stereo, Self->RequestedQuality.Resampling);
+      Self->snapshot_quality();
+   }
 
 #ifdef AUDIO_WORKER
    error = commit_audio_output(Self, committed, start_audio_worker);
@@ -809,7 +812,7 @@ static ERR AUDIO_OpenChannels(extAudio *Self, struct snd::OpenChannels *Args)
    ChannelSet channels;
    channels.Channel.resize(Args->Total);
    #ifdef AUDIO_WORKER
-   channels.Shadow.resize(Args->Total); // Quality may enable oversampling during playback.
+   channels.Shadow.resize(Args->Total); // Quality may enable linear resampling during playback.
    #else
    if ((Self->Flags & ADF::OVER_SAMPLING) != ADF::NIL) channels.Shadow.resize(Args->Total);
    #endif
@@ -1442,10 +1445,8 @@ static ERR SET_Device(extAudio *Self, const std::string_view &Value)
 Flags: Special audio flags can be set here.
 Lookup: ADF
 
-The audio class supports a number of special flags that affect internal behaviour.  The following table illustrates the
-publicly available flags:
-
-!ADF
+The `OVER_SAMPLING`, `FILTER_LOW` and `FILTER_HIGH` bits reflect #Quality and are preserved when Flags is written.
+Other flags can be selected before initialisation.  `OVER_SAMPLING` is the legacy name for linear interpolation.
 
 -FIELD-
 InputRate: Determines the frequency to use when recording audio data.
@@ -1599,37 +1600,54 @@ static ERR SET_PeriodSize(extAudio *Self, int Value)
 -FIELD-
 Quality: Determines the quality of the audio mixing.
 
-The Quality field controls the precision and filtering applied during audio mixing operations. This setting automatically
-configures multiple internal processing parameters to balance audio fidelity against computational overhead.
-
-The value range spans from 0 (minimal processing) to 100 (maximum fidelity), with recommended settings between 70-80
-for most applications. This range provides an optimal balance between audio clarity and system performance.
-
-Setting the Quality value automatically adjusts the following processing flags:
+Quality selects source resampling and fixed post-mix smoothing.  All profiles mix in 32-bit floating-point;
+this field does not change arithmetic precision or perform true oversampling.  The default is 80.  Values outside
+0..100 return `ERR::OutOfRange` without changing the current profile.  Invalid saved values retain the default.
 
 <list type="bullet">
-<li><b>Quality 0-9</b>: Minimal processing, no filtering or oversampling applied.</li>
-<li><b>Quality 10-32</b>: Enables `ADF::FILTER_LOW` for basic output filtering.</li>
-<li><b>Quality 33-65</b>: Activates `ADF::FILTER_HIGH` for enhanced frequency response.</li>
-<li><b>Quality 66-100</b>: Implements `ADF::OVER_SAMPLING` and `ADF::FILTER_HIGH` for maximum fidelity.</li>
+<li><b>Quality 0-9</b>: Nearest-neighbour resampling without output smoothing.</li>
+<li><b>Quality 10-32</b>: Nearest-neighbour resampling with `ADF::FILTER_LOW` smoothing.</li>
+<li><b>Quality 33-65</b>: Nearest-neighbour resampling with `ADF::FILTER_HIGH` smoothing.</li>
+<li><b>Quality 66-100</b>: Linear interpolation with `ADF::FILTER_HIGH` smoothing.</li>
 </list>
+
+The legacy `OVER_SAMPLING`, `FILTER_LOW` and `FILTER_HIGH` bits in #Flags are derived from Quality.  Writes to Flags
+preserve the Quality-selected bits.  A live Quality change takes effect as a complete profile at the next mixer-window
+boundary; processing already in progress retains its selected profile.
 
 *********************************************************************************************************************/
 
 static ERR SET_Quality(extAudio *Self, int Value)
 {
+   const auto profile = audio_quality_profile(Value);
+   if (!profile) return ERR::OutOfRange;
    std::lock_guard mixer_lock(Self->MixerMutex);
    Self->Quality = Value;
-
-   Self->Flags &= ~(ADF::FILTER_LOW|ADF::FILTER_HIGH|ADF::OVER_SAMPLING);
-
-   if (Self->Quality < 10) {}
-   else if (Self->Quality < 33) Self->Flags |= ADF::FILTER_LOW;
-   else if (Self->Quality < 66) Self->Flags |= ADF::FILTER_HIGH;
-   else Self->Flags |= ADF::OVER_SAMPLING|ADF::FILTER_HIGH;
-   Self->MixConfig = AudioConfig(Self->Stereo, (Self->Flags & ADF::OVER_SAMPLING) != ADF::NIL);
-
+   Self->RequestedQuality = *profile;
+   Self->Flags = (Self->Flags & ~glQualityFlags) | profile->Flags;
+   Self->MixConfig = AudioConfig(Self->Stereo, profile->Resampling);
    return ERR::Okay;
+}
+
+static ERR SET_Flags(extAudio *Self, int Value)
+{
+   if (Self->initialised()) return ERR::ImmutableField;
+   std::lock_guard mixer_lock(Self->MixerMutex);
+   const auto profile = audio_quality_profile(Self->Quality);
+   Self->Flags = (ADF(Value) & ~glQualityFlags) | profile->Flags;
+   return ERR::Okay;
+}
+
+// Configuration reads use the same setter as public writes; malformed or invalid saved values leave it unchanged.
+static void load_audio_quality(extAudio *Self, objConfig *Config)
+{
+   std::string saved;
+   if (Config->read("AUDIO", "Quality", saved) != ERR::Okay) return;
+   char *end;
+   const auto quality = std::strtol(saved.c_str(), &end, 0);
+   if (end != saved.c_str() and end IS saved.c_str() + saved.size() and quality >= 0 and quality <= 100) {
+      SET_Quality(Self, int(quality));
+   }
 }
 
 /*********************************************************************************************************************
@@ -1682,7 +1700,8 @@ extAudio::extAudio(objMetaClass *ClassPtr, OBJECTID ObjectID) : objAudio(ClassPt
    InputRate   = 44100;        // Input rate for recording
    Quality     = 80;
    BitDepth    = 16;
-   Flags       = ADF::OVER_SAMPLING|ADF::FILTER_HIGH|ADF::VOL_RAMPING;
+   Flags       = ADF::VOL_RAMPING;
+   SET_Quality(this, Quality);
    #ifdef ALSA_ENABLED
    Periods     = 3;
    PeriodSize  = 256;
@@ -1722,7 +1741,7 @@ extAudio::extAudio(objMetaClass *ClassPtr, OBJECTID ObjectID) : objAudio(ClassPt
    if (config.ok()) {
       config->read("AUDIO", "OutputRate", OutputRate);
       config->read("AUDIO", "InputRate", InputRate);
-      config->read("AUDIO", "Quality", Quality);
+      load_audio_quality(this, *config);
       config->read("AUDIO", "BitDepth", BitDepth);
 
       int value;
@@ -1746,7 +1765,6 @@ extAudio::extAudio(objMetaClass *ClassPtr, OBJECTID ObjectID) : objAudio(ClassPt
 
       if ((BitDepth != 8) and (BitDepth != 16) and (BitDepth != 24) and (BitDepth != 32)) BitDepth = 16;
       if (!config->read("AUDIO", "PeriodFrames", value)) SET_PeriodSize(this, value);
-      SET_Quality(this, Quality);
 
       // Find the mixer section, then load the mixer information
 
@@ -1788,6 +1806,7 @@ extAudio::extAudio(objMetaClass *ClassPtr, OBJECTID ObjectID) : objAudio(ClassPt
          }
       }
    }
+   snapshot_quality();
 }
 
 //********************************************************************************************************************
@@ -2145,7 +2164,7 @@ static const FieldArray clAudioFields[] = {
    { "OutputRate",    FDF_INT|FDF_RI, nullptr, SET_OutputRate },
    { "InputRate",     FDF_INT|FDF_RI },
    { "Quality",       FDF_INT|FDF_RW,      nullptr, SET_Quality },
-   { "Flags",         FDF_INTFLAGS|FDF_RI, nullptr, nullptr, &clAudioFlags },
+   { "Flags",         FDF_INTFLAGS|FDF_RI, nullptr, SET_Flags, &clAudioFlags },
    { "BitDepth",      FDF_INT|FDF_RI,      nullptr, SET_BitDepth },
    { "Periods",       FDF_INT|FDF_RI,      nullptr, SET_Periods },
    { "PeriodSize",    FDF_INT|FDF_RI,      nullptr, SET_PeriodSize },

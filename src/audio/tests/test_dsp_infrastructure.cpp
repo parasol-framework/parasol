@@ -460,8 +460,9 @@ static FormatContractResult render_format_contract(AudioTestContext &Test, int B
    extAudio *audio;
    if (!AUDIO_CHECK(NewObject(CLASSID::AUDIO, &audio) IS ERR::Okay)) return {};
    std::unique_ptr<extAudio, DeleteObject<extAudio>> owner(audio);
+   SET_Quality(audio, 0);
+   SET_Flags(audio, int(ADF::NIL));
    if (!AUDIO_CHECK(InitObject(audio) IS ERR::Okay)) return {};
-   audio->Flags = ADF::NIL;
    audio->OutputRate = 1000;
    audio->BitDepth = BitDepth;
    audio->DriverBitSize = BitDepth / 8;
@@ -553,8 +554,9 @@ static void common_mixer(AudioTestContext &Test)
    extAudio *audio;
    AUDIO_REQUIRE(NewObject(CLASSID::AUDIO, &audio) IS ERR::Okay);
    std::unique_ptr<extAudio, DeleteObject<extAudio>> owner(audio);
+   SET_Quality(audio, 0);
+   SET_Flags(audio, int(ADF::NIL));
    AUDIO_REQUIRE(InitObject(audio) IS ERR::Okay);
-   audio->Flags = ADF::NIL;
    audio->OutputRate = 1000;
    audio->BitDepth = 32;
    audio->DriverBitSize = 4;

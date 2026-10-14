@@ -554,9 +554,8 @@ class objAudio : public Object {
    }
 
    inline ERR setFlags(const ADF Value) noexcept {
-      if (this->initialised()) return ERR::ImmutableField;
-      this->Flags = Value;
-      return ERR::Okay;
+      auto field = &this->Class->Dictionary[2];
+      return field->WriteValue(this, field, FD_INT, &Value);
    }
 
    inline ERR setBitDepth(const int Value) noexcept {

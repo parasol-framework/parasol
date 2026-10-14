@@ -15,13 +15,13 @@ struct MixingParams {
 
 struct AudioConfig {
    bool stereo_output;
-   bool use_interpolation;
+   bool resampling;
 
    // Default constructor
-   AudioConfig() : stereo_output(false), use_interpolation(false) {}
+   AudioConfig() : stereo_output(false), resampling(false) {}
 
-   AudioConfig(bool stereo_out, bool interpolation)
-      : stereo_output(stereo_out), use_interpolation(interpolation) {}
+   AudioConfig(bool StereoOutput, bool Resampling)
+      : stereo_output(StereoOutput), resampling(Resampling) {}
 };
 
 //********************************************************************************************************************
