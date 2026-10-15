@@ -422,6 +422,17 @@
     </field>
 
     <field>
+      <name>Dither</name>
+      <comment>Selects triangular dither for integer output.</comment>
+      <access read="G" write="S">Get/Set</access>
+      <type lookup="ADITHER">ADITHER</type>
+      <description>
+<p>The default is <code>ADITHER::AUTO</code>.  Real-time changes take effect at the next mixer-window boundary.</p>
+<types lookup="ADITHER"/>
+      </description>
+    </field>
+
+    <field>
       <name>Flags</name>
       <comment>Special audio flags can be set here.</comment>
       <access read="R" write="S">Read/Set</access>
@@ -544,13 +555,14 @@ audio = obj.new('Audio', { outputLayout=layout })
       <access read="R" write="S">Read/Set</access>
       <type>INT</type>
       <description>
-<p>Quality selects source resampling and fixed post-mix smoothing.  All profiles mix in 32-bit floating-point; this field does not change arithmetic precision or perform true oversampling.  The default is 80.  Values outside 0..100 return <code>ERR::OutOfRange</code> without changing the current profile.  Invalid saved values retain the default.</p>
+<p>Quality selects source resampling, fixed post-mix smoothing and integer output dither.  All profiles mix in 32-bit floating-point; this field does not change arithmetic precision or perform true oversampling.  The default is 80. Values outside 0..100 return <code>ERR::OutOfRange</code> without changing the current profile.  Invalid saved values retain the default.</p>
 <list type="bullet">
 <li><b>Quality 0-9</b>: Nearest-neighbour resampling without output smoothing.</li>
 <li><b>Quality 10-32</b>: Linear interpolation with <code>ADF::FILTER_LOW</code> smoothing.</li>
 <li><b>Quality 33-65</b>: Bounded four-point cubic Hermite interpolation with <code>ADF::FILTER_HIGH</code> smoothing.</li>
 <li><b>Quality 66-100</b>: Currently the same cubic interpolation as Standard with <code>ADF::FILTER_HIGH</code> smoothing.</li>
 </list>
+<p>With <fl>Dither</fl> set to <code>ADITHER::AUTO</code>, Quality 33 and above enables TPDF dither for 8-bit and 16-bit output. <code>ADITHER::OFF</code> always disables it; <code>ADITHER::TPDF</code> enables it at every Quality.  Float conversion is unchanged. Dither is added immediately before rounding to nearest integer, with triangular noise bounded by one destination LSB in either direction.  Both representable endpoints saturate, including samples at or beyond -1 and +1. Exact-zero samples suppress noise immediately, without a silent-interval timer.  Independent channel streams advance through silence and reset to fixed seeds on deactivation and every committed output configuration. Live policy changes do not reset the streams.  No noise shaping is applied.</p>
 <p>The legacy <code>OVER_SAMPLING</code>, <code>FILTER_LOW</code> and <code>FILTER_HIGH</code> bits in <fl>Flags</fl> are derived from Quality.  Writes to Flags preserve the Quality-selected bits.  A live Quality change takes effect as a complete profile at the next mixer-window boundary; processing already in progress retains its selected profile.  Source interpolation blends to the new mode over 32 rendered output frames per channel, independently of volume ramping.  Ordinary source endpoints repeat the endpoint value, while looping sources extend their loop.  Neither linear nor cubic interpolation is a ratio-dependent anti-alias filter.  Higher quality ranges will select additional algorithms in future releases.</p>
       </description>
     </field>
@@ -564,6 +576,12 @@ audio = obj.new('Audio', { outputLayout=layout })
       <const name="OVER_SAMPLING">Legacy indication of linear or cubic source interpolation, derived from Audio.Quality.</const>
       <const name="SYSTEM_WIDE">Mixer changes should be applied system-wide.</const>
       <const name="VOL_RAMPING">Enable de-clicking for channel gain and voice changes independently of Quality (enabled by default).</const>
+    </constants>
+
+    <constants lookup="ADITHER" comment="Integer output dither policy.">
+      <const name="AUTO">Enable TPDF for Quality 33 and above (the default).</const>
+      <const name="OFF">Disable dither regardless of Quality.</const>
+      <const name="TPDF">Enable triangular dither for all Quality settings.</const>
     </constants>
 
     <constants lookup="ADS" comment="Effect drain states reported by GetEffectStatus().">

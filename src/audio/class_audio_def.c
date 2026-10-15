@@ -10,6 +10,13 @@ static const struct FieldDef clAudioFlags[] = {
    { nullptr, 0 }
 };
 
+static const struct FieldDef clAudioDither[] = {
+   { "Auto", 0x00000000 },
+   { "Off", 0x00000001 },
+   { "Tpdf", 0x00000002 },
+   { nullptr, 0 }
+};
+
 FDEF maOpenChannels[] = { { "Total", FD_INT }, { "Result", FD_RESULT|FD_INT }, { 0, 0 } };
 FDEF maCloseChannels[] = { { "Handle", FD_INT }, { 0, 0 } };
 FDEF maAddSample[] = { { "OnStop", FD_FUNCTION }, { "AudioFormat:Format", FD_PTR|FD_STRUCT }, { "Data", FDF_SPAN|FD_BYTE }, { "AudioLoop:Loop", FD_PTR|FD_STRUCT }, { "Result", FD_RESULT|FD_INT }, { 0, 0 } };

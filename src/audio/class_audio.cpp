@@ -736,6 +736,7 @@ static ERR AUDIO_Deactivate(extAudio *Self)
 
    {
       std::lock_guard lock(Self->MixerMutex);
+      Self->DitherState.reset();
       Self->OutputActive = false;
       Self->EffectConfigured = false;
       Self->GlobalEffects->reset();
@@ -936,6 +937,7 @@ static ERR AUDIO_SaveToObject(extAudio *Self, struct acSaveToObject *Args)
       config->write("AUDIO", "OutputRate", std::to_string(Self->OutputRate));
       config->write("AUDIO", "InputRate", std::to_string(Self->InputRate));
       config->write("AUDIO", "Quality", std::to_string(Self->Quality));
+      config->write("AUDIO", "Dither", std::to_string(int(Self->Dither)));
       config->write("AUDIO", "BitDepth", std::to_string(Self->BitDepth));
       config->write("AUDIO", "Periods", std::to_string(Self->Periods));
       config->write("AUDIO", "StreamBufferMs", std::to_string(Self->StreamBufferMs));
@@ -1439,6 +1441,12 @@ static ERR SET_Device(extAudio *Self, const std::string_view &Value)
 /*********************************************************************************************************************
 
 -FIELD-
+Dither: Selects triangular dither for integer output.
+Lookup: ADITHER
+
+The default is `ADITHER::AUTO`.  Real-time changes take effect at the next mixer-window boundary.
+
+-FIELD-
 Flags: Special audio flags can be set here.
 Lookup: ADF
 
@@ -1598,8 +1606,9 @@ static ERR SET_PeriodSize(extAudio *Self, int Value)
 -FIELD-
 Quality: Determines the quality of the audio mixing.
 
-Quality selects source resampling and fixed post-mix smoothing.  All profiles mix in 32-bit floating-point;
-this field does not change arithmetic precision or perform true oversampling.  The default is 80.  Values outside
+Quality selects source resampling, fixed post-mix smoothing and integer output dither.  All profiles mix in 32-bit
+floating-point; this field does not change arithmetic precision or perform true oversampling.  The default is 80.
+Values outside
 0..100 return `ERR::OutOfRange` without changing the current profile.  Invalid saved values retain the default.
 
 <list type="bullet">
@@ -1608,6 +1617,14 @@ this field does not change arithmetic precision or perform true oversampling.  T
 <li><b>Quality 33-65</b>: Bounded four-point cubic Hermite interpolation with `ADF::FILTER_HIGH` smoothing.</li>
 <li><b>Quality 66-100</b>: Currently the same cubic interpolation as Standard with `ADF::FILTER_HIGH` smoothing.</li>
 </list>
+
+With #Dither set to `ADITHER::AUTO`, Quality 33 and above enables TPDF dither for 8-bit and 16-bit output.
+`ADITHER::OFF` always disables it; `ADITHER::TPDF` enables it at every Quality.  Float conversion is unchanged.
+Dither is added immediately before rounding to nearest integer, with triangular noise bounded by one destination
+LSB in either direction.  Both representable endpoints saturate, including samples at or beyond -1 and +1.
+Exact-zero samples suppress noise immediately, without a silent-interval timer.  Independent channel streams
+advance through silence and reset to fixed seeds on deactivation and every committed output configuration.
+Live policy changes do not reset the streams.  No noise shaping is applied.
 
 The legacy `OVER_SAMPLING`, `FILTER_LOW` and `FILTER_HIGH` bits in #Flags are derived from Quality.  Writes to Flags
 preserve the Quality-selected bits.  A live Quality change takes effect as a complete profile at the next mixer-window
@@ -1743,6 +1760,13 @@ extAudio::extAudio(objMetaClass *ClassPtr, OBJECTID ObjectID) : objAudio(ClassPt
       config->read("AUDIO", "OutputRate", OutputRate);
       config->read("AUDIO", "InputRate", InputRate);
       load_audio_quality(this, *config);
+      std::string dither;
+      if (config->read("AUDIO", "Dither", dither) IS ERR::Okay) {
+         char *end;
+         const auto value = std::strtol(dither.c_str(), &end, 0);
+         if (end != dither.c_str() and end IS dither.c_str() + dither.size() and
+             value >= int(ADITHER::AUTO) and value <= int(ADITHER::TPDF)) Dither = ADITHER(value);
+      }
       config->read("AUDIO", "BitDepth", BitDepth);
 
       int value;
@@ -2166,6 +2190,7 @@ static const FieldArray clAudioFields[] = {
    { "InputRate",     FDF_INT|FDF_RI },
    { "Quality",       FDF_INT|FDF_RW,      nullptr, SET_Quality },
    { "Flags",         FDF_INTFLAGS|FDF_RI, nullptr, SET_Flags, &clAudioFlags },
+   { "Dither",        FDF_INT|FDF_LOOKUP|FDF_RW, nullptr, nullptr, &clAudioDither },
    { "BitDepth",      FDF_INT|FDF_RI,      nullptr, SET_BitDepth },
    { "Periods",       FDF_INT|FDF_RI,      nullptr, SET_Periods },
    { "PeriodSize",    FDF_INT|FDF_RI,      nullptr, SET_PeriodSize },

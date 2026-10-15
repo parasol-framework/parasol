@@ -23,6 +23,7 @@ using namespace kt;
 #include "audio_format.h"
 #include "mixer_dispatch.h"
 #include "audio_quality.h"
+#include "audio_dither.h"
 #include "audio_completions.h"
 
 #define MIX_INTERVAL 0.01
@@ -500,6 +501,8 @@ class extAudio : public objAudio {
    AudioConfig WindowConfig; // Immutable dispatch for the current mixer window.
    AudioQualityProfile RequestedQuality = glQualityProfiles[3];
    AudioQualityProfile EffectiveQuality = glQualityProfiles[2];
+   bool WindowDither = false;
+   AudioDitherState DitherState;
    ADF WindowFlags = ADF::NIL; // Processing flags captured at the mixer-window boundary.
    std::vector<int> OutputLayout = { int(SPK::FRONT_LEFT), int(SPK::FRONT_RIGHT) }; // Requested output layout
    std::vector<int> CommittedLayout; // Processing layout of the last successful activation; empty if none
@@ -572,7 +575,9 @@ class extAudio : public objAudio {
 
    // Call with MixerMutex held once published.  The worker writes only its effective window state.
    void snapshot_quality() {
+      auto local_dither = Dither; // Copy to avoid data race
       EffectiveQuality = *audio_effective_quality_profile(Quality);
+      WindowDither = local_dither IS ADITHER::TPDF or (local_dither IS ADITHER::AUTO and Quality >= 33);
       WindowFlags = (Flags & ~glQualityFlags) | EffectiveQuality.Flags;
       WindowConfig = AudioConfig(Stereo, EffectiveQuality.Resampler);
    }

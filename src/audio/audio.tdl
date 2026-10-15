@@ -9,6 +9,11 @@ module({ name="Audio", copyright="Paul Manias © 2002-2026", version=1.0, timest
     "AUTO_SAVE: Save configuration information on exit.",
     "SYSTEM_WIDE: Mixer changes should be applied system-wide.")
 
+  enums("ADITHER", { type="int", start=0, comment="Integer output dither policy." },
+    "AUTO: Enable TPDF for Quality 33 and above (the default).",
+    "OFF: Disable dither regardless of Quality.",
+    "TPDF: Enable triangular dither for all Quality settings.")
+
   flags("AEF", { comment="Audio effect flags." },
     "BYPASS: Skip an application effect.  Global effects cannot be bypassed.")
 
@@ -216,6 +221,7 @@ module({ name="Audio", copyright="Paul Manias © 2002-2026", version=1.0, timest
     int InputRate
     int Quality
     int(ADF) Flags     # Special flags
+    int(ADITHER) Dither
     int BitDepth       # Typically `8` or `16` bit, reflects the hardware driver's bit depth
     int Periods        # Number of periods for ALSA audio buffering
     int PeriodSize     # Frames per period for ALSA audio buffering

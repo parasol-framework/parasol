@@ -42,6 +42,15 @@ enum class ADF : uint32_t {
 
 DEFINE_ENUM_FLAG_OPERATORS(ADF)
 
+// Integer output dither policy.
+
+enum class ADITHER : int {
+   NIL = 0,
+   AUTO = 0,
+   OFF = 1,
+   TPDF = 2,
+};
+
 // Audio effect flags.
 
 enum class AEF : uint32_t {
@@ -358,13 +367,14 @@ class objAudio : public Object {
    using create = kt::Create<objAudio>;
    objAudio(objMetaClass *pClass, OBJECTID pUID) noexcept : Object(pClass, pUID) {}
 
-   int OutputRate;    // Determines the frequency to use for the output of audio data.
-   int InputRate;     // Determines the frequency to use when recording audio data.
-   int Quality;       // Determines the quality of the audio mixing.
-   ADF Flags;         // Special audio flags can be set here.
-   int BitDepth;      // The bit depth affects the overall quality of audio input and output.
-   int Periods;       // Defines the number of periods that make up the internal audio buffer.
-   int PeriodSize;    // Defines the number of frames in each ALSA period.
+   int     OutputRate; // Determines the frequency to use for the output of audio data.
+   int     InputRate; // Determines the frequency to use when recording audio data.
+   int     Quality;   // Determines the quality of the audio mixing.
+   ADF     Flags;     // Special audio flags can be set here.
+   ADITHER Dither;    // Selects triangular dither for integer output.
+   int     BitDepth;  // The bit depth affects the overall quality of audio input and output.
+   int     Periods;   // Defines the number of periods that make up the internal audio buffer.
+   int     PeriodSize; // Defines the number of frames in each ALSA period.
 
    // Action stubs
 
@@ -449,7 +459,7 @@ class objAudio : public Object {
    // Customised field getting
 
    inline ERR getMaxDrain(double &Value) noexcept {
-      auto field = &this->Class->Dictionary[0];
+      auto field = &this->Class->Dictionary[1];
       SetObjectContext(this, field, AC::NIL);
       auto error = field->GetValue(this, &Value);
       RestoreObjectContext();
@@ -457,7 +467,7 @@ class objAudio : public Object {
    }
 
    inline ERR getOutputLayout(std::span<int> &Value) noexcept {
-      auto field = &this->Class->Dictionary[4];
+      auto field = &this->Class->Dictionary[5];
       auto get_field = (ERR (*)(APTR, std::span<int> &))field->GetValue;
       return get_field(this, Value);
    }
@@ -482,6 +492,14 @@ class objAudio : public Object {
       return ERR::Okay;
    }
 
+   inline ERR getDither(ADITHER &Value) noexcept {
+      auto field = &this->Class->Dictionary[0];
+      SetObjectContext(this, field, AC::NIL);
+      auto error = field->GetValue(this, &Value);
+      RestoreObjectContext();
+      return error;
+   }
+
    inline ERR getBitDepth(int &Value) noexcept {
       Value = this->BitDepth;
       return ERR::Okay;
@@ -498,13 +516,13 @@ class objAudio : public Object {
    }
 
    inline ERR getDevice(std::string_view &Value) noexcept {
-      auto field = &this->Class->Dictionary[10];
+      auto field = &this->Class->Dictionary[11];
       auto get_field = (ERR (*)(APTR, std::string_view &))field->GetValue;
       return get_field(this, Value);
    }
 
    inline ERR getMixerLag(double &Value) noexcept {
-      auto field = &this->Class->Dictionary[7];
+      auto field = &this->Class->Dictionary[8];
       SetObjectContext(this, field, AC::NIL);
       auto error = field->GetValue(this, &Value);
       RestoreObjectContext();
@@ -512,12 +530,12 @@ class objAudio : public Object {
    }
 
    inline ERR getMasterVolume(double &Value) noexcept {
-      auto field = &this->Class->Dictionary[3];
+      auto field = &this->Class->Dictionary[4];
       return field->GetValue(this, &Value);
    }
 
    inline ERR getMute(int &Value) noexcept {
-      auto field = &this->Class->Dictionary[12];
+      auto field = &this->Class->Dictionary[13];
       SetObjectContext(this, field, AC::NIL);
       auto error = field->GetValue(this, &Value);
       RestoreObjectContext();
@@ -528,17 +546,17 @@ class objAudio : public Object {
    // Customised field setting
 
    inline ERR setMaxDrain(const double Value) noexcept {
-      auto field = &this->Class->Dictionary[0];
+      auto field = &this->Class->Dictionary[1];
       return field->WriteValue(this, field, FD_DOUBLE, &Value);
    }
 
    inline ERR setOutputLayout(std::span<const int> Value) noexcept {
-      auto field = &this->Class->Dictionary[4];
+      auto field = &this->Class->Dictionary[5];
       return field->WriteValue(this, field, 0x40101308, &Value);
    }
 
    inline ERR setOutputRate(const int Value) noexcept {
-      auto field = &this->Class->Dictionary[8];
+      auto field = &this->Class->Dictionary[9];
       return field->WriteValue(this, field, FD_INT, &Value);
    }
 
@@ -549,42 +567,47 @@ class objAudio : public Object {
    }
 
    inline ERR setQuality(const int Value) noexcept {
-      auto field = &this->Class->Dictionary[14];
+      auto field = &this->Class->Dictionary[15];
       return field->WriteValue(this, field, FD_INT, &Value);
    }
 
    inline ERR setFlags(const ADF Value) noexcept {
-      auto field = &this->Class->Dictionary[2];
+      auto field = &this->Class->Dictionary[3];
+      return field->WriteValue(this, field, FD_INT, &Value);
+   }
+
+   inline ERR setDither(const ADITHER Value) noexcept {
+      auto field = &this->Class->Dictionary[0];
       return field->WriteValue(this, field, FD_INT, &Value);
    }
 
    inline ERR setBitDepth(const int Value) noexcept {
-      auto field = &this->Class->Dictionary[16];
-      return field->WriteValue(this, field, FD_INT, &Value);
-   }
-
-   inline ERR setPeriods(const int Value) noexcept {
       auto field = &this->Class->Dictionary[17];
       return field->WriteValue(this, field, FD_INT, &Value);
    }
 
+   inline ERR setPeriods(const int Value) noexcept {
+      auto field = &this->Class->Dictionary[18];
+      return field->WriteValue(this, field, FD_INT, &Value);
+   }
+
    inline ERR setPeriodSize(const int Value) noexcept {
-      auto field = &this->Class->Dictionary[5];
+      auto field = &this->Class->Dictionary[6];
       return field->WriteValue(this, field, FD_INT, &Value);
    }
 
    inline ERR setDevice(const std::string_view &Value) noexcept {
-      auto field = &this->Class->Dictionary[10];
+      auto field = &this->Class->Dictionary[11];
       return field->WriteValue(this, field, 0x00904300, &Value);
    }
 
    inline ERR setMasterVolume(const double Value) noexcept {
-      auto field = &this->Class->Dictionary[3];
+      auto field = &this->Class->Dictionary[4];
       return field->WriteValue(this, field, FD_DOUBLE, &Value);
    }
 
    inline ERR setMute(const int Value) noexcept {
-      auto field = &this->Class->Dictionary[12];
+      auto field = &this->Class->Dictionary[13];
       return field->WriteValue(this, field, FD_INT, &Value);
    }
 

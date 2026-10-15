@@ -600,6 +600,7 @@ static ERR commit_audio_output(extAudio *Self, std::span<const int> Layout, ERR 
    for (auto &chain : prepared) chain.publish(Self->OutputRate, Layout, generation);
    Self->CommittedLayout.assign(Layout.begin(), Layout.end());
    Self->CommittedRate = Self->OutputRate;
+   Self->DitherState.reset();
    Self->OutputGeneration = generation;
    Self->EffectConfigured = true;
    Self->OutputActive = true;

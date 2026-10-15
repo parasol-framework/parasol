@@ -47,7 +47,29 @@ constexpr T clamp_sample(T value, T min_val, T max_val) noexcept {
 // SIMD-aware conversion with template specialization and loop unrolling
 
 template<typename OutputType, typename InputType = float, std::size_t UnrollFactor = 4>
-void convert_samples(const InputType* input, int count, OutputType* output) {
+void convert_samples(const InputType *Input, int Count, OutputType *Output,
+   AudioDitherState *Dither = nullptr, unsigned Channels = 1) {
+   auto input = Input;
+   auto output = Output;
+   const int count = Count;
+   if constexpr (std::is_same_v<OutputType, uint8_t> or std::is_same_v<OutputType, int16_t>) {
+      if (Dither) {
+         constexpr double scale = std::is_same_v<OutputType, uint8_t> ? 128.0 : 32768.0;
+         constexpr double offset = std::is_same_v<OutputType, uint8_t> ? 128.0 : 0.0;
+         for (int i = 0; i < count; ++i) {
+            const double noise = Dither->next(Channels);
+            const double sample = double(input[i]);
+            // Preserve exact silence and saturate at both representable endpoints, including overloads.
+            double value;
+            if (std::isnan(sample) or sample IS 0) value = 0;
+            else if (sample <= -1) value = -scale;
+            else if (sample >= (scale - 1) / scale) value = scale - 1;
+            else value = std::clamp(std::floor(sample * scale + noise + 0.5), -scale, scale - 1);
+            output[i] = OutputType(value + offset);
+         }
+         return;
+      }
+   }
    static_assert(std::is_arithmetic_v<OutputType>, "Output type must be arithmetic");
    static_assert(UnrollFactor > 0 and UnrollFactor <= 8, "Unroll factor must be 1-8");
 
@@ -270,12 +292,14 @@ static ERR set_channel_volume(extAudio *Self, AudioChannel *Channel)
 
 // Template-based conversion functions (legacy wrappers for compatibility)
 
-static void convert_float8(float *buf, int TotalSamples, uint8_t *dest) {
-   convert_samples<uint8_t>(buf, TotalSamples, dest);
+static void convert_float8(extAudio *Self, float *Buffer, int TotalSamples, uint8_t *Dest) {
+   convert_samples<uint8_t>(Buffer, TotalSamples, Dest,
+      Self->WindowDither ? &Self->DitherState : nullptr, Self->Stereo ? 2 : 1);
 }
 
-static void convert_float16(float *buf, int TotalSamples, int16_t *dest) {
-   convert_samples<int16_t>(buf, TotalSamples, dest);
+static void convert_float16(extAudio *Self, float *Buffer, int TotalSamples, int16_t *Dest) {
+   convert_samples<int16_t>(Buffer, TotalSamples, Dest,
+      Self->WindowDither ? &Self->DitherState : nullptr, Self->Stereo ? 2 : 1);
 }
 
 static void convert_float(float *buf, int TotalSamples, float *dest) {
@@ -516,9 +540,9 @@ static bool handle_sample_end(extAudio *Self, AudioChannel &Channel)
 
       }
       else if (Self->BitDepth IS 16) {
-         convert_float16(Self->MixBuffer.data(), (Self->Stereo) ? window<<1 : window, (int16_t *)Dest);
+         convert_float16(Self, Self->MixBuffer.data(), (Self->Stereo) ? window<<1 : window, (int16_t *)Dest);
       }
-      else convert_float8(Self->MixBuffer.data(),  (Self->Stereo) ? window<<1 : window, (uint8_t *)Dest);
+      else convert_float8(Self, Self->MixBuffer.data(),  (Self->Stereo) ? window<<1 : window, (uint8_t *)Dest);
 
       Dest = ((uint8_t *)Dest) + (window * Self->DriverBitSize);
       Elements -= window;

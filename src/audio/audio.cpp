@@ -318,6 +318,7 @@ static ERR MODExpunge(void)
 #include "tests/test_resampler.cpp"
 #include "tests/test_audio_format.cpp"
 #include "tests/test_audio_quality.cpp"
+#include "tests/test_audio_dither.cpp"
 #ifdef ALSA_ENABLED
 #include "tests/test_audio_worker.cpp"
 #endif
@@ -366,6 +367,7 @@ static void MODTest(std::string_view Options, int *Passed, int *Total)
    run("resampler", audio_tests_resampler::run);
    run("format", audio_tests_audio_format::run);
    run("quality", audio_tests_audio_quality::run);
+   run("dither", audio_tests_audio_dither::run);
 #ifdef ALSA_ENABLED
    run("ALSA worker", audio_tests_audio_worker::run);
 #endif
