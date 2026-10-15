@@ -238,7 +238,7 @@ static void generate_text(extVectorText *Vector, agg::path_storage &Path)
       for (auto const &line : Vector->txLines) {
          for (auto lstr=line.c_str(); *lstr; ) {
             int char_len;
-            uint32_t unicode = UTF8ReadValue(lstr, &char_len);
+            uint32_t unicode = UTF8ReadValue(std::string_view(line).substr(size_t(lstr - line.data())), &char_len);
             lstr += char_len;
             if (unicode <= 0x20) continue;
             else if (!unicode) break;
@@ -272,7 +272,7 @@ static void generate_text(extVectorText *Vector, agg::path_storage &Path)
 
          int char_len;
          for (auto str=line.c_str(); *str; ) {
-            uint32_t unicode = UTF8ReadValue(str, &char_len);
+            uint32_t unicode = UTF8ReadValue(std::string_view(line).substr(size_t(str - line.data())), &char_len);
             str += char_len;
 
             if (unicode <= 0x20) wrap_state = WS_NO_WORD;
@@ -366,7 +366,7 @@ static void generate_text(extVectorText *Vector, agg::path_storage &Path)
          }
          else for (auto str=line.c_str(); *str; ) {
             int char_len;
-            int unicode = UTF8ReadValue(str, &char_len);
+            int unicode = UTF8ReadValue(std::string_view(line).substr(size_t(str - line.data())), &char_len);
 
             if (unicode <= 0x20) { wrap_state = WS_NO_WORD; prev_glyph_index = 0; }
             else if (wrap_state IS WS_NEW_WORD) wrap_state = WS_IN_WORD;

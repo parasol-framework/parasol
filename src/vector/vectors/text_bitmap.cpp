@@ -33,7 +33,7 @@ static void raster_text_to_bitmap(extVectorText *Vector)
          auto wrap_state = WS_NO_WORD;
          for (auto str=line.c_str(); *str; ) {
             int char_len;
-            auto unicode = UTF8ReadValue(str, &char_len);
+            auto unicode = UTF8ReadValue(std::string_view(line).substr(size_t(str - line.data())), &char_len);
 
             auto char_width = fnt::CharWidth(Vector->txBitmapFont, unicode);
 

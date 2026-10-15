@@ -3,10 +3,13 @@
 #include <kotuku/main.h>
 
 #include <span>
+#include <string_view>
 
 int UTF8Copy(CSTRING String, STRING Dest, int Chars, int Size);
-uint32_t UTF8ReadValue(CSTRING String, int *Length);
+// Bounded input, including U+0000.  Invalid input returns zero and Length=1; empty input returns Length=0.
+uint32_t UTF8ReadValue(std::string_view String, int *Length);
 //CSTRING UTF8ValidEncoding(CSTRING String, CSTRING Encoding);
+// Writes one scalar value in 1-4 bytes.  Invalid values or insufficient capacity return zero without writing.
 int UTF8WriteValue(int Value, std::span<int8_t> Buffer);
 
 /*********************************************************************************************************************

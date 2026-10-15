@@ -7,7 +7,7 @@ Its only consumer today is the WebRTC module. Browsers hide a peer's private LAN
 - register a random 32-hex-digit `.local` name for each local host address, so the numeric address never appears in the SDP, and
 - resolve `.local` names received in remote candidates back to addresses on the local link.
 
-See `src/webrtc/peer_connection.cpp` and `src/webrtc/ice_candidates.cpp` for the call sites.
+See `src/webrtc/peerconnection/peer_engine.cpp` and `src/webrtc/ice/ice_candidates.cpp` for the call sites.
 
 ## Scope
 

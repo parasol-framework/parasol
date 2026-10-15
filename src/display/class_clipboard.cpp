@@ -96,12 +96,8 @@ static std::u16string utf8_to_utf16(std::string_view String, bool SurrogatePairs
 
    int pos = 0;
    while (pos < std::ssize(String)) {
-      int len = UTF8CharLength(str);
-      if ((len IS 0) or (pos + len > std::ssize(String))) break;
-
-      uint32_t codepoint;
-      if (SurrogatePairs and (len IS 1)) codepoint = *str;
-      else codepoint = UTF8ReadValue(str, nullptr);
+      int len;
+      uint32_t codepoint = UTF8ReadValue(String.substr(pos), &len);
       if (SurrogatePairs and (codepoint >= 0x10000)) {
          codepoint -= 0x10000;
          result.push_back((char16_t)(0xD800 + (codepoint >> 10)));
@@ -109,7 +105,6 @@ static std::u16string utf8_to_utf16(std::string_view String, bool SurrogatePairs
       }
       else result.push_back((char16_t)codepoint);
 
-      str += len;
       pos += len;
    }
 

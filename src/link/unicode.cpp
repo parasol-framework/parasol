@@ -93,98 +93,66 @@ int UTF8Copy(CSTRING String, STRING Dest, int Chars, int Size)
 /*********************************************************************************************************************
 
 -FUNCTION-
-UTF8ReadValue: Converts UTF-8 characters into 32-bit unicode values.
+UTF8ReadValue: Decodes one UTF-8 character into a Unicode scalar value.
 
-This function converts UTF-8 character strings into 32-bit unicode values.  To determine how many bytes were used in
-making up the UTF-8 character, set the Length argument so that the function can return the total number of bytes.
+Decodes the first character of a bounded byte string; no null terminator is required.  Only shortest-form UTF-8
+sequences of one to four bytes are accepted.  Overlong encodings, surrogates, values above U+10FFFF and truncated sequences
+are rejected.  Unicode noncharacters are accepted because they are valid scalar values.
 
 -INPUT-
-cstr String: Pointer to a character in a UTF-8 string that you want to convert.
-&int Length: Optional argument that will store the resulting number of bytes that make up the UTF-8 character.
+stringview String: UTF-8 bytes to decode.  An embedded null byte is decoded as U+0000.
+&int Length: Optional output receiving the character length in bytes, one for invalid non-empty input, or zero for
+empty input.
 
 -RESULT-
-uint: Returns the extracted unicode value.  If a failure occurs (the encoding is invalid) then a value of zero is returned. Zero can also be returned if the String parameter is NULL or begins with a null character.
+uint: Returns the decoded scalar value, or zero for invalid or empty input.  U+0000 also returns zero, with Length
+set to one.  Invalid non-empty input consumes one byte so callers advancing by Length always make progress.
 
 -TAGS-
 pure-query
 
 *********************************************************************************************************************/
 
-uint32_t UTF8ReadValue(CSTRING String, int *Length)
+uint32_t UTF8ReadValue(std::string_view String, int *Length)
 {
+   if (Length) *Length = 0;
+   if (String.empty()) return 0;
+
+   // Consume one byte on failure so callers can continue through malformed text.
+
+   if (Length) *Length = 1;
+   auto first = uint8_t(String[0]);
+   if (first < 0x80) return first;
+
+   int count;
    uint32_t code;
-   const char *str;
+   uint32_t minimum;
+   if ((first >= 0xc2) and (first <= 0xdf)) {
+      count = 2;
+      code = first & 0x1f;
+      minimum = 0x80;
+   }
+   else if ((first >= 0xe0) and (first <= 0xef)) {
+      count = 3;
+      code = first & 0x0f;
+      minimum = 0x800;
+   }
+   else if ((first >= 0xf0) and (first <= 0xf4)) {
+      count = 4;
+      code = first & 0x07;
+      minimum = 0x10000;
+   }
+   else return 0;
 
-   if (!(str = String)) {
-      if (Length) *Length = 0;
-      return 0;
-   }
-
-   if (*str IS 0) {
-      if (Length) *Length = 0;
-      return 0;
-   }
-   else if ((uint8_t)(*str) < 128) {
-      if (Length) *Length = 1;
-      return *str;
-   }
-   else if ((*str & 0xe0) IS 0xc0) {
-      if ((str[1] & 0xc0) != 0x80) {
-         if (Length) *Length = 0;
-         return 0;
-      }
-      if (Length) *Length = 2;
-      return ((str[0] & 0x1f)<<6) | (str[1] & 0x3f);
-   }
-   else if ((*str & 0xf0) IS 0xe0) {
-      code = *str & 0x0f;
-      for (int16_t i=1; i < 3; i++) {
-         if ((str[i] & 0xc0) != 0x80) {
-            if (Length) *Length = 0;
-            return 0;
-         }
-         code = (code<<6) | (str[i] & 0x3f);
-      }
-      if (Length) *Length = 3;
-   }
-   else if ((*str & 0xf8) IS 0xf0) {
-      code = *str & 0x07;
-      for (int16_t i=1; i < 4; i++) {
-         if ((str[i] & 0xc0) != 0x80) {
-            if (Length) *Length = 0;
-            return 0;
-         }
-         code = (code<<6) | (str[i] & 0x3f);
-      }
-      if (Length) *Length = 4;
-   }
-   else if ((*str & 0xfc) IS 0xf8) {
-      code = *str & 0x03;
-      for (int16_t i=1; i < 5; i++) {
-         if ((str[i] & 0xc0) != 0x80) {
-            if (Length) *Length = 0;
-            return 0;
-         }
-         code = (code<<6) | (str[i] & 0x3f);
-      }
-      if (Length) *Length = 5;
-   }
-   else if ((*str & 0xfc) IS 0xfc) {
-      code = *str & 0x01;
-      for (int16_t i=1; i < 6; i++) {
-         if ((str[i] & 0xc0) != 0x80) {
-            if (Length) *Length = 0;
-            return 0;
-         }
-         code = (code<<6) | (str[i] & 0x3f);
-      }
-      if (Length) *Length = 6;
-   }
-   else {
-      if (Length) *Length = 1;
-      return 0;
+   if (String.size() < size_t(count)) return 0;
+   for (int i = 1; i < count; ++i) {
+      auto byte = uint8_t(String[i]);
+      if ((byte & 0xc0) != 0x80) return 0;
+      code = (code << 6) | (byte & 0x3f);
    }
 
+   if ((code < minimum) or (code > 0x10ffff) or ((code >= 0xd800) and (code <= 0xdfff))) return 0;
+   if (Length) *Length = count;
    return code;
 }
 
@@ -371,10 +339,10 @@ CSTRING UTF8ValidEncoding(std::string_view String, std::string_view Encoding)
 /*********************************************************************************************************************
 
 -FUNCTION-
-UTF8WriteValue: Writes a 32-bit unicode value into a UTF-8 character buffer.
+UTF8WriteValue: Encodes a Unicode scalar value into a UTF-8 character buffer.
 
-This function is used to write out unicode values in UTF-8 string format.  You need to provide a string buffer, keeping
-in mind that anything from 1 to 6 bytes may be written to the buffer, depending on the size of the unicode value.
+Encodes a Unicode scalar value using one to four UTF-8 bytes.  Negative values, surrogates (U+D800 to U+DFFF),
+and values above U+10FFFF are rejected without modifying the buffer.  U+0000 and Unicode noncharacters are accepted.
 
 If the buffer is not large enough to hold the UTF-8 string then the function will do nothing and return a value of
 zero.  Otherwise, the character will be written and the total number of bytes used will be returned.
@@ -382,11 +350,11 @@ zero.  Otherwise, the character will be written and the total number of bytes us
 This function will not add a null terminator to the end of the UTF-8 string.
 
 -INPUT-
-int Value:  A 32-bit unicode value.
-^array(char) Buffer: Character buffer that will receive the UTF-8 value.  It does not need to exceed six bytes.
+int Value: A Unicode scalar value.
+^array(char) Buffer: Character buffer that will receive the UTF-8 value.  Four bytes suffice for any scalar value.
 
 -RESULT-
-int: Returns the total amount of characters written to the string buffer.
+int: Returns the number of bytes written, or zero if Value is invalid or the buffer is too small.
 
 -TAGS-
 mutates-input
@@ -397,69 +365,19 @@ mutates-input
 
 int UTF8WriteValue(int Value, std::span<int8_t> Buffer)
 {
-   if (Buffer.empty()) return 0;
+   if ((Value < 0) or (Value > 0x10ffff) or ((Value >= 0xd800) and (Value <= 0xdfff))) return 0;
 
-   auto string = Buffer.data();
-   const auto string_size = int(Buffer.size());
+   int count = Value < 0x80 ? 1 : Value < 0x800 ? 2 : Value < 0x10000 ? 3 : 4;
+   if (Buffer.size() < size_t(count)) return 0;
 
-   if (Value < 128) {
-      if (Value < 0) return 0;
-      *string = int8_t(Value);
-      return 1;
-   }
-   else if (Value < 0x800) {
-      if (string_size < 2) return 0;
-      string[1] = int8_t((Value & 0x3f) | 0x80);
-      Value  = Value>>6;
-      string[0] = int8_t(Value | 0xc0);
-      return 2;
-   }
-   else if (Value < 0x10000) {
-      if (string_size < 3) return 0;
-      string[2] = int8_t((Value & 0x3f)|0x80);
-      Value  = Value>>6;
-      string[1] = int8_t((Value & 0x3f)|0x80);
-      Value  = Value>>6;
-      string[0] = int8_t(Value | 0xe0);
-      return 3;
-   }
-   else if (Value < 0x200000) {
-      if (string_size < 4) return 0;
-      string[3] = int8_t((Value & 0x3f)|0x80);
-      Value  = Value>>6;
-      string[2] = int8_t((Value & 0x3f)|0x80);
-      Value  = Value>>6;
-      string[1] = int8_t((Value & 0x3f)|0x80);
-      Value  = Value>>6;
-      string[0] = int8_t(Value | 0xf0);
-      return 4;
-   }
-   else if (Value < 0x4000000) {
-      if (string_size < 5) return 0;
-      string[4]  = int8_t((Value & 0x3f)|0x80);
-      Value = Value>>6;
-      string[3]  = int8_t((Value & 0x3f)|0x80);
-      Value = Value>>6;
-      string[2]  = int8_t((Value & 0x3f)|0x80);
-      Value = Value>>6;
-      string[1]  = int8_t((Value & 0x3f)|0x80);
-      Value = Value>>6;
-      string[0]  = int8_t(Value | 0xf8);
-      return 5;
-   }
+   if (count IS 1) Buffer[0] = int8_t(Value);
    else {
-      if (string_size < 6) return 0;
-      string[5]  = int8_t((Value & 0x3f)|0x80);
-      Value = Value>>6;
-      string[4]  = int8_t((Value & 0x3f)|0x80);
-      Value = Value>>6;
-      string[3]  = int8_t((Value & 0x3f)|0x80);
-      Value = Value>>6;
-      string[2]  = int8_t((Value & 0x3f)|0x80);
-      Value = Value>>6;
-      string[1]  = int8_t((Value & 0x3f)|0x80);
-      Value = Value>>6;
-      string[0]  = int8_t(Value | 0xfc);
-      return 6;
+      for (int i = count - 1; i > 0; --i) {
+         Buffer[i] = int8_t((Value & 0x3f) | 0x80);
+         Value >>= 6;
+      }
+      auto prefix = count IS 2 ? 0xc0 : count IS 3 ? 0xe0 : 0xf0;
+      Buffer[0] = int8_t(Value | prefix);
    }
+   return count;
 }
