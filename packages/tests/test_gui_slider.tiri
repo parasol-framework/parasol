@@ -1128,6 +1128,35 @@ end
       'Ticks added to an explicit height must be absorbed by the host')
 end
 
+@Test function ShortThumbsKeepDrawableForeground()
+   for orientation in values(array<str> { 'horizontal', 'vertical' }) do
+      for gap in values(array<int> { 2, 6 }) do
+         for size in values(array<double> { 0.5, 1, 2, 4, 5, 8, 18 }) do
+            local surface <close>, slider = newSlider({ orientation=orientation, thumbLength=size,
+               thumbSize=18, value=1, theme=(gap is 2) ? nil : { bkgd={ strokeWidth=gap } }
+            })
+            local thumb, button = slider.thumbVP, slider.button
+            assert(button.width > 0 and button.height > 0,
+               f'A {size} pixel thumb with a {gap} pixel inset must have a drawable foreground')
+            assert(button.x >= 0 and button.y >= 0
+               and button.x + button.width <= thumb.width and button.y + button.height <= thumb.height,
+               'The foreground must fit within the configured thumb')
+            assert(button.x * 2 + button.width is thumb.width
+               and button.y * 2 + button.height is thumb.height,
+               'Reduced insets must keep the foreground centred')
+            local length = (orientation is 'vertical') ? thumb.height : thumb.width
+            local position = (orientation is 'vertical') ? thumb.y : thumb.x
+            assert(length is size and position is ((orientation is 'vertical') ? 0 : slider.trackVP.width - size),
+               'Foreground insets must preserve the configured thumb length and endpoint position')
+            if size is 18 then
+               assert(button.x is gap and button.y is gap,
+                  'Thumbs with enough space must retain the theme inset')
+            end
+         end
+      end
+   end
+end
+
 @Test function ThumbLengthGivesRectangularThumb()
    local surface <close>, slider = newSlider({ width=200, thickness=4, thumbSize=18, thumbLength=8, value=1 })
    assert(slider.thumbVP.width is 8 and slider.thumbVP.height is 18,

@@ -827,9 +827,12 @@ gui.slider = function(Options:table!)
       end
 
       GAP <const> = &prvTheme.slider.bkgd.strokeWidth
+      -- Reduce each inset independently to leave at least one pixel, or the full dimension for subpixel thumbs.
+      x_gap = math.min(GAP, math.max(0, (&thumbVP.width - 1) * 0.5))
+      y_gap = math.min(GAP, math.max(0, (&thumbVP.height - 1) * 0.5))
 
       &button = &thumbVP.new('VectorRectangle', table.merge({
-         x = GAP, y = GAP, width = &thumbVP.width-(GAP*2), height = &thumbVP.height-(GAP*2)
+         x = x_gap, y = y_gap, width = &thumbVP.width-(x_gap*2), height = &thumbVP.height-(y_gap*2)
       }, &prvTheme.slider.fore))
 
       if &valueText then
