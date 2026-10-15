@@ -57,7 +57,8 @@ end
 @Test function FixedAndVariadicResults()
    function fixed_factory():func
       return function():<num, str>
-         return 3, 'kept', false
+         function source() return 3, 'kept', false end
+         return source()
       end
    end
 
@@ -81,7 +82,8 @@ end
 @Test function ExplicitVoidResult()
    function factory():func
       return function():<>
-         return 99
+         function source() return 99 end
+         return source()
       end
    end
 

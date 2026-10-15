@@ -475,6 +475,10 @@ ParserResult<IrEmitUnit> IrEmitter::emit_plain_assignment(std::vector<PreparedAs
          bcemit_store(&this->func_state, &targets.back().storage, &tail);
       }
       else {
+         // Discard the value only after forcing deferred reads and their observable effects.
+         ExpressionValue value(&this->func_state, tail);
+         value.to_any_reg(allocator);
+         tail = value.legacy();
          expr_free(&this->func_state, &tail);
       }
       release_prepared_assignment(allocator, this->func_state, targets.back());

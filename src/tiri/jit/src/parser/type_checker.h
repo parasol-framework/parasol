@@ -72,6 +72,7 @@ struct FunctionContext {
    const FunctionExprPayload* function = nullptr;  // The function being analysed
    FunctionReturnTypes expected_returns{};         // Declared or inferred return types
    std::array<InferredReturnPosition, MAX_RETURN_TYPES> inferred_returns{};
+   size_t scope_base = 0;                         // First scope owned by this function
    uint8_t observed_return_count = 0;
    bool inference_failed = false;
    GCstr *function_name = nullptr;                 // Function name (for recursive detection)

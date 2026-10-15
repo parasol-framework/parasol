@@ -308,6 +308,11 @@ restart:
       BCIns ins = *ip;
       BCOp op = bc_op(ins);
       BCREG ra = bc_a(ins);
+      if (op IS BC_CTXLEAVE) {
+         // Contextual calls shift results over the retained receiver/lookup registers.
+         BCREG shift = bc_d(ins) ? bc_d(ins) : 1;
+         if (slot >= ra - shift) return nullptr;
+      }
       if (bcmode_a(op) IS BCMbase) {
          if (slot >= ra and (op != BC_KNIL or slot <= bc_d(ins))) return nullptr;
       }
