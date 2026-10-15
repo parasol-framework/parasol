@@ -409,7 +409,7 @@ void SurfacePan::MeasureWidths(Scintilla::Font &font_, const char *string, int l
                else copy = 1;
             }
             else {
-               unicode = UTF8ReadValue((STRING)(str+i), &copy);
+               unicode = UTF8ReadValue(std::string_view((const char *)str + i, size_t(len - i)), &copy);
             }
 
             charpos += fnt::CharWidth(font, unicode);

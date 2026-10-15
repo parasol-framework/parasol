@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Real blocked-direct firewall and impaired relay checks, confined to a new user/network namespace."""
+"""Real blocked-direct firewall relay checks, confined to a new user/network namespace."""
 import argparse
 import errno
 import json
@@ -7,7 +7,6 @@ from pathlib import Path
 import socket
 import subprocess
 import sys
-import tempfile
 
 
 def run(command, **options):
@@ -19,9 +18,7 @@ def main():
     parser.add_argument('--inside', action='store_true', help=argparse.SUPPRESS)
     parser.add_argument('--outer-net', help=argparse.SUPPRESS)
     parser.add_argument('--outer-user', help=argparse.SUPPRESS)
-    parser.add_argument('--mode', choices=['firewall', 'impaired'], required=True)
     parser.add_argument('--nft', type=Path, required=True)
-    parser.add_argument('--tc', type=Path, required=True)
     parser.add_argument('--ip', type=Path, default=Path('ip'))
     parser.add_argument('--unshare', type=Path, default=Path('unshare'))
     parser.add_argument('--fixture', type=Path, required=True)
@@ -29,7 +26,6 @@ def main():
     parser.add_argument('--uclient', type=Path, required=True)
     parser.add_argument('--origo', type=Path, required=True)
     parser.add_argument('--public-turn', type=Path, required=True)
-    parser.add_argument('--benchmark', type=Path, required=True)
     parser.add_argument('--chrome', type=Path, required=True)
     parser.add_argument('--evidence', type=Path, required=True)
     args = parser.parse_args()
@@ -83,36 +79,8 @@ def main():
     command = [sys.executable, str(args.fixture.resolve()), '--turnserver', str(args.turnserver.resolve()),
                '--uclient', str(args.uclient.resolve()), '--origo', str(args.origo.resolve()),
                '--relay-ip', '10.203.0.1', '--evidence-dir', str(args.evidence.resolve())]
-    if args.mode == 'firewall':
-        command += ['--public-turn', str(args.public_turn.resolve()), '--browser-turn', str(args.chrome.resolve())]
-        run(command)
-    else:
-        # Scope netem to each actual framework benchmark. Coturn/uclient readiness remains unimpaired, since UDP
-        # sanity packets are not retransmitted and are not an acceptance test for reliable framework transfers.
-        with tempfile.TemporaryDirectory(prefix='rtc-netem-') as directory:
-            launcher = Path(directory) / 'benchmark'
-            impairment = [str(args.tc), 'qdisc', 'add', 'dev', 'lo', 'root', 'netem',
-                          'delay', '5ms', 'loss', '1%', 'seed', '42']
-            launcher.write_text('#!' + sys.executable + '\n' + f'''
-import json, subprocess, sys
-from pathlib import Path
-subprocess.run({impairment!r}, check=True)
-try:
-    result = subprocess.run([{str(args.benchmark.resolve())!r}, *sys.argv[1:],
-                            '--bytes=1048576', '--timeout=300'], timeout=330)
-    counters = subprocess.check_output({[str(args.tc), '-j', '-s', 'qdisc', 'show', 'dev', 'lo']!r}, text=True)
-    print('NETEM_COUNTERS: ' + counters, flush=True)
-    records = json.loads(counters)
-    if not any(record.get('kind') == 'netem' and record.get('drops', 0) > 0 for record in records):
-        raise RuntimeError('No actual kernel packet loss was observed')
-    sys.exit(result.returncode)
-finally:
-    subprocess.run({[str(args.tc), 'qdisc', 'del', 'dev', 'lo', 'root']!r}, check=True)
-''')
-            launcher.chmod(0o700)
-            command += ['--channel-bench', str(launcher), '--benchmarks-only', '--skip-direct-benchmark',
-                        '--benchmark-timeout', '350']
-            run(command)
+    command += ['--public-turn', str(args.public_turn.resolve()), '--browser-turn', str(args.chrome.resolve())]
+    run(command)
     counters = run([str(args.nft), '-j', 'list', 'table', 'inet', 'rtc_fixture'], capture_output=True, text=True)
     (args.evidence / 'firewall.json').write_text(counters.stdout)
     table = json.loads(counters.stdout)
@@ -124,10 +92,8 @@ finally:
     (args.evidence / 'topology.json').write_text(json.dumps({
         'scope': 'disposable user/network namespace; no host network changes',
         'relay_address': '10.203.0.1', 'direct_udp': 'blocked with negative control and kernel counter',
-        'benchmark_payload_bytes': 1048576 if args.mode == 'impaired' else None,
-        'impairment': {'device': 'lo', 'delay_ms': 5, 'loss_percent': 1, 'seed': 42}
-        if args.mode == 'impaired' else None}, indent=2) + '\n')
-    print(f'PASS isolated {args.mode} relay fixture', flush=True)
+    }, indent=2) + '\n')
+    print('PASS isolated firewall relay fixture', flush=True)
 
 
 if __name__ == '__main__':

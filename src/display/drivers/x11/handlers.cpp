@@ -74,8 +74,8 @@ static std::string utf8_to_latin1(std::string_view Text)
          continue;
       }
       int length = 0;
-      auto codepoint = UTF8ReadValue(Text.data() + offset, &length);
-      if (length <= 0) {
+      auto codepoint = UTF8ReadValue(Text.substr(offset), &length);
+      if ((length <= 0) or (codepoint IS 0)) {
          result.push_back('?');
          offset++;
       }
@@ -1163,7 +1163,7 @@ void handle_key_press(XEvent *xevent)
    if ((out = XLookupString(&xevent->xkey, buffer, sizeof(buffer)-1, &mod_sym, &glXComposeStatus)) > 0) {
       if (buffer[0] >= 0x20) {
          buffer[out] = 0;
-         unicode = UTF8ReadValue(buffer, nullptr);
+         unicode = UTF8ReadValue(std::string_view(buffer, out), nullptr);
       }
    }
    else if ((mod_sym = XkbKeycodeToKeysym(XDisplay, xevent->xkey.keycode, 0,
@@ -1237,7 +1237,7 @@ void handle_key_release(XEvent *xevent)
    int out;
    if ((out = XLookupString(&xevent->xkey, buf, sizeof(buf)-1, &mod_sym, &glXComposeStatus)) > 0) {
       buf[out] = 0;
-      unicode = UTF8ReadValue(buf, nullptr);
+      unicode = UTF8ReadValue(std::string_view(buf, out), nullptr);
    }
    else if ((mod_sym = XkbKeycodeToKeysym(XDisplay, xevent->xkey.keycode, 0,
          xevent->xkey.state & ShiftMask ? 1 : 0)) != NoSymbol) {

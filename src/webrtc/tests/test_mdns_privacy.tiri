@@ -5,6 +5,10 @@ function mdnsWait(Peer:obj)
 end
 
 @Test function DefaultPrivacyAndGenerationRetirement()
+   -- Retiring a registration must not withdraw the surviving pair's names.
+   local doomed <close> = obj.new('peerconnection', {})
+   check doomed.mtCreateOffer()
+   doomed.free()
    local first_candidates = array<str>
    local second_candidates = array<str>
    local first <close> = obj.new('peerconnection', {
@@ -30,6 +34,19 @@ end
    for _, candidate in second_candidates do
       assert(candidate.find('.local') and candidate.find('typ host'), 'Numeric second host leaked')
    end
+   local reports = 0
+   local callback_free <close> = obj.new('peerconnection', {
+      onIceCandidate=function(Peer, Candidate)
+         reports += 1
+         Peer.free()
+      end
+   })
+   check callback_free.mtCreateOffer()
+   channelTest.waitFor(function() return not callback_free.exists() end, 3)
+   processing.sleep(0.1)
+   assert(reports is 1, 'Retired peer delivered another candidate callback')
+   assert(first.state is RTCS_CONNECTED and second.state is RTCS_CONNECTED,
+      'Closing another responder withdrew this pair')
    assert(first.localDescription.find('c=IN IP4 0.0.0.0'), 'SDP connection address disclosed a host')
    assert(not first.remoteDescription.find('raddr'), 'Remote name identity was replaced with an endpoint')
    check channel.mtSend('private-data', WCM_TEXT)
@@ -101,29 +118,6 @@ end
    channelTest.waitFor(function() return peer.state is RTCS_FAILED end, 5)
    assert(peer.iceState is RTCICE_FAILED, 'Unresolved generation did not terminate its ICE checklist')
    assert(peer.remoteDescription.find('no-such-random-mdns-peer.local'), 'Resolution replaced signalled identity')
-end
-
-@Test function FreeDuringRegistrationDoesNotWithdrawAnotherPeer()
-   local doomed <close> = obj.new('peerconnection', {})
-   local first <close> = obj.new('peerconnection', {})
-   local second <close> = obj.new('peerconnection', {})
-   check doomed.mtCreateOffer()
-   doomed.free()
-   channelTest.connect(first, second)
-   channelTest.waitFor(function() return first.state is RTCS_CONNECTED and second.state is RTCS_CONNECTED end)
-   local reports = 0
-   local callback_free <close> = obj.new('peerconnection', {
-      onIceCandidate=function(Peer, Candidate)
-         reports += 1
-         Peer.free()
-      end
-   })
-   check callback_free.mtCreateOffer()
-   channelTest.waitFor(function() return not callback_free.exists() end, 3)
-   processing.sleep(0.1)
-   assert(reports is 1, 'Retired peer delivered another candidate callback')
-   assert(first.state is RTCS_CONNECTED and second.state is RTCS_CONNECTED,
-      'Closing another responder withdrew this pair')
 end
 
 @Test function CloseFromCandidateCancelsTheRemainingBatch()

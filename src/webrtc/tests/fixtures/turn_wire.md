@@ -7,9 +7,23 @@ zero bytes, matching the injected test entropy.
 
 The authenticated success grants a 600-second UDP allocation at `192.0.2.2:50000`, with mapped address
 `192.0.2.3:40000`.  XOR addresses use the STUN cookie; integrity uses MD5 long-term key derivation and HMAC-SHA1.
-The fixture generator uses only Python's standard library and does not call Kōtuku's STUN/TURN codec.
+The Tiri fixture generator assembles wire records independently of Kōtuku's STUN/TURN codec and uses the Crypto
+module for MD5 and HMAC-SHA1.
 
-Verify committed bytes with `python3 src/webrtc/tests/verify_turn_fixtures.py`; regenerate with `--write`.
+Verify committed bytes from the repository root with:
+
+```bash
+build/agents-install/origo tools/flute.tiri file=src/webrtc/tests/verify_turn_fixtures.tiri --log-warning
+```
+
+Regenerate with:
+
+```bash
+build/agents-install/origo src/webrtc/tests/verify_turn_fixtures.tiri write=true --log-warning
+```
+
+Both commands accept `fixtures=/path/to/fixtures` to use another directory.
+
 The native test also includes hand-transcribed ChannelData and XOR-PEER-ADDRESS arrays, checking stream padding
 separately from UDP datagrams.  Wire layouts follow [RFC 8656](https://www.rfc-editor.org/rfc/rfc8656.html).
 

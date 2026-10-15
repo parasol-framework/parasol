@@ -11,7 +11,7 @@ import subprocess
 import tempfile
 import threading
 
-from run_phase3_fixture import closing_stream
+from run_turn_fixture import closing_stream
 
 
 def main():
@@ -46,7 +46,7 @@ def main():
                 worker.start()
                 try:
                     result = subprocess.run([str(executable), 'tools/flute.tiri',
-                        'file=src/webrtc/tests/interop/phase3_network_probe.tiri', f'port={port}',
+                        'file=src/webrtc/tests/interop/test_network_stream.tiri', f'port={port}',
                         'secure=true', 'shutdown=true', '--log-warning', '--gfx-driver=headless'],
                         cwd=repository, env=environment, capture_output=True, text=True, timeout=15)
                 finally:

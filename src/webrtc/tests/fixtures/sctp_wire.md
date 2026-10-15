@@ -1,36 +1,101 @@
-# Initial SCTP and DCEP wire fixtures
+# SCTP and DCEP wire fixtures
 
-Prepared for Phase 2 Step 0, 2026-10-12.  These synthetic packets are independent inputs for the future codec.
-No SCTP implementation exists at this stage.  Fixture integrity is checked by:
+`sctp_wire.json` and `dcep_wire.json` hold synthetic SCTP packets and DCEP messages.  They were written by hand before the SCTP codec existed, so they are independent of Kōtuku's encoder.  Do not regenerate them from the codec.
+
+Check fixture integrity from the repository root with:
 
 ```bash
-python3 src/webrtc/tests/verify_wire_fixtures.py
+build/agents-install/origo src/webrtc/tests/verify_wire_fixtures.tiri --log-warning
 ```
 
-`sctp_wire.json` uses a source port of 5000 and a destination port of 5001 to expose accidental equal-port
-assumptions.  Established inbound packets have verification tag 0x11223344; INIT uses zero.  The INIT advertises
-32 MiB receive buffering, 512 streams each way and initial TSN 0xfffffffe, without IP address parameters.
-DATA uses stream 2, SSN 0, TSN 0xfffffffe and B/E flags.  Text `hi` has PPID 51 and two padding bytes;
-empty binary has PPID 57 with a one-byte filler and three padding bytes.  Payload and chunk lengths exclude padding.
-COOKIE-ACK is a four-byte control chunk.  The checksum field at bytes 8–11 is zero during CRC calculation;
-its computed value is stored least-significant byte first, while other integer fields use network byte order.
+The verifier checks CRCs, header annotations, positive chunk bounds and DCEP decoding.  It does not test the codec.
 
-CRC known answers include empty input, `123456789`, 32 zero bytes, 32 0xff bytes and the sequence 0–31.
-The latter three answers are published in [RFC 3720 Appendix B.4](https://www.rfc-editor.org/rfc/rfc3720#appendix-B.4).
-CRC32C uses polynomial 0x1edc6f41 (reflected 0x82f63b78), initial remainder 0xffffffff and final complement.
-Packet answers were produced with a reflected bitwise reference and checked using MSB-first long division,
-validated against those known answers.  They were not produced by a Kōtuku SCTP encoder.
+## Consumers
 
-Negative packets deliberately isolate short/overrun chunk lengths, checksum corruption, association port and
-tag mismatches.  All negative cases except checksum corruption have valid CRCs, so future tests reach the intended
-validation rule.  `valid` includes the association profile check, not only structural framing.
-The current verifier checks CRCs/annotations and positive chunk bounds; future C++ tests must assert actual
-rejection and absence of state changes for every negative fixture.
+- `test_sctp_packet.cpp` checks the CRC known answers and parses every packet.  It also re-encodes INIT
+  byte-for-byte and confirms that single-bit damage and truncation are rejected.
+- `tests/interop/prepare_fuzz_corpus.tiri` writes each SCTP packet and DCEP message into the `fuzz_sctp_codec` seed
+  corpus.  This happens in the build tree when `WEBRTC_FUZZ` is enabled.
 
-`dcep_wire.json` encodes all six OPEN channel types with priority 256, label `chat` and empty protocol.
-Reliable and retransmission-limited examples use a zero reliability parameter, timed examples use 1000 ms.
-ACK is 0x02.  Negative messages isolate short fixed headers, label overrun, reserved channel type and invalid UTF-8.
-These messages are SCTP user payloads, with no implicit DCEP padding.  Use PPID 50 in future transport tests.
+## SCTP packets
 
-Add browser captures during Step 1 and persist new malformed/fuzz seeds as defects are found.  Keep synthetic
-fixture provenance distinct from captured packets and from acceptance results.
+Integer fields use network byte order, except for the checksum.  All packets share this association profile:
+
+| Field | Value |
+| --- | --- |
+| Source port | 5000 |
+| Destination port | 5001 |
+| Verification tag | `0x11223344` (INIT uses zero) |
+
+Different source and destination ports catch code that wrongly assumes they are equal.
+
+| Packet | Contents |
+| --- | --- |
+| `init` | 32 MiB receive window, 512 outbound and inbound streams, initial TSN `0xfffffffe`.  No address parameters. |
+| `text_hi` | DATA on stream 2, SSN 0, TSN `0xfffffffe`, B/E flags.  Payload `hi`, PPID 51, two padding bytes. |
+| `empty_binary` | As `text_hi`, but with PPID 57, a one-byte filler and three padding bytes. |
+| `cookie_ack` | A four-byte control chunk. |
+
+Payload and chunk lengths exclude padding.
+
+### CRC32C
+
+The checksum covers the whole packet, with bytes 8–11 set to zero during calculation.  It is stored with the least
+significant byte first.  The algorithm uses polynomial `0x1edc6f41` (reflected `0x82f63b78`), an initial remainder
+of `0xffffffff` and a final complement.
+
+The `crc32c` known answers cover:
+
+- empty input
+- `123456789`
+- 32 zero bytes
+- 32 `0xff` bytes
+- the byte sequence 0–31
+
+[RFC 3720 Appendix B.4](https://www.rfc-editor.org/rfc/rfc3720#appendix-B.4) publishes the last three.  Packet
+checksums came from a reflected bitwise reference implementation.  They were cross-checked with MSB-first long
+division, which was first validated against the known answers.
+
+### Negative packets
+
+Each negative packet breaks exactly one rule.  All of them have correct CRCs, except `checksum_corruption`, so a
+test reaches the rule it is aimed at.
+
+| Packet | Rule | Level |
+| --- | --- | --- |
+| `short_chunk_length` | Chunk length below the 4-byte header | Framing |
+| `chunk_length_past_end` | Chunk extends beyond the packet | Framing |
+| `checksum_corruption` | Payload changed without updating the CRC | Framing |
+| `wrong_source_port` | Source port does not match the association | Association |
+| `wrong_tag` | Verification tag does not match the association | Association |
+
+`valid: false` covers association mismatches as well as framing errors.  `parse()` only rejects framing errors, so
+`test_sctp_packet.cpp` expects the two association packets to parse successfully.  No test yet uses these two
+fixtures to check that an association rejects them without changing state.
+
+## DCEP messages
+
+DCEP messages are SCTP user payloads with no DCEP-level padding.  Use PPID 50 when sending them through the
+transport.
+
+`dcep_wire.json` contains one DATA_CHANNEL_OPEN message for each of the six channel types.  Every OPEN uses
+priority 256, label `chat` and an empty protocol.  The reliability parameter is 0 for reliable and
+retransmission-limited channels, and 1000 ms for timed channels.  `ack` is the single byte `0x02`.
+
+The negative messages cover:
+
+| Message | Defect |
+| --- | --- |
+| `truncated_open` | Fixed header is too short |
+| `label_past_end` | Label length exceeds the message |
+| `reserved_channel_type` | Channel type is reserved |
+| `invalid_label_utf8` | Label is not valid UTF-8 |
+
+## Related fixtures
+
+- `chromium_154_sctp_client.json` and `chromium_154_sctp_server.json` are live Chromium captures.  Their provenance
+  is recorded in each file, and `test_sctp_packet.cpp` parses them.
+- `fuzz_sctp_state/` holds operation sequences for the SCTP state fuzzer.
+
+Keep synthetic fixtures, captured packets and acceptance results apart, so that each one's source stays clear.  When
+a defect turns up malformed input, add it as a new seed.

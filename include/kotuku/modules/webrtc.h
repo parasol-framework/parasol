@@ -104,15 +104,15 @@ class objWebChannel : public Object {
    using create = kt::Create<objWebChannel>;
    objWebChannel(objMetaClass *pClass, OBJECTID pUID) noexcept : Object(pClass, pUID) {}
 
-   std::string Label;                     // Immutable UTF-8 label.
-   std::string Protocol;                  // Immutable UTF-8 protocol.
-   int64_t BufferedAmountLowThreshold;    // Mutable threshold in bytes, default zero, range 0 to 16777216.
-   int     Negotiated;                    // Explicitly negotiated without DCEP.
-   int     Ordered;                       // Preserve message order.
-   int     MaxRetransmits;                // -1 for omitted, otherwise 0 to 65535 retries.
-   int     MaxPacketLifeTime;             // -1 for omitted, otherwise lifetime in milliseconds from enqueue.
-   WCS     State;                         // Channel lifecycle state.
-   ERR     Error;                         // Most recent channel error.
+   std::string Label;                     // The name of the channel.
+   std::string Protocol;                  // The name of the sub-protocol used by the channel.
+   int64_t BufferedAmountLowThreshold;    // The BufferedAmount level, in bytes, at which OnBufferedAmountLow is called.
+   int     Negotiated;                    // True if the channel was negotiated by the client rather than announced in-band.
+   int     Ordered;                       // True if messages are delivered in the order that they were sent.
+   int     MaxRetransmits;                // The maximum number of times an outgoing message is retransmitted.
+   int     MaxPacketLifeTime;             // The maximum lifetime of an outgoing message, in milliseconds.
+   WCS     State;                         // The current state of the channel.
+   ERR     Error;                         // The error that caused the channel to fail.
 
    // Action stubs
 
@@ -127,8 +127,152 @@ class objWebChannel : public Object {
 
    // Customised field getting
 
+   inline ERR getLabel(std::string_view &Value) noexcept {
+      Value = this->Label;
+      return ERR::Okay;
+   }
+
+   inline ERR getProtocol(std::string_view &Value) noexcept {
+      Value = this->Protocol;
+      return ERR::Okay;
+   }
+
+   inline ERR getBufferedAmountLowThreshold(int64_t &Value) noexcept {
+      Value = this->BufferedAmountLowThreshold;
+      return ERR::Okay;
+   }
+
+   inline ERR getNegotiated(int &Value) noexcept {
+      Value = this->Negotiated;
+      return ERR::Okay;
+   }
+
+   inline ERR getOrdered(int &Value) noexcept {
+      Value = this->Ordered;
+      return ERR::Okay;
+   }
+
+   inline ERR getMaxRetransmits(int &Value) noexcept {
+      Value = this->MaxRetransmits;
+      return ERR::Okay;
+   }
+
+   inline ERR getMaxPacketLifeTime(int &Value) noexcept {
+      Value = this->MaxPacketLifeTime;
+      return ERR::Okay;
+   }
+
+   inline ERR getState(WCS &Value) noexcept {
+      Value = this->State;
+      return ERR::Okay;
+   }
+
+   inline ERR getError(ERR &Value) noexcept {
+      Value = this->Error;
+      return ERR::Okay;
+   }
+
+   inline ERR getID(int &Value) noexcept {
+      auto field = &this->Class->Dictionary[9];
+      SetObjectContext(this, field, AC::NIL);
+      auto error = field->GetValue(this, &Value);
+      RestoreObjectContext();
+      return error;
+   }
+
+   inline ERR getMaxMessageSize(int64_t &Value) noexcept {
+      auto field = &this->Class->Dictionary[4];
+      SetObjectContext(this, field, AC::NIL);
+      auto error = field->GetValue(this, &Value);
+      RestoreObjectContext();
+      return error;
+   }
+
+   inline ERR getBufferedAmount(int64_t &Value) noexcept {
+      auto field = &this->Class->Dictionary[13];
+      SetObjectContext(this, field, AC::NIL);
+      auto error = field->GetValue(this, &Value);
+      RestoreObjectContext();
+      return error;
+   }
+
+   inline ERR getOnOpen(FUNCTION * &Value) noexcept {
+      auto field = &this->Class->Dictionary[7];
+      SetObjectContext(this, field, AC::NIL);
+      auto get_field = (ERR (*)(APTR, FUNCTION * &))field->GetValue;
+      auto error = get_field(this, Value);
+      RestoreObjectContext();
+      return error;
+   }
+
+   inline ERR getOnClose(FUNCTION * &Value) noexcept {
+      auto field = &this->Class->Dictionary[3];
+      SetObjectContext(this, field, AC::NIL);
+      auto get_field = (ERR (*)(APTR, FUNCTION * &))field->GetValue;
+      auto error = get_field(this, Value);
+      RestoreObjectContext();
+      return error;
+   }
+
+   inline ERR getOnError(FUNCTION * &Value) noexcept {
+      auto field = &this->Class->Dictionary[0];
+      SetObjectContext(this, field, AC::NIL);
+      auto get_field = (ERR (*)(APTR, FUNCTION * &))field->GetValue;
+      auto error = get_field(this, Value);
+      RestoreObjectContext();
+      return error;
+   }
+
+   inline ERR getOnMessage(FUNCTION * &Value) noexcept {
+      auto field = &this->Class->Dictionary[1];
+      SetObjectContext(this, field, AC::NIL);
+      auto get_field = (ERR (*)(APTR, FUNCTION * &))field->GetValue;
+      auto error = get_field(this, Value);
+      RestoreObjectContext();
+      return error;
+   }
+
+   inline ERR getOnBufferedAmountLow(FUNCTION * &Value) noexcept {
+      auto field = &this->Class->Dictionary[6];
+      SetObjectContext(this, field, AC::NIL);
+      auto get_field = (ERR (*)(APTR, FUNCTION * &))field->GetValue;
+      auto error = get_field(this, Value);
+      RestoreObjectContext();
+      return error;
+   }
+
 
    // Customised field setting
+
+   inline ERR setBufferedAmountLowThreshold(const int64_t Value) noexcept {
+      auto field = &this->Class->Dictionary[15];
+      return field->WriteValue(this, field, FD_INT64, &Value);
+   }
+
+   inline ERR setOnOpen(const FUNCTION Value) noexcept {
+      auto field = &this->Class->Dictionary[7];
+      return field->WriteValue(this, field, FD_FUNCTION, &Value);
+   }
+
+   inline ERR setOnClose(const FUNCTION Value) noexcept {
+      auto field = &this->Class->Dictionary[3];
+      return field->WriteValue(this, field, FD_FUNCTION, &Value);
+   }
+
+   inline ERR setOnError(const FUNCTION Value) noexcept {
+      auto field = &this->Class->Dictionary[0];
+      return field->WriteValue(this, field, FD_FUNCTION, &Value);
+   }
+
+   inline ERR setOnMessage(const FUNCTION Value) noexcept {
+      auto field = &this->Class->Dictionary[1];
+      return field->WriteValue(this, field, FD_FUNCTION, &Value);
+   }
+
+   inline ERR setOnBufferedAmountLow(const FUNCTION Value) noexcept {
+      auto field = &this->Class->Dictionary[6];
+      return field->WriteValue(this, field, FD_FUNCTION, &Value);
+   }
 
 };
 
@@ -159,18 +303,18 @@ class objPeerConnection : public Object {
    using create = kt::Create<objPeerConnection>;
    objPeerConnection(objMetaClass *pClass, OBJECTID pUID) noexcept : Object(pClass, pUID) {}
 
-   std::string LocalDescription;          // Current local SDP.
-   std::string RemoteDescription;         // Current remote SDP.
-   std::string CertificateFingerprint;    // SHA-256 fingerprint of the local DTLS certificate.
-   std::string StunServer;                // Optional stun: URI or address:port; DNS resolution runs during gathering.
-   APTR      ClientData;                  // User data.
-   RTCS      State;                       // Aggregate ICE and DTLS state.
-   RTCSIG    SignalingState;              // Offer/answer negotiation state.
-   RTCICE    IceState;                    // ICE agent state.
-   RTCGATHER GatheringState;              // Local ICE gathering state.
-   ERR       Error;                       // Most recent asynchronous transport error.
-   int       ReceiveLimit;                // Constructor-only receive capacity in bytes, default 262144, range 1 to 16777216.
-   RTCF      Flags;                       // Configures the constructor-only ICE policy.
+   std::string LocalDescription;          // The local session description.
+   std::string RemoteDescription;         // The session description received from the remote peer.
+   std::string CertificateFingerprint;    // The SHA-256 fingerprint of the local DTLS certificate.
+   std::string StunServer;                // The address of a STUN server for discovering the public address of the host.
+   APTR      ClientData;                  // A custom pointer available for userspace.
+   RTCS      State;                       // The overall state of the connection.
+   RTCSIG    SignalingState;              // The state of the offer and answer exchange.
+   RTCICE    IceState;                    // The state of the ICE agent.
+   RTCGATHER GatheringState;              // The state of local candidate gathering.
+   ERR       Error;                       // The most recent error reported by the transport.
+   int       ReceiveLimit;                // The largest message, in bytes, that the connection will accept from the remote peer.
+   RTCF      Flags;                       // Optional flags that control how candidates are gathered and signalled.
 
    // Action stubs
 
@@ -214,7 +358,158 @@ class objPeerConnection : public Object {
 
    // Customised field getting
 
+   inline ERR getLocalDescription(std::string_view &Value) noexcept {
+      Value = this->LocalDescription;
+      return ERR::Okay;
+   }
+
+   inline ERR getRemoteDescription(std::string_view &Value) noexcept {
+      Value = this->RemoteDescription;
+      return ERR::Okay;
+   }
+
+   inline ERR getCertificateFingerprint(std::string_view &Value) noexcept {
+      Value = this->CertificateFingerprint;
+      return ERR::Okay;
+   }
+
+   inline ERR getStunServer(std::string_view &Value) noexcept {
+      Value = this->StunServer;
+      return ERR::Okay;
+   }
+
+   inline ERR getClientData(APTR &Value) noexcept {
+      Value = this->ClientData;
+      return ERR::Okay;
+   }
+
+   inline ERR getState(RTCS &Value) noexcept {
+      Value = this->State;
+      return ERR::Okay;
+   }
+
+   inline ERR getSignalingState(RTCSIG &Value) noexcept {
+      Value = this->SignalingState;
+      return ERR::Okay;
+   }
+
+   inline ERR getIceState(RTCICE &Value) noexcept {
+      Value = this->IceState;
+      return ERR::Okay;
+   }
+
+   inline ERR getGatheringState(RTCGATHER &Value) noexcept {
+      Value = this->GatheringState;
+      return ERR::Okay;
+   }
+
+   inline ERR getRestartRequired(int &Value) noexcept {
+      auto field = &this->Class->Dictionary[0];
+      SetObjectContext(this, field, AC::NIL);
+      auto error = field->GetValue(this, &Value);
+      RestoreObjectContext();
+      return error;
+   }
+
+   inline ERR getOnRestartRequired(FUNCTION * &Value) noexcept {
+      auto field = &this->Class->Dictionary[10];
+      SetObjectContext(this, field, AC::NIL);
+      auto get_field = (ERR (*)(APTR, FUNCTION * &))field->GetValue;
+      auto error = get_field(this, Value);
+      RestoreObjectContext();
+      return error;
+   }
+
+   inline ERR getError(ERR &Value) noexcept {
+      Value = this->Error;
+      return ERR::Okay;
+   }
+
+   inline ERR getReceiveLimit(int &Value) noexcept {
+      Value = this->ReceiveLimit;
+      return ERR::Okay;
+   }
+
+   inline ERR getFlags(RTCF &Value) noexcept {
+      Value = this->Flags;
+      return ERR::Okay;
+   }
+
+   inline ERR getFeedback(FUNCTION * &Value) noexcept {
+      auto field = &this->Class->Dictionary[14];
+      SetObjectContext(this, field, AC::NIL);
+      auto get_field = (ERR (*)(APTR, FUNCTION * &))field->GetValue;
+      auto error = get_field(this, Value);
+      RestoreObjectContext();
+      return error;
+   }
+
+   inline ERR getOnIceCandidate(FUNCTION * &Value) noexcept {
+      auto field = &this->Class->Dictionary[21];
+      SetObjectContext(this, field, AC::NIL);
+      auto get_field = (ERR (*)(APTR, FUNCTION * &))field->GetValue;
+      auto error = get_field(this, Value);
+      RestoreObjectContext();
+      return error;
+   }
+
+   inline ERR getOnWebChannel(FUNCTION * &Value) noexcept {
+      auto field = &this->Class->Dictionary[6];
+      SetObjectContext(this, field, AC::NIL);
+      auto get_field = (ERR (*)(APTR, FUNCTION * &))field->GetValue;
+      auto error = get_field(this, Value);
+      RestoreObjectContext();
+      return error;
+   }
+
 
    // Customised field setting
+
+   inline ERR setStunServer(const std::string_view &Value) noexcept {
+      this->StunServer = Value;
+      return ERR::Okay;
+   }
+
+   inline ERR setClientData(APTR Value) noexcept {
+      this->ClientData = Value;
+      return ERR::Okay;
+   }
+
+   inline ERR setOnRestartRequired(const FUNCTION Value) noexcept {
+      auto field = &this->Class->Dictionary[10];
+      return field->WriteValue(this, field, FD_FUNCTION, &Value);
+   }
+
+   inline ERR setReceiveLimit(const int Value) noexcept {
+      if (this->initialised()) return ERR::ImmutableField;
+      this->ReceiveLimit = Value;
+      return ERR::Okay;
+   }
+
+   inline ERR setFlags(const RTCF Value) noexcept {
+      if (this->initialised()) return ERR::ImmutableField;
+      this->Flags = Value;
+      return ERR::Okay;
+   }
+
+   inline ERR setIceServers(const std::string_view &Value) noexcept {
+      auto field = &this->Class->Dictionary[22];
+      return field->WriteValue(this, field, 0x00804408, &Value);
+   }
+
+   inline ERR setFeedback(const FUNCTION Value) noexcept {
+      auto field = &this->Class->Dictionary[14];
+      return field->WriteValue(this, field, FD_FUNCTION, &Value);
+   }
+
+   inline ERR setOnIceCandidate(const FUNCTION Value) noexcept {
+      auto field = &this->Class->Dictionary[21];
+      return field->WriteValue(this, field, FD_FUNCTION, &Value);
+   }
+
+   inline ERR setOnWebChannel(const FUNCTION Value) noexcept {
+      auto field = &this->Class->Dictionary[6];
+      return field->WriteValue(this, field, FD_FUNCTION, &Value);
+   }
 
 };

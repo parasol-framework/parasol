@@ -1,5 +1,5 @@
-#include "../sctp_packet.h"
-#include "../dcep.h"
+#include "../sctp/sctp_packet.h"
+#include "../sctp/dcep.h"
 
 extern "C" int LLVMFuzzerTestOneInput(const uint8_t *Data, size_t Size) {
    if (Size > rtc::sctp::MAX_PACKET_SIZE) return 0;

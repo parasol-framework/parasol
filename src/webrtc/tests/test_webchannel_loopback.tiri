@@ -1,8 +1,10 @@
    import './webchannel_support'
 
+-- Channel behaviour uses numeric candidates; test_mdns_privacy covers name registration.
+
 @Test function ChannelModesAndMessages()
-   local first <close> = obj.new('peerconnection', {})
-   local second <close> = obj.new('peerconnection', {})
+   local first <close> = obj.new('peerconnection', { flags='NO_MDNS' })
+   local second <close> = obj.new('peerconnection', { flags='NO_MDNS' })
    local remote = {}
    local received = {}
    local order = array<str>
@@ -91,15 +93,17 @@
 end
 
 @Test function NegotiatedLargeBinaryAndBuffering()
-   local first <close> = obj.new('peerconnection', { receiveLimit=16777216 })
-   local second <close> = obj.new('peerconnection', { receiveLimit=16777216 })
+   local first <close> = obj.new('peerconnection', { flags='NO_MDNS', receiveLimit=16777216 })
+   local second <close> = obj.new('peerconnection', { flags='NO_MDNS', receiveLimit=16777216 })
    local channel = channelTest.create(first, 'bulk', '', true, true, 42)
    local receiver = channelTest.create(second, 'bulk', '', true, true, 42)
    local unexpected = 0
    second.onWebChannel = function() unexpected += 1 end
    local payload = array<byte, 16777216>
    -- Non-uniform bytes including NUL and every byte value; compare all bytes at receipt.
-   for i in {0 to #payload} do payload[i] = (i * 13 + math.floor(i / 113)) % 256 end
+   local pattern = array<byte, 28928> -- The byte pattern repeats every 113 * 256 bytes.
+   for i in {0 to #pattern} do pattern[i] = (i * 13 + math.floor(i / 113)) % 256 end
+   payload.copy(string.rep(pattern.getString(), math.ceil(#payload / #pattern)), 0, 0, #payload)
    local delivered = false
    receiver.onMessage = function(Child, Buffer, Type)
       assert(Type is WCM_BINARY and #Buffer is #payload, 'Large binary size/type changed')

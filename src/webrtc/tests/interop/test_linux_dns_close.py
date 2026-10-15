@@ -39,7 +39,7 @@ def main():
             dns.bind(('127.0.0.1', 53))
             dns.settimeout(10)
             for mode in ('dns-close', 'dns-free', 'dns-capacity'):
-                host = f'kotuku-phase3-{secrets.token_hex(8)}.invalid'
+                host = f'kotuku-interop-{secrets.token_hex(8)}.invalid'
                 config = Path(directory) / 'dns.json'
                 config.write_text(json.dumps([{'url': f'turn:{host}:3478', 'username': 'test', 'credential': 'test'}]))
                 process = subprocess.Popen([str(args.probe.resolve()), str(config), mode, '--log-warning'],

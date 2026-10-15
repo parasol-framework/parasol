@@ -25,7 +25,7 @@ def main():
     parser.add_argument('--destroy', action='store_true', help='Free directly instead of closing first')
     parser.add_argument('--capacity', action='store_true', help='Saturate and cancel 32 forward lookup requests')
     args = parser.parse_args()
-    host = f'kotuku-phase3-{secrets.token_hex(8)}.invalid'
+    host = f'kotuku-interop-{secrets.token_hex(8)}.invalid'
     rule = None
     process = None
     with socket.socket(socket.AF_INET6, socket.SOCK_DGRAM) as dns, tempfile.TemporaryDirectory() as directory:

@@ -8,10 +8,10 @@
 #include <kotuku/modules/network.h>
 #include <kotuku/modules/module.h>
 
-#include "../ice_socket.h"
-#include "../sdp.h"
-#include "../sctp_association.h"
-#include "../dcep.h"
+#include "../ice/ice_socket.h"
+#include "../sdp/sdp.h"
+#include "../sctp/sctp_association.h"
+#include "../sctp/dcep.h"
 
 #include <openssl/rand.h>
 

@@ -1,4 +1,4 @@
-#include "../stun.h"
+#include "../stun/stun.h"
 
 #include <array>
 #include <cstdio>
@@ -147,7 +147,9 @@ int main() {
       return fail("Long-term client credential preparation failed");
    }
    for (const auto &invalid_nonce : {std::string(128, 'n'), std::string("bad\nnonce"),
-       std::string("bad\"nonce"), std::string("bad\\"), std::string("\xc0\x80")}) {
+       std::string("bad\"nonce"), std::string("bad\\"), std::string("\xc0\x80"),
+       std::string("\0", 1), std::string("\x80"), std::string("\xe2\x82"),
+       std::string("\xed\xa0\x80"), std::string("\xf4\x90\x80\x80")}) {
       unicode_challenge.nonce = invalid_nonce;
       challenge_attributes[2] = {ATTR_NONCE, bytes(invalid_nonce)};
       LongTermChallenge decoded;

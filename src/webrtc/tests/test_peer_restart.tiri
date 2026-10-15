@@ -25,11 +25,10 @@ end
    channelTest.waitFor(function() return channel.state is WCS_OPEN end)
    local id = channel.id
    local fingerprint = first.certificateFingerprint
+   local payload = string.rep('queued-data-', 16000)
    for _, initiator in array<obj> { first, second } do
       local other = initiator is first ? second : first
       local before = #messages
-      local payload = ''
-      for _ in {0 to 16000} do payload ..= 'queued-data-' end
       check channel.mtSend(payload, WCM_TEXT)
       restartPair(initiator, other)
       channelTest.waitFor(function() return #messages is before + 1 end)

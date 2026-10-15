@@ -1,5 +1,5 @@
-#include "../sctp_association.h"
-#include "../dcep.h"
+#include "../sctp/sctp_association.h"
+#include "../sctp/dcep.h"
 
 #include <algorithm>
 #include <cstdio>

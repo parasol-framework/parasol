@@ -1,7 +1,7 @@
 // Production TCP/TLS adapter exercised against a deterministic, task-local fake server.
 #pragma once
 #include "turn_test_support.h"
-#include "../turn_socket.h"
+#include "../turn/turn_socket.h"
 #include <chrono>
 #include <openssl/ssl.h>
 #include <openssl/err.h>

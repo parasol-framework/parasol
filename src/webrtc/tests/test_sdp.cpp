@@ -1,4 +1,4 @@
-#include "../sdp.h"
+#include "../sdp/sdp.h"
 
 #include <cstdio>
 #include <fstream>
@@ -41,7 +41,7 @@ int main() {
    if (not replace(rejected, "m=application 9 ", "m=application 0 ") or
        parse(rejected, rejected_description)) return fail("Rejected data-channel offer accepted as active");
    if (parse(offer_text + "m=audio 9 UDP/TLS/RTP/SAVPF 111\nc=IN IP4 0.0.0.0\n", rejected_description)) {
-      return fail("Data-channel skeleton accepted a media section it cannot answer");
+      return fail("Data-channel parser accepted a media section it cannot answer");
    }
 
    Description round_trip;

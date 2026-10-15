@@ -772,6 +772,14 @@ add_library(linear_rgb OBJECT src/link/linear_rgb.cpp)
 add_library(unicode OBJECT src/link/unicode.cpp)
 add_library(base64 OBJECT src/link/base64.cpp)
 
+if (UNIT_TESTS)
+   add_executable (test_unicode src/link/tests/test_unicode.cpp)
+   target_link_libraries (test_unicode PRIVATE unicode)
+   set_target_properties (test_unicode PROPERTIES CXX_STANDARD 20 CXX_STANDARD_REQUIRED ON)
+   add_test (NAME unicode_scalar_values COMMAND test_unicode)
+   set_tests_properties (unicode_scalar_values PROPERTIES LABELS unicode)
+endif ()
+
 # --------------------------------------------------------------------------------------------------------------------
 
 set(CMAKE_INSTALL_RPATH "$ORIGIN/lib")

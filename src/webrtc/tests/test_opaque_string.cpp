@@ -1,4 +1,4 @@
-#include "../opaque_string.h"
+#include "../precis/opaque_string.h"
 
 #include <utf8proc.h>
 
@@ -33,6 +33,14 @@ int main() {
        not expect("\xef\xbc\xa6", "\xef\xbc\xa6") or
        not expect("\xc2\xb2", "\xc2\xb2")) {
       std::fprintf(stderr, "OpaqueString mapping or NFC differs\n");
+      return 1;
+   }
+   const char supplementary[] = { char(0xf0), char(0x9f), char(0x98), char(0x80) };
+   auto bounded = std::string_view(supplementary, sizeof(supplementary));
+   if (not expect(bounded, bounded) or not reject(bounded.substr(0, 3)) or
+       not reject(std::string_view("a\0b", 3)) or not reject("\x80") or
+       not reject("\xc0\x80") or not reject("\xf4\x90\x80\x80")) {
+      std::fprintf(stderr, "OpaqueString bounded UTF-8 validation differs\n");
       return 1;
    }
    if (not expect("l\xc2\xb7l", "l\xc2\xb7l") or

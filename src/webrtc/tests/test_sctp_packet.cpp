@@ -1,4 +1,4 @@
-#include "../sctp_packet.h"
+#include "../sctp/sctp_packet.h"
 
 #include <array>
 #include <cstdio>
@@ -31,7 +31,7 @@ void vectors() {
    CHECK(crc32c(bytes) IS 0x62a8ab43u);
    for (size_t i = 0; i < bytes.size(); ++i) bytes[i] = uint8_t(i);
    CHECK(crc32c(bytes) IS 0x46dd794eu);
-   // Consume the independent Step 0 fixture, rather than round-tripping the implementation.
+   // Consume the independently prepared fixture, rather than round-tripping the implementation.
    std::ifstream file(std::string(WEBRTC_FIXTURE_DIR) + "/sctp_wire.json");
    std::string text(std::istreambuf_iterator<char>{file}, {});
    CHECK(not text.empty());

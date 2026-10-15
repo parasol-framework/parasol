@@ -99,8 +99,8 @@ XPathVal XPathFunctionLibrary::function_string_to_codepoints(const std::vector<X
 
    while (offset < input.length()) {
       int length = 0;
-      uint32_t code = UTF8ReadValue(input.c_str() + offset, &length);
-      if (length <= 0) {
+      uint32_t code = UTF8ReadValue(std::string_view(input).substr(offset), &length);
+      if ((length <= 0) or (code IS 0)) {
          code = (unsigned char)input[offset];
          length = 1;
       }

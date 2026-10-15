@@ -1,7 +1,9 @@
    import './webchannel_support'
 
+-- Channel behaviour uses numeric candidates; test_mdns_privacy covers name registration.
+
 @Test function PendingValidationAndClosure()
-   local peer <close> = obj.new('peerconnection', {})
+   local peer <close> = obj.new('peerconnection', { flags='NO_MDNS' })
    assert(peer.mtCreateWebChannel('', '', 1, 0, -1, 0, 0) is ERR_InvalidValue,
       'Simultaneous zero reliability options were accepted')
    assert(peer.mtCreateWebChannel('', '', 1, 1, -1, -1, -1) is ERR_InvalidValue,
@@ -26,8 +28,8 @@
 end
 
 @Test function PendingParityErrorOrder()
-   local first <close> = obj.new('peerconnection', {})
-   local second <close> = obj.new('peerconnection', {})
+   local first <close> = obj.new('peerconnection', { flags='NO_MDNS' })
+   local second <close> = obj.new('peerconnection', { flags='NO_MDNS' })
    local bad = channelTest.create(first, 'bad-parity', '', true, false, 1)
    local events = array<str>
    bad.onError = function(Child, Error)
@@ -42,8 +44,8 @@ end
 end
 
 @Test function FreeFromRemoteCallback()
-   local first <close> = obj.new('peerconnection', {})
-   local second <close> = obj.new('peerconnection', {})
+   local first <close> = obj.new('peerconnection', { flags='NO_MDNS' })
+   local second <close> = obj.new('peerconnection', { flags='NO_MDNS' })
    local local_channel = channelTest.create(first, 'free-remote')
    local remote_child
    local callbacks = 0
@@ -59,8 +61,8 @@ end
 end
 
 @Test function FreeParentFromOpen()
-   local first <close> = obj.new('peerconnection', {})
-   local second = obj.new('peerconnection', {})
+   local first <close> = obj.new('peerconnection', { flags='NO_MDNS' })
+   local second = obj.new('peerconnection', { flags='NO_MDNS' })
    local remote_child
    second.onWebChannel = function(Peer, Channel)
       remote_child = Channel
@@ -73,8 +75,8 @@ end
 end
 
 @Test function MessageFreeAndReentrantLow()
-   local first <close> = obj.new('peerconnection', {})
-   local second <close> = obj.new('peerconnection', {})
+   local first <close> = obj.new('peerconnection', { flags='NO_MDNS' })
+   local second <close> = obj.new('peerconnection', { flags='NO_MDNS' })
    local channel = channelTest.create(first, 'callback')
    local receiver
    second.onWebChannel = function(Peer, Child) receiver = Child end
@@ -100,7 +102,7 @@ end
 end
 
 @Test function ConstructorFieldsAndPendingQuota()
-   local peer <close> = obj.new('peerconnection', {})
+   local peer <close> = obj.new('peerconnection', { flags='NO_MDNS' })
    assert(peer.set('receiveLimit', 1000) is ERR_NoFieldAccess, 'ReceiveLimit changed after initialisation')
    local channel = channelTest.create(peer, 'immutable')
    for _, name in array<str> { 'label', 'protocol', 'ordered', 'negotiated', 'maxRetransmits',
@@ -117,8 +119,8 @@ end
 end
 
 @Test function AutomaticAllocationPreservesExplicitReservation()
-   local first <close> = obj.new('peerconnection', {})
-   local second <close> = obj.new('peerconnection', {})
+   local first <close> = obj.new('peerconnection', { flags='NO_MDNS' })
+   local second <close> = obj.new('peerconnection', { flags='NO_MDNS' })
    local automatic = channelTest.create(first, 'automatic')
    local explicit = channelTest.create(first, 'explicit', '', true, false, 0)
    channelTest.connect(first, second)
@@ -127,8 +129,8 @@ end
 end
 
 @Test function ZeroLifetimeAndTerminalFree()
-   local first <close> = obj.new('peerconnection', {})
-   local second <close> = obj.new('peerconnection', {})
+   local first <close> = obj.new('peerconnection', { flags='NO_MDNS' })
+   local second <close> = obj.new('peerconnection', { flags='NO_MDNS' })
    local expiring = channelTest.create(first, 'zero-life', '', true, false, -1, -1, 0)
    local reliable = channelTest.create(first, 'reliable')
    local received = 0
@@ -152,11 +154,11 @@ end
 end
 
 @Test function DirectionalMessageLimits()
-   local source <close> = obj.new('peerconnection', { receiveLimit=123456 })
+   local source <close> = obj.new('peerconnection', { flags='NO_MDNS', receiveLimit=123456 })
    check source.mtCreateOffer()
    local offer = source.localDescription
    for _, value in array<int> { -1, 0, 123456, 99999999 } do
-      local peer <close> = obj.new('peerconnection', { receiveLimit=7 })
+      local peer <close> = obj.new('peerconnection', { flags='NO_MDNS', receiveLimit=7 })
       local channel = channelTest.create(peer, 'limit')
       assert(channel.maxMessageSize is 0, 'Send limit was available before remote negotiation')
       local line = 'a=max-message-size:123456\r\n'
@@ -169,8 +171,8 @@ end
 end
 
 @Test function FreeFromErrorAndLow()
-   local first <close> = obj.new('peerconnection', {})
-   local second <close> = obj.new('peerconnection', {})
+   local first <close> = obj.new('peerconnection', { flags='NO_MDNS' })
+   local second <close> = obj.new('peerconnection', { flags='NO_MDNS' })
    local bad = channelTest.create(first, 'bad', '', true, false, 1)
    local terminal = 0
    bad.onError = function(Child, Error) Child.free() end
@@ -185,8 +187,8 @@ end
 end
 
 @Test function FingerprintFailureTerminatesPendingChannels()
-   local first <close> = obj.new('peerconnection', {})
-   local second <close> = obj.new('peerconnection', {})
+   local first <close> = obj.new('peerconnection', { flags='NO_MDNS' })
+   local second <close> = obj.new('peerconnection', { flags='NO_MDNS' })
    local channels = array<obj> {
       channelTest.create(first, 'first'), channelTest.create(first, 'second'),
       channelTest.create(first, 'negotiated', '', true, true, 42)
@@ -223,8 +225,8 @@ end
 end
 
 @Test function RetainedChannelsAcrossStreamReuse()
-   local first <close> = obj.new('peerconnection', {})
-   local second <close> = obj.new('peerconnection', {})
+   local first <close> = obj.new('peerconnection', { flags='NO_MDNS' })
+   local second <close> = obj.new('peerconnection', { flags='NO_MDNS' })
    local remote = {}
    local retired = array<obj>
    local received = 0

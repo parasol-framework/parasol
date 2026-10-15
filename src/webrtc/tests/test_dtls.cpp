@@ -1,10 +1,10 @@
 /*********************************************************************************************************************
 
-Phase 0 spike tests for the WebRTC DTLS transport (OpenSSL backend).
+Unit tests for the WebRTC DTLS transport (OpenSSL backend).
 
 Two DtlsTransport instances are connected through a simulated datagram network that can drop and reorder packets.
-Every datagram is checked against the configured MTU and the RFC 7983 DTLS first-byte range.  The tests establish
-that OpenSSL can provide what WebRTC needs from DTLS when it does not own the socket:
+Every datagram is checked against the configured MTU and the RFC 7983 DTLS first-byte range.  The tests cover what
+WebRTC needs from DTLS when OpenSSL does not own the socket:
 
   * ECDSA P-256 self-signed certificates and SDP-style SHA-256 fingerprints
   * Fingerprint verification, both before and after the handshake completes
@@ -17,7 +17,7 @@ This executable has no object-system dependencies and is registered with ctest u
 
 *********************************************************************************************************************/
 
-#include "../dtls_transport.h"
+#include "../dtls/dtls_transport.h"
 
 #include <array>
 
@@ -403,7 +403,7 @@ void test_classifier()
 
 int main()
 {
-   std::printf("WebRTC DTLS spike (OpenSSL)\n");
+   std::printf("WebRTC DTLS transport (OpenSSL)\n");
 
    if ((DtlsCertificate::generate(glCerts.a, "kotuku-a") != ERR::Okay) or
        (DtlsCertificate::generate(glCerts.b, "kotuku-b") != ERR::Okay)) {

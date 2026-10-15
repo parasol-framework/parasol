@@ -1,6 +1,6 @@
 // Real OpenSSL records with two SCTP associations, without sockets or object-system dependencies.
-#include "../dtls_transport.h"
-#include "../sctp_association.h"
+#include "../dtls/dtls_transport.h"
+#include "../sctp/sctp_association.h"
 
 #include <chrono>
 #include <cstdio>

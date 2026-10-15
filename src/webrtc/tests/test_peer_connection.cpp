@@ -5,8 +5,8 @@
 #include <kotuku/modules/network.h>
 #include <kotuku/modules/module.h>
 
-#include "../peer_connection.h"
-#include "../stun.h"
+#include "../peerconnection/peer_engine.h"
+#include "../stun/stun.h"
 #include "turn_adapter_support.h"
 
 

@@ -5,8 +5,8 @@
 #include <kotuku/modules/network.h>
 #include <kotuku/modules/module.h>
 
-#include "../ice_socket.h"
-#include "../stun.h"
+#include "../ice/ice_socket.h"
+#include "../stun/stun.h"
 
 
 #include <array>

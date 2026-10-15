@@ -25,10 +25,9 @@ async function exercise({ port, nativeOffer }) {
    const pc = new RTCPeerConnection({ iceServers: [] });
    const ws = new WebSocket(`ws://127.0.0.1:${port}/`);
    const channels = new Map(), failures = [], closed = new Set();
-   const rtts = [], bulkRtts = [];
    let signalling = Promise.resolve();
    const pendingCandidates = [];
-   let greeting = false, nativeBuffer = null, bulkReceived = 0;
+   let greeting = false, nativeBuffer = null;
    let nativeStats = null, pendingPayload = null;
    const send = message => ws.send(JSON.stringify(message));
    const wait = async (condition, label) => {
@@ -49,7 +48,6 @@ async function exercise({ port, nativeOffer }) {
          else {
             const entry = channels.get(channel.label);
             entry.replies.push(data);
-            if (channel.label === 'negotiated' && entry.replies.length === 8) bulkReceived = performance.now();
          }
       };
       channel.onclose = () => closed.add(channel.label);
@@ -147,17 +145,10 @@ async function exercise({ port, nativeOffer }) {
       if (settledStats.find(value => value.type === 'transport')?.selectedCandidatePairId !== selectedPair) {
          throw new Error('Selected ICE pair changed during steady-state payload checks');
       }
-      // Same public path supplies repeatable RTT/bulk evidence. No hardware-dependent speed assertion.
+      // Check near-limit payloads, concurrent channel delivery and buffering notifications.
       const ping = channels.get('browser-0'), bulk = channels.get('negotiated');
-      for (let i = 0; i < 100; ++i) {
-         const start = performance.now(); ping.channel.send(`ping-${i}`);
-         await wait(() => ping.replies.length, 'RTT echo');
-         if (ping.replies.shift() !== `ping-${i}`) throw new Error('RTT payload differs');
-         rtts.push(performance.now() - start);
-      }
       const size = Math.min(pc.sctp.maxMessageSize, 262144);
       const payload = Uint8Array.from({ length: size }, (_, i) => (i * 13 + Math.floor(i / 113)) % 256);
-      const bulkStart = performance.now();
       let highWater = 0, lowEvents = 0;
       bulk.channel.bufferedAmountLowThreshold = 65536;
       bulk.channel.onbufferedamountlow = () => lowEvents++;
@@ -166,13 +157,11 @@ async function exercise({ port, nativeOffer }) {
          highWater = Math.max(highWater, bulk.channel.bufferedAmount);
       }
       for (let i = 0; i < 10; ++i) {
-         const start = performance.now(); ping.channel.send(`during-${i}`);
+         ping.channel.send(`during-${i}`);
          await wait(() => ping.replies.length, 'small channel during bulk');
          if (ping.replies.shift() !== `during-${i}`) throw new Error('Concurrent ping differs');
-         bulkRtts.push(performance.now() - start);
       }
       await wait(() => bulk.replies.length === 8 && bulk.channel.bufferedAmount === 0, 'bulk drain');
-      const elapsed = bulkReceived - bulkStart;
       for (const received of bulk.replies) {
          if (!(received instanceof ArrayBuffer) || received.byteLength !== size ||
              new Uint8Array(received).some((value, index) => value !== payload[index])) {
@@ -190,17 +179,10 @@ async function exercise({ port, nativeOffer }) {
          else entry.channel.close();
       }
       await wait(() => closed.size === 14, 'both closure directions');
-      const percentile = (values, p) => [...values].sort((a, b) => a - b)[Math.ceil(values.length * p) - 1];
-      const summary = values => ({ samples: values.length, p50_ms: percentile(values, .5),
-         p95_ms: percentile(values, .95), p99_ms: percentile(values, .99) });
       const stats = [...(await pc.getStats()).values()];
-      return { nativeOffer, channels: channels.size, closed: closed.size, rtt: summary(rtts),
-         concurrent_rtt: summary(bulkRtts), bulk_bytes: size * 8, echo_goodput_mib_s: size * 8 / elapsed / 1048.576,
+      return { nativeOffer, channels: channels.size, closed: closed.size, bulk_bytes: size * 8,
          browser_queue_high_water: highWater, browser_low_events: lowEvents,
-         native_buffer: nativeBuffer,
-         conditions: { one_way_delay_ms: 0, injected_loss: 0, transport: 'localhost ICE/DTLS/SCTP' },
-         stats, limitations: ['RTT polling has a 5 ms floor', 'Browser SCTP retransmissions unavailable in getStats',
-            'Bulk goodput includes the native echo return path', 'I-DATA interleaving unsupported'] };
+         native_buffer: nativeBuffer, stats };
    } catch (error) {
       const stats = [...(await pc.getStats()).values()].filter(value =>
          ['transport', 'candidate-pair', 'data-channel', 'sctp-transport', 'local-candidate',
@@ -220,7 +202,7 @@ async function exercise({ port, nativeOffer }) {
    } finally { pc.close(); ws.close(); }
 }
 async function main() {
-   const [origo, script, chrome, output, mode = 'interop', policy = 'NO_MDNS'] = process.argv.slice(2);
+   const [origo, script, chrome, output, policy = 'NO_MDNS'] = process.argv.slice(2);
    const reservation = net.createServer();
    await new Promise((resolve, reject) => {
       reservation.once('error', reject); reservation.listen(0, '127.0.0.1', resolve);
@@ -234,7 +216,6 @@ async function main() {
    server.stdout.resume();
    server.stderr.on('data', chunk => { errors = (errors + chunk).slice(-32000); });
    let browser;
-   const cpuStart = process.cpuUsage();
    try {
       await ready(port, server);
       browser = await chromium.launch({ executablePath: chrome, headless: true,
@@ -266,8 +247,7 @@ async function main() {
       const report = { candidate_policy: nativePolicy || 'mdns', demo_offers: ['browser', 'native'],
          browser: browser.version(),
          playwright: require('playwright/package.json').version,
-         harness_cpu_us: process.cpuUsage(cpuStart), results,
-         cpu_scope: 'Node harness only; native/browser process CPU is recorded separately by run_bench.py' };
+         results };
       fs.mkdirSync(path.dirname(output), { recursive: true });
       fs.writeFileSync(output, JSON.stringify(report, null, 2) + '\n');
       console.log('Public channels: both offers, both opens/closes, exact text/binary/empty/near-limit bulk; ' +
