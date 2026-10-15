@@ -31,11 +31,7 @@ The WebRTC module is a host for the @PeerConnection and @WebChannel classes.
 
 #include "peerconnection/peer_engine.h"
 
-//********************************************************************************************************************
-
 class extWebChannel;
-
-//********************************************************************************************************************
 
 class extPeerConnection : public objPeerConnection {
 public:

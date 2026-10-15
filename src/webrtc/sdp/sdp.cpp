@@ -78,7 +78,7 @@ bool fingerprint(std::string_view Text)
 //********************************************************************************************************************
 // Validates the syntax of a candidate attribute.  Only component 1 is permitted, because RTCP is always multiplexed.
 
-bool valid_candidate(std::string_view Text)
+bool valid_candidate(std::string_view Text, bool *Udp = nullptr)
 {
    if (not Text.starts_with("candidate:") or Text.size() > 2048 or
        Text.find_first_of("\r\n") != std::string_view::npos) return false;
@@ -99,6 +99,7 @@ bool valid_candidate(std::string_view Text)
    if (fields[7] != "host" and fields[7] != "srflx" and fields[7] != "prflx" and
        fields[7] != "relay") return false;
 
+   if (Udp) *Udp = fields[2] IS "udp" or fields[2] IS "UDP";
    return true;
 }
 
@@ -339,9 +340,9 @@ bool parse(std::string_view Text, Description &Result)
 //********************************************************************************************************************
 // Validates a candidate attribute that has been received through trickle ICE.
 
-bool valid_candidate_line(std::string_view Text)
+bool valid_candidate_line(std::string_view Text, bool &Udp)
 {
-   return valid_candidate(Text);
+   return valid_candidate(Text, &Udp);
 }
 
 //********************************************************************************************************************

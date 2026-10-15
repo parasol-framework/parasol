@@ -995,10 +995,12 @@ ERR PeerConnection::add_ice_candidate(std::string_view Text)
    }
 
    if (remote_end) return ERR::InvalidState;
-   if (not sdp::valid_candidate_line(Text)) return ERR::InvalidData;
+   bool udp = false;
+   if (not sdp::valid_candidate_line(Text, udp)) return ERR::InvalidData;
+   if (not udp) return ERR::Okay; // Valid but unsupported, e.g. TCP
 
    ice::CandidateLine candidate;
-   if (not ice::parse_candidate(Text, candidate)) return ERR::Okay; // Valid but unsupported, e.g. TCP
+   if (not ice::parse_candidate(Text, candidate)) return ERR::InvalidData;
    if (not candidate.ufrag.empty() and candidate.ufrag != remote.data.ice_ufrag) return ERR::InvalidData;
 
    if (not remote_configured) {

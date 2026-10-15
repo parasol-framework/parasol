@@ -41,8 +41,8 @@ struct Description {
 // Both CRLF and LF line endings are accepted.  On failure Result is left unchanged.
 bool parse(std::string_view Text, Description &Result);
 
-// Validate the SDP candidate syntax without requiring support for its transport or address form.
-bool valid_candidate_line(std::string_view Text);
+// Validate the SDP candidate syntax and report whether its transport is UDP.
+bool valid_candidate_line(std::string_view Text, bool &Udp);
 
 // Serialise a validated data-channel description.  Empty string means invalid input.
 std::string serialize(const Description &Value);

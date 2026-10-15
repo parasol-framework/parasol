@@ -125,6 +125,22 @@ static int run_test() {
    auto duplicate_candidate = mixed_offer.substr(first_candidate, first_candidate_end - first_candidate + 2);
    end_candidates = mixed_offer.find("a=end-of-candidates\r\n");
    mixed_offer.insert(end_candidates, duplicate_candidate);
+   auto trickle_offer = mixed_offer;
+   trickle_offer.erase(trickle_offer.find("a=end-of-candidates\r\n"),
+      std::string_view("a=end-of-candidates\r\n").size());
+   NumericPeerConnection trickle_answer;
+   if (trickle_answer.set_remote_description(trickle_offer) != ERR::Okay or
+       trickle_answer.create_answer() != ERR::Okay) return 45;
+   if (trickle_answer.add_ice_candidate("candidate:tcp1 1 tcp 1518280447 192.0.2.10 9 typ host tcptype passive")
+       != ERR::Okay) return 46;
+   if (trickle_answer.add_ice_candidate("candidate:bad- 1 udp 2122260223 192.0.2.10 5000 typ host")
+       != ERR::InvalidData) return 47;
+   if (trickle_answer.add_ice_candidate("candidate:good 1 udp 2122260223 bad.invalid 5000 typ host")
+       != ERR::InvalidData) return 48;
+   if (trickle_answer.add_ice_candidate("candidate:good 1 udp 2122260223 192.0.2.10 5000 typ host raddr")
+       != ERR::InvalidData) return 49;
+   if (trickle_answer.add_ice_candidate("candidate:good 1 udp 2122260223 192.0.2.10 5000 typ host")
+       != ERR::Okay) return 50;
    if (a_candidate.empty() or
        a.set_local_description(a.local_description()) != ERR::Okay or
        a.signaling_state() != SignalingState::HAVE_LOCAL_OFFER or
