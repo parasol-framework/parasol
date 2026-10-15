@@ -38,29 +38,21 @@ Host candidates use random `.local` names by default.  Registration is asynchron
 trickle candidates after the initial description; the browser queues candidates until it has a remote description.
 Native names are withdrawn on close and replaced on ICE restart.  Multicast must be available on the local network;
 unavailable registration suppresses that host without exposing a numeric fallback.  For an explicit numeric-host
-test, pass `policy=NO_MDNS` to the signalling script.  The benchmark harness uses this policy to retain its baseline.
+test, pass `policy=NO_MDNS` to the signalling script.
 
 TURN is optional; media, I-DATA interleaving and general renegotiation remain unsupported.  A local relay test does not establish connectivity through every NAT/firewall topology.  Signalling is an
 unauthenticated localhost development service.  The message field limits the interactive demo to 4096 characters;
 the installed native receive limit defaults to 262144 bytes per message.  A successful Send queues a copied payload;
 it does not confirm delivery.  The browser pauses interactive sends while more than 64 KiB is buffered.
 
-Automated public API checks and benchmarks:
+Automated public API checks:
 
 ```bash
 ctest --build-config Debug --test-dir build/agents --output-on-failure -R '^(webrtc_public_channels_interop|webrtc_mdns_interop|webrtc_mdns_channels_interop)$'
-ctest --build-config Debug --test-dir build/agents --output-on-failure -L webrtc_bench
-python3 src/webrtc/tests/interop/run_bench.py --build build/agents --output build/agents/webrtc_bench
 ```
 
 The browser harness requires the pinned Playwright package and an actual Chromium executable configured through
 `WEBRTC_INTEROP_NODE_PATH`, `WEBRTC_CHROME_EXECUTABLE` and `WEBRTC_REQUIRE_INTEROP=ON`.
-
-The Python runner records benchmark logs and child-process CPU/RSS in the output directory.  The native benchmark
-measures real public ICE/DTLS loopback plus a deterministic SCTP simulation at zero impairment and at 5 ms one-way
-delay with every hundredth packet dropped.  Chromium uses unimpaired localhost.  Native GetStats snapshots expose retransmission counters and selected-route evidence; browser statistics remain a separate API.  Native and browser bulk results
-measure echo completion; simulated goodput measures one-way receipt.  Queue figures likewise distinguish public
-unsent bytes from simulation retained bytes.  See the Step 5 evidence report for measured results and fragment-sizing limits.
 
 ## TURN and network recovery
 
@@ -83,5 +75,3 @@ On an interface change the native onRestartRequired callback sends `restart-requ
 `local _, text = check peer.mtGetStats()` returns an immutable owned JSON string; decode with `json.decode(text)`.  C++ uses `peer->getStats(&text)` and releases each result with `FreeResource(text)`.  Snapshots remain valid after restart, close and parent destruction.  Version 1 uses microseconds for timestampUs/iceRttUs/sctp.rtoUs and bytes for sctp.cwndBytes/pathMtuBytes.  Timestamp, generation and byte/packet totals are decimal strings to preserve 64-bit precision; convert only when the consumer can tolerate its numeric limits.  Null RTT means no valid authenticated response sample for the selected route, and differs from a zero sample.
 
 Connection counters include accepted inner ICE/consent/DTLS datagrams and retransmissions and persist across restart/close.  Route totals belong to the local/peer pair; TURN byte totals include allocation framing and maintenance at the adapter boundary, excluding IP/TCP/TLS headers.  TURN allocation totals may include checks to other candidate peers.  These are software observations rather than NIC wire totals.  Route IDs change on restart; endpoints obey signalling privacy policy.  Closed peers report null live route, RTT and SCTP values.  This signalling example also accepts a `stats` message and returns the decoded snapshot.
-
-To measure the four native paths without rerunning acceptance, use the coturn fixture with `--channel-bench build/agents/src/webrtc/bench_webrtc_channels --benchmarks-only` alongside its required `--turnserver`, `--uclient`, `--origo` and `--evidence-dir` arguments.  Evidence includes exact payload validation, software route counters and a selected TURN transport; measurements carry no machine-dependent threshold.
