@@ -64,3 +64,5 @@ data/ssl/localhost*.p12
 data/ssl/localhost*.pem
 docs/kotuku*/
 tools/tiri_lsp/vscode_plugin/node_modules/
+
+!/CMakePresets.json
