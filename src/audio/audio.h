@@ -110,8 +110,8 @@ struct AudioSample {
    uint64_t DeferredStops = 0;
    int64_t DeferredStopDue = 0;
    AudioRingCursor Ring;
-   uint8_t History[4] = {};
-   bool HasHistory = false;
+   uint8_t History[glSincPast * 4] = {};
+   int HistoryFrames = 0;
    int64_t SourceOffset = 0;
    int64_t RetryAt = 0;
    bool Refilling = false;
@@ -147,7 +147,7 @@ struct AudioSample {
       ++Generation;
       DeferredStops = 0;
       Ring.Read = Ring.Used = 0;
-      HasHistory = false;
+      HistoryFrames = 0;
       RefillPending = Prefilled = Starved = EndOfSource = false;
       RetryAt = 0;
       Refilling = false;
@@ -209,6 +209,8 @@ struct AudioCommand {
 struct AudioChannel {
    ResamplerState Resampler;
    bool LoopHistory = false;
+   bool LoopTimeline = false;
+   int64_t TimelineOffset = 0;
    double   LVolume;        // Current left speaker volume after applying Pan (0 - 1.0)
    double   RVolume;        // Current right speaker volume after applying Pan (0 - 1.0)
    double   LVolumeTarget;  // Volume target when fading or ramping

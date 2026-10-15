@@ -518,7 +518,7 @@ ERR MixPlay(objAudio *Audio, int Handle, int64_t Position)
       sample.Ring.Read = sample.Ring.Used = 0;
       sample.SourceOffset = Position;
       sample.SourceSeek = true;
-      sample.HasHistory = false;
+      sample.HistoryFrames = 0;
       sample.Refilling = false;
       sample.RefillPending = false;
       sample.RetryAt = 0;
@@ -566,6 +566,8 @@ ERR MixPlay(objAudio *Audio, int Handle, int64_t Position)
             channel->Position    = bitpos;
             channel->PositionLow = 0;
             channel->LoopHistory = false;
+            channel->LoopTimeline = false;
+            channel->TimelineOffset = 0;
             channel->Resampler = {};
             channel->State       = CHS::PLAYING;
             channel->Flags       &= ~CHF::BACKWARD;
@@ -580,6 +582,8 @@ ERR MixPlay(objAudio *Audio, int Handle, int64_t Position)
          else channel->Position = sample.Loop1Start;
          channel->PositionLow = 0;
          channel->LoopHistory = false;
+         channel->LoopTimeline = false;
+         channel->TimelineOffset = 0;
          channel->Resampler = {};
          channel->State       = CHS::PLAYING;
          channel->Flags      &= ~CHF::BACKWARD;
@@ -598,6 +602,8 @@ ERR MixPlay(objAudio *Audio, int Handle, int64_t Position)
          }
          channel->PositionLow = 0;
          channel->LoopHistory = false;
+         channel->LoopTimeline = false;
+         channel->TimelineOffset = 0;
          channel->Resampler = {};
          channel->State = CHS::PLAYING;
    }
@@ -756,6 +762,9 @@ ERR MixSample(objAudio *Audio, int Handle, int SampleIndex)
 
    channel->SampleHandle = idx;     // Set new sample number to channel
    channel->Flags |= CHF::CHANGED;  // Sample has been changed
+   // The unfolded timeline belongs to the previous source; retain spatial playback position and direction.
+   channel->LoopTimeline = false;
+   channel->TimelineOffset = 0;
 
    // If the new sample has one Amiga-compatible loop and playing has ended (not released or stopped), set the new
    // sample and start playing from loop start.

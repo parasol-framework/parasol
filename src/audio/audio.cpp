@@ -25,8 +25,8 @@ A magnitude of 1.0 is 0 dBFS, while intermediate buses retain finite values abov
 conversion is the only stage that clips and quantises samples for the selected hardware format.  The mixer supports:
 
 <list type="bullet">
-<li>Nearest-neighbour, linear or bounded cubic Hermite source resampling selected by @Audio.Quality.  The legacy
-`ADF::OVER_SAMPLING` bit indicates interpolation; these kernels do not provide ratio-dependent anti-alias filtering.</li>
+<li>Nearest-neighbour, linear, bounded cubic Hermite or ratio-aware band-limited sinc source resampling selected by
+@Audio.Quality.  The legacy `ADF::OVER_SAMPLING` bit indicates source interpolation.</li>
 <li>Volume ramping to avoid clicks when channel volumes change, enabled by `ADF::VOL_RAMPING` independently of Quality.
 Gains move by at most 0.01 per output frame, so a full-scale transition takes 100 output frames.</li>
 <li>Two levels of low-pass output smoothing, selected with `ADF::FILTER_LOW` or `ADF::FILTER_HIGH`.  The @Audio.Quality

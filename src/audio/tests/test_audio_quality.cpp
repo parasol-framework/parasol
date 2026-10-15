@@ -217,8 +217,8 @@ static void live_write(AudioTestContext &Test)
    std::lock_guard lock(audio->MixerMutex);
    AUDIO_REQUIRE(mix_data(audio, output.size(), output.data()) IS ERR::Okay);
    AUDIO_CHECK(output IS expected);
-   AUDIO_CHECK(audio->Quality IS 100 and audio->WindowConfig.resampler IS ResamplerMode::CUBIC);
-   AUDIO_CHECK(audio->EffectiveQuality.Mode IS AudioQualityMode::STANDARD);
+   AUDIO_CHECK(audio->Quality IS 100 and audio->WindowConfig.resampler IS ResamplerMode::SINC);
+   AUDIO_CHECK(audio->EffectiveQuality.Mode IS AudioQualityMode::HIGH);
    audio->GlobalEffects->Effects.clear();
 }
 
@@ -251,8 +251,8 @@ static void window_boundary(AudioTestContext &Test)
       });
       while (!started.load(std::memory_order_acquire)) std::this_thread::yield();
       AUDIO_CHECK(write.wait_for(std::chrono::milliseconds(10)) IS std::future_status::timeout);
-      AUDIO_CHECK(audio->EffectiveQuality.Mode IS AudioQualityMode::STANDARD and
-         audio->WindowConfig.resampler IS ResamplerMode::CUBIC);
+      AUDIO_CHECK(audio->EffectiveQuality.Mode IS AudioQualityMode::HIGH and
+         audio->WindowConfig.resampler IS ResamplerMode::SINC);
    }
    AUDIO_CHECK(write.get() IS ERR::Okay);
    std::lock_guard lock(audio->MixerMutex);

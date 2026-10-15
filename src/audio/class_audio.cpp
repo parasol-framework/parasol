@@ -7,9 +7,10 @@ The Audio class provides a comprehensive audio service that works across multipl
 design model. It serves as the foundation for all audio operations in Kōtuku framework, managing hardware resources,
 sample mixing, and output buffering.
 
-The Audio class supports 8/16/32 bit output, nearest-neighbour, linear or cubic source resampling, fixed output
-smoothing, streaming for large samples, simultaneous audio channels, and command sequencing for precise timing control.  The
-internal mixer uses 32-bit floating-point arithmetic regardless of Quality or the hardware bit depth.
+The Audio class supports 8/16/32 bit output, nearest-neighbour, linear, cubic or band-limited sinc source
+resampling, fixed output smoothing, streaming for large samples, simultaneous audio channels, and command sequencing
+for precise timing control.  The internal mixer uses 32-bit floating-point arithmetic regardless of Quality or the
+hardware bit depth.
 
 <header>Formats and Layouts</header>
 
@@ -540,7 +541,7 @@ static ERR AUDIO_AddStream(extAudio *Self, struct snd::AddStream *Args)
    buffer_len = int(std::min<int64_t>((int64_t(Self->OutputRate) * Self->StreamBufferMs / 1000) * frame_bytes,
       8 * 1024 * 1024));
    buffer_len -= buffer_len % frame_size;
-   buffer_len = std::max(2 * frame_size, buffer_len);
+   buffer_len = std::max((glSincTaps / 2 + 1) * frame_size, buffer_len);
    #else
    buffer_len = Args->SampleLength > 0 ? int(std::min<int64_t>(Args->SampleLength / 2, MAX_STREAM_BUFFER)) :
       MAX_STREAM_BUFFER;
@@ -615,7 +616,7 @@ static ERR AUDIO_AddStream(extAudio *Self, struct snd::AddStream *Args)
    #ifdef AUDIO_WORKER
    ++sample.Generation;
    sample.Ring.Read = sample.Ring.Used = 0;
-   sample.HasHistory = false;
+   sample.HistoryFrames = 0;
    #endif
    Args->Result = idx;
    return ERR::Okay;
@@ -1451,7 +1452,7 @@ Flags: Special audio flags can be set here.
 Lookup: ADF
 
 The `OVER_SAMPLING`, `FILTER_LOW` and `FILTER_HIGH` bits reflect #Quality and are preserved when Flags is written.
-Other flags can be selected before initialisation.  `OVER_SAMPLING` is the legacy indication of linear or cubic
+Other flags can be selected before initialisation.  `OVER_SAMPLING` is the legacy indication of source
 interpolation.
 
 -FIELD-
@@ -1615,7 +1616,8 @@ Values outside
 <li><b>Quality 0-9</b>: Nearest-neighbour resampling without output smoothing.</li>
 <li><b>Quality 10-32</b>: Linear interpolation with `ADF::FILTER_LOW` smoothing.</li>
 <li><b>Quality 33-65</b>: Bounded four-point cubic Hermite interpolation with `ADF::FILTER_HIGH` smoothing.</li>
-<li><b>Quality 66-100</b>: Currently the same cubic interpolation as Standard with `ADF::FILTER_HIGH` smoothing.</li>
+<li><b>Quality 66-100</b>: Ratio-aware band-limited sinc resampling with `ADF::FILTER_HIGH` smoothing.
+Quality 90-100 currently aliases High; it does not select a longer kernel.</li>
 </list>
 
 With #Dither set to `ADITHER::AUTO`, Quality 33 and above enables TPDF dither for 8-bit and 16-bit output.
@@ -1631,7 +1633,13 @@ preserve the Quality-selected bits.  A live Quality change takes effect as a com
 boundary; processing already in progress retains its selected profile.  Source interpolation blends to the new
 mode over 32 rendered output frames per channel, independently of volume ramping.  Ordinary source endpoints repeat
 the endpoint value, while looping sources extend their loop.  Neither linear nor cubic interpolation is a
-ratio-dependent anti-alias filter.  Higher quality ranges will select additional algorithms in future releases.
+ratio-dependent anti-alias filter.  High uses a centred 128-tap Blackman-windowed sinc with 256 fractional phases.
+Its per-source cutoff follows the playback-to-output rate ratio; unity-rate and upsampled sources use the full
+source bandwidth.  Coefficients are prepared during module loading.  Streaming retains 63 past frames and requires
+64 future frames; starvation waits without advancing the source clock, and end-of-source repeats the last frame.
+The centred interpolation preserves source timing and adds no effect latency or delayed command completion.
+The fixed kernel is characterised through 2.7 times downsampling; at extreme ratios its finite support limits
+anti-alias rejection.  Sinc overshoot is preserved until final output conversion.
 
 *********************************************************************************************************************/
 

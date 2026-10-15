@@ -361,7 +361,11 @@ static void fold_bidirectional(AudioChannel &Channel, int64_t Start, int64_t End
    if (phase < 0) phase += 2 * length;
    const bool reverse = phase >= length;
    const int64_t folded = reverse ? 2 * length - 65536 - phase : phase;
+   const int64_t timeline = Channel.TimelineOffset + (backward ? -Channel.Position : Channel.Position);
    Channel.Position = Start + (folded >> 16);
+   Channel.TimelineOffset = timeline + (reverse ? Channel.Position : -Channel.Position);
+   // Reflection changes the integer floor by one when there is a fractional position.
+   if (Channel.PositionLow and backward != reverse) Channel.TimelineOffset += backward ? -1 : 1;
    Channel.PositionLow = folded & 0xffff;
    if (reverse) Channel.Flags |= CHF::BACKWARD;
    else Channel.Flags &= ~CHF::BACKWARD;
@@ -457,11 +461,17 @@ static bool handle_sample_end(extAudio *Self, AudioChannel &Channel)
 
       if ((Channel.LoopIndex IS 1) and (Channel.State IS CHS::RELEASED)) {
          Channel.LoopIndex = 2;
+         Channel.LoopTimeline = false;
+         Channel.TimelineOffset = 0;
          return false;
       }
 
       if (lp_type IS LTYPE::BIDIRECTIONAL) fold_bidirectional(Channel, lp_start, lp_end);
-      else Channel.Position = lp_start + (Channel.Position - lp_end) % (lp_end - lp_start);
+      else {
+         const auto previous = Channel.Position;
+         Channel.Position = lp_start + (Channel.Position - lp_end) % (lp_end - lp_start);
+         Channel.TimelineOffset += previous - Channel.Position;
+      }
    }
 
    return false;
@@ -565,8 +575,11 @@ static void mix_stream(extAudio *Self, AudioChannel &Channel, AudioSample &Sampl
       const int64_t position = Channel.PositionLow + step;
       const size_t advance = size_t(position >> 16) * frame_bytes;
       const auto mode = Self->WindowConfig.resampler;
-      const int support = mode IS ResamplerMode::CUBIC or Channel.Resampler.Weights[2] != 0 ? 3 :
+      const int support = mode IS ResamplerMode::SINC or Channel.Resampler.Weights[3] != 0 ? glSincTaps - glSincPast :
+         mode IS ResamplerMode::CUBIC or Channel.Resampler.Weights[2] != 0 ? 3 :
          (mode IS ResamplerMode::LINEAR or Channel.Resampler.Weights[1] != 0 ? 2 : 1);
+      const int past_support = support IS glSincTaps - glSincPast ? glSincPast : (support IS 3 ? 1 : 0);
+      const int gathered = past_support + support;
       const size_t needed = std::max(size_t(frame_bytes * support), advance);
 
       if (Sample.Ring.Used < needed and !Sample.EndOfSource) {
@@ -581,15 +594,21 @@ static void mix_stream(extAudio *Self, AudioChannel &Channel, AudioSample &Sampl
          return;
       }
 
-      // Retain the preceding consumed frame and gather look-ahead across the physical ring wrap.
-      // EOF repeats the last available frame; starvation waits for support without moving the cursor.
-      alignas(4) uint8_t frames[16];
-      for (int tap = 0; tap < 4; ++tap) {
+      // Keep full history at every quality so switching to High never exposes stale support.
+      // Missing look-ahead freezes the source clock; EOF extends its final frame.
+      alignas(4) uint8_t frames[glSincTaps * 4];
+      for (int tap = 0; tap < gathered; ++tap) {
          for (int byte = 0; byte < frame_bytes; ++byte) {
-            const size_t offset = std::min(size_t(std::max(0, tap - 1)),
-               Sample.Ring.Used / frame_bytes - 1) * frame_bytes;
-            frames[tap * frame_bytes + byte] = tap IS 0 and Sample.HasHistory ? Sample.History[byte] :
-               Sample.Data[(Sample.Ring.Read + offset + byte) % Sample.Data.size()];
+            if (tap < past_support and Sample.HistoryFrames) {
+               const int past = std::max(0, Sample.HistoryFrames + tap - past_support);
+               frames[tap * frame_bytes + byte] = Sample.History[past * frame_bytes + byte];
+            }
+            else {
+               const size_t offset = std::min(size_t(std::max(0, tap - past_support)),
+                  Sample.Ring.Used / frame_bytes - 1) * frame_bytes;
+               frames[tap * frame_bytes + byte] =
+                  Sample.Data[(Sample.Ring.Read + offset + byte) % Sample.Data.size()];
+            }
          }
       }
 
@@ -600,10 +619,10 @@ static void mix_stream(extAudio *Self, AudioChannel &Channel, AudioSample &Sampl
       set_mix_step(int(step));
 
       MixingParams params = {
-         .src = frames, .src_pos = 65536 + Channel.PositionLow, .total_samples = 1,
+         .src = frames, .src_pos = past_support * 65536 + Channel.PositionLow, .total_samples = 1,
          .left_vol = float(volume * Channel.LVolume), .right_vol = float(volume * Channel.RVolume),
-         .mix_dest = &dest, .length = 4, .transition = &Channel.Resampler,
-               .loop_history = Channel.LoopHistory or (Channel.Flags & CHF::BACKWARD) != CHF::NIL
+         .mix_dest = &dest, .length = gathered, .transition = &Channel.Resampler,
+         .loop_history = Channel.LoopHistory or (Channel.Flags & CHF::BACKWARD) != CHF::NIL
       };
 
       const float previous_left = dest[0];
@@ -621,10 +640,15 @@ static void mix_stream(extAudio *Self, AudioChannel &Channel, AudioSample &Sampl
 
       const size_t consumed = std::min(advance, Sample.Ring.Used);
       if (consumed >= size_t(frame_bytes)) {
-         for (int byte = 0; byte < frame_bytes; ++byte) {
-            Sample.History[byte] = Sample.Data[(Sample.Ring.Read + consumed - frame_bytes + byte) % Sample.Data.size()];
+         const int added = int(std::min(consumed / frame_bytes, size_t(glSincPast)));
+         const int retained = std::min(Sample.HistoryFrames, glSincPast - added);
+         std::memmove(Sample.History, Sample.History + (Sample.HistoryFrames - retained) * frame_bytes,
+            retained * frame_bytes);
+         for (int frame = 0; frame < added; ++frame) for (int byte = 0; byte < frame_bytes; ++byte) {
+            Sample.History[(retained + frame) * frame_bytes + byte] =
+               Sample.Data[(Sample.Ring.Read + consumed - (added - frame) * frame_bytes + byte) % Sample.Data.size()];
          }
-         Sample.HasHistory = true;
+         Sample.HistoryFrames = retained + added;
       }
       Sample.Ring.consume(consumed, Sample.Data.size(), frame_bytes);
       int64_t play_pos = int64_t(Sample.PlayPos) + consumed;
@@ -701,6 +725,7 @@ static void mix_channel(extAudio *Self, AudioChannel &Channel, int TotalSamples,
    double mastervol = Self->Mute ? 0 : Self->MasterVolume * stereo_mul;
    const double cache_master = Self->MasterVolume > 0 ? Self->MasterVolume : 1;
 
+   if (!Channel.LoopHistory and (Channel.Flags & CHF::BACKWARD) IS CHF::NIL) Channel.LoopTimeline = true;
    const int requested_frames = TotalSamples;
    float *mix_dest = (float *)Dest;
    while (TotalSamples > 0) {
@@ -745,7 +770,10 @@ static void mix_channel(extAudio *Self, AudioChannel &Channel, int TotalSamples,
                .loop_end = Channel.LoopIndex IS 2 ? sample.Loop2End : sample.Loop1End,
                .loop_type = Channel.LoopIndex IS 2 ? sample.Loop2Type : sample.Loop1Type,
                .transition = &Channel.Resampler,
-               .loop_history = Channel.LoopHistory or (Channel.Flags & CHF::BACKWARD) != CHF::NIL
+               .loop_history = Channel.LoopHistory or (Channel.Flags & CHF::BACKWARD) != CHF::NIL,
+               .loop_timeline = Channel.LoopTimeline,
+               .timeline_reverse = (Channel.Flags & CHF::BACKWARD) != CHF::NIL,
+               .timeline_offset = Channel.TimelineOffset
             };
             auto frame = mix_dest + (frames - 1) * (Self->Stereo ? 2 : 1);
             const float previous_left = frame[0];

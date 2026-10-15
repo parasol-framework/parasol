@@ -1,13 +1,18 @@
 #pragma once
 
-enum class ResamplerMode { NEAREST, LINEAR, CUBIC };
+enum class ResamplerMode { NEAREST, LINEAR, CUBIC, SINC };
+
+inline constexpr int glSincTaps = 128;
+inline constexpr int glSincPast = glSincTaps / 2 - 1;
+inline constexpr int glSincPhases = 256;
+inline constexpr int glSincCutoffs = 64;
 
 // A retargeted transition starts from the current mixture, including rapid profile writes.
 struct ResamplerState {
    bool Initialised = false;
    ResamplerMode Target = ResamplerMode::NEAREST;
-   double Weights[3] = { 1, 0, 0 };
-   double Start[3] = { 1, 0, 0 };
+   double Weights[4] = { 1, 0, 0, 0 };
+   double Start[4] = { 1, 0, 0, 0 };
    int Remaining = 0;
 };
 
@@ -24,6 +29,9 @@ struct MixingParams {
    LTYPE loop_type = LTYPE::NIL;
    ResamplerState *transition = nullptr;
    bool loop_history = false;
+   bool loop_timeline = false;
+   bool timeline_reverse = false;
+   int64_t timeline_offset = 0;
 };
 
 //********************************************************************************************************************

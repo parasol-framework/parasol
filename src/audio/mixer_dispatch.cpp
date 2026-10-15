@@ -1,6 +1,6 @@
 #include "mixer_dispatch.h"
 
-// All kernels use the same logical source extension. Ordinary ends repeat their endpoint; loops wrap or
+// All kernels repeat ordinary endpoints and extend logical loops. Ordinary ends repeat their endpoint; loops wrap or
 // reflect with duplicated endpoints (e.g. ...2,3,3,2...). Reverse playback uses the same spatial curve.
 static int64_t resampler_neighbour(int64_t Index, const MixingParams &Params)
 {
@@ -15,6 +15,8 @@ static int64_t resampler_neighbour(int64_t Index, const MixingParams &Params)
    }
    return std::clamp(Index, int64_t(0), Params.length - 1) - Params.origin;
 }
+
+#include "resampler_sinc.h"
 
 // Catmull-Rom cubic Hermite: m0=(y1-ym1)/2, m1=(y2-y0)/2;
 // p(t)=y0+t*(m0+t*(3*(y1-y0)-2*m0-m1+t*(2*(y0-y1)+m0+m1))).
@@ -34,16 +36,16 @@ static void resampler_transition(ResamplerState &State, ResamplerMode Mode)
    if (!State.Initialised) {
       State.Initialised = true;
       State.Target = Mode;
-      for (int i = 0; i < 3; ++i) State.Weights[i] = i IS int(Mode) ? 1 : 0;
+      for (int i = 0; i < 4; ++i) State.Weights[i] = i IS int(Mode) ? 1 : 0;
    }
    if (State.Target != Mode) {
       State.Target = Mode;
-      std::copy_n(State.Weights, 3, State.Start);
+      std::copy_n(State.Weights, 4, State.Start);
       State.Remaining = 32;
    }
    if (State.Remaining) {
       const double phase = double(33 - State.Remaining) / 32;
-      for (int i = 0; i < 3; ++i) {
+      for (int i = 0; i < 4; ++i) {
          State.Weights[i] = State.Start[i] * (1 - phase) + (i IS int(Mode) ? phase : 0);
       }
       --State.Remaining;
@@ -57,6 +59,12 @@ static int resampler_mix(const AudioConfig &Config, const MixingParams &Params)
    auto dest = *Params.mix_dest;
    int position = Params.src_pos;
    constexpr int channels = Stereo ? 2 : 1;
+   const double ratio = std::abs(double(glMixStep)) / 65536;
+   // Reserve 0.05 of source Nyquist for the finite transition band when downsampling.
+   const double cutoff = ratio <= 1 ? 1 : std::max(0.0, 1.0 / ratio - 0.05);
+   const double bank = cutoff * glSincCutoffs;
+   const int lower = std::min(int(bank), glSincCutoffs - 1);
+   const double blend = bank - lower;
    for (int frame = 0; frame < Params.total_samples; ++frame) {
       if (Params.transition) resampler_transition(*Params.transition, Config.resampler);
       const int base = position >> 16;
@@ -80,6 +88,25 @@ static int resampler_mix(const AudioConfig &Config, const MixingParams &Params)
             if (cubic_weight) {
                values[channel] += cubic_weight * resampler_cubic(read(-1), current, next, read(2), phase);
             }
+         }
+         const double sinc_weight = weight(ResamplerMode::SINC);
+         if (sinc_weight) {
+            const double phase_index = phase * glSincPhases;
+            const int row = int(phase_index);
+            const double fraction = phase_index - row;
+            double value = 0;
+            for (int tap = 0; tap < glSincTaps; ++tap) {
+               const double a = glSincTable.Coefficients[lower][row][tap];
+               const double b = glSincTable.Coefficients[lower][row + 1][tap];
+               const double c = glSincTable.Coefficients[lower + 1][row][tap];
+               const double d = glSincTable.Coefficients[lower + 1][row + 1][tap];
+               const double first = a + fraction * (b - a);
+               const double second = c + fraction * (d - c);
+               const auto index = sinc_neighbour(Params.origin + base + tap - glSincPast, Params);
+               value += (first + blend * (second - first)) *
+                  SampleTraits<T>::normalize(source[index * channels + channel]);
+            }
+            values[channel] += sinc_weight * value;
          }
       }
       if (Config.stereo_output) {
