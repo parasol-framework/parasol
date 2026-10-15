@@ -1,0 +1,28 @@
+   import 'net/webrtc'
+   namespace channelTest { }
+
+function channelTest.waitFor(Condition:func, Seconds:num)
+   for _ in {0 to (Seconds or 10) * 100} do
+      if Condition() then return end
+      processing.sleep(0.01)
+   end
+   assert(Condition(), 'Timed out waiting for channel progress')
+end
+
+function channelTest.connect(First:obj, Second:obj)
+   check First.mtCreateOffer()
+   channelTest.waitFor(function() return First.gatheringState is RTCGATHER_COMPLETE end)
+   check First.mtSetLocalDescription(First.localDescription)
+   check Second.mtSetRemoteDescription(First.localDescription)
+   check Second.mtCreateAnswer()
+   channelTest.waitFor(function() return Second.gatheringState is RTCGATHER_COMPLETE end)
+   check Second.mtSetLocalDescription(Second.localDescription)
+   check First.mtSetRemoteDescription(Second.localDescription)
+end
+
+-- Explicit arguments retain omission separately from the valid numeric zero and boolean false options.
+function channelTest.create(Peer:obj, Label:str, Protocol:str, Ordered:bool, Negotiated:bool,
+   ID:num, Retransmits:num, Lifetime:num):obj
+   local _, channel = check webRTC.createChannel(Peer, Label, Protocol, Ordered, Negotiated, ID, Retransmits, Lifetime)
+   return channel
+end
