@@ -9,7 +9,6 @@ static void run(AudioTestContext &Test)
       for (bool stereo : {false, true}) {
          const auto bytes = audio_frame_bytes(bits, stereo);
          AUDIO_CHECK(bytes IS unsigned((bits / 8) * (stereo ? 2 : 1)));
-         AUDIO_CHECK(legacy_period_frames(256 * bytes, bits, stereo) IS 256);
       }
    }
    AUDIO_CHECK(audio_frame_bytes(24, true) IS 0);
@@ -22,7 +21,6 @@ static void run(AudioTestContext &Test)
    AUDIO_CHECK(audio_latency(1000, 48000) > audio_latency(3 * 256, 48000));
    AUDIO_CHECK(std::abs(audio_latency(768, 44100) - 0.017414965986) < 1e-10);
    AUDIO_CHECK(audio_latency(768, 48000) IS 0.016);
-   AUDIO_CHECK(legacy_period_frames(-1, 16, true) IS 32);
    AUDIO_CHECK(audio_buffer_valid(256, 768, 4));
    AUDIO_CHECK(!audio_buffer_valid(0, 768, 4));
    AUDIO_CHECK(!audio_buffer_valid(256, 511, 4));

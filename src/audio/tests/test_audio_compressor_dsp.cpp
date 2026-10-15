@@ -812,8 +812,9 @@ static FormatResult render_format(AudioTestContext &Test, int BitDepth, const st
    extAudio *audio;
    if (!AUDIO_CHECK(NewObject(CLASSID::AUDIO, &audio) IS ERR::Okay)) return {};
    std::unique_ptr<extAudio, DeleteObject<extAudio>> owner(audio);
+   SET_Quality(audio, 0);
+   SET_Flags(audio, int(ADF::NIL));
    if (!AUDIO_CHECK(InitObject(audio) IS ERR::Okay)) return {};
-   audio->Flags = ADF::NIL;
    audio->OutputRate = 8000;
    audio->BitDepth = BitDepth;
    audio->DriverBitSize = BitDepth / 8;
@@ -821,7 +822,7 @@ static FormatResult render_format(AudioTestContext &Test, int BitDepth, const st
    audio->MasterVolume = 1;
    audio->MixElements = SAMPLE(frames);
    audio->MixBuffer.resize(frames);
-   audio->MixConfig = AudioConfig(false, false);
+   audio->MixConfig = AudioConfig(false, ResamplerMode::NEAREST);
    audio->Samples.resize(2);
    auto &sample = audio->Samples[1];
    sample.SampleType = PCM::S16_MONO;

@@ -2,12 +2,14 @@
 
 module({ name="Audio", copyright="Paul Manias © 2002-2026", version=1.0, timestamp=20240611, src={ "audio.cpp", "commands.cpp" } }, function()
   flags("ADF", { comment="Optional flags for the Audio object." },
-    "OVER_SAMPLING: Enables oversampling for higher quality audio at the cost of slower mixing.",
-    "FILTER_LOW: Enable a low level of output filtering to minimise distortion.",
-    "FILTER_HIGH: Enable a high level of output filtering to minimise distortion.",
-    "VOL_RAMPING: Enable volume ramping for softer playback when a sample is played multiple times (enabled by default).",
-    "AUTO_SAVE: Save configuration information on exit.",
-    "SYSTEM_WIDE: Mixer changes should be applied system-wide.")
+    { VOL_RAMPING = "0x00000008: Enable channel gain and voice de-clicking at every Quality (enabled by default)." },
+    { AUTO_SAVE = "0x00000010: Save configuration information on exit." },
+    { SYSTEM_WIDE = "0x00000020: Mixer changes should be applied system-wide." })
+
+  enums("ADITHER", { type="int", start=0, comment="Integer output dither policy." },
+    "AUTO: Enable TPDF for Quality 33 and above (the default).",
+    "OFF: Disable dither regardless of Quality.",
+    "TPDF: Enable triangular dither for all Quality settings.")
 
   flags("AEF", { comment="Audio effect flags." },
     "BYPASS: Skip an application effect.  Global effects cannot be bypassed.")
@@ -158,6 +160,16 @@ module({ name="Audio", copyright="Paul Manias © 2002-2026", version=1.0, timest
     vector(int) Layout      # Ordered channel identities from SPK; the length is the channel count
   ]])
 
+  structdef("EffectStatus", { comment="One coherent latency and drain-state snapshot from GetEffectStatus()." }, [[
+    large Application  # Application-chain algorithmic latency in frames
+    large Global       # Global-chain algorithmic latency in frames
+    large Total        # Total algorithmic latency along the selected path in frames
+    int Rate           # Negotiated output rate, or zero before configuration
+    large Generation   # Configuration generation shared by all paths
+    int(ADS) State     # Selected chain's drain state
+    int Truncated      # One if automatic drain reached its safety deadline
+  ]])
+
   structdef("MeterInfo", { comment="Describes one value published by an effect's meters." }, [[
     string Key         # Stable key, e.g. `input_peak_left`
     string Label       # Human-readable label
@@ -210,12 +222,11 @@ module({ name="Audio", copyright="Paul Manias © 2002-2026", version=1.0, timest
   })
 
   klass("Audio", { version=1, src="class_audio.cpp", output="class_audio_def.c", extended=true }, [[
-    ~double MaxDrain
-    ~array(int) OutputLayout
     int OutputRate
     int InputRate
     int Quality
     int(ADF) Flags     # Special flags
+    int(ADITHER) Dither
     int BitDepth       # Typically `8` or `16` bit, reflects the hardware driver's bit depth
     int Periods        # Number of periods for ALSA audio buffering
     int PeriodSize     # Frames per period for ALSA audio buffering

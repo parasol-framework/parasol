@@ -22,6 +22,8 @@ using namespace kt;
 #endif
 #include "audio_format.h"
 #include "mixer_dispatch.h"
+#include "audio_quality.h"
+#include "audio_dither.h"
 #include "audio_completions.h"
 
 #define MIX_INTERVAL 0.01
@@ -108,6 +110,8 @@ struct AudioSample {
    uint64_t DeferredStops = 0;
    int64_t DeferredStopDue = 0;
    AudioRingCursor Ring;
+   uint8_t History[glSincPast * 4] = {};
+   int HistoryFrames = 0;
    int64_t SourceOffset = 0;
    int64_t RetryAt = 0;
    bool Refilling = false;
@@ -143,6 +147,7 @@ struct AudioSample {
       ++Generation;
       DeferredStops = 0;
       Ring.Read = Ring.Used = 0;
+      HistoryFrames = 0;
       RefillPending = Prefilled = Starved = EndOfSource = false;
       RetryAt = 0;
       Refilling = false;
@@ -202,10 +207,17 @@ struct AudioCommand {
 //********************************************************************************************************************
 
 struct AudioChannel {
+   ResamplerState Resampler;
+   bool LoopHistory = false;
+   bool LoopTimeline = false;
+   int64_t TimelineOffset = 0;
    double   LVolume;        // Current left speaker volume after applying Pan (0 - 1.0)
    double   RVolume;        // Current right speaker volume after applying Pan (0 - 1.0)
    double   LVolumeTarget;  // Volume target when fading or ramping
    double   RVolumeTarget;  // Volume target when fading or ramping
+   float    LastLeft = 0, LastRight = 0; // Most recent contribution before master gain, effects and smoothing.
+   float    HeldLeft = 0, HeldRight = 0; // Fixed-frame tail for streams and overlapping retriggers.
+   int      HeldFrames = 0;
    double   Volume;         // Playing volume (0 - 1.0)
    double   Pan;            // Pan value (-1.0 - 1.0)
    int64_t  EndTime;        // Anticipated end-time of playing the current sample, if OnStop is defined in the sample.
@@ -403,7 +415,7 @@ static bool effects_pending(const AudioEffectChain &);
 
 struct ChannelSet {
    std::vector<AudioChannel> Channel;  // Array of channel objects
-   std::vector<AudioChannel> Shadow;   // Array of shadow channels for oversampling
+   std::vector<AudioChannel> Shadow;   // Array of preallocated fade-out channels
    std::vector<AudioCommand> Commands; // Buffered commands.
    std::shared_ptr<AudioEffectChain> Effects;
    std::vector<float> ScratchBuffer;
@@ -487,7 +499,13 @@ class extAudio : public objAudio {
    std::shared_ptr<AudioEffectChain> GlobalEffects = std::make_shared<AudioEffectChain>(MixerLock);
 
    AudioCompletions BatchCompletions; // Pending batch callbacks; the worker completes and the client thread dispatches.
-   AudioConfig MixConfig; // Stereo/oversampling configuration used to select the mixing routine.
+   AudioConfig MixConfig; // Requested stereo/resampling dispatch, protected by MixerMutex.
+   AudioConfig WindowConfig; // Immutable dispatch for the current mixer window.
+   AudioQualityProfile RequestedQuality = glQualityProfiles[3];
+   AudioQualityProfile EffectiveQuality = glQualityProfiles[2];
+   bool WindowDither = false;
+   AudioDitherState DitherState;
+   ADF WindowFlags = ADF::NIL; // Processing flags captured at the mixer-window boundary.
    std::vector<int> OutputLayout = { int(SPK::FRONT_LEFT), int(SPK::FRONT_RIGHT) }; // Requested output layout
    std::vector<int> CommittedLayout; // Processing layout of the last successful activation; empty if none
    int CommittedRate = 0; // Sample rate of the last successful activation, independent of device negotiation
@@ -542,7 +560,6 @@ class extAudio : public objAudio {
       uint64_t Starvations = 0;  // Count of streamed samples that ran out of buffered data.
       uint64_t PeriodFrames = 0; // Frames per device period (ALSA).
       uint64_t BufferFrames = 0; // Total frames in the device buffer.
-      float    FilterHistory[4] = {}; // Low/high-pass filter state: left d1, d2, then right d1, d2.
       unsigned FrameBytes = 0; // Bytes per frame in the device output format.
       std::vector<uint8_t> AudioBuffer; // One period of device-format output awaiting write.
    #endif
@@ -553,9 +570,18 @@ class extAudio : public objAudio {
    int     MaxChannels;    // Recommended maximum mixing channels for Sound class
    std::string Device;
    int8_t  DriverBitSize;  // Target sample bit size; accounts for stereo channel
-   bool    Stereo;
+   bool    Stereo = false;
    bool    Mute;
    bool    Initialising;   // Re-entrancy guard for Activate() while the device is being initialised.
+
+   // Call with MixerMutex held once published.  The worker writes only its effective window state.
+   void snapshot_quality() {
+      auto local_dither = Dither; // Copy to avoid data race
+      EffectiveQuality = *audio_effective_quality_profile(Quality);
+      WindowDither = local_dither IS ADITHER::TPDF or (local_dither IS ADITHER::AUTO and Quality >= 33);
+      WindowFlags = Flags;
+      WindowConfig = AudioConfig(Stereo, EffectiveQuality.Resampler);
+   }
 
    inline struct AudioChannel * GetChannel(int Handle) {
       const auto index = unsigned(Handle) >> 16;

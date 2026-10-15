@@ -212,7 +212,8 @@ end
 
    check audio.acActivate()
    assert(shifter.latency is 2048, f'The window delays by 2048 frames at 48 kHz, got {shifter.latency}')
-   err, application, _, total = audio.mtGetEffectStatus(channel)
+   err, status = audio.mtGetEffectStatus(channel)
+   application, total = status.application, status.total
    assert(err is ERR_Okay and application is 2048 and total is 2048, f'The path latency is {application} / {total}')
 
    configure(shifter, { semitones=-12, mix=0 })
@@ -310,7 +311,8 @@ end
    sound <close> = obj.new('Sound', { audio=audio, path=glFolder .. 'low-tone.wav',
       onStop=function(Sound)
          count.stops++
-         err, _, _, _, _, _, state = audio.mtGetEffectStatus(Sound.channelIndex & 0xffff0000)
+         err, status = audio.mtGetEffectStatus(Sound.channelIndex & 0xffff0000)
+         state = status.state
          state_at_stop = state
       end })
    shifter <close> = obj.new('AudioPitchShift', { audio=audio, channel=sound.channelIndex & 0xffff0000 })

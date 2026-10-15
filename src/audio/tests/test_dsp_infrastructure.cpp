@@ -460,8 +460,9 @@ static FormatContractResult render_format_contract(AudioTestContext &Test, int B
    extAudio *audio;
    if (!AUDIO_CHECK(NewObject(CLASSID::AUDIO, &audio) IS ERR::Okay)) return {};
    std::unique_ptr<extAudio, DeleteObject<extAudio>> owner(audio);
+   SET_Quality(audio, 0);
+   SET_Flags(audio, int(ADF::NIL));
    if (!AUDIO_CHECK(InitObject(audio) IS ERR::Okay)) return {};
-   audio->Flags = ADF::NIL;
    audio->OutputRate = 1000;
    audio->BitDepth = BitDepth;
    audio->DriverBitSize = BitDepth / 8;
@@ -469,7 +470,7 @@ static FormatContractResult render_format_contract(AudioTestContext &Test, int B
    audio->MasterVolume = 1;
    audio->MixElements = SAMPLE(3);
    audio->MixBuffer.resize(3);
-   audio->MixConfig = AudioConfig(false, false);
+   audio->MixConfig = AudioConfig(false, ResamplerMode::NEAREST);
    audio->Samples.resize(2);
    auto &sample = audio->Samples[1];
    sample.SampleType = PCM::S16_MONO;
@@ -553,15 +554,16 @@ static void common_mixer(AudioTestContext &Test)
    extAudio *audio;
    AUDIO_REQUIRE(NewObject(CLASSID::AUDIO, &audio) IS ERR::Okay);
    std::unique_ptr<extAudio, DeleteObject<extAudio>> owner(audio);
+   SET_Quality(audio, 0);
+   SET_Flags(audio, int(ADF::NIL));
    AUDIO_REQUIRE(InitObject(audio) IS ERR::Okay);
-   audio->Flags = ADF::NIL;
    audio->OutputRate = 1000;
    audio->BitDepth = 32;
    audio->DriverBitSize = 4;
    audio->Stereo = false;
    audio->MixElements = SAMPLE(17);
    audio->MixBuffer.resize(17);
-   audio->MixConfig = AudioConfig(false, false);
+   audio->MixConfig = AudioConfig(false, ResamplerMode::NEAREST);
    audio->Samples.resize(2);
    auto &sample = audio->Samples[1];
    sample.SampleType = PCM::S16_MONO;
@@ -600,8 +602,16 @@ static void common_mixer(AudioTestContext &Test)
    std::array<float, 17> output{};
    std::vector<float> rendered;
    audio->EffectConfigured = true;
-   snd::GetEffectStatus status{};
-   status.Channel = 1 << 16;
+   struct EffectStatus status{};
+   auto read_status = [&]() {
+      snd::GetEffectStatus args{ 1 << 16, nullptr };
+      const auto error = AUDIO_GetEffectStatus(audio, &args);
+      if (args.Status) {
+         status = *args.Status;
+         FreeResource(args.Status);
+      }
+      return error;
+   };
    bool global_only = false, upstream_silence = false;
    for (int period = 0; period < 20 and audio_playing(audio); ++period) {
       mix_data(audio, 17, output.data());
@@ -612,7 +622,7 @@ static void common_mixer(AudioTestContext &Test)
       }
       if (!application.pending() and global.pending() and channel.isStopped()) {
          global_only = true;
-         AUDIO_CHECK(AUDIO_GetEffectStatus(audio, &status) IS ERR::Okay and status.State IS ADS::DRAINING);
+         AUDIO_CHECK(read_status() IS ERR::Okay and status.State IS ADS::DRAINING);
       }
    }
    AUDIO_REQUIRE(rendered.size() > 178);
@@ -620,19 +630,19 @@ static void common_mixer(AudioTestContext &Test)
       AUDIO_CHECK(rendered[i] IS (i IS 178 ? 32767.0f / 32768.0f : 0.0f));
    }
    AUDIO_CHECK(upstream_silence and global_only and !audio_playing(audio));
-   AUDIO_CHECK(AUDIO_GetEffectStatus(audio, &status) IS ERR::Okay);
+   AUDIO_CHECK(read_status() IS ERR::Okay);
    AUDIO_CHECK(status.Application IS 107 and status.Global IS 71 and status.Total IS 178);
    AUDIO_CHECK(status.State IS ADS::IDLE);
    audio->GlobalEffects->Truncated = true;
-   AUDIO_CHECK(AUDIO_GetEffectStatus(audio, &status) IS ERR::Okay and status.Truncated IS 1);
+   AUDIO_CHECK(read_status() IS ERR::Okay and status.Truncated IS 1);
    auto application_effects = std::move(set.Effects);
-   AUDIO_CHECK(AUDIO_GetEffectStatus(audio, &status) IS ERR::Okay and status.Truncated IS 1);
+   AUDIO_CHECK(read_status() IS ERR::Okay and status.Truncated IS 1);
    set.Effects = std::move(application_effects);
    audio->GlobalEffects->Truncated = false;
    channel.State = CHS::PLAYING;
-   AUDIO_CHECK(AUDIO_GetEffectStatus(audio, &status) IS ERR::Okay and status.State IS ADS::ACTIVE);
+   AUDIO_CHECK(read_status() IS ERR::Okay and status.State IS ADS::ACTIVE);
    channel.State = CHS::STOPPED;
-   AUDIO_CHECK(AUDIO_GetEffectStatus(audio, &status) IS ERR::Okay and status.State IS ADS::IDLE);
+   AUDIO_CHECK(read_status() IS ERR::Okay and status.State IS ADS::IDLE);
    AUDIO_CHECK(SET_MaxDrain(audio, 1) IS ERR::InvalidState);
 
 

@@ -7,9 +7,9 @@ The Audio class provides a comprehensive audio service that works across multipl
 design model. It serves as the foundation for all audio operations in Kōtuku framework, managing hardware resources,
 sample mixing, and output buffering.
 
-The Audio class supports 8/16/32 bit output, with advanced features including oversampling for enhanced quality,
-intelligent streaming for large samples, multiple simultaneous audio channels, and command sequencing for precise
-timing control. The internal floating-point mixer ensures high-quality audio processing regardless of the target
+The Audio class supports 8/16/32 bit output, nearest-neighbour, linear, cubic or band-limited sinc source
+resampling, fixed output smoothing, streaming for large samples, simultaneous audio channels, and command sequencing
+for precise timing control.  The internal mixer uses 32-bit floating-point arithmetic regardless of Quality or the
 hardware bit depth.
 
 <header>Formats and Layouts</header>
@@ -274,7 +274,11 @@ static ERR AUDIO_Activate(extAudio *Self)
    Self->MixBuffer.resize(mix_buffer_size / sizeof(float));
    Self->MixElements = SAMPLE(mix_buffer_size / mixbitsize);
 
-   Self->MixConfig = AudioConfig(Self->Stereo, (Self->Flags & ADF::OVER_SAMPLING) != ADF::NIL);
+   {
+      std::lock_guard mixer_lock(Self->MixerMutex);
+      Self->MixConfig = AudioConfig(Self->Stereo, Self->RequestedQuality.Resampler);
+      Self->snapshot_quality();
+   }
 
 #ifdef AUDIO_WORKER
    error = commit_audio_output(Self, committed, start_audio_worker);
@@ -537,7 +541,7 @@ static ERR AUDIO_AddStream(extAudio *Self, struct snd::AddStream *Args)
    buffer_len = int(std::min<int64_t>((int64_t(Self->OutputRate) * Self->StreamBufferMs / 1000) * frame_bytes,
       8 * 1024 * 1024));
    buffer_len -= buffer_len % frame_size;
-   buffer_len = std::max(2 * frame_size, buffer_len);
+   buffer_len = std::max((glSincTaps / 2 + 1) * frame_size, buffer_len);
    #else
    buffer_len = Args->SampleLength > 0 ? int(std::min<int64_t>(Args->SampleLength / 2, MAX_STREAM_BUFFER)) :
       MAX_STREAM_BUFFER;
@@ -612,6 +616,7 @@ static ERR AUDIO_AddStream(extAudio *Self, struct snd::AddStream *Args)
    #ifdef AUDIO_WORKER
    ++sample.Generation;
    sample.Ring.Read = sample.Ring.Used = 0;
+   sample.HistoryFrames = 0;
    #endif
    Args->Result = idx;
    return ERR::Okay;
@@ -732,6 +737,7 @@ static ERR AUDIO_Deactivate(extAudio *Self)
 
    {
       std::lock_guard lock(Self->MixerMutex);
+      Self->DitherState.reset();
       Self->OutputActive = false;
       Self->EffectConfigured = false;
       Self->GlobalEffects->reset();
@@ -808,11 +814,7 @@ static ERR AUDIO_OpenChannels(extAudio *Self, struct snd::OpenChannels *Args)
 
    ChannelSet channels;
    channels.Channel.resize(Args->Total);
-   #ifdef AUDIO_WORKER
-   channels.Shadow.resize(Args->Total); // Quality may enable oversampling during playback.
-   #else
-   if ((Self->Flags & ADF::OVER_SAMPLING) != ADF::NIL) channels.Shadow.resize(Args->Total);
-   #endif
+   channels.Shadow.resize(Args->Total); // De-clicking is independent of source resampling quality.
    channels.Tempo = 125;
    channels.MixLeft = channels.TickFrames(Self->OutputRate);
    channels.Commands.reserve(1024);
@@ -936,6 +938,7 @@ static ERR AUDIO_SaveToObject(extAudio *Self, struct acSaveToObject *Args)
       config->write("AUDIO", "OutputRate", std::to_string(Self->OutputRate));
       config->write("AUDIO", "InputRate", std::to_string(Self->InputRate));
       config->write("AUDIO", "Quality", std::to_string(Self->Quality));
+      config->write("AUDIO", "Dither", std::to_string(int(Self->Dither)));
       config->write("AUDIO", "BitDepth", std::to_string(Self->BitDepth));
       config->write("AUDIO", "Periods", std::to_string(Self->Periods));
       config->write("AUDIO", "StreamBufferMs", std::to_string(Self->StreamBufferMs));
@@ -1439,13 +1442,16 @@ static ERR SET_Device(extAudio *Self, const std::string_view &Value)
 /*********************************************************************************************************************
 
 -FIELD-
+Dither: Selects triangular dither for integer output.
+Lookup: ADITHER
+
+The default is `ADITHER::AUTO`.  Real-time changes take effect at the next mixer-window boundary.
+
+-FIELD-
 Flags: Special audio flags can be set here.
 Lookup: ADF
 
-The audio class supports a number of special flags that affect internal behaviour.  The following table illustrates the
-publicly available flags:
-
-!ADF
+Flags can be selected before initialisation.  Source resampling is controlled by #Quality.
 
 -FIELD-
 InputRate: Determines the frequency to use when recording audio data.
@@ -1599,37 +1605,72 @@ static ERR SET_PeriodSize(extAudio *Self, int Value)
 -FIELD-
 Quality: Determines the quality of the audio mixing.
 
-The Quality field controls the precision and filtering applied during audio mixing operations. This setting automatically
-configures multiple internal processing parameters to balance audio fidelity against computational overhead.
-
-The value range spans from 0 (minimal processing) to 100 (maximum fidelity), with recommended settings between 70-80
-for most applications. This range provides an optimal balance between audio clarity and system performance.
-
-Setting the Quality value automatically adjusts the following processing flags:
+Quality selects source resampling and integer output dither.  No profile enables post-mix smoothing.
+All profiles mix in 32-bit floating-point; this field does not change arithmetic precision or perform true oversampling.
+The default is 80.
+Values outside
+0..100 return `ERR::OutOfRange` without changing the current profile.  Invalid saved values retain the default.
 
 <list type="bullet">
-<li><b>Quality 0-9</b>: Minimal processing, no filtering or oversampling applied.</li>
-<li><b>Quality 10-32</b>: Enables `ADF::FILTER_LOW` for basic output filtering.</li>
-<li><b>Quality 33-65</b>: Activates `ADF::FILTER_HIGH` for enhanced frequency response.</li>
-<li><b>Quality 66-100</b>: Implements `ADF::OVER_SAMPLING` and `ADF::FILTER_HIGH` for maximum fidelity.</li>
+<li><b>Quality 0-9</b>: Nearest-neighbour resampling.</li>
+<li><b>Quality 10-32</b>: Linear interpolation.</li>
+<li><b>Quality 33-65</b>: Bounded four-point cubic Hermite interpolation.</li>
+<li><b>Quality 66-100</b>: Ratio-aware band-limited sinc resampling.
+Quality 90-100 currently aliases High; it does not select a longer kernel.</li>
 </list>
+
+With #Dither set to `ADITHER::AUTO`, Quality 33 and above enables TPDF dither for 8-bit and 16-bit output.
+`ADITHER::OFF` always disables it; `ADITHER::TPDF` enables it at every Quality.  Float conversion is unchanged.
+Dither is added immediately before rounding to nearest integer, with triangular noise bounded by one destination
+LSB in either direction.  Both representable endpoints saturate, including samples at or beyond -1 and +1.
+Exact-zero samples suppress noise immediately, without a silent-interval timer.  Independent channel streams
+advance through silence and reset to fixed seeds on deactivation and every committed output configuration.
+Live policy changes do not reset the streams.  No noise shaping is applied.
+
+A live Quality change takes effect as a complete profile at the next mixer-window boundary; processing already in
+progress retains its selected profile.
+Source interpolation blends to the new mode over 32 rendered output frames per channel, independently of volume ramping.
+Ordinary source endpoints repeat the endpoint value, while looping sources extend their loop.  Neither linear nor
+cubic interpolation is a ratio-dependent anti-alias filter.  High uses a centred 128-tap Blackman-windowed sinc with 256 fractional phases.
+Its per-source cutoff follows the playback-to-output rate ratio; unity-rate and upsampled sources use the full
+source bandwidth.  Coefficients are prepared during module loading.  Streaming retains 63 past frames and requires
+64 future frames; starvation waits without advancing the source clock, and end-of-source repeats the last frame.
+The centred interpolation preserves source timing and adds no effect latency or delayed command completion.
+The fixed kernel is characterised through 2.7 times downsampling; at extreme ratios its finite support limits
+anti-alias rejection.  Sinc overshoot is preserved until final output conversion.
 
 *********************************************************************************************************************/
 
 static ERR SET_Quality(extAudio *Self, int Value)
 {
+   const auto profile = audio_quality_profile(Value);
+   if (!profile) return ERR::OutOfRange;
    std::lock_guard mixer_lock(Self->MixerMutex);
    Self->Quality = Value;
-
-   Self->Flags &= ~(ADF::FILTER_LOW|ADF::FILTER_HIGH|ADF::OVER_SAMPLING);
-
-   if (Self->Quality < 10) {}
-   else if (Self->Quality < 33) Self->Flags |= ADF::FILTER_LOW;
-   else if (Self->Quality < 66) Self->Flags |= ADF::FILTER_HIGH;
-   else Self->Flags |= ADF::OVER_SAMPLING|ADF::FILTER_HIGH;
-   Self->MixConfig = AudioConfig(Self->Stereo, (Self->Flags & ADF::OVER_SAMPLING) != ADF::NIL);
-
+   Self->RequestedQuality = *profile;
+   Self->MixConfig = AudioConfig(Self->Stereo, profile->Resampler);
    return ERR::Okay;
+}
+
+static ERR SET_Flags(extAudio *Self, int Value)
+{
+   if (Self->initialised()) return ERR::ImmutableField;
+   const auto flags = ADF(Value);
+   if ((flags & ~(ADF::VOL_RAMPING | ADF::AUTO_SAVE | ADF::SYSTEM_WIDE)) != ADF::NIL) return ERR::Args;
+   Self->Flags = flags;
+   return ERR::Okay;
+}
+
+// Configuration reads use the same setter as public writes; malformed or invalid saved values leave it unchanged.
+static void load_audio_quality(extAudio *Self, objConfig *Config)
+{
+   std::string saved;
+   if (Config->read("AUDIO", "Quality", saved) != ERR::Okay) return;
+   char *end;
+   const auto quality = std::strtol(saved.c_str(), &end, 0);
+   if (end != saved.c_str() and end IS saved.c_str() + saved.size() and quality >= 0 and quality <= 100) {
+      SET_Quality(Self, int(quality));
+   }
 }
 
 /*********************************************************************************************************************
@@ -1682,7 +1723,8 @@ extAudio::extAudio(objMetaClass *ClassPtr, OBJECTID ObjectID) : objAudio(ClassPt
    InputRate   = 44100;        // Input rate for recording
    Quality     = 80;
    BitDepth    = 16;
-   Flags       = ADF::OVER_SAMPLING|ADF::FILTER_HIGH|ADF::VOL_RAMPING;
+   Flags       = ADF::VOL_RAMPING;
+   SET_Quality(this, Quality);
    #ifdef ALSA_ENABLED
    Periods     = 3;
    PeriodSize  = 256;
@@ -1722,7 +1764,14 @@ extAudio::extAudio(objMetaClass *ClassPtr, OBJECTID ObjectID) : objAudio(ClassPt
    if (config.ok()) {
       config->read("AUDIO", "OutputRate", OutputRate);
       config->read("AUDIO", "InputRate", InputRate);
-      config->read("AUDIO", "Quality", Quality);
+      load_audio_quality(this, *config);
+      std::string dither;
+      if (config->read("AUDIO", "Dither", dither) IS ERR::Okay) {
+         char *end;
+         const auto value = std::strtol(dither.c_str(), &end, 0);
+         if (end != dither.c_str() and end IS dither.c_str() + dither.size() and
+             value >= int(ADITHER::AUTO) and value <= int(ADITHER::TPDF)) Dither = ADITHER(value);
+      }
       config->read("AUDIO", "BitDepth", BitDepth);
 
       int value;
@@ -1746,7 +1795,6 @@ extAudio::extAudio(objMetaClass *ClassPtr, OBJECTID ObjectID) : objAudio(ClassPt
 
       if ((BitDepth != 8) and (BitDepth != 16) and (BitDepth != 24) and (BitDepth != 32)) BitDepth = 16;
       if (!config->read("AUDIO", "PeriodFrames", value)) SET_PeriodSize(this, value);
-      SET_Quality(this, Quality);
 
       // Find the mixer section, then load the mixer information
 
@@ -1788,6 +1836,7 @@ extAudio::extAudio(objMetaClass *ClassPtr, OBJECTID ObjectID) : objAudio(ClassPt
          }
       }
    }
+   snapshot_quality();
 }
 
 //********************************************************************************************************************
@@ -1821,7 +1870,7 @@ extAudio::~extAudio() {
 GetEffectStatus: Reads DSP drain state and serial-path latency together.
 
 GetEffectStatus() returns a consistent snapshot of one signal path's effect latency and drain state, taken under the
-mixer lock so that all output values describe the same moment.
+mixer lock so that all fields of the returned !EffectStatus describe the same moment.
 
 The path is selected with `Channel`.  A channel-set handle selects that application's chain followed by the global
 chain.  Zero selects the global path, in which case `Application` is always zero and the drain state accounts for
@@ -1836,24 +1885,22 @@ sum of `Application` and `Global`, and only includes effects that are not bypass
 still had pending output.  It is cleared when new source audio reaches the chain or the chain is reset.
 
 `Generation` is incremented whenever the effect configuration or DSP history of any path changes, and is written
-even when the call fails.  Compare it between calls to detect intervening resets or reconfiguration.  The remaining
-outputs are not meaningful if an error is returned.
+even when validation fails.  Compare it between calls to detect intervening resets or reconfiguration.  The remaining
+fields are not meaningful if an error is returned.  If allocation fails, no snapshot is returned.
+
+The snapshot is allocated by the Audio object and remains valid after later calls or configuration changes.  C++
+clients must release it with ~Core.FreeResource(), including when the method returns a validation error.
 
 -INPUT-
-int Channel:        Channel-set handle, or zero for the global path.
-&large Application: Application-chain algorithmic latency.
-&large Global:      Global-chain algorithmic latency.
-&large Total:       Total algorithmic latency along this path.
-&int Rate:          Negotiated output rate, or zero before configuration.
-&large Generation:  Configuration generation shared by all paths.
-&int(ADS) State:    Selected chain's drain state.
-&int Truncated:     One if automatic drain reached its safety deadline.
+int Channel: Channel-set handle, or zero for the global path.
+!struct(*EffectStatus) Status: Receives an owned snapshot of the path's latency and drain state.
 
 -ERRORS-
 Okay
 NullArgs
+AllocMemory
 Args: The channel-set handle is invalid or closed.
-NotInitialised: No output configuration is available; Rate is zero.
+NotInitialised: No output configuration is available; Status.Rate is zero.
 OutOfRange: Serial latency cannot be represented in a signed 64-bit frame count.
 
 -END-
@@ -1880,17 +1927,21 @@ static ERR AUDIO_GetEffectStatus(extAudio *Self, struct snd::GetEffectStatus *Ar
 {
    if (!Args) return ERR::NullArgs;
 
+   Args->Status = nullptr;
+   struct EffectStatus *status;
+   if (AllocResource(sizeof(struct EffectStatus), MEM::NIL, (APTR *)&status, nullptr) != ERR::Okay) {
+      return ERR::AllocMemory;
+   }
+   Args->Status = status;
+
    std::lock_guard lock(Self->MixerMutex);
-   Args->Application = Args->Global = Args->Total = 0;
-   Args->Rate = 0;
-   Args->Generation = *Self->GlobalEffects->Generation;
-   Args->State = ADS::IDLE;
-   Args->Truncated = 0;
+   status->Generation = *Self->GlobalEffects->Generation;
+   status->State = ADS::IDLE;
 
    if (!effect_channel_valid(Self, Args->Channel)) return ERR::Args;
    if (!Self->EffectConfigured) return ERR::NotInitialised;
 
-   Args->Rate = Self->OutputRate;
+   status->Rate = Self->OutputRate;
    bool source_active = false, upstream_pending = false;
    for (size_t index = 1; index < Self->Sets.size(); ++index) {
       if (Args->Channel and index != (unsigned(Args->Channel) >> 16)) continue;
@@ -1903,20 +1954,20 @@ static ERR AUDIO_GetEffectStatus(extAudio *Self, struct snd::GetEffectStatus *Ar
    auto chain = effect_chain(Self, Args->Channel);
    bool path_pending = upstream_pending or (chain and chain->pending());
    if (Args->Channel) path_pending |= Self->GlobalEffects->pending();
-   Args->State = source_active ? ADS::ACTIVE :
-      (path_pending ? ADS::DRAINING : ADS::IDLE);
 
-   Args->Truncated = (chain and chain->Truncated) or (Args->Channel and Self->GlobalEffects->Truncated);
+   status->State = source_active ? ADS::ACTIVE : (path_pending ? ADS::DRAINING : ADS::IDLE);
+
+   status->Truncated = (chain and chain->Truncated) or (Args->Channel and Self->GlobalEffects->Truncated);
    if (chain) {
       if (Args->Channel) {
-         auto error = chain->latency(Args->Application);
+         auto error = chain->latency(status->Application);
          if (error != ERR::Okay) return error;
       }
    }
 
-   if (auto error = Self->GlobalEffects->latency(Args->Global); error != ERR::Okay) return error;
-   if (Args->Application > INT64_MAX - Args->Global) return ERR::OutOfRange;
-   Args->Total = Args->Application + Args->Global;
+   if (auto error = Self->GlobalEffects->latency(status->Global); error != ERR::Okay) return error;
+   if (status->Application > INT64_MAX - status->Global) return ERR::OutOfRange;
+   status->Total = status->Application + status->Global;
    return ERR::Okay;
 }
 
@@ -2145,17 +2196,18 @@ static const FieldArray clAudioFields[] = {
    { "OutputRate",    FDF_INT|FDF_RI, nullptr, SET_OutputRate },
    { "InputRate",     FDF_INT|FDF_RI },
    { "Quality",       FDF_INT|FDF_RW,      nullptr, SET_Quality },
-   { "Flags",         FDF_INTFLAGS|FDF_RI, nullptr, nullptr, &clAudioFlags },
+   { "Flags",         FDF_INTFLAGS|FDF_RI, nullptr, SET_Flags, &clAudioFlags },
+   { "Dither",        FDF_INT|FDF_LOOKUP|FDF_RW, nullptr, nullptr, &clAudioDither },
    { "BitDepth",      FDF_INT|FDF_RI,      nullptr, SET_BitDepth },
    { "Periods",       FDF_INT|FDF_RI,      nullptr, SET_Periods },
    { "PeriodSize",    FDF_INT|FDF_RI,      nullptr, SET_PeriodSize },
    // VIRTUAL FIELDS
-   { "MaxDrain",      FDF_VIRTUAL|FDF_DOUBLE|FDF_RW, GET_MaxDrain, SET_MaxDrain },
+   { "MaxDrain",      FDF_DOUBLE|FDF_RW, GET_MaxDrain, SET_MaxDrain },
    { "Device",        FDF_CPPSTRING|FDF_RW|FDF_PURE,  GET_Device, SET_Device },
    { "MixerLag",      FDF_DOUBLE|FDF_R,               GET_MixerLag },
    { "MasterVolume",  FDF_DOUBLE|FDF_RW|FDF_PURE,     GET_MasterVolume, SET_MasterVolume },
    { "Mute",          FDF_INT|FDF_RW,                 GET_Mute, SET_Mute },
-   { "OutputLayout",  FDF_VIRTUAL|FDF_INT|FDF_ARRAY|FDF_RW|FDF_PURE, GET_OutputLayout, SET_OutputLayout },
+   { "OutputLayout",  FDF_INT|FDF_ARRAY|FDF_RW|FDF_PURE, GET_OutputLayout, SET_OutputLayout },
    END_FIELD
 };
 
