@@ -405,6 +405,11 @@ static ERR VECTOR_Init(extVector *Self)
       if (auto error = set_parent(Self, Self->Owner); error != ERR::Okay) return log.warning(error);
    }
 
+   if ((Self->Flags & VF::STICK_TO_BACK) != VF::NIL) { // Take position at the back, behind existing sticky vectors
+      struct vec::Push push = { -32768 };
+      VECTOR_Push(Self, &push);
+   }
+
    log.trace("Parent: #%d, Siblings: #%d #%d, Vector: %p", Self->Parent ? Self->Parent->UID : 0,
       Self->Prev ? Self->Prev->UID : 0, Self->Next ? Self->Next->UID : 0, Self);
 
@@ -437,6 +442,8 @@ static ERR VECTOR_Init(extVector *Self)
 /*********************************************************************************************************************
 -ACTION-
 MoveToBack: Move a vector to the back of its stack.
+
+The vector will not be moved behind any sibling marked with `VF::STICK_TO_BACK`.
 
 *********************************************************************************************************************/
 
@@ -615,6 +622,10 @@ It is not possible for an vector to move outside of its branch, i.e. it cannot c
 reaches the edge of its branch with excess units remaining, the method will return immediately with an `ERR::Okay`
 error code.
 
+When moving backwards, the scan will stop if it encounters a sibling marked with `VF::STICK_TO_BACK`.  The vector will
+not move behind that sibling, which allows backgrounds and other priority vectors to keep their place at the back of
+the stack.
+
 -INPUT-
 int Position: Specify a relative position index here (-ve to move backwards, +ve to move forwards)
 
@@ -636,7 +647,11 @@ static ERR VECTOR_Push(extVector *Self, struct vec::Push *Args)
 
    auto scan = Self;
    if (Args->Position < 0) { // Move backward through the stack.
-      for (int i=-Args->Position; (scan->Prev) and (i); i--) scan = (extVector *)scan->Prev;
+      for (int i=-Args->Position; (scan->Prev) and (i); i--) {
+         // Vectors marked with STICK_TO_BACK cannot be passed.
+         if ((((extVector *)scan->Prev)->Flags & VF::STICK_TO_BACK) != VF::NIL) break;
+         scan = (extVector *)scan->Prev;
+      }
       if (scan IS Self) return ERR::Okay;
 
       // Patch up either side of the current position.

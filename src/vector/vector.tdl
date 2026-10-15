@@ -22,7 +22,8 @@ module({ name='Vector', copyright='Paul Manias © 2010-2026', version=1.0, times
      "DISABLED: The vector is disabled and user input should be ignored.",
      "HAS_FOCUS: The vector holds the user's input focus.",
      "JOIN_PATHS: When appending a new path, use a join operation to connect the tail end to the head.",
-     "ISOLATED: Enables isolation mode, which results in a bitmap buffer being allocated for the vector and its children while drawing.")
+     "ISOLATED: Enables isolation mode, which results in a bitmap buffer being allocated for the vector and its children while drawing.",
+     "STICK_TO_BACK: Keeps the vector at the back of the Z-order.")
 
   enums("GMT", { type="int", start=0, comment="Available modes for the GradientMesh class." },
     "UNDEFINED: Either the default setting will be applied or the setting will be inherited from a parent object.",
