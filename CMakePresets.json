@@ -52,6 +52,12 @@
     {
       "name": "release-package",
       "displayName": "Release package build",
+      "description": "Windows-only packaging; the project enables CPack only on Windows.",
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Windows"
+      },
       "binaryDir": "${sourceDir}/build/presets/${presetName}",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Release",
@@ -113,6 +119,11 @@
     {
       "name": "release-build",
       "configurePreset": "release-package",
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Windows"
+      },
       "configuration": "Release"
     }
   ],
@@ -149,6 +160,11 @@
     {
       "name": "release-package",
       "configurePreset": "release-package",
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Windows"
+      },
       "configurations": ["Release"],
       "generators": ["ZIP"]
     }
@@ -192,7 +208,7 @@
     },
     {
       "name": "release-package",
-      "displayName": "Configure, build, and package Release",
+      "displayName": "Configure, build, and package Release (Windows only)",
       "steps": [
         {"type": "configure", "name": "release-package"},
         {"type": "build", "name": "release-build"},
