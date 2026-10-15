@@ -3,10 +3,65 @@
 #include <cstdio>
 
 using namespace net::mdns;
+
 static int fail(int Step) { std::fprintf(stderr, "mDNS failed at %d\n", Step); return Step; }
+
 static Message answer(std::string Name, Address Address, uint32_t TTL = 120) {
-   Message result; result.response = true; result.records.push_back({Name, Address, TTL}); return result;
+   Message result; result.response = true;
+   result.records.push_back({Name, Address, TTL});
+   return result;
 }
+
+static bool saturated_queries(unsigned ScopeCount) {
+   Engine engine;
+   std::vector<Address> scopes;
+
+   for (unsigned i = 0; i < ScopeCount; ++i) scopes.push_back({{192, 0, 2, 1}, i + 1});
+
+   for (unsigned i = 0; i < 64; ++i) {
+      if (not engine.resolve(std::to_string(i) + ".local", scopes, 0)) return false;
+   }
+
+   for (uint64_t time : {0, 500000, 1500000}) {
+      std::vector<Packet> packets;
+      for (unsigned batch = 0; batch < (64 * ScopeCount + 127) / 128; ++batch) {
+         engine.tick(time);
+         engine.tick(time); // A full queue must not consume retries or repeat already queued scopes.
+         auto output = engine.take_output();
+         if (output.size() > 128) return false;
+         for (auto &packet : output) packets.push_back(std::move(packet));
+      }
+
+      if (packets.size() != 64 * ScopeCount) return false;
+
+      std::array<std::array<unsigned, 32>, 64> counts{};
+
+      for (const auto &packet : packets) {
+         Message message;
+         if (not decode(packet.bytes, message) or message.questions.size() != 1 or
+             packet.interface_index < 1 or packet.interface_index > ScopeCount or packet.ipv6) return false;
+         bool found = false;
+         for (unsigned i = 0; i < 64; ++i) {
+            if (message.questions[0].name != std::to_string(i) + ".local") continue;
+            ++counts[i][packet.interface_index - 1];
+            found = true;
+            break;
+         }
+         if (not found) return false;
+      }
+
+      for (const auto &count : counts) {
+         for (unsigned i = 0; i < ScopeCount; ++i) if (count[i] != 1) return false;
+      }
+
+      engine.tick(time + 499999);
+      if (not engine.take_output().empty()) return false;
+   }
+
+   engine.tick(3000000);
+   return not engine.pending() and engine.take_results().size() IS 64;
+}
+
 int main() {
    Address a{{192, 0, 2, 1}, 2}, b{{192, 0, 2, 2}, 2};
    Address v6{{0x20, 1, 0x0d, 0xb8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1}, 2, true};
@@ -111,5 +166,9 @@ int main() {
    if (engine.register_name("overflow.local", a, 30000000)) return fail(37);
    engine.failed(2, false); engine.tick(33000000);
    if (engine.pending() or not engine.take_output().empty()) return fail(38);
+   // Three scopes splits a query across batches; four reproduces the review case; 32 is the maximum.
+   if (not saturated_queries(3)) return fail(39);
+   if (not saturated_queries(4)) return fail(40);
+   if (not saturated_queries(32)) return fail(41);
    std::puts("mDNS codec, scoped cache, bounds, probing, conflict, withdrawal and cancellation passed");
 }

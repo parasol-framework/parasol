@@ -15,7 +15,9 @@ struct Address {
    bool ipv6 = false;
    bool operator==(const Address &) const = default;
 };
+
 struct Question { std::string name; uint16_t type = 255; bool unicast = false; };
+
 struct Record {
    std::string name;
    Address address;
@@ -23,11 +25,13 @@ struct Record {
    bool flush = true;
    uint8_t section = 0; // Answer, authority, additional.
 };
+
 struct Message {
    bool response = false;
    std::vector<Question> questions;
    std::vector<Record> records;
 };
+
 bool valid_name(std::string_view Name);
 bool usable_address(const Address &Value);
 bool decode(std::span<const uint8_t> Packet, Message &Result);
@@ -40,6 +44,7 @@ struct Resolution { std::string name; std::vector<Address> addresses; };
 
 // At most 32 records, 64 pending names, eight answers per name, and 256 scoped cache entries.
 // Resolution takes at most three seconds.  No unicast DNS fallback or unsolicited cache insertion.
+
 class Engine {
 public:
    bool register_name(std::string_view Name, const Address &Value, uint64_t NowUs);
@@ -64,9 +69,10 @@ private:
       std::vector<Address> scopes, answers;
       uint64_t expires = 0, next = 0, settle = 0;
       unsigned attempts = 0;
+      size_t next_scope = 0;
    };
    struct Cached { std::string name; Address address; uint64_t expires; uint64_t received; };
-   void emit(const Message &Value, uint32_t Interface, bool IPv6);
+   bool emit(const Message &Value, uint32_t Interface, bool IPv6);
    void announce(Local &Value, uint32_t TTL);
    std::vector<Local> locals;
    std::vector<Query> queries;
@@ -77,6 +83,7 @@ private:
 
 // Scoped multicast sockets, polled non-blockingly with a finite packet budget.  Separate instances share
 // UDP 5353 with system responders, but own independent registrations and caches; destruction sends goodbyes.
+
 class Service {
 public:
    Service();
