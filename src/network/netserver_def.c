@@ -26,8 +26,8 @@ FDEF maDisconnectClient[] = { { "Client", FD_OBJECTPTR }, { 0, 0 } };
 FDEF maDisconnectSocket[] = { { "Socket", FD_OBJECTPTR }, { 0, 0 } };
 
 static const struct MethodEntry clNetServerMethods[] = {
-   { AC(-7), (APTR)NETSERVER_DisconnectClient, "DisconnectClient", maDisconnectClient, sizeof(struct ns::DisconnectClient) },
-   { AC(-8), (APTR)NETSERVER_DisconnectSocket, "DisconnectSocket", maDisconnectSocket, sizeof(struct ns::DisconnectSocket) },
+   { AC(-20), (APTR)NETSERVER_DisconnectClient, "DisconnectClient", maDisconnectClient, sizeof(struct ns::DisconnectClient) },
+   { AC(-21), (APTR)NETSERVER_DisconnectSocket, "DisconnectSocket", maDisconnectSocket, sizeof(struct ns::DisconnectSocket) },
    { AC::NIL, 0, 0, 0, 0 }
 };
 

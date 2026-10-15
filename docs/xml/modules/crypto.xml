@@ -5,11 +5,11 @@
   <info>
     <name>Crypto</name>
     <type>module</type>
-    <comment>Provides hashing, secure random data, base64 coding, certificate generation, signature verification and
-protected persistence.</comment>
+    <comment>Provides cryptographic primitives for binary data.</comment>
     <version>1</version>
     <copyright>Paul Manias © 2026</copyright>
     <description>
+<p>BETA: This module is not finalised for production use.</p>
 <p>The Crypto module provides a small set of cryptographic primitives for binary data.  All inputs are treated as raw byte arrays and may contain null bytes.  Hashing and signature verification use BearSSL on Linux and CNG on Windows. Certificate generation uses OpenSSL on Linux and CNG on Windows.  Random data is obtained from the host platform. MD5 and SHA-1 are available only for compatibility uses such as checksums, ETags, git object identifiers, UUID version 5 and HTTP digest authentication.  They are not suitable for security purposes; use SHA-256 or SHA-512 for new designs.</p>
 <p>Each input array argument is limited to 1 MiB (1048576 bytes).  Array results are written to caller-supplied buffers. Certificate generation instead returns PEM and fingerprint strings supplied by the caller.</p>
 <p><function>WriteProtectedFile</function> is the exception to the otherwise in-memory API.  It is a small persistence primitive for security-sensitive records that need owner-only access and atomic replacement.</p></description>
