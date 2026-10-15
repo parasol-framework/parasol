@@ -175,20 +175,17 @@ static BYTELEN fill_stream_buffer(int Handle, AudioSample &Sample, int64_t Offse
    }
    else if (Sample.Callback.isScript()) {
       std::span span(Sample.Data.data(), size_t(Sample.SampleLength) * Sample.FrameBytes);
+      int returned = 0;
       const auto args = std::to_array<ScriptArg>({
          { "Handle", Handle },
          { "Offset", Offset },
-         { "Buffer", &span, FDF_SPAN|FD_BYTE }
+         { "Buffer", &span, FDF_SPAN|FD_BYTE },
+         { "Result", &returned, FD_PTR|FD_RESULT|FD_INT }
       });
 
       ERR result;
-      auto script = (objScript *)Sample.Callback.Context;
-      script->Results.clear();
       if (sc::Call(Sample.Callback, args, result) IS ERR::Okay and result IS ERR::Okay) {
-         std::span<std::string> results;
-         if (script->getResults(results) IS ERR::Okay and !results.empty()) {
-            return BYTELEN(std::clamp<int64_t>(strtoll(results[0].c_str(), nullptr, 10), 0, span.size()));
-         }
+         return BYTELEN(std::clamp<int64_t>(returned, 0, span.size()));
       }
       return BYTELEN(0);
    }
