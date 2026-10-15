@@ -35,7 +35,7 @@ struct eventsub {
    void     (*Callback)(APTR Info, int Size, APTR Meta);
    APTR     CallbackMeta;
    EVG      Group;
-   uint8_t  Called;
+   uint64_t Called;
    OBJECTID ContextID;
 
    inline CSTRING groupName() {
@@ -44,7 +44,7 @@ struct eventsub {
 };
 
 static struct eventsub *glEventList = nullptr;
-static uint8_t glCallSignal = 0;
+static uint64_t glCallSignal = 0;
 static bool glEventListAltered = false;
 
 static ankerl::unordered_dense::map<uint32_t, std::string> glEventNames;
@@ -235,6 +235,7 @@ ERR SubscribeEvent(int64_t EventID, FUNCTION *Callback, APTR *Handle)
       event->Next      = glEventList;
       event->Prev      = nullptr;
       event->EventMask = mask;
+      event->Called    = glCallSignal; // A new subscription has not been called by the next dispatch.
 
       if (glEventList) glEventList->Prev = event;
       glEventList = event;
