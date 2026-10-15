@@ -16,6 +16,15 @@ idl_gen ("${MOD}.tdl" NAME "${MOD}_defs" OUTPUT "${INCLUDE_OUTPUT}/modules/${MOD
    ARGS "output-defs=module_def.c" "output-proto=module_def.c"
    DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/network.cpp")
 
+# Internal reusable mDNS support; no public Network ABI is added in Phase 3.
+add_library (network_mdns STATIC mdns/mdns.cpp mdns/mdns_socket.cpp)
+set_target_properties (network_mdns PROPERTIES CXX_STANDARD 20 CXX_STANDARD_REQUIRED ON
+   POSITION_INDEPENDENT_CODE ON)
+if (WIN32)
+   target_link_libraries (network_mdns PUBLIC ws2_32 iphlpapi)
+   target_compile_definitions (network_mdns PRIVATE WIN32_LEAN_AND_MEAN NOMINMAX _WIN32_WINNT=0x0601)
+endif ()
+
 add_library (${MOD})
 
 set_module_defaults (${MOD} "Net")
@@ -177,7 +186,7 @@ elseif (NOT DISABLE_SSL AND (WIN32 OR OPENSSL_FOUND))
 endif ()
 
 set (NETWORK_TESTS
-   bind_address dns_parallel server_io client_server error_handling ipv6 concurrency
+   bind_address dns_parallel dns_capacity server_io client_server error_handling ipv6 concurrency
    performance keep_alive package_regressions
    # UDP Tests
    udp_basic udp_ipv6 udp_broadcast_multicast udp_tcp_coexistence udp_performance
@@ -194,3 +203,27 @@ endif ()
 foreach (TEST_NAME ${NETWORK_TESTS})
    flute_test(network_${TEST_NAME} "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_${TEST_NAME}.tiri")
 endforeach ()
+
+if (UNIT_TESTS)
+   add_executable (test_network_mdns mdns/test_mdns.cpp)
+   set_target_properties (test_network_mdns PROPERTIES CXX_STANDARD 20 CXX_STANDARD_REQUIRED ON)
+   target_link_libraries (test_network_mdns PRIVATE network_mdns)
+   add_test (NAME network_mdns COMMAND test_network_mdns)
+   set_tests_properties (network_mdns PROPERTIES LABELS network TIMEOUT 30)
+endif ()
+
+option (NETWORK_MDNS_FUZZ "Build the internal mDNS codec/state libFuzzer target" OFF)
+if (NETWORK_MDNS_FUZZ)
+   if (NOT CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+      message (FATAL_ERROR "NETWORK_MDNS_FUZZ requires Clang with libFuzzer support.")
+   endif ()
+   add_executable (fuzz_network_mdns mdns/fuzz_mdns.cpp mdns/mdns.cpp)
+   set_target_properties (fuzz_network_mdns PROPERTIES CXX_STANDARD 20 CXX_STANDARD_REQUIRED ON)
+   target_compile_options (fuzz_network_mdns PRIVATE -fsanitize=fuzzer,address,undefined -fno-sanitize-recover=all)
+   target_link_options (fuzz_network_mdns PRIVATE -fsanitize=fuzzer,address,undefined -fno-sanitize-recover=all)
+   if (BUILD_TESTS)
+      add_test (NAME network_mdns_fuzz_regression COMMAND fuzz_network_mdns -runs=1
+         "${CMAKE_CURRENT_SOURCE_DIR}/mdns/fixtures")
+      set_tests_properties (network_mdns_fuzz_regression PROPERTIES LABELS network TIMEOUT 60)
+   endif ()
+endif ()

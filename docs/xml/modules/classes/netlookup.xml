@@ -26,7 +26,7 @@
       <prototype>ERR FreeResource(*Object)</prototype>
       <tiriPrototype>err = Object.acFree()</tiriPrototype>
       <description>
-<p>Outstanding forward lookups are cancelled before joining their workers.  Blocking methods and asynchronous reverse lookups retain the OS resolver's timeout behaviour.</p>
+<p>This routine may block temporarily if there are unresolved requests awaiting completion in separate threads.</p>
       </description>
       <tags>blocking, mutates-object</tags>
     </action>
@@ -94,6 +94,7 @@
       <description>
 <p>ResolveAddress() performs a IP address resolution, converting an address to an official host name and list of IP addresses.  The resolution process involves contacting a DNS server.  To prevent delays, asynchronous communication is used so that the function can return immediately.  The <fl>Callback</fl> function will be called on completion of the process.</p>
 <p>If synchronous (blocking) operation is desired then use the <method>BlockingResolveAddress</method> method.</p>
+<p>One object may have up to 32 outstanding asynchronous resolutions.  Completed threads are reclaimed when another resolution starts.</p>
       </description>
       <result>
         <error code="Okay">The IP address was resolved successfully.</error>
@@ -116,7 +117,7 @@
       <description>
 <p>ResolveName() performs a domain name resolution, converting a domain name to an official host name and IP addresses. The resolution process involves contacting a DNS server.  To prevent delays, asynchronous communication is used so that the function can return immediately.  The <fl>Callback</fl> function will be called on completion of the process.</p>
 <p>If synchronous (blocking) operation is desired then use the <method>BlockingResolveName</method> method.</p>
-<p>Forward requests have a ten-second deadline and are cancelled when the object is freed.  At most 32 asynchronous requests may be outstanding on one object.  Completed requests do not consume that allowance.</p>
+<p>One object may have up to 32 outstanding asynchronous resolutions.  Completed threads are reclaimed when another resolution starts.</p>
       </description>
       <result>
         <error code="Okay">Operation successful.</error>
