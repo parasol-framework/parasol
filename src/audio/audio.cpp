@@ -25,12 +25,12 @@ A magnitude of 1.0 is 0 dBFS, while intermediate buses retain finite values abov
 conversion is the only stage that clips and quantises samples for the selected hardware format.  The mixer supports:
 
 <list type="bullet">
-<li>Nearest-neighbour source resampling, or linear interpolation when `ADF::OVER_SAMPLING` is enabled.  Linear
-interpolation is not a ratio-dependent anti-alias filter.</li>
+<li>Nearest-neighbour, linear or bounded cubic Hermite source resampling selected by @Audio.Quality.  The legacy
+`ADF::OVER_SAMPLING` bit indicates interpolation; these kernels do not provide ratio-dependent anti-alias filtering.</li>
 <li>Volume ramping to avoid clicks when channel volumes change, enabled by `ADF::VOL_RAMPING` independently of Quality.
 Gains move by at most 0.01 per output frame, so a full-scale transition takes 100 output frames.</li>
 <li>Two levels of low-pass output smoothing, selected with `ADF::FILTER_LOW` or `ADF::FILTER_HIGH`.  The @Audio.Quality
-field selects nearest-neighbour or linear resampling and fixed smoothing as a group.  The legacy bits reflect that
+field selects source resampling and fixed smoothing as a group.  The legacy bits reflect that
 selection and cannot override it; Quality changes do not alter arithmetic precision or perform true oversampling.</li>
 <li>Unidirectional and bidirectional sample looping, including a secondary loop region.</li>
 <li>Per-channel and global effect chains built from @AudioEffect processors.</li>
@@ -315,6 +315,7 @@ static ERR MODExpunge(void)
 #include "tests/test_audio_pitchshift_dsp.cpp"
 #include "tests/test_audio_analyser_dsp.cpp"
 #include "tests/test_mixers.cpp"
+#include "tests/test_resampler.cpp"
 #include "tests/test_audio_format.cpp"
 #include "tests/test_audio_quality.cpp"
 #ifdef ALSA_ENABLED
@@ -362,6 +363,7 @@ static void MODTest(std::string_view Options, int *Passed, int *Total)
    run("pitch shift DSP", audio_tests_audio_pitchshift_dsp::run);
    run("analyser DSP", audio_tests_audio_analyser_dsp::run);
    run("mixer", audio_tests_mixers::run);
+   run("resampler", audio_tests_resampler::run);
    run("format", audio_tests_audio_format::run);
    run("quality", audio_tests_audio_quality::run);
 #ifdef ALSA_ENABLED

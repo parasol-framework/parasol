@@ -2,12 +2,23 @@
 
 namespace audio_tests_mixers {
 
+template<typename T, bool StereoSource, bool StereoOutput, ResamplerMode Mode, size_t Size>
+static int mix_fixture(T (&Source)[Size], int Position, int Frames, int Offset,
+   float Left, float Right, float **Dest)
+{
+   constexpr auto format = std::is_same_v<T, uint8_t> ?
+      (StereoSource ? PCM::U8_STEREO : PCM::U8_MONO) : (StereoSource ? PCM::S16_STEREO : PCM::S16_MONO);
+   MixingParams params{Source, Position, Frames, Left, Right, Dest, 0, Size / (StereoSource ? 2 : 1)};
+   return AudioMixer::dispatch_mix(AudioConfig(StereoOutput, Mode), format, params);
+}
+
+
 static void unsigned_mono(AudioTestContext &Test)
 {
    uint8_t source[] = { 0, 128, 255 };
    float output[3] = {};
    auto dest = output;
-   mix_template<uint8_t, false, false, false>(source, 0, 3, 1, 1, 1, &dest);
+   mix_fixture<uint8_t, false, false, ResamplerMode::NEAREST>(source, 0, 3, 1, 1, 1, &dest);
    AUDIO_CHECK(output[0] IS -1.0f and output[1] IS 0 and output[2] IS 127.0f / 128.0f);
 }
 
@@ -16,7 +27,7 @@ static void mono_to_stereo(AudioTestContext &Test)
    int16_t source[] = { -1000, 0, 1000 };
    float output[6] = {};
    auto dest = output;
-   mix_template<int16_t, false, true, false>(source, 0, 3, 1, 0.5f, 0.8f, &dest);
+   mix_fixture<int16_t, false, true, ResamplerMode::NEAREST>(source, 0, 3, 1, 0.5f, 0.8f, &dest);
    for (int i = 0; i < 3; ++i) {
       AUDIO_CHECK(output[i * 2] IS source[i] * (0.5f / 32768.0f));
       AUDIO_CHECK(output[i * 2 + 1] IS source[i] * (0.8f / 32768.0f));
@@ -28,7 +39,7 @@ static void unsigned_stereo(AudioTestContext &Test)
    uint8_t source[] = { 0, 255, 128, 0 };
    float output[4] = {};
    auto dest = output;
-   mix_template<uint8_t, true, true, false>(source, 0, 2, 1, 1, 1, &dest);
+   mix_fixture<uint8_t, true, true, ResamplerMode::NEAREST>(source, 0, 2, 1, 1, 1, &dest);
    AUDIO_CHECK(output[0] IS -1.0f and output[1] IS 127.0f / 128.0f);
    AUDIO_CHECK(output[2] IS 0 and output[3] IS -1.0f);
 }
@@ -40,7 +51,8 @@ static void volume_accumulation_and_position(AudioTestContext &Test)
    for (float volume : { 0.0f, 0.25f, 0.5f, 1.0f, 2.0f }) {
       float output[] = { 100, 100, 100 };
       auto dest = output;
-      const int position = mix_template<int16_t, false, false, false>(source, 0, 3, 1, volume, volume, &dest);
+      const int position = mix_fixture<int16_t, false, false, ResamplerMode::NEAREST>(
+         source, 0, 3, 1, volume, volume, &dest);
       for (int i = 0; i < 3; ++i) AUDIO_CHECK(output[i] IS 100 + volume * source[i] / 32768.0f);
       AUDIO_CHECK(position IS 3 * 65536 and dest IS output + 3);
    }
@@ -52,7 +64,7 @@ static void interpolation(AudioTestContext &Test)
    float output[4] = {};
    auto dest = output;
    set_mix_step(32768);
-   const int position = mix_template<int16_t, false, false, true>(source, 32768, 4, 1, 1, 1, &dest);
+   const int position = mix_fixture<int16_t, false, false, ResamplerMode::LINEAR>(source, 32768, 4, 1, 1, 1, &dest);
    AUDIO_CHECK(output[0] IS 16383.5f / 32768.0f and output[1] IS 32767.0f / 32768.0f);
    AUDIO_CHECK(output[2] IS 16383.5f / 32768.0f and output[3] IS 0);
    AUDIO_CHECK(position IS 5 * 32768 and dest IS output + 4);
@@ -65,7 +77,7 @@ static void pcm_endpoints_and_output_conversion(AudioTestContext &Test)
    const float expected8[] = { -1.0f, 0, 127.0f / 128.0f };
    float mixed8[std::size(source8)]{};
    auto dest8 = mixed8;
-   mix_template<uint8_t, false, false, false>(source8, 0, std::size(source8), 1, 1, 1, &dest8);
+   mix_fixture<uint8_t, false, false, ResamplerMode::NEAREST>(source8, 0, std::size(source8), 1, 1, 1, &dest8);
    AUDIO_CHECK(std::equal(std::begin(mixed8), std::end(mixed8), std::begin(expected8)));
    uint8_t output8[std::size(source8)]{};
    convert_samples<uint8_t>(mixed8, std::size(mixed8), output8);
@@ -74,7 +86,7 @@ static void pcm_endpoints_and_output_conversion(AudioTestContext &Test)
    int16_t source16[] = { -32768, -32767, -1, 0, 1, 32767 };
    float mixed16[std::size(source16)]{};
    auto dest16 = mixed16;
-   mix_template<int16_t, false, false, false>(source16, 0, std::size(source16), 1, 1, 1, &dest16);
+   mix_fixture<int16_t, false, false, ResamplerMode::NEAREST>(source16, 0, std::size(source16), 1, 1, 1, &dest16);
    for (size_t i = 0; i < std::size(source16); ++i) {
       AUDIO_CHECK(mixed16[i] IS float(source16[i]) / 32768.0f);
    }
@@ -97,26 +109,7 @@ static void pcm_endpoints_and_output_conversion(AudioTestContext &Test)
    AUDIO_CHECK(std::equal(std::begin(converted_float), std::end(converted_float), std::begin(clipped_float)));
 }
 
-#ifdef __AVX2__
-template<typename SampleType>
-static void vectorized_parity(AudioTestContext &Test, SampleType *Source)
-{
-   float scalar[16] = {}, vectorized[16] = {};
-   auto scalar_dest = scalar;
-   auto vector_dest = vectorized;
-   mix_template<SampleType, false, true, false>(Source, 0, 8, 1, 0.25f, 0.75f, &scalar_dest);
-   mix_vectorized_mono_to_stereo<SampleType>(Source, 0, 8, 0.25f, 0.75f, &vector_dest);
-   AUDIO_CHECK(std::equal(std::begin(scalar), std::end(scalar), std::begin(vectorized)));
-}
 
-static void simd_parity(AudioTestContext &Test)
-{
-   uint8_t source8[] = { 0, 1, 64, 127, 128, 129, 254, 255 };
-   int16_t source16[] = { -32768, -32767, -12345, -1, 0, 1, 12345, 32767 };
-   vectorized_parity(Test, source8);
-   vectorized_parity(Test, source16);
-}
-#endif
 
 static void channel_gain_contract(AudioTestContext &Test)
 {
@@ -522,7 +515,7 @@ static void held_tail_controls(AudioTestContext &Test)
 static void run(AudioTestContext &Test)
 {
    struct RestoreStep {
-      int Value = MixStep;
+      int Value = glMixStep;
       ~RestoreStep() { set_mix_step(Value); }
    } restore;
    set_mix_step(65536);
@@ -532,9 +525,6 @@ static void run(AudioTestContext &Test)
    volume_accumulation_and_position(Test);
    interpolation(Test);
    pcm_endpoints_and_output_conversion(Test);
-#ifdef __AVX2__
-   simd_parity(Test);
-#endif
    channel_gain_contract(Test);
    ramp_envelopes(Test);
    rapid_ramp_commands(Test);

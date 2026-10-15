@@ -518,6 +518,7 @@ ERR MixPlay(objAudio *Audio, int Handle, int64_t Position)
       sample.Ring.Read = sample.Ring.Used = 0;
       sample.SourceOffset = Position;
       sample.SourceSeek = true;
+      sample.HasHistory = false;
       sample.Refilling = false;
       sample.RefillPending = false;
       sample.RetryAt = 0;
@@ -564,6 +565,8 @@ ERR MixPlay(objAudio *Audio, int Handle, int64_t Position)
          if (bitpos < sample.SampleLength) {
             channel->Position    = bitpos;
             channel->PositionLow = 0;
+            channel->LoopHistory = false;
+            channel->Resampler = {};
             channel->State       = CHS::PLAYING;
             channel->Flags       &= ~CHF::BACKWARD;
          }
@@ -576,6 +579,8 @@ ERR MixPlay(objAudio *Audio, int Handle, int64_t Position)
          if (bitpos < sample.Loop1End) channel->Position = bitpos;
          else channel->Position = sample.Loop1Start;
          channel->PositionLow = 0;
+         channel->LoopHistory = false;
+         channel->Resampler = {};
          channel->State       = CHS::PLAYING;
          channel->Flags      &= ~CHF::BACKWARD;
          break;
@@ -592,6 +597,8 @@ ERR MixPlay(objAudio *Audio, int Handle, int64_t Position)
             channel->Flags |= CHF::BACKWARD;
          }
          channel->PositionLow = 0;
+         channel->LoopHistory = false;
+         channel->Resampler = {};
          channel->State = CHS::PLAYING;
    }
 

@@ -822,7 +822,7 @@ static FormatResult render_format(AudioTestContext &Test, int BitDepth, const st
    audio->MasterVolume = 1;
    audio->MixElements = SAMPLE(frames);
    audio->MixBuffer.resize(frames);
-   audio->MixConfig = AudioConfig(false, false);
+   audio->MixConfig = AudioConfig(false, ResamplerMode::NEAREST);
    audio->Samples.resize(2);
    auto &sample = audio->Samples[1];
    sample.SampleType = PCM::S16_MONO;

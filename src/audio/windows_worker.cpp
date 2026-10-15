@@ -173,7 +173,7 @@ static void reopen_windows_audio(extAudio *Self)
       Self->MixBuffer.resize(Self->BufferFrames * (Self->Stereo ? 2 : 1));
       {
          std::lock_guard lock(Self->MixerMutex);
-         Self->MixConfig = AudioConfig(Self->Stereo, Self->RequestedQuality.Resampling);
+         Self->MixConfig = AudioConfig(Self->Stereo, Self->RequestedQuality.Resampler);
          Self->snapshot_quality();
       }
 

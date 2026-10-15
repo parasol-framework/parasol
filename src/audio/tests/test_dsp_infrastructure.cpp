@@ -470,7 +470,7 @@ static FormatContractResult render_format_contract(AudioTestContext &Test, int B
    audio->MasterVolume = 1;
    audio->MixElements = SAMPLE(3);
    audio->MixBuffer.resize(3);
-   audio->MixConfig = AudioConfig(false, false);
+   audio->MixConfig = AudioConfig(false, ResamplerMode::NEAREST);
    audio->Samples.resize(2);
    auto &sample = audio->Samples[1];
    sample.SampleType = PCM::S16_MONO;
@@ -563,7 +563,7 @@ static void common_mixer(AudioTestContext &Test)
    audio->Stereo = false;
    audio->MixElements = SAMPLE(17);
    audio->MixBuffer.resize(17);
-   audio->MixConfig = AudioConfig(false, false);
+   audio->MixConfig = AudioConfig(false, ResamplerMode::NEAREST);
    audio->Samples.resize(2);
    auto &sample = audio->Samples[1];
    sample.SampleType = PCM::S16_MONO;

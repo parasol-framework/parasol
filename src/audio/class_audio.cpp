@@ -7,8 +7,8 @@ The Audio class provides a comprehensive audio service that works across multipl
 design model. It serves as the foundation for all audio operations in Kōtuku framework, managing hardware resources,
 sample mixing, and output buffering.
 
-The Audio class supports 8/16/32 bit output, nearest-neighbour or linear source resampling, fixed output smoothing,
-streaming for large samples, simultaneous audio channels, and command sequencing for precise timing control.  The
+The Audio class supports 8/16/32 bit output, nearest-neighbour, linear or cubic source resampling, fixed output
+smoothing, streaming for large samples, simultaneous audio channels, and command sequencing for precise timing control.  The
 internal mixer uses 32-bit floating-point arithmetic regardless of Quality or the hardware bit depth.
 
 <header>Formats and Layouts</header>
@@ -275,7 +275,7 @@ static ERR AUDIO_Activate(extAudio *Self)
 
    {
       std::lock_guard mixer_lock(Self->MixerMutex);
-      Self->MixConfig = AudioConfig(Self->Stereo, Self->RequestedQuality.Resampling);
+      Self->MixConfig = AudioConfig(Self->Stereo, Self->RequestedQuality.Resampler);
       Self->snapshot_quality();
    }
 
@@ -615,6 +615,7 @@ static ERR AUDIO_AddStream(extAudio *Self, struct snd::AddStream *Args)
    #ifdef AUDIO_WORKER
    ++sample.Generation;
    sample.Ring.Read = sample.Ring.Used = 0;
+   sample.HasHistory = false;
    #endif
    Args->Result = idx;
    return ERR::Okay;
@@ -1442,7 +1443,8 @@ Flags: Special audio flags can be set here.
 Lookup: ADF
 
 The `OVER_SAMPLING`, `FILTER_LOW` and `FILTER_HIGH` bits reflect #Quality and are preserved when Flags is written.
-Other flags can be selected before initialisation.  `OVER_SAMPLING` is the legacy name for linear interpolation.
+Other flags can be selected before initialisation.  `OVER_SAMPLING` is the legacy indication of linear or cubic
+interpolation.
 
 -FIELD-
 InputRate: Determines the frequency to use when recording audio data.
@@ -1602,14 +1604,17 @@ this field does not change arithmetic precision or perform true oversampling.  T
 
 <list type="bullet">
 <li><b>Quality 0-9</b>: Nearest-neighbour resampling without output smoothing.</li>
-<li><b>Quality 10-32</b>: Nearest-neighbour resampling with `ADF::FILTER_LOW` smoothing.</li>
-<li><b>Quality 33-65</b>: Nearest-neighbour resampling with `ADF::FILTER_HIGH` smoothing.</li>
-<li><b>Quality 66-100</b>: Linear interpolation with `ADF::FILTER_HIGH` smoothing.</li>
+<li><b>Quality 10-32</b>: Linear interpolation with `ADF::FILTER_LOW` smoothing.</li>
+<li><b>Quality 33-65</b>: Bounded four-point cubic Hermite interpolation with `ADF::FILTER_HIGH` smoothing.</li>
+<li><b>Quality 66-100</b>: Currently the same cubic interpolation as Standard with `ADF::FILTER_HIGH` smoothing.</li>
 </list>
 
 The legacy `OVER_SAMPLING`, `FILTER_LOW` and `FILTER_HIGH` bits in #Flags are derived from Quality.  Writes to Flags
 preserve the Quality-selected bits.  A live Quality change takes effect as a complete profile at the next mixer-window
-boundary; processing already in progress retains its selected profile.
+boundary; processing already in progress retains its selected profile.  Source interpolation blends to the new
+mode over 32 rendered output frames per channel, independently of volume ramping.  Ordinary source endpoints repeat
+the endpoint value, while looping sources extend their loop.  Neither linear nor cubic interpolation is a
+ratio-dependent anti-alias filter.  Higher quality ranges will select additional algorithms in future releases.
 
 *********************************************************************************************************************/
 
@@ -1621,7 +1626,7 @@ static ERR SET_Quality(extAudio *Self, int Value)
    Self->Quality = Value;
    Self->RequestedQuality = *profile;
    Self->Flags = (Self->Flags & ~glQualityFlags) | profile->Flags;
-   Self->MixConfig = AudioConfig(Self->Stereo, profile->Resampling);
+   Self->MixConfig = AudioConfig(Self->Stereo, profile->Resampler);
    return ERR::Okay;
 }
 

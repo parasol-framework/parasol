@@ -14,7 +14,7 @@
     <copyright>Paul Manias © 2002-2026</copyright>
     <description>
 <p>The Audio class provides a comprehensive audio service that works across multiple platforms and follows a client-server design model. It serves as the foundation for all audio operations in Kōtuku framework, managing hardware resources, sample mixing, and output buffering.</p>
-<p>The Audio class supports 8/16/32 bit output, with advanced features including oversampling for enhanced quality, intelligent streaming for large samples, multiple simultaneous audio channels, and command sequencing for precise timing control. The internal floating-point mixer ensures high-quality audio processing regardless of the target hardware bit depth.</p>
+<p>The Audio class supports 8/16/32 bit output, nearest-neighbour, linear or cubic source resampling, fixed output smoothing, streaming for large samples, simultaneous audio channels, and command sequencing for precise timing control.  The internal mixer uses 32-bit floating-point arithmetic regardless of Quality or the hardware bit depth.</p>
 <header>Formats and Layouts</header>
 <p>PCM data is described by the <st>AudioFormat</st> structure, which separates the sample representation from the channel layout.  A layout is an ordered list of channel identities, one for each sample in an interleaved frame:</p>
 <types lookup="SPK"/>
@@ -424,10 +424,10 @@
     <field>
       <name>Flags</name>
       <comment>Special audio flags can be set here.</comment>
-      <access read="R" write="I">Read/Init</access>
+      <access read="R" write="S">Read/Set</access>
       <type lookup="ADF">ADF</type>
       <description>
-<p>The audio class supports a number of special flags that affect internal behaviour.  The following table illustrates the publicly available flags:</p>
+<p>The <code>OVER_SAMPLING</code>, <code>FILTER_LOW</code> and <code>FILTER_HIGH</code> bits reflect <fl>Quality</fl> and are preserved when Flags is written. Other flags can be selected before initialisation.  <code>OVER_SAMPLING</code> is the legacy indication of linear or cubic interpolation.</p>
 <types lookup="ADF"/>
       </description>
     </field>
@@ -544,15 +544,14 @@ audio = obj.new('Audio', { outputLayout=layout })
       <access read="R" write="S">Read/Set</access>
       <type>INT</type>
       <description>
-<p>The Quality field controls the precision and filtering applied during audio mixing operations. This setting automatically configures multiple internal processing parameters to balance audio fidelity against computational overhead.</p>
-<p>The value range spans from 0 (minimal processing) to 100 (maximum fidelity), with recommended settings between 70-80 for most applications. This range provides an optimal balance between audio clarity and system performance.</p>
-<p>Setting the Quality value automatically adjusts the following processing flags:</p>
+<p>Quality selects source resampling and fixed post-mix smoothing.  All profiles mix in 32-bit floating-point; this field does not change arithmetic precision or perform true oversampling.  The default is 80.  Values outside 0..100 return <code>ERR::OutOfRange</code> without changing the current profile.  Invalid saved values retain the default.</p>
 <list type="bullet">
-<li><b>Quality 0-9</b>: Minimal processing, no filtering or oversampling applied.</li>
-<li><b>Quality 10-32</b>: Enables <code>ADF::FILTER_LOW</code> for basic output filtering.</li>
-<li><b>Quality 33-65</b>: Activates <code>ADF::FILTER_HIGH</code> for enhanced frequency response.</li>
-<li><b>Quality 66-100</b>: Implements <code>ADF::OVER_SAMPLING</code> and <code>ADF::FILTER_HIGH</code> for maximum fidelity.</li>
+<li><b>Quality 0-9</b>: Nearest-neighbour resampling without output smoothing.</li>
+<li><b>Quality 10-32</b>: Linear interpolation with <code>ADF::FILTER_LOW</code> smoothing.</li>
+<li><b>Quality 33-65</b>: Bounded four-point cubic Hermite interpolation with <code>ADF::FILTER_HIGH</code> smoothing.</li>
+<li><b>Quality 66-100</b>: Currently the same cubic interpolation as Standard with <code>ADF::FILTER_HIGH</code> smoothing.</li>
 </list>
+<p>The legacy <code>OVER_SAMPLING</code>, <code>FILTER_LOW</code> and <code>FILTER_HIGH</code> bits in <fl>Flags</fl> are derived from Quality.  Writes to Flags preserve the Quality-selected bits.  A live Quality change takes effect as a complete profile at the next mixer-window boundary; processing already in progress retains its selected profile.  Source interpolation blends to the new mode over 32 rendered output frames per channel, independently of volume ramping.  Ordinary source endpoints repeat the endpoint value, while looping sources extend their loop.  Neither linear nor cubic interpolation is a ratio-dependent anti-alias filter.  Higher quality ranges will select additional algorithms in future releases.</p>
       </description>
     </field>
 
@@ -560,11 +559,11 @@ audio = obj.new('Audio', { outputLayout=layout })
   <types>
     <constants lookup="ADF" comment="Optional flags for the Audio object.">
       <const name="AUTO_SAVE">Save configuration information on exit.</const>
-      <const name="FILTER_HIGH">Enable a high level of output filtering to minimise distortion.</const>
-      <const name="FILTER_LOW">Enable a low level of output filtering to minimise distortion.</const>
-      <const name="OVER_SAMPLING">Enables oversampling for higher quality audio at the cost of slower mixing.</const>
+      <const name="FILTER_HIGH">High fixed post-mix smoothing, derived from Audio.Quality.</const>
+      <const name="FILTER_LOW">Low fixed post-mix smoothing, derived from Audio.Quality.</const>
+      <const name="OVER_SAMPLING">Legacy indication of linear or cubic source interpolation, derived from Audio.Quality.</const>
       <const name="SYSTEM_WIDE">Mixer changes should be applied system-wide.</const>
-      <const name="VOL_RAMPING">Enable volume ramping for softer playback when a sample is played multiple times (enabled by default).</const>
+      <const name="VOL_RAMPING">Enable de-clicking for channel gain and voice changes independently of Quality (enabled by default).</const>
     </constants>
 
     <constants lookup="ADS" comment="Effect drain states reported by GetEffectStatus().">

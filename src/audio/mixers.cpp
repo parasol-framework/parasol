@@ -1,16 +1,14 @@
 
-#include <immintrin.h>  // For SIMD support where available
-
 // Thread-local step value for mixing (temporary solution)
-thread_local int MixStep = 1;
+thread_local int glMixStep = 1;
 
 static constexpr double PCM_U8_OFFSET = 128.0;
 static constexpr double PCM_U8_SCALE = 1.0 / 128.0;
 static constexpr double PCM_S16_SCALE = 1.0 / 32768.0;
 
 // Function to set the mixing step (called from functions.cpp)
-void set_mix_step(int step) {
-   MixStep = step;
+void set_mix_step(int Step) {
+   glMixStep = Step;
 }
 
 template<typename T>
@@ -18,172 +16,14 @@ struct SampleTraits;
 
 template<>
 struct SampleTraits<uint8_t> {
-   static inline double normalize(uint8_t value) {
-      return (double(value) - PCM_U8_OFFSET) * PCM_U8_SCALE;
+   static inline double normalize(uint8_t Value) {
+      return (double(Value) - PCM_U8_OFFSET) * PCM_U8_SCALE;
    }
 };
 
 template<>
 struct SampleTraits<int16_t> {
-   static inline double normalize(int16_t value) {
-      return double(value) * PCM_S16_SCALE;
+   static inline double normalize(int16_t Value) {
+      return double(Value) * PCM_S16_SCALE;
    }
 };
-
-//********************************************************************************************************************
-// Optimized interpolation helper
-
-struct InterpolationWeights {
-   double weight0, weight1;
-
-   inline InterpolationWeights(int fracPos) {
-      weight0 = double(65536 - (fracPos & 0xFFFF));
-      weight1 = double(fracPos & 0xFFFF);
-   }
-};
-
-//********************************************************************************************************************
-// Template-based mixer core - handles all sample types and channel configurations
-// Linear resampling is selected by the legacy OVER_SAMPLING quality bit.
-
-template<typename SampleType, bool IsStereoSample, bool IsStereoOutput, bool UseInterpolation>
-static int mix_template(APTR Src, int SrcPos, int TotalSamples, int nextSampleOffset, float LeftVol, float RightVol, float **MixDest)
-{
-   auto dest = *MixDest;
-   auto sample = (SampleType *)Src;
-   constexpr int srcChannels = IsStereoSample ? 2 : 1;
-
-   if constexpr (UseInterpolation) {
-      // Interpolated mixing
-      const bool useNextOffset = (nextSampleOffset != 1);
-
-      while (TotalSamples > 0) {
-         const int baseIdx = (SrcPos >> 16) * srcChannels;
-         const int nextIdx = baseIdx + (useNextOffset ? nextSampleOffset * srcChannels : srcChannels);
-
-         InterpolationWeights weights(SrcPos);
-
-         if constexpr (IsStereoSample and IsStereoOutput) {
-            // Stereo sample to stereo output with interpolation
-            const double leftSample = (weights.weight0 * SampleTraits<SampleType>::normalize(sample[baseIdx]) +
-                                      weights.weight1 * SampleTraits<SampleType>::normalize(sample[nextIdx])) / 65536.0;
-            const double rightSample = (weights.weight0 * SampleTraits<SampleType>::normalize(sample[baseIdx + 1]) +
-                                       weights.weight1 * SampleTraits<SampleType>::normalize(sample[nextIdx + 1])) / 65536.0;
-
-            dest[0] += LeftVol * leftSample;
-            dest[1] += RightVol * rightSample;
-            dest += 2;
-
-         }
-         else if constexpr (IsStereoSample and !IsStereoOutput) {
-            // Stereo sample to mono output with interpolation
-            const double leftSample = (weights.weight0 * SampleTraits<SampleType>::normalize(sample[baseIdx]) +
-                                      weights.weight1 * SampleTraits<SampleType>::normalize(sample[nextIdx])) / 65536.0;
-            const double rightSample = (weights.weight0 * SampleTraits<SampleType>::normalize(sample[baseIdx + 1]) +
-                                       weights.weight1 * SampleTraits<SampleType>::normalize(sample[nextIdx + 1])) / 65536.0;
-
-            *(dest++) += LeftVol * (leftSample + rightSample);
-
-         }
-         else if constexpr (!IsStereoSample and IsStereoOutput) {
-            // Mono sample to stereo output with interpolation
-            const double monoSample = (weights.weight0 * SampleTraits<SampleType>::normalize(sample[baseIdx]) +
-                                      weights.weight1 * SampleTraits<SampleType>::normalize(sample[nextIdx])) / 65536.0;
-
-            dest[0] += LeftVol * monoSample;
-            dest[1] += RightVol * monoSample;
-            dest += 2;
-
-         } else {
-            // Mono sample to mono output with interpolation
-            const double monoSample = (weights.weight0 * SampleTraits<SampleType>::normalize(sample[baseIdx]) +
-                                      weights.weight1 * SampleTraits<SampleType>::normalize(sample[nextIdx])) / 65536.0;
-
-            *(dest++) += LeftVol * monoSample;
-         }
-
-         SrcPos += MixStep;
-         TotalSamples--;
-      }
-   }
-   else { // Non-interpolated mixing - optimized for speed
-      while (TotalSamples > 0) {
-         const int baseIdx = (SrcPos >> 16) * srcChannels;
-
-         if constexpr (IsStereoSample and IsStereoOutput) { // Stereo sample to stereo output
-            dest[0] += LeftVol * SampleTraits<SampleType>::normalize(sample[baseIdx]);
-            dest[1] += RightVol * SampleTraits<SampleType>::normalize(sample[baseIdx + 1]);
-            dest += 2;
-
-         }
-         else if constexpr (IsStereoSample and !IsStereoOutput) { // Stereo sample to mono output
-            const double combined = SampleTraits<SampleType>::normalize(sample[baseIdx]) +
-                                   SampleTraits<SampleType>::normalize(sample[baseIdx + 1]);
-            *(dest++) += LeftVol * combined;
-
-         }
-         else if constexpr (!IsStereoSample and IsStereoOutput) { // Mono sample to stereo output
-            const double monoSample = SampleTraits<SampleType>::normalize(sample[baseIdx]);
-            dest[0] += LeftVol * monoSample;
-            dest[1] += RightVol * monoSample;
-            dest += 2;
-
-         }
-         else { // Mono sample to mono output
-            *(dest++) += LeftVol * SampleTraits<SampleType>::normalize(sample[baseIdx]);
-         }
-
-         SrcPos += MixStep;
-         TotalSamples--;
-      }
-   }
-
-   *MixDest = dest;
-   return SrcPos;
-}
-
-//********************************************************************************************************************
-// Vectorized mixer for high-performance scenarios (when sample count is large)
-
-#ifdef __AVX2__
-template<typename SampleType>
-static int mix_vectorized_mono_to_stereo(APTR Src, int SrcPos, int TotalSamples,
-                                         float LeftVol, float RightVol, float **MixDest)
-{
-   // Use vectorized version only for sufficiently large sample counts
-   if (TotalSamples < 8) {
-      return mix_template<SampleType, false, true, false>(Src, SrcPos, TotalSamples, 1, LeftVol, RightVol, MixDest);
-   }
-
-   auto dest = *MixDest;
-   auto sample = (SampleType *)Src;
-
-   // Process four source samples into eight interleaved destination samples at a time.
-   while (TotalSamples >= 4) {
-      const __m128 normalized = _mm_set_ps(
-         float(SampleTraits<SampleType>::normalize(sample[(SrcPos + 3 * MixStep) >> 16])),
-         float(SampleTraits<SampleType>::normalize(sample[(SrcPos + 2 * MixStep) >> 16])),
-         float(SampleTraits<SampleType>::normalize(sample[(SrcPos + MixStep) >> 16])),
-         float(SampleTraits<SampleType>::normalize(sample[SrcPos >> 16])));
-      const __m128 left = _mm_mul_ps(normalized, _mm_set1_ps(LeftVol));
-      const __m128 right = _mm_mul_ps(normalized, _mm_set1_ps(RightVol));
-      const __m128 interleaved_lo = _mm_unpacklo_ps(left, right);
-      const __m128 interleaved_hi = _mm_unpackhi_ps(left, right);
-
-      _mm_storeu_ps(dest, _mm_add_ps(_mm_loadu_ps(dest), interleaved_lo));
-      _mm_storeu_ps(dest + 4, _mm_add_ps(_mm_loadu_ps(dest + 4), interleaved_hi));
-
-      dest += 8;
-      SrcPos += 4 * MixStep;
-      TotalSamples -= 4;
-   }
-
-   // Handle remaining samples with scalar code
-   *MixDest = dest;
-   if (TotalSamples > 0) {
-      return mix_template<SampleType, false, true, false>(Src, SrcPos, TotalSamples, 1, LeftVol, RightVol, MixDest);
-   }
-
-   return SrcPos;
-}
-#endif

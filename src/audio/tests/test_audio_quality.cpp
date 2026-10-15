@@ -4,8 +4,8 @@ namespace audio_tests_audio_quality {
 static ADF legacy_flags(int Quality)
 {
    if (Quality < 10) return ADF::NIL;
-   if (Quality < 33) return ADF::FILTER_LOW;
-   if (Quality < 66) return ADF::FILTER_HIGH;
+   if (Quality < 33) return ADF::OVER_SAMPLING | ADF::FILTER_LOW;
+   if (Quality < 66) return ADF::OVER_SAMPLING | ADF::FILTER_HIGH;
    return ADF::OVER_SAMPLING | ADF::FILTER_HIGH;
 }
 
@@ -19,13 +19,13 @@ static void boundaries(AudioTestContext &Test)
       const int previous = audio->Quality;
       const auto previous_flags = audio->Flags;
       const auto previous_mode = audio->RequestedQuality.Mode;
-      const auto previous_resampling = audio->MixConfig.resampling;
+      const auto previous_resampling = audio->MixConfig.resampler;
       const auto error = audio->setQuality(quality);
       if (quality < 0 or quality > 100) {
          AUDIO_CHECK(error IS ERR::OutOfRange);
          AUDIO_CHECK(audio->Quality IS previous and audio->Flags IS previous_flags);
          AUDIO_CHECK(audio->RequestedQuality.Mode IS previous_mode);
-         AUDIO_CHECK(audio->MixConfig.resampling IS previous_resampling);
+         AUDIO_CHECK(audio->MixConfig.resampler IS previous_resampling);
          continue;
       }
       AUDIO_CHECK(error IS ERR::Okay and audio->Quality IS quality);
@@ -36,17 +36,17 @@ static void boundaries(AudioTestContext &Test)
          AUDIO_CHECK((audio->Flags & ~glQualityFlags) IS (ADF(flags) & ~glQualityFlags));
          std::lock_guard lock(audio->MixerMutex);
          audio->snapshot_quality();
-         AUDIO_CHECK(audio->EffectiveQuality.Mode IS audio->RequestedQuality.Mode);
+         AUDIO_CHECK(audio->EffectiveQuality.Mode IS audio_effective_quality_profile(quality)->Mode);
          AUDIO_CHECK(audio->WindowFlags IS audio->Flags);
-         AUDIO_CHECK(audio->WindowConfig.resampling IS (quality >= 66));
+         AUDIO_CHECK(audio->WindowConfig.resampler IS audio_quality_profile(quality)->Resampler);
       }
    }
    // Flags first and Quality first must converge on the same profile, with unrelated flags preserved.
    AUDIO_CHECK(audio->setFlags(ADF::VOL_RAMPING) IS ERR::Okay);
    AUDIO_CHECK(audio->setQuality(10) IS ERR::Okay);
-   AUDIO_CHECK(audio->Flags IS (ADF::VOL_RAMPING | ADF::FILTER_LOW));
+   AUDIO_CHECK(audio->Flags IS (ADF::VOL_RAMPING | ADF::OVER_SAMPLING | ADF::FILTER_LOW));
    AUDIO_CHECK(audio->setFlags(ADF::NIL) IS ERR::Okay);
-   AUDIO_CHECK(audio->Flags IS ADF::FILTER_LOW);
+   AUDIO_CHECK(audio->Flags IS (ADF::OVER_SAMPLING | ADF::FILTER_LOW));
    SET_Flags(audio, 0); // Avoid AUTO_SAVE affecting the user's configuration on destruction.
    AUDIO_REQUIRE(InitObject(audio) IS ERR::Okay);
    AUDIO_CHECK(audio->setFlags(ADF::NIL) IS ERR::ImmutableField);
@@ -75,7 +75,7 @@ static void configuration(AudioTestContext &Test)
       load_audio_quality(audio, *config);
       AUDIO_CHECK(audio->Quality IS quality);
       AUDIO_CHECK((audio->Flags & glQualityFlags) IS legacy_flags(quality));
-      AUDIO_CHECK(audio->MixConfig.resampling IS (quality >= 66));
+      AUDIO_CHECK(audio->MixConfig.resampler IS audio_quality_profile(quality)->Resampler);
    }
    for (const auto saved : { "-1", "101", "4294967376", "9999999999999999999999", "", "invalid", "80junk" }) {
       AUDIO_REQUIRE(audio->setQuality(80) IS ERR::Okay);
@@ -95,8 +95,8 @@ static void configuration(AudioTestContext &Test)
 }
 
 #ifdef AUDIO_WORKER
-// Compare complete renders to the pre-change nearest/linear dispatch and smoothing arithmetic for every valid value.
-static void unchanged_output(AudioTestContext &Test)
+// Compare partitioned renders to the selected kernel and smoothing arithmetic for every valid value.
+static void profile_output(AudioTestContext &Test)
 {
    const int16_t source[] = { 8192, -4096, 16384, 0, -8192, 24576, 4096, -16384, 0 };
    constexpr int frames = 12;
@@ -143,9 +143,11 @@ static void unchanged_output(AudioTestContext &Test)
       std::array<float, frames * 2> expected{}, actual{};
       auto dest = expected.data();
       set_mix_step(32768);
-      const AudioConfig legacy(stereo, quality >= 66);
-      // The legacy no-loop path passes a zero neighbour offset even before the source end.
-      const MixingParams params = { (APTR)source, 16384, frames, looped ? 1 : 0, 0.75f, 0.5f, &dest };
+      const AudioConfig legacy(stereo, audio_quality_profile(quality)->Resampler);
+      // The ordinary path now interpolates actual neighbours before the source end.
+      const MixingParams params = { (APTR)source, 16384, frames, 0.75f, 0.5f, &dest,
+         0, int64_t(std::size(source)), 0, int64_t(std::size(source)),
+         looped ? LTYPE::UNIDIRECTIONAL : LTYPE::NIL };
       AudioMixer::dispatch_mix(legacy, PCM::S16_MONO, params);
       const auto flags = legacy_flags(quality);
       for (int c = 0; c < (stereo ? 2 : 1); ++c) {
@@ -168,8 +170,8 @@ static void unchanged_output(AudioTestContext &Test)
       }
       AUDIO_REQUIRE(mix_data(audio, frames, actual.data()) IS ERR::Okay);
       AUDIO_CHECK(std::memcmp(actual.data(), expected.data(), frames * (stereo ? 2 : 1) * sizeof(float)) IS 0);
-      AUDIO_CHECK(audio->EffectiveQuality.Mode IS audio->RequestedQuality.Mode);
-      AUDIO_CHECK(audio->WindowConfig.resampling IS (quality >= 66));
+      AUDIO_CHECK(audio->EffectiveQuality.Mode IS audio_effective_quality_profile(quality)->Mode);
+      AUDIO_CHECK(audio->WindowConfig.resampler IS audio_quality_profile(quality)->Resampler);
       AUDIO_CHECK(channel.Position IS 6 and channel.PositionLow IS 16384);
    }
 }
@@ -215,8 +217,8 @@ static void live_write(AudioTestContext &Test)
    std::lock_guard lock(audio->MixerMutex);
    AUDIO_REQUIRE(mix_data(audio, output.size(), output.data()) IS ERR::Okay);
    AUDIO_CHECK(output IS expected);
-   AUDIO_CHECK(audio->Quality IS 100 and audio->WindowConfig.resampling);
-   AUDIO_CHECK(audio->EffectiveQuality.Mode IS AudioQualityMode::HIGH);
+   AUDIO_CHECK(audio->Quality IS 100 and audio->WindowConfig.resampler IS ResamplerMode::CUBIC);
+   AUDIO_CHECK(audio->EffectiveQuality.Mode IS AudioQualityMode::STANDARD);
    audio->GlobalEffects->Effects.clear();
 }
 
@@ -235,7 +237,8 @@ static void window_boundary(AudioTestContext &Test)
       AUDIO_CHECK(audio->setQuality(100) IS ERR::Okay);
       AUDIO_CHECK(audio->RequestedQuality.Mode IS AudioQualityMode::HIGH);
       AUDIO_CHECK(audio->EffectiveQuality.Mode IS AudioQualityMode::DRAFT);
-      AUDIO_CHECK(!audio->WindowConfig.resampling and (audio->WindowFlags & glQualityFlags) IS ADF::NIL);
+      AUDIO_CHECK(audio->WindowConfig.resampler IS ResamplerMode::NEAREST and
+         (audio->WindowFlags & glQualityFlags) IS ADF::NIL);
    }
    std::atomic<bool> started{false};
    std::future<ERR> write;
@@ -248,13 +251,15 @@ static void window_boundary(AudioTestContext &Test)
       });
       while (!started.load(std::memory_order_acquire)) std::this_thread::yield();
       AUDIO_CHECK(write.wait_for(std::chrono::milliseconds(10)) IS std::future_status::timeout);
-      AUDIO_CHECK(audio->EffectiveQuality.Mode IS AudioQualityMode::HIGH and audio->WindowConfig.resampling);
+      AUDIO_CHECK(audio->EffectiveQuality.Mode IS AudioQualityMode::STANDARD and
+         audio->WindowConfig.resampler IS ResamplerMode::CUBIC);
    }
    AUDIO_CHECK(write.get() IS ERR::Okay);
    std::lock_guard lock(audio->MixerMutex);
    audio->snapshot_quality();
-   AUDIO_CHECK(audio->EffectiveQuality.Mode IS AudioQualityMode::LOW and !audio->WindowConfig.resampling);
-   AUDIO_CHECK((audio->WindowFlags & glQualityFlags) IS ADF::FILTER_LOW);
+   AUDIO_CHECK(audio->EffectiveQuality.Mode IS AudioQualityMode::LOW and
+      audio->WindowConfig.resampler IS ResamplerMode::LINEAR);
+   AUDIO_CHECK((audio->WindowFlags & glQualityFlags) IS (ADF::OVER_SAMPLING | ADF::FILTER_LOW));
 }
 
 static void run(AudioTestContext &Test)
@@ -262,7 +267,7 @@ static void run(AudioTestContext &Test)
    boundaries(Test);
    configuration(Test);
 #ifdef AUDIO_WORKER
-   unchanged_output(Test);
+   profile_output(Test);
    live_write(Test);
 #endif
    window_boundary(Test);

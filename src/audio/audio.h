@@ -109,6 +109,8 @@ struct AudioSample {
    uint64_t DeferredStops = 0;
    int64_t DeferredStopDue = 0;
    AudioRingCursor Ring;
+   uint8_t History[4] = {};
+   bool HasHistory = false;
    int64_t SourceOffset = 0;
    int64_t RetryAt = 0;
    bool Refilling = false;
@@ -144,6 +146,7 @@ struct AudioSample {
       ++Generation;
       DeferredStops = 0;
       Ring.Read = Ring.Used = 0;
+      HasHistory = false;
       RefillPending = Prefilled = Starved = EndOfSource = false;
       RetryAt = 0;
       Refilling = false;
@@ -203,6 +206,8 @@ struct AudioCommand {
 //********************************************************************************************************************
 
 struct AudioChannel {
+   ResamplerState Resampler;
+   bool LoopHistory = false;
    double   LVolume;        // Current left speaker volume after applying Pan (0 - 1.0)
    double   RVolume;        // Current right speaker volume after applying Pan (0 - 1.0)
    double   LVolumeTarget;  // Volume target when fading or ramping
@@ -494,7 +499,7 @@ class extAudio : public objAudio {
    AudioConfig MixConfig; // Requested stereo/resampling dispatch, protected by MixerMutex.
    AudioConfig WindowConfig; // Immutable dispatch for the current mixer window.
    AudioQualityProfile RequestedQuality = glQualityProfiles[3];
-   AudioQualityProfile EffectiveQuality = glQualityProfiles[3];
+   AudioQualityProfile EffectiveQuality = glQualityProfiles[2];
    ADF WindowFlags = ADF::NIL; // Processing flags captured at the mixer-window boundary.
    std::vector<int> OutputLayout = { int(SPK::FRONT_LEFT), int(SPK::FRONT_RIGHT) }; // Requested output layout
    std::vector<int> CommittedLayout; // Processing layout of the last successful activation; empty if none
@@ -567,9 +572,9 @@ class extAudio : public objAudio {
 
    // Call with MixerMutex held once published.  The worker writes only its effective window state.
    void snapshot_quality() {
-      EffectiveQuality = *audio_quality_profile(Quality);
+      EffectiveQuality = *audio_effective_quality_profile(Quality);
       WindowFlags = (Flags & ~glQualityFlags) | EffectiveQuality.Flags;
-      WindowConfig = AudioConfig(Stereo, EffectiveQuality.Resampling);
+      WindowConfig = AudioConfig(Stereo, EffectiveQuality.Resampler);
    }
 
    inline struct AudioChannel * GetChannel(int Handle) {

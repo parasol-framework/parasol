@@ -285,110 +285,20 @@ static void convert_float(float *buf, int TotalSamples, float *dest) {
 //********************************************************************************************************************
 // Return a maximum of 32k-1 samples to prevent overflow problems
 
-// Template dispatch table for loop types with compile-time optimization
-template<LTYPE loop_type>
-static int64_t samples_until_end_impl(int64_t Position, int64_t SampleLength, int64_t LoopStart, int64_t LoopEnd,
-   bool Resampling, bool IsBackward, int &NextOffset)
+static int samples_until_end(extAudio *Self, AudioChannel &Channel)
 {
-   NextOffset = 1;
-
-   if constexpr (loop_type IS LTYPE::UNIDIRECTIONAL) {
-      if (Resampling) {
-         if ((Position + 1) < LoopEnd) {
-            return (LoopEnd - 1) - Position;
-         }
-         else {
-            NextOffset = LoopStart - Position;
-            return LoopEnd - Position;
-         }
-      }
-      else return LoopEnd - Position;
-   }
-   else if constexpr (loop_type IS LTYPE::BIDIRECTIONAL) {
-      if (IsBackward) {
-         if (Resampling) {
-            if (Position IS (LoopEnd - 1)) {
-               NextOffset = 0;
-               return 1;
-            }
-            else return Position - LoopStart;
-         }
-         else return Position - LoopStart;
-      }
-      else if (Resampling) {
-         if ((Position + 1) < LoopEnd) return (LoopEnd - 1) - Position;
-         else {
-            NextOffset = 0;
-            return 1;
-         }
-      }
-      else return LoopEnd - Position;
-   }
-   else { // Default/no loop
-      if (Resampling) {
-         if ((Position + 1) < SampleLength) return (SampleLength - 1) - Position;
-         else {
-            NextOffset = 0;
-            return SampleLength - Position;
-         }
-      }
-      else return SampleLength - Position;
-   }
-}
-
-//********************************************************************************************************************
-
-static int samples_until_end(extAudio *Self, AudioChannel &Channel, int &NextOffset)
-{
-   AudioLog log(__FUNCTION__);
-
    auto &sample = Self->Samples[Channel.SampleHandle];
-
-   // Use structured bindings and conditional operator for cleaner loop parameter selection
-   const auto [lp_start, lp_end, lp_type] = (Channel.LoopIndex IS 2) ?
-      std::make_tuple(sample.Loop2Start, sample.Loop2End, sample.Loop2Type) :
-      std::make_tuple(sample.Loop1Start, sample.Loop1End, sample.Loop1Type);
-
-   const bool resampling = Self->WindowConfig.resampling;
-   const bool is_backward = (Channel.Flags & CHF::BACKWARD) != CHF::NIL;
-
-   // Template dispatch for compile-time optimization based on loop type
-   int64_t num;
-   switch (lp_type) {
-      case LTYPE::UNIDIRECTIONAL:
-         num = samples_until_end_impl<LTYPE::UNIDIRECTIONAL>(
-            Channel.Position, sample.SampleLength, lp_start, lp_end, resampling, is_backward, NextOffset);
-         break;
-      case LTYPE::BIDIRECTIONAL:
-         num = samples_until_end_impl<LTYPE::BIDIRECTIONAL>(
-            Channel.Position, sample.SampleLength, lp_start, lp_end, resampling, is_backward, NextOffset);
-         break;
-      default: // Handle all other loop types (SINGLE, etc.) using default template behavior
-         // Use a compile-time value that triggers the else branch in the template
-         if constexpr (true) {
-            if (resampling) {
-               if ((Channel.Position + 1) < sample.SampleLength) {
-                  num = (sample.SampleLength - 1) - Channel.Position;
-               }
-               else {
-                  NextOffset = 0;
-                  num = sample.SampleLength - Channel.Position;
-               }
-            }
-            else num = sample.SampleLength - Channel.Position;
-         }
-         break;
-   }
-
-   int result;
-   if (num > 0x7FFF) result = 0x7FFF0000; // 16.16 fixed point
-   else result = ((num << 16) - Channel.PositionLow);
-
-   if (result < 0) {
-      log.warning("Computed invalid SUE value of %d", result);
-      return 0;
-   }
-   else return result;
+   const auto start = Channel.LoopIndex IS 2 ? sample.Loop2Start : sample.Loop1Start;
+   const auto end = Channel.LoopIndex IS 2 ? sample.Loop2End : sample.Loop1End;
+   const auto type = Channel.LoopIndex IS 2 ? sample.Loop2Type : sample.Loop1Type;
+   const bool backward = (Channel.Flags & CHF::BACKWARD) != CHF::NIL;
+   // Reverse includes the frame at the lower endpoint. Subtracting the fraction here used to stall at it.
+   const int64_t distance = backward ?
+      (Channel.Position - (type IS LTYPE::NIL ? 0 : int64_t(start) -
+         (type IS LTYPE::BIDIRECTIONAL ? 1 : 0))) * 65536 + Channel.PositionLow + 1 :
+      ((type IS LTYPE::NIL ? int64_t(sample.SampleLength) : int64_t(end)) - Channel.Position) * 65536 -
+         Channel.PositionLow;
+   return int(std::clamp(distance, int64_t(0), int64_t(0x7fff0000)));
 }
 
 //********************************************************************************************************************
@@ -416,6 +326,24 @@ static bool amiga_change(extAudio *Self, AudioChannel &Channel)
 
 //********************************************************************************************************************
 
+// Duplicated endpoints occupy a 2*length logical period. Reverse fractional positions can lie just below
+// LoopStart, where the common neighbour resolver reflects their support. Modulo also handles multi-turn steps.
+static void fold_bidirectional(AudioChannel &Channel, int64_t Start, int64_t End)
+{
+   const bool backward = (Channel.Flags & CHF::BACKWARD) != CHF::NIL;
+   const int64_t length = (End - Start) * 65536;
+   const int64_t position = (Channel.Position - Start) * 65536 + Channel.PositionLow;
+   int64_t phase = (backward ? 2 * length - 65536 - position : position) % (2 * length);
+   if (phase < 0) phase += 2 * length;
+   const bool reverse = phase >= length;
+   const int64_t folded = reverse ? 2 * length - 65536 - phase : phase;
+   Channel.Position = Start + (folded >> 16);
+   Channel.PositionLow = folded & 0xffff;
+   if (reverse) Channel.Flags |= CHF::BACKWARD;
+   else Channel.Flags &= ~CHF::BACKWARD;
+   Channel.LoopHistory = true;
+}
+
 static bool handle_sample_end(extAudio *Self, AudioChannel &Channel)
 {
    AudioLog log(__FUNCTION__);
@@ -436,7 +364,7 @@ static bool handle_sample_end(extAudio *Self, AudioChannel &Channel)
    }
 
    if (lp_type IS LTYPE::NIL) { // No loop - did we reach sample end?
-      if (Channel.Position >= sample.SampleLength) {
+      if (Channel.Position >= sample.SampleLength or Channel.Position < 0) {
          auto &prev_sample = Self->Samples[Channel.SampleHandle-1];
          if (((Channel.Flags & CHF::CHANGED) != CHF::NIL) and
              ((sample.LoopMode IS LOOP::AMIGA) or (sample.LoopMode IS LOOP::AMIGA_NONE)) and
@@ -451,23 +379,23 @@ static bool handle_sample_end(extAudio *Self, AudioChannel &Channel)
       else return false;
    }
 
-   if ((Channel.Flags & CHF::BACKWARD) != CHF::NIL) {
-      // Going backwards - did we reach loop start? (signed comparison takes care of possible wraparound)
-      if ((Channel.Position < lp_start) or ((Channel.Position IS lp_start) and (Channel.PositionLow IS 0)) ) {
-         Channel.Flags &= ~CHF::BACKWARD;
-         int64_t n = ((lp_start - Channel.Position) << 16) - Channel.PositionLow - 1;
-         // -1 is compensation for the fudge factor at loop end, see below
-         Channel.Position = lp_start + (n>>16);
-         Channel.PositionLow = n & 0xffff;
+   if (lp_end <= lp_start) {
+      Self->finish(Channel, true);
+      return true;
+   }
 
-         // Don't die on overshort loops
-         if (Channel.Position >= lp_end) {
-            Channel.Position = lp_start;
-            return true;
-         }
+   if ((Channel.Flags & CHF::BACKWARD) != CHF::NIL) {
+      if (lp_type IS LTYPE::BIDIRECTIONAL) {
+         if (Channel.Position < lp_start - 1) fold_bidirectional(Channel, lp_start, lp_end);
+      }
+      else if (Channel.Position < lp_start) {
+         const int64_t length = lp_end - lp_start;
+         Channel.Position = lp_start + ((Channel.Position - lp_start) % length + length) % length;
+         Channel.LoopHistory = true;
       }
    }
-   else if (Channel.Position >= lp_end) { // Going forward - did we reach loop end?
+   else if (Channel.Position >= lp_end) {
+      Channel.LoopHistory = true; // Going forward - did we reach loop end?
       if (sample.Stream) {
          // Read the next set of stream data into our sample buffer
          BYTELEN bytes_read = fill_stream_buffer(Channel.SampleHandle, sample, -1);
@@ -508,40 +436,8 @@ static bool handle_sample_end(extAudio *Self, AudioChannel &Channel)
          return false;
       }
 
-      if (lp_type IS LTYPE::BIDIRECTIONAL ) {
-         // Bidirectional loop - change direction
-         Channel.Flags |= CHF::BACKWARD;
-         int64_t n = ((Channel.Position - lp_end) << 16) + Channel.PositionLow + 1;
-
-         // +1 is a fudge factor to make sure we'll access the correct samples all the time - a similar adjustment is
-         // also done at the other end of the loop. This screws up interpolation a little when sample rate IS mixing
-         // rate, but little enough that it can't be heard.
-
-         if (lp_end < 0x10000) {
-            Channel.Position    = ((lp_end << 16) - n)>>16;
-            Channel.PositionLow = ((lp_end << 16) - n) & 0xffff;
-         }
-         else {
-            Channel.Position    = ((0xffff0000 - n)>>16) + (lp_end - 0xffff);
-            Channel.PositionLow = (0xffff0000 - n) & 0xffff;
-         }
-
-         if (Channel.Position <= lp_start) { // Don't die on overshort loops
-            Channel.Position = lp_end;
-            return true;
-         }
-         return false;
-      }
-      else { // Unidirectional loop - just loop to the beginning
-         Channel.Position = lp_start + (Channel.Position - lp_end);
-
-         if (Channel.Position >= lp_end) { // Don't die on overshort loops
-            Channel.Position = lp_start;
-            return true;
-         }
-
-         return false;
-      }
+      if (lp_type IS LTYPE::BIDIRECTIONAL) fold_bidirectional(Channel, lp_start, lp_end);
+      else Channel.Position = lp_start + (Channel.Position - lp_end) % (lp_end - lp_start);
    }
 
    return false;
@@ -644,7 +540,10 @@ static void mix_stream(extAudio *Self, AudioChannel &Channel, AudioSample &Sampl
    for (int i = 0; i < TotalSamples; ++i) {
       const int64_t position = Channel.PositionLow + step;
       const size_t advance = size_t(position >> 16) * frame_bytes;
-      const size_t needed = std::max(size_t(frame_bytes), advance);
+      const auto mode = Self->WindowConfig.resampler;
+      const int support = mode IS ResamplerMode::CUBIC or Channel.Resampler.Weights[2] != 0 ? 3 :
+         (mode IS ResamplerMode::LINEAR or Channel.Resampler.Weights[1] != 0 ? 2 : 1);
+      const size_t needed = std::max(size_t(frame_bytes * support), advance);
 
       if (Sample.Ring.Used < needed and !Sample.EndOfSource) {
          if (!Sample.Starved) { ++Self->Starvations; Sample.Starved = true; }
@@ -658,13 +557,16 @@ static void mix_stream(extAudio *Self, AudioChannel &Channel, AudioSample &Sampl
          return;
       }
 
-      // A two-frame window makes interpolation safe even across the ring boundary or at EOF.
-
-      alignas(4) uint8_t frames[8];
-      for (int byte = 0; byte < frame_bytes; ++byte) {
-         frames[byte] = Sample.Data[(Sample.Ring.Read + byte) % Sample.Data.size()];
-         frames[frame_bytes + byte] = Sample.Ring.Used >= size_t(frame_bytes * 2) ?
-            Sample.Data[(Sample.Ring.Read + frame_bytes + byte) % Sample.Data.size()] : frames[byte];
+      // Retain the preceding consumed frame and gather look-ahead across the physical ring wrap.
+      // EOF repeats the last available frame; starvation waits for support without moving the cursor.
+      alignas(4) uint8_t frames[16];
+      for (int tap = 0; tap < 4; ++tap) {
+         for (int byte = 0; byte < frame_bytes; ++byte) {
+            const size_t offset = std::min(size_t(std::max(0, tap - 1)),
+               Sample.Ring.Used / frame_bytes - 1) * frame_bytes;
+            frames[tap * frame_bytes + byte] = tap IS 0 and Sample.HasHistory ? Sample.History[byte] :
+               Sample.Data[(Sample.Ring.Read + offset + byte) % Sample.Data.size()];
+         }
       }
 
       const bool source_stereo = pcm_stereo(Sample.SampleType);
@@ -674,9 +576,10 @@ static void mix_stream(extAudio *Self, AudioChannel &Channel, AudioSample &Sampl
       set_mix_step(int(step));
 
       MixingParams params = {
-         .src = frames, .src_pos = Channel.PositionLow, .total_samples = 1, .next_sample_offset = 1,
+         .src = frames, .src_pos = 65536 + Channel.PositionLow, .total_samples = 1,
          .left_vol = float(volume * Channel.LVolume), .right_vol = float(volume * Channel.RVolume),
-         .mix_dest = &dest
+         .mix_dest = &dest, .length = 4, .transition = &Channel.Resampler,
+               .loop_history = Channel.LoopHistory or (Channel.Flags & CHF::BACKWARD) != CHF::NIL
       };
 
       const float previous_left = dest[0];
@@ -693,6 +596,12 @@ static void mix_stream(extAudio *Self, AudioChannel &Channel, AudioSample &Sampl
       }
 
       const size_t consumed = std::min(advance, Sample.Ring.Used);
+      if (consumed >= size_t(frame_bytes)) {
+         for (int byte = 0; byte < frame_bytes; ++byte) {
+            Sample.History[byte] = Sample.Data[(Sample.Ring.Read + consumed - frame_bytes + byte) % Sample.Data.size()];
+         }
+         Sample.HasHistory = true;
+      }
       Sample.Ring.consume(consumed, Sample.Data.size(), frame_bytes);
       int64_t play_pos = int64_t(Sample.PlayPos) + consumed;
       if (Sample.StreamLengthKnown and Sample.streamLoops() and play_pos >= Sample.StreamLength) {
@@ -756,7 +665,9 @@ static void mix_channel(extAudio *Self, AudioChannel &Channel, int TotalSamples,
 
    // Calculate resampling step (16.16 fixed point)
 
-   int step = ((int64_t(Channel.Frequency / Self->OutputRate) << 16) + (int64_t(Channel.Frequency % Self->OutputRate) << 16) / Self->OutputRate);
+   const int step = int(int64_t(Channel.Frequency) * 65536 / Self->OutputRate);
+
+   if (step <= 0) return;
 
    const int sample_size = sample.FrameBytes;
    const bool sample_is_stereo = pcm_stereo(sample.SampleType);
@@ -771,15 +682,14 @@ static void mix_channel(extAudio *Self, AudioChannel &Channel, int TotalSamples,
    while (TotalSamples > 0) {
       if (Channel.isStopped()) return;
 
-      int next_offset = 0;
-      int sue = samples_until_end(Self, Channel, next_offset);
+      int sue = samples_until_end(Self, Channel);
 
       // Calculate the number of destination samples (note rounding)
 
-      int mixUntilEnd = sue / step;
-      if (sue % step) mixUntilEnd++;
+      int mix_until_end = sue / step;
+      if (sue % step) mix_until_end++;
 
-      int mix_now = (mixUntilEnd > TotalSamples) ? TotalSamples : mixUntilEnd;
+      int mix_now = (mix_until_end > TotalSamples) ? TotalSamples : mix_until_end;
       TotalSamples -= mix_now;
 
       if (mix_now > 0) {
@@ -789,112 +699,55 @@ static void mix_channel(extAudio *Self, AudioChannel &Channel, int TotalSamples,
             return;
          }
 
-         int mix_pos = Channel.PositionLow;
-         uint8_t *MixSample = sample.Data.data() + (sample_size * Channel.Position); // source of sample data to mix into destination
+         const int64_t source_origin = std::max(int64_t(0), Channel.Position);
+         int mix_pos = int((Channel.Position - source_origin) * 65536) + Channel.PositionLow;
+         auto mix_sample = sample.Data.data() + (sample_size * source_origin);
 
-         // Thread-safe: pass step direction as parameter instead of using global
+         // The existing step is thread-local; source timing remains 16.16 fixed point.
 
          const int mix_step = ((Channel.Flags & CHF::BACKWARD) != CHF::NIL) ? -step : step;
          set_mix_step(mix_step);
 
-         // If volume ramping is enabled, mix one sample element at a time and adjust volume by glRampStep.
-         // Using helper function to reduce code duplication
-
-         while (((Channel.Flags & CHF::VOL_RAMP) != CHF::NIL) and (mix_now > 0)) {
+         while (mix_now > 0) {
+            const bool ramp = (Channel.Flags & CHF::VOL_RAMP) != CHF::NIL;
+            const int frames = ramp ? 1 : mix_now;
             MixingParams params = {
-               .src = MixSample,
-               .src_pos = mix_pos,
-               .total_samples = 1,
-               .next_sample_offset = next_offset,
+               .src = mix_sample, .src_pos = mix_pos, .total_samples = frames,
                .left_vol = float(mastervol * Channel.LVolume),
                .right_vol = float(mastervol * Channel.RVolume),
-               .mix_dest = &mix_dest
+               .mix_dest = &mix_dest,
+               .origin = source_origin, .length = sample.SampleLength,
+               .loop_start = Channel.LoopIndex IS 2 ? sample.Loop2Start : sample.Loop1Start,
+               .loop_end = Channel.LoopIndex IS 2 ? sample.Loop2End : sample.Loop1End,
+               .loop_type = Channel.LoopIndex IS 2 ? sample.Loop2Type : sample.Loop1Type,
+               .transition = &Channel.Resampler,
+               .loop_history = Channel.LoopHistory or (Channel.Flags & CHF::BACKWARD) != CHF::NIL
             };
-
-            auto frame = mix_dest;
+            auto frame = mix_dest + (frames - 1) * (Self->Stereo ? 2 : 1);
             const float previous_left = frame[0];
             const float previous_right = Self->Stereo ? frame[1] : 0;
             mix_pos = AudioMixer::dispatch_mix(Self->WindowConfig, sample.SampleType, params);
             Channel.LastLeft = float((frame[0] - previous_left) / cache_master);
             Channel.LastRight = Self->Stereo ? float((frame[1] - previous_right) / cache_master) : 0;
-            mix_now--;
-
-            // Use helper function for cleaner volume ramping logic
-            const bool left_ramping = adjust_volume_ramp(Channel.LVolume, Channel.LVolumeTarget, glRampStep);
-            const bool right_ramping = adjust_volume_ramp(Channel.RVolume, Channel.RVolumeTarget, glRampStep);
-
-            if (!left_ramping and !right_ramping) {
-               Channel.Flags &= ~CHF::VOL_RAMP;
-            }
-         }
-
-         if ((Channel.LVolume IS 0) and (Channel.RVolume IS 0)) {
-            // If the volume is zero we can just increment the position and not mix anything
-            mix_pos += mix_now * mix_step;
-            mix_dest += mix_now * (Self->Stereo ? 2 : 1);
-            if (mix_now) Channel.LastLeft = Channel.LastRight = 0;
-            if (Channel.State IS CHS::FADE_OUT) {
-               Self->finish(Channel, true);
-               Channel.Flags &= ~CHF::VOL_RAMP;
-            }
-         }
-         else {
-            // Ensure proper alignment and do all mixing if next_offset != 1
-
-            int num;
-            if ((mix_now > 0) and ((next_offset != 1) or ((((MAXINT)mix_dest) % 1) != 0))) {
-               if (next_offset IS 1) {
-                  num = 1 - (((MAXINT)mix_dest) % 1);
-                  if (num > mix_now) num = mix_now;
-               }
-               else num = mix_now;
-
-               MixingParams params = {
-                  .src = MixSample,
-                  .src_pos = mix_pos,
-                  .total_samples = num,
-                  .next_sample_offset = next_offset,
-                  .left_vol = float(mastervol * Channel.LVolume),
-                  .right_vol = float(mastervol * Channel.RVolume),
-                  .mix_dest = &mix_dest
-               };
-
-               auto frame = mix_dest + (params.total_samples - 1) * (Self->Stereo ? 2 : 1);
-               const float previous_left = frame[0];
-               const float previous_right = Self->Stereo ? frame[1] : 0;
-               mix_pos = AudioMixer::dispatch_mix(Self->WindowConfig, sample.SampleType, params);
-               Channel.LastLeft = float((frame[0] - previous_left) / cache_master);
-               Channel.LastRight = Self->Stereo ? float((frame[1] - previous_right) / cache_master) : 0;
-               mix_now -= num;
-            }
-
-            if (mix_now > 0) { // Main mixing loop
-               MixingParams params = {
-                  .src = MixSample,
-                  .src_pos = mix_pos,
-                  .total_samples = mix_now,
-                  .next_sample_offset = 1,
-                  .left_vol = float(mastervol * Channel.LVolume),
-                  .right_vol = float(mastervol * Channel.RVolume),
-                  .mix_dest = &mix_dest
-               };
-
-               auto frame = mix_dest + (params.total_samples - 1) * (Self->Stereo ? 2 : 1);
-               const float previous_left = frame[0];
-               const float previous_right = Self->Stereo ? frame[1] : 0;
-               mix_pos = AudioMixer::dispatch_mix(Self->WindowConfig, sample.SampleType, params);
-               Channel.LastLeft = float((frame[0] - previous_left) / cache_master);
-               Channel.LastRight = Self->Stereo ? float((frame[1] - previous_right) / cache_master) : 0;
+            mix_now -= frames;
+            if (ramp) {
+               const bool left = adjust_volume_ramp(Channel.LVolume, Channel.LVolumeTarget, glRampStep);
+               const bool right = adjust_volume_ramp(Channel.RVolume, Channel.RVolumeTarget, glRampStep);
+               if (!left and !right) Channel.Flags &= ~CHF::VOL_RAMP;
             }
          }
 
          // Save state back to channel structure
          Channel.PositionLow = mix_pos & 0xffff;
-         Channel.Position = (mix_pos>>16) + ((MixSample - sample.Data.data()) / sample_size);
+         Channel.Position = (mix_pos>>16) + ((mix_sample - sample.Data.data()) / sample_size);
+         if (Channel.LVolume IS 0 and Channel.RVolume IS 0 and Channel.State IS CHS::FADE_OUT) {
+            Self->finish(Channel, true);
+            Channel.Flags &= ~CHF::VOL_RAMP;
+         }
       }
       else if (mix_now < 0) {
-         log.warning("Detected invalid mix values; TotalSamples: %d, MixNow: %d, SUE: %d, NextOffset: %d, Step: %d, "
-            "ChannelPos: %" PF64, TotalSamples, mix_now, sue, next_offset, step, (long long)Channel.Position);
+         log.warning("Detected invalid mix values; TotalSamples: %d, MixNow: %d, SUE: %d, Step: %d, "
+            "ChannelPos: %" PF64, TotalSamples, mix_now, sue, step, (long long)Channel.Position);
          return;
       }
 
