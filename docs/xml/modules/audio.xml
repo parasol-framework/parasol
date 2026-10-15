@@ -433,6 +433,12 @@ A stream without a loop is unaffected.</li>
       <const name="SURROUND_5_1_SIDE"><code>FRONT_LEFT</code>, <code>FRONT_RIGHT</code>, <code>CENTRE</code>, <code>LFE</code>, <code>SIDE_LEFT</code>, <code>SIDE_RIGHT</code>.</const>
     </constants>
 
+    <constants lookup="ADS" comment="Effect drain states reported by GetEffectStatus().">
+      <const name="ACTIVE">At least one source on the selected path is playing.</const>
+      <const name="DRAINING">Sources have stopped, but one or more effects are still producing tail output.</const>
+      <const name="IDLE">No sources are playing and no effect has pending output.</const>
+    </constants>
+
     <constants lookup="AFF" comment="Optional AudioFormat flags.">
       <const name="BIG_ENDIAN_ORDER">Multi-byte samples are stored in big endian byte order.  Samples are little endian if this flag is not set.</const>
     </constants>
@@ -522,6 +528,16 @@ A stream without a loop is unaffected.</li>
       <field name="Handle" type="INT">Target channel; all commands in a batch must use the same channel set</field>
       <field name="Integer" type="INT64">Integer argument for the selected operation; otherwise ignored</field>
       <field name="Value" type="DOUBLE">Finite floating-point argument for PAN and VOLUME; otherwise ignored</field>
+    </struct>
+
+    <struct name="EffectStatus" comment="One coherent latency and drain-state snapshot from GetEffectStatus().">
+      <field name="Application" type="INT64">Application-chain algorithmic latency in frames</field>
+      <field name="Global" type="INT64">Global-chain algorithmic latency in frames</field>
+      <field name="Total" type="INT64">Total algorithmic latency along the selected path in frames</field>
+      <field name="Rate" type="INT">Negotiated output rate, or zero before configuration</field>
+      <field name="Generation" type="INT64">Configuration generation shared by all paths</field>
+      <field name="State" type="ADS" lookup="ADS">Selected chain's drain state</field>
+      <field name="Truncated" type="INT">One if automatic drain reached its safety deadline</field>
     </struct>
 
     <struct name="MeterInfo" comment="Describes one value published by an effect's meters.">

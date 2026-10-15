@@ -163,6 +163,16 @@ module({ name="Audio", copyright="Paul Manias © 2002-2026", version=1.0, timest
     vector(int) Layout      # Ordered channel identities from SPK; the length is the channel count
   ]])
 
+  structdef("EffectStatus", { comment="One coherent latency and drain-state snapshot from GetEffectStatus()." }, [[
+    large Application  # Application-chain algorithmic latency in frames
+    large Global       # Global-chain algorithmic latency in frames
+    large Total        # Total algorithmic latency along the selected path in frames
+    int Rate           # Negotiated output rate, or zero before configuration
+    large Generation   # Configuration generation shared by all paths
+    int(ADS) State     # Selected chain's drain state
+    int Truncated      # One if automatic drain reached its safety deadline
+  ]])
+
   structdef("MeterInfo", { comment="Describes one value published by an effect's meters." }, [[
     string Key         # Stable key, e.g. `input_peak_left`
     string Label       # Human-readable label
@@ -215,8 +225,6 @@ module({ name="Audio", copyright="Paul Manias © 2002-2026", version=1.0, timest
   })
 
   klass("Audio", { version=1, src="class_audio.cpp", output="class_audio_def.c", extended=true }, [[
-    ~double MaxDrain
-    ~array(int) OutputLayout
     int OutputRate
     int InputRate
     int Quality

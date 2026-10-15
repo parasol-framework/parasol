@@ -197,33 +197,30 @@
     <method>
       <name>GetEffectStatus</name>
       <comment>Reads DSP drain state and serial-path latency together.</comment>
-      <prototype>ERR snd::GetEffectStatus(OBJECTPTR Object, INT Channel, INT64 * Application, INT64 * Global, INT64 * Total, INT * Rate, INT64 * Generation, ADS * State, INT * Truncated)</prototype>
-      <tiriPrototype>err, Application:num, Global:num, Total:num, Rate:num, Generation:num, State:num, Truncated:num = GetEffectStatus(Channel:num)</tiriPrototype>
+      <prototype>ERR snd::GetEffectStatus(OBJECTPTR Object, INT Channel, struct EffectStatus ** Status)</prototype>
+      <tiriPrototype>err, Status:any = GetEffectStatus(Channel:num)</tiriPrototype>
       <input>
         <param type="INT" name="Channel">Channel-set handle, or zero for the global path.</param>
-        <param type="INT64 *" name="Application">Application-chain algorithmic latency.</param>
-        <param type="INT64 *" name="Global">Global-chain algorithmic latency.</param>
-        <param type="INT64 *" name="Total">Total algorithmic latency along this path.</param>
-        <param type="INT *" name="Rate">Negotiated output rate, or zero before configuration.</param>
-        <param type="INT64 *" name="Generation">Configuration generation shared by all paths.</param>
-        <param type="ADS *" name="State" lookup="ADS">Selected chain's drain state.</param>
-        <param type="INT *" name="Truncated">One if automatic drain reached its safety deadline.</param>
+        <param type="struct EffectStatus **" name="Status">Receives an owned snapshot of the path's latency and drain state.</param>
       </input>
       <description>
-<p>GetEffectStatus() returns a consistent snapshot of one signal path's effect latency and drain state, taken under the mixer lock so that all output values describe the same moment.</p>
+<p>GetEffectStatus() returns a consistent snapshot of one signal path's effect latency and drain state, taken under the mixer lock so that all fields of the returned <st>EffectStatus</st> describe the same moment.</p>
 <p>The path is selected with <code>Channel</code>.  A channel-set handle selects that application's chain followed by the global chain.  Zero selects the global path, in which case <code>Application</code> is always zero and the drain state accounts for every application's sources and chains.  Latencies are expressed in frames at the returned <code>Rate</code>.  <code>Total</code> is the sum of <code>Application</code> and <code>Global</code>, and only includes effects that are not bypassed.</p>
 <p><code>State</code> takes one of the following values:</p>
 <types lookup="ADS"/>
 <p><code>Truncated</code> is set to 1 if the selected chain's automatic drain was cut short at the <fl>MaxDrain</fl> deadline while effects still had pending output.  It is cleared when new source audio reaches the chain or the chain is reset.</p>
-<p><code>Generation</code> is incremented whenever the effect configuration or DSP history of any path changes, and is written even when the call fails.  Compare it between calls to detect intervening resets or reconfiguration.  The remaining outputs are not meaningful if an error is returned.</p>
+<p><code>Generation</code> is incremented whenever the effect configuration or DSP history of any path changes, and is written even when validation fails.  Compare it between calls to detect intervening resets or reconfiguration.  The remaining fields are not meaningful if an error is returned.  If allocation fails, no snapshot is returned.</p>
+<p>The snapshot is allocated by the Audio object and remains valid after later calls or configuration changes.  C++ clients must release it with <function module="Core">FreeResource</function>, including when the method returns a validation error.</p>
       </description>
       <result>
         <error code="Okay">Operation successful.</error>
         <error code="Args">The channel-set handle is invalid or closed.</error>
         <error code="OutOfRange">Serial latency cannot be represented in a signed 64-bit frame count.</error>
-        <error code="NotInitialised">No output configuration is available; Rate is zero.</error>
+        <error code="AllocMemory">Failed to create a new memory block</error>
+        <error code="NotInitialised">No output configuration is available; Status.Rate is zero.</error>
         <error code="NullArgs">Function call missing argument value(s)</error>
       </result>
+      <tags>caller-owns-result</tags>
     </method>
 
     <method>
@@ -424,7 +421,7 @@
     <field>
       <name>Dither</name>
       <comment>Selects triangular dither for integer output.</comment>
-      <access read="G" write="S">Get/Set</access>
+      <access read="R" write="W">Read/Write</access>
       <type lookup="ADITHER">ADITHER</type>
       <description>
 <p>The default is <code>ADITHER::AUTO</code>.  Real-time changes take effect at the next mixer-window boundary.</p>
@@ -500,7 +497,7 @@
       <name>OutputLayout</name>
       <comment>The requested output channel layout.</comment>
       <access read="G" write="S">Get/Set</access>
-      <type>INT[]</type>
+      <type>INT []</type>
       <description>
 <p>OutputLayout lists the channel identities of the requested output, in interleaved frame order.  The default is stereo: <code>FRONT_LEFT</code>, <code>FRONT_RIGHT</code>.  Wider layouts are never enabled automatically.  Use ExpandLayout() to obtain the layout of a named preset:</p>
 <pre>err, layout = mAudio.ExpandLayout(ACL_MONO)
@@ -663,6 +660,16 @@ audio = obj.new('Audio', { outputLayout=layout })
       <field name="Loop1End" type="INT64">Byte position at the end of the first loop</field>
       <field name="Loop2Start" type="INT64">Byte position at the start of the second loop</field>
       <field name="Loop2End" type="INT64">Byte position at the end of the second loop</field>
+    </struct>
+
+    <struct name="EffectStatus" comment="One coherent latency and drain-state snapshot from GetEffectStatus().">
+      <field name="Application" type="INT64">Application-chain algorithmic latency in frames</field>
+      <field name="Global" type="INT64">Global-chain algorithmic latency in frames</field>
+      <field name="Total" type="INT64">Total algorithmic latency along the selected path in frames</field>
+      <field name="Rate" type="INT">Negotiated output rate, or zero before configuration</field>
+      <field name="Generation" type="INT64">Configuration generation shared by all paths</field>
+      <field name="State" type="ADS" lookup="ADS">Selected chain's drain state</field>
+      <field name="Truncated" type="INT">One if automatic drain reached its safety deadline</field>
     </struct>
 
   </structs>

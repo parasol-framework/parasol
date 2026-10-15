@@ -301,6 +301,16 @@ struct AudioFormat {
    kt::vector<int> Layout;    // Ordered channel identities from SPK; the length is the channel count
 };
 
+struct EffectStatus {
+   int64_t Application;    // Application-chain algorithmic latency in frames
+   int64_t Global;         // Global-chain algorithmic latency in frames
+   int64_t Total;          // Total algorithmic latency along the selected path in frames
+   int     Rate;           // Negotiated output rate, or zero before configuration
+   int64_t Generation;     // Configuration generation shared by all paths
+   ADS     State;          // Selected chain's drain state
+   int     Truncated;      // One if automatic drain reached its safety deadline
+};
+
 struct MeterInfo {
    std::string Key;          // Stable key, e.g. input_peak_left
    std::string Label;        // Human-readable label
@@ -352,7 +362,7 @@ struct SetSampleLength { int Sample; int64_t Length; static const AC id = AC(-5)
 struct AddStream { FUNCTION Callback; FUNCTION OnStop; struct AudioFormat *Format; int64_t SampleLength; int64_t PlayOffset; struct AudioLoop *Loop; int Result; static const AC id = AC(-6); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
 struct Beep { int Pitch; int Duration; int Volume; static const AC id = AC(-7); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
 struct SetVolume { int Index; std::string_view Name; SVF Flags; int Channel; double Volume; static const AC id = AC(-8); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
-struct GetEffectStatus { int Channel; int64_t Application; int64_t Global; int64_t Total; int Rate; int64_t Generation; ADS State; int Truncated; static const AC id = AC(-9); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct GetEffectStatus { int Channel; struct EffectStatus *Status; static const AC id = AC(-9); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
 struct ResetEffects { int Channel; static const AC id = AC(-10); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
 struct GetOutputFormat { int SampleRate; ASF SampleFormat; kt::vector<int> *Layout; int64_t Generation; AFS State; static const AC id = AC(-11); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
 struct GetVolumeChannels { int Index; std::string_view Name; kt::vector<int> *Channels; kt::vector<int> *Speakers; VCF Flags; static const AC id = AC(-12); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
@@ -424,16 +434,10 @@ class objAudio : public Object {
       struct snd::SetVolume args = { Index, Name, Flags, Channel, Volume };
       return Action(AC(-8), this, &args);
    }
-   inline ERR getEffectStatus(int Channel, int64_t * Application, int64_t * Global, int64_t * Total, int * Rate, int64_t * Generation, ADS * State, int * Truncated) noexcept {
-      struct snd::GetEffectStatus args = { Channel, (int64_t)0, (int64_t)0, (int64_t)0, (int)0, (int64_t)0, (ADS)0, (int)0 };
+   inline ERR getEffectStatus(int Channel, struct EffectStatus ** Status) noexcept {
+      struct snd::GetEffectStatus args = { Channel, (struct EffectStatus *)0 };
       ERR error = Action(AC(-9), this, &args);
-      if (Application) *Application = args.Application;
-      if (Global) *Global = args.Global;
-      if (Total) *Total = args.Total;
-      if (Rate) *Rate = args.Rate;
-      if (Generation) *Generation = args.Generation;
-      if (State) *State = args.State;
-      if (Truncated) *Truncated = args.Truncated;
+      if (Status) *Status = args.Status;
       return error;
    }
    inline ERR resetEffects(int Channel) noexcept {
@@ -458,20 +462,6 @@ class objAudio : public Object {
 
    // Customised field getting
 
-   inline ERR getMaxDrain(double &Value) noexcept {
-      auto field = &this->Class->Dictionary[1];
-      SetObjectContext(this, field, AC::NIL);
-      auto error = field->GetValue(this, &Value);
-      RestoreObjectContext();
-      return error;
-   }
-
-   inline ERR getOutputLayout(std::span<int> &Value) noexcept {
-      auto field = &this->Class->Dictionary[5];
-      auto get_field = (ERR (*)(APTR, std::span<int> &))field->GetValue;
-      return get_field(this, Value);
-   }
-
    inline ERR getOutputRate(int &Value) noexcept {
       Value = this->OutputRate;
       return ERR::Okay;
@@ -493,11 +483,8 @@ class objAudio : public Object {
    }
 
    inline ERR getDither(ADITHER &Value) noexcept {
-      auto field = &this->Class->Dictionary[0];
-      SetObjectContext(this, field, AC::NIL);
-      auto error = field->GetValue(this, &Value);
-      RestoreObjectContext();
-      return error;
+      Value = this->Dither;
+      return ERR::Okay;
    }
 
    inline ERR getBitDepth(int &Value) noexcept {
@@ -513,6 +500,14 @@ class objAudio : public Object {
    inline ERR getPeriodSize(int &Value) noexcept {
       Value = this->PeriodSize;
       return ERR::Okay;
+   }
+
+   inline ERR getMaxDrain(double &Value) noexcept {
+      auto field = &this->Class->Dictionary[1];
+      SetObjectContext(this, field, AC::NIL);
+      auto error = field->GetValue(this, &Value);
+      RestoreObjectContext();
+      return error;
    }
 
    inline ERR getDevice(std::string_view &Value) noexcept {
@@ -542,18 +537,14 @@ class objAudio : public Object {
       return error;
    }
 
+   inline ERR getOutputLayout(std::span<int> &Value) noexcept {
+      auto field = &this->Class->Dictionary[5];
+      auto get_field = (ERR (*)(APTR, std::span<int> &))field->GetValue;
+      return get_field(this, Value);
+   }
+
 
    // Customised field setting
-
-   inline ERR setMaxDrain(const double Value) noexcept {
-      auto field = &this->Class->Dictionary[1];
-      return field->WriteValue(this, field, FD_DOUBLE, &Value);
-   }
-
-   inline ERR setOutputLayout(std::span<const int> Value) noexcept {
-      auto field = &this->Class->Dictionary[5];
-      return field->WriteValue(this, field, 0x40101308, &Value);
-   }
 
    inline ERR setOutputRate(const int Value) noexcept {
       auto field = &this->Class->Dictionary[9];
@@ -577,8 +568,8 @@ class objAudio : public Object {
    }
 
    inline ERR setDither(const ADITHER Value) noexcept {
-      auto field = &this->Class->Dictionary[0];
-      return field->WriteValue(this, field, FD_INT, &Value);
+      this->Dither = Value;
+      return ERR::Okay;
    }
 
    inline ERR setBitDepth(const int Value) noexcept {
@@ -596,6 +587,11 @@ class objAudio : public Object {
       return field->WriteValue(this, field, FD_INT, &Value);
    }
 
+   inline ERR setMaxDrain(const double Value) noexcept {
+      auto field = &this->Class->Dictionary[1];
+      return field->WriteValue(this, field, FD_DOUBLE, &Value);
+   }
+
    inline ERR setDevice(const std::string_view &Value) noexcept {
       auto field = &this->Class->Dictionary[11];
       return field->WriteValue(this, field, 0x00904300, &Value);
@@ -609,6 +605,11 @@ class objAudio : public Object {
    inline ERR setMute(const int Value) noexcept {
       auto field = &this->Class->Dictionary[13];
       return field->WriteValue(this, field, FD_INT, &Value);
+   }
+
+   inline ERR setOutputLayout(std::span<const int> Value) noexcept {
+      auto field = &this->Class->Dictionary[5];
+      return field->WriteValue(this, field, 0x40101308, &Value);
    }
 
 };

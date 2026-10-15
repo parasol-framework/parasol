@@ -275,7 +275,8 @@ end
    sound <close> = obj.new('Sound', { audio=audio, path=glFolder .. 'low-tone.wav', pan=-1,
       onStop=function(Sound)
          count.stops++
-         err, _, _, _, _, _, state = audio.mtGetEffectStatus(Sound.channelIndex & 0xffff0000)
+         err, status = audio.mtGetEffectStatus(Sound.channelIndex & 0xffff0000)
+         state = status.state
          state_at_stop = state
       end })
    stereo <close> = obj.new('AudioStereo', { audio=audio, channel=sound.channelIndex & 0xffff0000 })

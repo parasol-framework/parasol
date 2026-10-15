@@ -1865,7 +1865,7 @@ extAudio::~extAudio() {
 GetEffectStatus: Reads DSP drain state and serial-path latency together.
 
 GetEffectStatus() returns a consistent snapshot of one signal path's effect latency and drain state, taken under the
-mixer lock so that all output values describe the same moment.
+mixer lock so that all fields of the returned !EffectStatus describe the same moment.
 
 The path is selected with `Channel`.  A channel-set handle selects that application's chain followed by the global
 chain.  Zero selects the global path, in which case `Application` is always zero and the drain state accounts for
@@ -1880,24 +1880,22 @@ sum of `Application` and `Global`, and only includes effects that are not bypass
 still had pending output.  It is cleared when new source audio reaches the chain or the chain is reset.
 
 `Generation` is incremented whenever the effect configuration or DSP history of any path changes, and is written
-even when the call fails.  Compare it between calls to detect intervening resets or reconfiguration.  The remaining
-outputs are not meaningful if an error is returned.
+even when validation fails.  Compare it between calls to detect intervening resets or reconfiguration.  The remaining
+fields are not meaningful if an error is returned.  If allocation fails, no snapshot is returned.
+
+The snapshot is allocated by the Audio object and remains valid after later calls or configuration changes.  C++
+clients must release it with ~Core.FreeResource(), including when the method returns a validation error.
 
 -INPUT-
-int Channel:        Channel-set handle, or zero for the global path.
-&large Application: Application-chain algorithmic latency.
-&large Global:      Global-chain algorithmic latency.
-&large Total:       Total algorithmic latency along this path.
-&int Rate:          Negotiated output rate, or zero before configuration.
-&large Generation:  Configuration generation shared by all paths.
-&int(ADS) State:    Selected chain's drain state.
-&int Truncated:     One if automatic drain reached its safety deadline.
+int Channel: Channel-set handle, or zero for the global path.
+!struct(*EffectStatus) Status: Receives an owned snapshot of the path's latency and drain state.
 
 -ERRORS-
 Okay
 NullArgs
+AllocMemory
 Args: The channel-set handle is invalid or closed.
-NotInitialised: No output configuration is available; Rate is zero.
+NotInitialised: No output configuration is available; Status.Rate is zero.
 OutOfRange: Serial latency cannot be represented in a signed 64-bit frame count.
 
 -END-
@@ -1924,17 +1922,21 @@ static ERR AUDIO_GetEffectStatus(extAudio *Self, struct snd::GetEffectStatus *Ar
 {
    if (!Args) return ERR::NullArgs;
 
+   Args->Status = nullptr;
+   struct EffectStatus *status;
+   if (AllocResource(sizeof(struct EffectStatus), MEM::NIL, (APTR *)&status, nullptr) != ERR::Okay) {
+      return ERR::AllocMemory;
+   }
+   Args->Status = status;
+
    std::lock_guard lock(Self->MixerMutex);
-   Args->Application = Args->Global = Args->Total = 0;
-   Args->Rate = 0;
-   Args->Generation = *Self->GlobalEffects->Generation;
-   Args->State = ADS::IDLE;
-   Args->Truncated = 0;
+   status->Generation = *Self->GlobalEffects->Generation;
+   status->State = ADS::IDLE;
 
    if (!effect_channel_valid(Self, Args->Channel)) return ERR::Args;
    if (!Self->EffectConfigured) return ERR::NotInitialised;
 
-   Args->Rate = Self->OutputRate;
+   status->Rate = Self->OutputRate;
    bool source_active = false, upstream_pending = false;
    for (size_t index = 1; index < Self->Sets.size(); ++index) {
       if (Args->Channel and index != (unsigned(Args->Channel) >> 16)) continue;
@@ -1947,20 +1949,20 @@ static ERR AUDIO_GetEffectStatus(extAudio *Self, struct snd::GetEffectStatus *Ar
    auto chain = effect_chain(Self, Args->Channel);
    bool path_pending = upstream_pending or (chain and chain->pending());
    if (Args->Channel) path_pending |= Self->GlobalEffects->pending();
-   Args->State = source_active ? ADS::ACTIVE :
-      (path_pending ? ADS::DRAINING : ADS::IDLE);
 
-   Args->Truncated = (chain and chain->Truncated) or (Args->Channel and Self->GlobalEffects->Truncated);
+   status->State = source_active ? ADS::ACTIVE : (path_pending ? ADS::DRAINING : ADS::IDLE);
+
+   status->Truncated = (chain and chain->Truncated) or (Args->Channel and Self->GlobalEffects->Truncated);
    if (chain) {
       if (Args->Channel) {
-         auto error = chain->latency(Args->Application);
+         auto error = chain->latency(status->Application);
          if (error != ERR::Okay) return error;
       }
    }
 
-   if (auto error = Self->GlobalEffects->latency(Args->Global); error != ERR::Okay) return error;
-   if (Args->Application > INT64_MAX - Args->Global) return ERR::OutOfRange;
-   Args->Total = Args->Application + Args->Global;
+   if (auto error = Self->GlobalEffects->latency(status->Global); error != ERR::Okay) return error;
+   if (status->Application > INT64_MAX - status->Global) return ERR::OutOfRange;
+   status->Total = status->Application + status->Global;
    return ERR::Okay;
 }
 
@@ -2195,12 +2197,12 @@ static const FieldArray clAudioFields[] = {
    { "Periods",       FDF_INT|FDF_RI,      nullptr, SET_Periods },
    { "PeriodSize",    FDF_INT|FDF_RI,      nullptr, SET_PeriodSize },
    // VIRTUAL FIELDS
-   { "MaxDrain",      FDF_VIRTUAL|FDF_DOUBLE|FDF_RW, GET_MaxDrain, SET_MaxDrain },
+   { "MaxDrain",      FDF_DOUBLE|FDF_RW, GET_MaxDrain, SET_MaxDrain },
    { "Device",        FDF_CPPSTRING|FDF_RW|FDF_PURE,  GET_Device, SET_Device },
    { "MixerLag",      FDF_DOUBLE|FDF_R,               GET_MixerLag },
    { "MasterVolume",  FDF_DOUBLE|FDF_RW|FDF_PURE,     GET_MasterVolume, SET_MasterVolume },
    { "Mute",          FDF_INT|FDF_RW,                 GET_Mute, SET_Mute },
-   { "OutputLayout",  FDF_VIRTUAL|FDF_INT|FDF_ARRAY|FDF_RW|FDF_PURE, GET_OutputLayout, SET_OutputLayout },
+   { "OutputLayout",  FDF_INT|FDF_ARRAY|FDF_RW|FDF_PURE, GET_OutputLayout, SET_OutputLayout },
    END_FIELD
 };
 
