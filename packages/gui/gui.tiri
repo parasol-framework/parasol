@@ -6,6 +6,7 @@
    include 'vector'
 
    module vector as mVec
+   module display as mGfx
 
    namespace gui {
       theme = nil,
@@ -17,7 +18,6 @@
    }
 
 rxPixel    <const> = <{ r[[^(\d+(?:\.\d+)?)([a-zA-Z]*)$]] }>
-rxFontSize <const> = <{ r[[^(-?\d+)%$]] }>
 
 glStyleConfig = 'user:config/style.cfg'
 glPainter = struct<VectorPainter>
@@ -401,14 +401,14 @@ gui.pixel = function(Val:str, Density:num):num
    num = tonumber(num)
    assert(num, f'Invalid graphics unit \'{Val}\'')
    dpi = Density ?? gui.interface.dpi
-   return choose alpha from
+   return math.round(choose alpha from
       'px' -> num
       'in' -> dpi * num
       'mm' -> dpi * (num / 25.4) -- 25.4 units per inch
       'pt' -> dpi * (num / 72) -- 72 units per inch
-      'dp' -> num * (dpi * 0.00625) -- 160dpi relative value
+      'dp' -> num * (dpi / 160) -- 160 units per inch
       else -> num
-   end
+   end)
 end
 
 ----------------------------------------------------------------------------------------------------------------------
@@ -515,6 +515,22 @@ gui.simpleGradient = function(Scene:obj!, Name:str!, Colours:any!, X1:num!, Y1:n
 end
 
 ----------------------------------------------------------------------------------------------------------------------
+-- Theme colours are hashed by value so that equal table themes share a pattern and differing ones never collide.
+
+function iconThemeHash(Theme:table!):num
+   key = ''
+   for field in values(array<str> { 'first', 'last', 'stroke' }) do
+      c = Theme[field]
+      if c is <table> then
+         key ..= f'{field}={c.r},{c.g},{c.b},{c.a};'
+      elseif c?? then
+         key ..= f'{field}={c};'
+      end
+   end
+   return key.hash()
+end
+
+----------------------------------------------------------------------------------------------------------------------
 -- Build an icon styled with the current theme and register it as a pattern.  The pattern can then be used as a fill,
 -- i.e. "url(#Path)".  Using it in a VectorRectangle is akin to a cached bitmap (fast), or apply to a VectorViewport
 -- for live rendering (higher quality transforms).
@@ -529,6 +545,7 @@ gui.createIcon = function(Scene:obj!, Path:str!, Size:num, Theme:any!, Name:str)
 
    if Theme is <table> then
       lGradient = Theme
+      Name ??= f'theme_{iconThemeHash(Theme)}/{Path.lower()}'
    elseif Theme is <str> then
       gname = f'icon_{Theme}'
       if gui.iconThemes[Theme] then
@@ -541,8 +558,6 @@ gui.createIcon = function(Scene:obj!, Path:str!, Size:num, Theme:any!, Name:str)
    else
       raise 'Invalid Theme specified.'
    end
-
-   Name ??= Path
 
    if not Path.startsWith('icons:') then
       Path = f'icons:{Path}.svg'
@@ -678,7 +693,7 @@ gui.setTheme = function(Object:obj, Theme:str!):table
          loadFile(f'config:themes/{Theme}.tiri')
          assert(gui.themes[Theme], 'Theme configuration did not initialise correctly.')
       else
-         print(f'Theme "{Theme}" is not installed.')
+         print(f'Requested theme "{Theme}" is not installed.')
          Theme = 'light' -- Revert to a known default
       end
    end
@@ -713,52 +728,73 @@ function modifyAlpha(Colour:str!, Alpha:num!):str
 end
 
 ----------------------------------------------------------------------------------------------------------------------
+-- Returns the average pixel density of the main display, or 96 if it is unavailable.
+
+thunk displayDensity():num
+   err, info = mGfx.GetDisplayInfo(0)
+   if err != ERR_Okay then return 96 end
+   dpi = ((info.hDensity + info.vDensity) * 0.5) ?? 96
+   return dpi
+end
+
+-- Scales a table of pixel values from a 96 DPI baseline to the interface density.
+
+thunk scaledPixels(Values:table!):table
+   scale = gui.interface.dpi / 96
+   for k, v in Values do Values[k] = math.round(v * scale) end
+   return Values
+end
 
 gui.interface = {
-   dpi       = 160,       -- Default DPI baseline
-   fontSize  = 12,        -- Default font-size for everything (pt)
-   iconTheme = 'Default', -- Named folder to load the icons from
-   iconSize  = 20         -- Recommended default size for icons (px) and should be related to fontSize
+   dpi       = displayDensity(), -- Display pixels per inch, resolved on first read
+   fontSize  = 12,               -- Default font-size for everything (pt)
+   iconTheme = 'Default'         -- Named folder to load the icons from
 }
 
 gui.sizing = { -- Universal sizing information
-   widget = {
-      width  = 160, -- Default width for common widgets (px)
-      gap    = 6,   -- Recommended gap between widgets (px)
-      margin = 6    -- Recommended internal margin for widgets (px)
-   }
+   widget = scaledPixels({
+      width  = 160, -- Default width for common widgets (px at 96 DPI)
+      gap    = 6,   -- Recommended gap between widgets (px at 96 DPI)
+      margin = 6    -- Recommended internal margin for widgets (px at 96 DPI)
+   })
 }
 
-gui.fonts = {
+-- Converts percentage font sizes to points, scales all point sizes to the interface density and sets the default
+-- style.  Scaling is necessary because VectorText converts points to pixels at a fixed 96 DPI.
+
+thunk scaledFonts(Fonts:table!):table
+   rxFontSize <const> = r[[^(-?\d+)%$]]
+   scale = gui.interface.dpi / 96
+   for font in values(Fonts) do
+      if font.size is <str> and rxFontSize.test(font.size) then
+         pct = tonumber(rxFontSize.extract(font.size))
+         font.size = gui.interface.fontSize * (pct / 100)
+      end
+
+      if font.size is <num> then font.size = math.floor(font.size * scale) end
+
+      font.style ?= 'medium'
+   end
+   return Fonts
+end
+
+gui.fonts = scaledFonts({
    -- Percentages are converted to numeric pt sizes, relative to gui.interface.fontSize
-   -- Numeric sizes are treated as fixed point
+   -- Numeric sizes are fixed pt sizes at 96 DPI; all sizes are scaled to gui.interface.dpi on first access
    default  = { face='Noto Sans,Source Sans Pro', size='100%' },
-   window   = { face='Noto Sans,Source Sans Pro', style='medium', size='100%' }, -- For non-widget text
+   window   = { face='Noto Sans,Source Sans Pro', size='100%' }, -- For non-widget text
    button   = { face='Noto Sans,Source Sans Pro', size=12 }, -- Text inside buttons
-   filesys  = { face='Inconsolata', size=12, style='medium' }, -- Text for files, folders
+   filesys  = { face='Inconsolata', size=12 }, -- Text for files, folders
    icon     = { face='Noto Sans,Source Sans Pro', size='100%' }, -- Labeling for icons
-   menu     = { face='Noto Sans,Source Sans Pro', style='medium', size=12 }, -- Menu & dropdown item text
+   menu     = { face='Noto Sans,Source Sans Pro', size=12 }, -- Menu & dropdown item text
    page     = { face='Noto Sans,Source Sans Pro', size=12 }, -- Multiple lines of text
    titlebar = { face='Noto Sans', size='100%' }, -- Window titlebar text
    small    = { face='Tiny', size='60%' }, -- Recommended text for small sizes
    large    = { face='Noto Sans,Source Sans Pro', size='130%' }, -- Recommended text for headers
-   input    = { face='Noto Sans,Source Sans Pro', style='medium', size=12 }, -- Text inside input widgets (e.g. combobox)
-   widget   = { face='Noto Sans,Source Sans Pro', style='medium', size=12 }, -- Text inside non-input widgets (e.g. button)
-   label    = { face='Noto Sans,Source Sans Pro', style='medium', size='100%' } -- Text for labels and outside widgets
-}
-
-   -- Convert font percentage sizes to their px size
-
-   for font in values(gui.fonts) do
-      if font.size then
-         if rxFontSize.test(font.size) then
-            pct = tonumber(rxFontSize.extract(font.size))
-            font.size = math.floor(gui.interface.fontSize * (pct / 100))
-         end
-      end
-
-      font.style ??= 'Regular'
-   end
+   input    = { face='Noto Sans,Source Sans Pro', size=12 }, -- Text inside input widgets (e.g. combobox)
+   widget   = { face='Noto Sans,Source Sans Pro', size=12 }, -- Text inside non-input widgets (e.g. button)
+   label    = { face='Noto Sans,Source Sans Pro', size='100%' } -- Text for labels and outside widgets
+})
 
 gui.iconThemes = {
    default = { first=gui.strToRGB('oklch(0.468 0.000 89.876)'),  last=gui.strToRGB('oklch(0.412 0.066 283.103)') },
@@ -783,7 +819,7 @@ gui.palettes = {
    -- contrast is a suitable complement to prime and should be of a strongly contrasting hue
    -- neutral is a default background colour for undefined areas (e.g. window background), usually a light grey tone
    -- mid is used for separating an area from bkgd without drawing attention.  E.g. scrollbar and slider tracks
-   -- text is the default colour for text drawn over 'bkgd'
+   -- text is the default colour for text drawn over 'bkgd'; often used for labels and sometimes stroked decorations
    -- altText is the default colour for text drawn over 'prime' when highlighted or selected.  Can be same as 'text'
    ocean = {
       light = { type = 'light', bkgd = 'oklch(0.952 0.004 214.329)', inverse = 'oklch(0.356 0.039 248.975)',
@@ -839,32 +875,42 @@ gui.palettes = {
 
    if not gui.theme then
       msg('No theme set, loading default from configuration file.')
-      gui.theme = 'light' -- Default
+      gui.theme        = 'light' -- Default
       gui.paletteTheme = 'light' -- 'light' or 'dark' only
-      gui.palette = gui.palettes.ocean
+      gui.palette      = gui.palettes.ocean
 
       if mSys.AnalysePath(glStyleConfig) is ERR_Okay then
          try
             local cfg <close> = obj.new('config', { path=glStyleConfig })
-            theme = [_*]cfg.mtReadValue('Style', 'Theme')
-            palette = [_*]cfg.mtReadValue('Style', 'Palette')
+            theme        = [_*]cfg.mtReadValue('Style', 'Theme')
+            palette      = [_*]cfg.mtReadValue('Style', 'Palette')
             paletteTheme = [_*]cfg.mtReadValue('Style', 'PaletteTheme')
-            gui.theme = theme
+            gui.theme    = theme
             if gui.palettes[palette] then
                gui.paletteTheme = gui.palettes?[palette]?[paletteTheme] ? paletteTheme : 'light'
-               gui.palette = gui.palettes[palette]
+               gui.palette      = gui.palettes[palette]
             end
          except ex
             print(f'Error in style configuration file {glStyleConfig}; delete to reset it')
             print(f'  Detail: {ex.message}')
          end
       else
-         local file <close> = obj.new('file', { path=glStyleConfig, flags=FL_WRITE|FL_NEW })
-         file.acWrite("[Style]\nTheme = light\nPalette = ocean\nPaletteTheme = light\n")
+         fl <close> = obj.new('file', { path=glStyleConfig, flags=FL_WRITE|FL_NEW })
+         fl.acWrite("[Style]\nTheme = light\nPalette = ocean\nPaletteTheme = light\n")
       end
    end
 
-gui.themes = {
+-- Links theme sections that are shared between widgets.
+
+function linkThemes(Themes:table!):table
+   Themes.dark.menubar.menu = Themes.dark.menu
+   Themes.light.menubar.menu = Themes.light.menu
+   return Themes
+end
+
+-- The theme tables are deferred until first access because they read gui.fonts, which depends on the display density.
+
+gui.themes = <table{ linkThemes({
    -- Themes work by utilising table.merge() to combine presentation values like fill, stroke and strokeWidth
    -- with vector object definitions.  The majority of the time, the target will be a VectorRectangle or VectorText
    -- object.  Gradient and pattern fills are also permitted via the use of 'url()'.
@@ -958,7 +1004,8 @@ gui.themes = {
       },
       toolbar = {
          bkgd          = { fill = gui.palette.dark.bkgd },
-         groupBorder   = { stroke = 'rgb(255 255 255 / .25)', strokeWidth = 2 },
+         groupBorder   = { stroke = 'rgb(255 255 255 / .25)', strokeWidth = gui.pixel('1.5pt') },
+         iconSize      = gui.pixel('16pt'),
          icon          = 'pearl',
          iconHighlight = 'pearl'
       },
@@ -1055,7 +1102,8 @@ gui.themes = {
       },
       toolbar = {
          bkgd          = { fill = gui.palette.light.bkgd },
-         groupBorder   = { stroke = gui.palette.light.inverse, strokeWidth = 2 },
+         groupBorder   = { stroke = gui.palette.light.inverse, strokeWidth = gui.pixel('1.5pt') },
+         iconSize      = gui.pixel('16pt'),
          icon          = 'carbon',
          iconHighlight = 'pearl'
       },
@@ -1063,9 +1111,4 @@ gui.themes = {
          bkgd = 'rgb(160 160 160)'
       }
    }
-}
-
-gui.themes.dark.menubar.menu = gui.themes.dark.menu
-gui.themes.light.menubar.menu = gui.themes.light.menu
-
-gui.style = gui.themes[gui.theme] -- Default user theme; but using gui.setTheme() is the preferred approach
+}) }>

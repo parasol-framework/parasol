@@ -13,6 +13,7 @@
     <category>Data</category>
     <copyright>Paul Manias © 2026</copyright>
     <description>
+<p>BETA: This class is not finalised for production use.</p>
 <p>Hash objects process data in independently bounded chunks, allowing messages larger than the one-shot Crypto function limit of 1 MiB.  Select <fl>Algorithm</fl> before initialisation.  To compute an HMAC, also set <fl>Key</fl> before initialisation; leaving the key unset selects an ordinary digest.  An explicitly supplied empty key selects HMAC with an empty key.</p>
 <p>MD5 and SHA-1 are available only for compatibility with existing formats and protocols.  They are not suitable for security purposes.  Use SHA-256 or SHA-512 for new designs.</p>
 <p>Calling <method>Digest</method> does not change the running state, so more data may be appended afterwards.  Call <action>Reset</action> to begin a new message while retaining the selected algorithm and key.</p></description>

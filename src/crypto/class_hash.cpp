@@ -8,6 +8,8 @@ that is distributed with this package.  Please refer to it for further informati
 -CLASS-
 Hash: Computes a message digest or HMAC incrementally.
 
+BETA: This class is not finalised for production use.
+
 Hash objects process data in independently bounded chunks, allowing messages larger than the one-shot Crypto function
 limit of 1 MiB.  Select #Algorithm before initialisation.  To compute an HMAC, also set #Key before initialisation;
 leaving the key unset selects an ordinary digest.  An explicitly supplied empty key selects HMAC with an empty key.

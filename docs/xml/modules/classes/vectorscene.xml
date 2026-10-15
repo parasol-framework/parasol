@@ -37,7 +37,7 @@
       <description>
 <p>The Draw action will render the scene to the target <fl>Bitmap</fl> immediately.  If <fl>Bitmap</fl> is NULL, an error will be returned.</p>
 <p>The <fl>RenderTime</fl> field will be updated if the <code>RENDER_TIME</code> flag is defined.</p>
-<p>With <code>MANUAL_RENDER</code>, Draw locks and clears the entire target bitmap before rasterising, and does not dispatch resize or pointer callbacks.  The client must keep the scene graph unchanged until Draw completes.  For direct window rendering, use the surface's independently owned buffer as <fl>Bitmap</fl> and enable <code>Surface</code> <code>MANUAL_RENDER</code> to preserve it across automatic redraws.  Call #Flush and expose the completed buffer from the main thread.</p>
+<p>With <code>MANUAL_RENDER</code>, Draw locks and clears the entire target bitmap before rasterising, and does not dispatch resize or pointer callbacks.  The client must keep the scene graph unchanged until Draw completes.  For direct window rendering, use the surface's independently owned buffer as <fl>Bitmap</fl> and enable <code>Surface</code> <code>MANUAL_RENDER</code> to preserve it across automatic redraws.  Call Flush and expose the completed buffer from the main thread.</p>
       </description>
       <result>
         <error code="Okay">Operation successful.</error>

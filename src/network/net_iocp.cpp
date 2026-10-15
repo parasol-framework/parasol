@@ -140,8 +140,10 @@ static ERR iocp_completion_receiver(APTR Custom, int MsgID, MSGID MsgType, std::
    if (Message.size() != sizeof(iocp_completion_message)) return ERR::Okay;
 
    auto completion = (iocp_completion_message *)Message.data();
+   // Acknowledge the wake-up before any path can abandon dispatch, including an object lock timeout.
+   if (!iocp_validate_completion(completion->Socket, completion->Generation,
+       completion->Type IS IocpOperationType::UDP_RECEIVE)) return ERR::Okay;
    if ((!completion->Callback) or (completion->ObjectID <= 0)) return ERR::Okay;
-   if (!iocp_validate_completion(completion->Socket, completion->Generation)) return ERR::Okay;
 
    kt::ScopedObjectLock lock(completion->ObjectID);
    if (!lock.granted()) return ERR::Okay;
@@ -405,6 +407,11 @@ public:
    ERR enable_broadcast(SocketHandle Handle) override
    {
       return iocp_enable_broadcast(Handle.socket());
+   }
+
+   ERR set_socket_buffer_sizes(SocketHandle Handle, int ReceiveBytes, int SendBytes) override
+   {
+      return iocp_set_socket_buffer_sizes(Handle.socket(), ReceiveBytes, SendBytes);
    }
 
    ERR set_multicast_ttl(SocketHandle Handle, int TTL, bool IPv6) override

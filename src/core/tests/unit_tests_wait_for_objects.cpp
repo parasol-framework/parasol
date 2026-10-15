@@ -324,6 +324,162 @@ static bool mid_free_window_check(kt::Log &Log)
 
 //********************************************************************************************************************
 
+#ifdef __unix__
+#include <sys/socket.h>
+#include <unistd.h>
+
+struct FDDispatchContext {
+   unsigned calls = 0;
+   int mode = 0, victim = -1, replacement = -1;
+   FDDispatchContext *target = nullptr;
+};
+
+static void fd_target_callback(HOSTHANDLE FD, APTR Data)
+{
+   auto &context = *(FDDispatchContext *)Data;
+   ++context.calls;
+   char byte;
+   (void)read(FD, &byte, 1);
+}
+
+static void fd_first_callback(HOSTHANDLE FD, APTR Data)
+{
+   auto &context = *(FDDispatchContext *)Data;
+   ++context.calls;
+   char byte;
+   (void)read(FD, &byte, 1);
+   if (context.mode IS 1) {
+      (void)RegisterFD(FD, RFD::REMOVE, nullptr, nullptr);
+      return;
+   }
+   auto filter = context.mode IS 4 ? fd_first_callback : nullptr;
+   (void)RegisterFD(context.victim, RFD::REMOVE, filter, nullptr);
+   if (context.mode IS 2) close(context.victim);
+   if (context.mode IS 3) {
+      (void)RegisterFD(FD, RFD::REMOVE, nullptr, nullptr);
+      close(context.victim);
+      if (dup2(context.replacement, context.victim) != context.victim) return;
+      (void)RegisterFD(context.victim, RFD::READ, fd_target_callback, context.target);
+   }
+}
+
+// Remove a later ready callback, remove self between read/write, retire during recall, reuse an FD and filter removal.
+static bool fd_retirement_check(int Mode, kt::Log &Log)
+{
+   int first[2], victim[2], replacement[2];
+   if (socketpair(AF_UNIX, SOCK_STREAM | SOCK_NONBLOCK, 0, first) != 0) return false;
+   auto close_first = kt::Defer([&]() { close(first[0]); close(first[1]); });
+   if (socketpair(AF_UNIX, SOCK_STREAM | SOCK_NONBLOCK, 0, victim) != 0) return false;
+   auto close_victim = kt::Defer([&]() { close(victim[0]); close(victim[1]); });
+   if (socketpair(AF_UNIX, SOCK_STREAM | SOCK_NONBLOCK, 0, replacement) != 0) return false;
+   auto close_replacement = kt::Defer([&]() { close(replacement[0]); close(replacement[1]); });
+   FDDispatchContext initial, old_target, new_target;
+   initial.mode = Mode; initial.victim = victim[0]; initial.replacement = replacement[0];
+   initial.target = &new_target;
+   auto flags = Mode IS 1 ? RFD::READ|RFD::WRITE : Mode IS 2 ? RFD::READ|RFD::RECALL :
+      Mode IS 3 ? RFD::ALWAYS_CALL : RFD::READ;
+   auto remove = kt::Defer([&]() {
+      (void)RegisterFD(first[0], RFD::REMOVE, nullptr, nullptr);
+      if (victim[0] >= 0) (void)RegisterFD(victim[0], RFD::REMOVE, nullptr, nullptr);
+   });
+   if (RegisterFD(first[0], flags, fd_first_callback, &initial) != ERR::Okay or
+       RegisterFD(victim[0], RFD::READ, fd_target_callback, &old_target) != ERR::Okay) return false;
+   if (write(first[1], "x", 1) != 1 or write(victim[1], "x", 1) != 1 or
+       write(replacement[1], "x", 1) != 1 or ProcessMessages(PMF::NIL, 0) != ERR::Okay) return false;
+   bool okay = initial.calls IS 1 and old_target.calls IS (Mode IS 1 or Mode IS 4 ? 1u : 0u);
+   if (Mode IS 2) victim[0] = -1; // It was closed by the pre-poll callback.
+   if (Mode IS 3) {
+      // The replacement may run only in the fresh selection after the ALWAYS_CALL retirement was flushed.
+      okay = okay and new_target.calls IS 1;
+   }
+   if (not okay) Log.warning("FD retirement mode %d dispatched stale or duplicate callbacks: %u/%u/%u",
+      Mode, initial.calls, old_target.calls, new_target.calls);
+   return okay;
+}
+
+// A deferred replacement covering both event types must remove both old callback records.
+static bool fd_combined_replacement_check(kt::Log &Log)
+{
+   int sockets[2];
+   if (socketpair(AF_UNIX, SOCK_STREAM | SOCK_NONBLOCK, 0, sockets) != 0) return false;
+   auto cleanup = kt::Defer([&]() {
+      (void)RegisterFD(sockets[0], RFD::REMOVE, nullptr, nullptr);
+      close(sockets[0]);
+      close(sockets[1]);
+   });
+
+   FDDispatchContext read_context, write_context, replacement_context;
+   if (RegisterFD(sockets[0], RFD::READ, fd_target_callback, &read_context) != ERR::Okay or
+       RegisterFD(sockets[0], RFD::WRITE, fd_target_callback, &write_context) != ERR::Okay) return false;
+
+   ++glFDProtected;
+   auto error = RegisterFD(sockets[0], RFD::READ|RFD::WRITE, fd_target_callback, &replacement_context);
+   --glFDProtected;
+   if (error != ERR::Okay) return false;
+   for (auto &record : glRegisterFD) RegisterFD(record.FD, record.Flags, record.Routine, record.Data);
+   glRegisterFD.clear();
+
+   unsigned matches = 0;
+   bool correct = true;
+   for (const auto &record : glFDTable) {
+      if (record.FD != sockets[0]) continue;
+      ++matches;
+      correct = correct and record.Routine IS fd_target_callback and record.Data IS &replacement_context and
+         (record.Flags & (RFD::READ|RFD::WRITE)) IS (RFD::READ|RFD::WRITE) and
+         (record.Flags & RFD::REMOVE) IS RFD::NIL;
+   }
+   if (matches IS 1 and correct) return true;
+   Log.warning("Combined FD replacement left %u records or a retired callback.", matches);
+   return false;
+}
+#endif
+
+#ifdef _WIN32
+struct FDWindowsReplaceContext {
+   unsigned calls = 0;
+   ERR error = ERR::Okay;
+};
+
+static void fd_windows_replace_callback(HOSTHANDLE FD, APTR Data)
+{
+   auto &context = *(FDWindowsReplaceContext *)Data;
+   ++context.calls;
+   context.error = RegisterFD(FD, RFD::READ|RFD::WRITE, fd_windows_replace_callback, Data);
+}
+
+// The pre-wait callback must be able to replace its own record after an earlier overlapping record.
+static bool fd_windows_combined_replacement_check(kt::Log &Log)
+{
+   WINHANDLE handle = nullptr;
+   if (alloc_public_waitlock(&handle, nullptr) != ERR::Okay) return false;
+   auto cleanup = kt::Defer([&]() {
+      (void)RegisterFD(handle, RFD::REMOVE, nullptr, nullptr);
+      free_public_waitlock(handle);
+   });
+
+   FDWindowsReplaceContext context;
+   if (RegisterFD(handle, RFD::READ, fd_windows_replace_callback, &context) != ERR::Okay or
+       RegisterFD(handle, RFD::WRITE|RFD::ALWAYS_CALL, fd_windows_replace_callback, &context) != ERR::Okay) {
+      return false;
+   }
+
+   if (ProcessMessages(PMF::NIL, 0) != ERR::Okay) return false;
+
+   unsigned matches = 0;
+   bool correct = true;
+   for (const auto &record : glFDTable) {
+      if (record.FD != handle) continue;
+      ++matches;
+      correct = correct and record.Routine IS fd_windows_replace_callback and record.Data IS &context and
+         (record.Flags & (RFD::READ|RFD::WRITE)) IS (RFD::READ|RFD::WRITE) and
+         (record.Flags & (RFD::ALWAYS_CALL|RFD::REMOVE)) IS RFD::NIL;
+   }
+   if (context.calls IS 1 and context.error IS ERR::Okay and matches IS 1 and correct) return true;
+   Log.warning("Windows combined FD replacement called %u times and left %u records.", context.calls, matches);
+   return false;
+}
+#endif
+
 void wait_for_objects_unit_tests(int &Passed, int &Total)
 {
    kt::Log log("WaitForObjects");
@@ -348,4 +504,16 @@ void wait_for_objects_unit_tests(int &Passed, int &Total)
 
    Total++;
    if (mid_free_window_check(log)) Passed++;
+#ifdef __unix__
+   for (int mode = 0; mode < 5; ++mode) {
+      ++Total;
+      if (fd_retirement_check(mode, log)) ++Passed;
+   }
+   ++Total;
+   if (fd_combined_replacement_check(log)) ++Passed;
+#endif
+#ifdef _WIN32
+   ++Total;
+   if (fd_windows_combined_replacement_check(log)) ++Passed;
+#endif
 }

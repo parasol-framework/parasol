@@ -177,7 +177,6 @@ end
       target      = viewport,
       xOffset     = 0,
       y           = y,
-      iconSize    = 22,
       createItems = function(Bar)
          Bar.addGroup(1, 'Navigation', 2)
          Bar.addItem(2, 'Root', 'Root Directory', 'devices/harddisk', itemCallback)
@@ -361,7 +360,7 @@ end
                   end
 
                   for k, v in ipairs(Files) do
-                      print(k, f'{Path} = {v.filename}')
+                      print(k, f' {Path} = {v.filename}')
                   end
                end
             })

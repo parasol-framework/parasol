@@ -94,10 +94,12 @@
       <description>
 <p>ResolveAddress() performs a IP address resolution, converting an address to an official host name and list of IP addresses.  The resolution process involves contacting a DNS server.  To prevent delays, asynchronous communication is used so that the function can return immediately.  The <fl>Callback</fl> function will be called on completion of the process.</p>
 <p>If synchronous (blocking) operation is desired then use the <method>BlockingResolveAddress</method> method.</p>
+<p>One object may have up to 32 outstanding asynchronous resolutions.  Completed threads are reclaimed when another resolution starts.</p>
       </description>
       <result>
         <error code="Okay">The IP address was resolved successfully.</error>
         <error code="FieldNotSet">A required field value is undefined</error>
+        <error code="BufferOverflow">The object already has 32 outstanding resolution requests.</error>
         <error code="Syntax">The address is not a valid IP address literal.</error>
         <error code="NullArgs">Function call missing argument value(s)</error>
       </result>
@@ -115,9 +117,11 @@
       <description>
 <p>ResolveName() performs a domain name resolution, converting a domain name to an official host name and IP addresses. The resolution process involves contacting a DNS server.  To prevent delays, asynchronous communication is used so that the function can return immediately.  The <fl>Callback</fl> function will be called on completion of the process.</p>
 <p>If synchronous (blocking) operation is desired then use the <method>BlockingResolveName</method> method.</p>
+<p>One object may have up to 32 outstanding asynchronous resolutions.  Completed threads are reclaimed when another resolution starts.</p>
       </description>
       <result>
         <error code="Okay">Operation successful.</error>
+        <error code="BufferOverflow">The object already has 32 outstanding resolution requests.</error>
         <error code="NullArgs">Function call missing argument value(s)</error>
       </result>
       <tags>non-blocking, mutates-object, copies-input, callback-inlines</tags>

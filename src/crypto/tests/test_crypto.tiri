@@ -293,6 +293,15 @@ end
       'RFC 7636 S256 example should match')
 end
 
+@Test; @Requires(ssl=true) function P256CertificateBinding()
+   err, certificate, private_key, fingerprint = mCrypto.GenerateP256Certificate('kotuku-test')
+   assert(err is ERR_Okay, 'Certificate generation should succeed')
+   assert(#certificate > 0 and #private_key > 0 and #fingerprint is 95,
+      'Certificate, private key and SHA-256 fingerprint should be returned')
+   err = mCrypto.GenerateP256Certificate('')
+   assert(err is ERR_Args, 'An empty certificate common name should be rejected')
+end
+
 @Test function ProtectedFileReplacement()
    path = 'temp:crypto-protected-record.json'
    defer mSys.DeleteFile(path) end

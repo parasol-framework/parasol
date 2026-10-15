@@ -904,7 +904,8 @@ struct CompilationSourceEntry {
    uint8_t reserved;           // Reserved for source-map format extensions.
 };
 
-struct CompilationSourceMap {
+// Trailing entries contain GC references and must retain their natural alignment.
+struct alignas(CompilationSourceEntry) CompilationSourceMap {
    uint8_t version;  // Serialised source-map format version.
    uint8_t count;    // Number of trailing CompilationSourceEntry records.
    uint8_t root;     // Index of the compilation unit's root source entry.
@@ -2179,7 +2180,8 @@ template<typename T> [[nodiscard]] inline GCobj * obj2gco(T *v) noexcept { retur
 
 // String accessors
 
-[[nodiscard]] inline GCstr * strref(GCRef r) noexcept { return &gcref(r)->str; }
+// Parser references can contain fixed-name sentinels; the union's string member has the same address.
+[[nodiscard]] inline GCstr * strref(GCRef Ref) noexcept { return (GCstr *)gcref(Ref); }
 
 // Prototype accessors
 
@@ -2187,7 +2189,10 @@ template<typename T> [[nodiscard]] inline GCobj * obj2gco(T *v) noexcept { retur
 [[nodiscard]] inline const char * proto_chunk_namestr(const GCproto *pt) noexcept { return strdata(proto_chunk_name(pt)); }
 
 // Table accessors
-[[nodiscard]] inline GCtab * tabref(GCRef r) noexcept { return &gcref(r)->tab; }
+[[nodiscard]] inline GCtab * tabref(GCRef Ref) noexcept {
+   auto object = gcref(Ref);
+   return object ? &object->tab : nullptr;
+}
 
 // Array accessors
 [[nodiscard]] inline GCarray * arrayref(GCRef r) noexcept { return &gcref(r)->arr; }
