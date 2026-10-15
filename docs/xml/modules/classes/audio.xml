@@ -14,7 +14,7 @@
     <copyright>Paul Manias © 2002-2026</copyright>
     <description>
 <p>The Audio class provides a comprehensive audio service that works across multiple platforms and follows a client-server design model. It serves as the foundation for all audio operations in Kōtuku framework, managing hardware resources, sample mixing, and output buffering.</p>
-<p>The Audio class supports 8/16/32 bit output, with advanced features including oversampling for enhanced quality, intelligent streaming for large samples, multiple simultaneous audio channels, and command sequencing for precise timing control. The internal floating-point mixer ensures high-quality audio processing regardless of the target hardware bit depth.</p>
+<p>The Audio class supports 8/16/32 bit output, nearest-neighbour, linear, cubic or band-limited sinc source resampling, fixed output smoothing, streaming for large samples, simultaneous audio channels, and command sequencing for precise timing control.  The internal mixer uses 32-bit floating-point arithmetic regardless of Quality or the hardware bit depth.</p>
 <header>Formats and Layouts</header>
 <p>PCM data is described by the <st>AudioFormat</st> structure, which separates the sample representation from the channel layout.  A layout is an ordered list of channel identities, one for each sample in an interleaved frame:</p>
 <types lookup="SPK"/>
@@ -197,33 +197,30 @@
     <method>
       <name>GetEffectStatus</name>
       <comment>Reads DSP drain state and serial-path latency together.</comment>
-      <prototype>ERR snd::GetEffectStatus(OBJECTPTR Object, INT Channel, INT64 * Application, INT64 * Global, INT64 * Total, INT * Rate, INT64 * Generation, ADS * State, INT * Truncated)</prototype>
-      <tiriPrototype>err, Application:num, Global:num, Total:num, Rate:num, Generation:num, State:num, Truncated:num = GetEffectStatus(Channel:num)</tiriPrototype>
+      <prototype>ERR snd::GetEffectStatus(OBJECTPTR Object, INT Channel, struct EffectStatus ** Status)</prototype>
+      <tiriPrototype>err, Status:any = GetEffectStatus(Channel:num)</tiriPrototype>
       <input>
         <param type="INT" name="Channel">Channel-set handle, or zero for the global path.</param>
-        <param type="INT64 *" name="Application">Application-chain algorithmic latency.</param>
-        <param type="INT64 *" name="Global">Global-chain algorithmic latency.</param>
-        <param type="INT64 *" name="Total">Total algorithmic latency along this path.</param>
-        <param type="INT *" name="Rate">Negotiated output rate, or zero before configuration.</param>
-        <param type="INT64 *" name="Generation">Configuration generation shared by all paths.</param>
-        <param type="ADS *" name="State" lookup="ADS">Selected chain's drain state.</param>
-        <param type="INT *" name="Truncated">One if automatic drain reached its safety deadline.</param>
+        <param type="struct EffectStatus **" name="Status">Receives an owned snapshot of the path's latency and drain state.</param>
       </input>
       <description>
-<p>GetEffectStatus() returns a consistent snapshot of one signal path's effect latency and drain state, taken under the mixer lock so that all output values describe the same moment.</p>
+<p>GetEffectStatus() returns a consistent snapshot of one signal path's effect latency and drain state, taken under the mixer lock so that all fields of the returned <st>EffectStatus</st> describe the same moment.</p>
 <p>The path is selected with <code>Channel</code>.  A channel-set handle selects that application's chain followed by the global chain.  Zero selects the global path, in which case <code>Application</code> is always zero and the drain state accounts for every application's sources and chains.  Latencies are expressed in frames at the returned <code>Rate</code>.  <code>Total</code> is the sum of <code>Application</code> and <code>Global</code>, and only includes effects that are not bypassed.</p>
 <p><code>State</code> takes one of the following values:</p>
 <types lookup="ADS"/>
 <p><code>Truncated</code> is set to 1 if the selected chain's automatic drain was cut short at the <fl>MaxDrain</fl> deadline while effects still had pending output.  It is cleared when new source audio reaches the chain or the chain is reset.</p>
-<p><code>Generation</code> is incremented whenever the effect configuration or DSP history of any path changes, and is written even when the call fails.  Compare it between calls to detect intervening resets or reconfiguration.  The remaining outputs are not meaningful if an error is returned.</p>
+<p><code>Generation</code> is incremented whenever the effect configuration or DSP history of any path changes, and is written even when validation fails.  Compare it between calls to detect intervening resets or reconfiguration.  The remaining fields are not meaningful if an error is returned.  If allocation fails, no snapshot is returned.</p>
+<p>The snapshot is allocated by the Audio object and remains valid after later calls or configuration changes.  C++ clients must release it with <function module="Core">FreeResource</function>, including when the method returns a validation error.</p>
       </description>
       <result>
         <error code="Okay">Operation successful.</error>
         <error code="Args">The channel-set handle is invalid or closed.</error>
         <error code="OutOfRange">Serial latency cannot be represented in a signed 64-bit frame count.</error>
-        <error code="NotInitialised">No output configuration is available; Rate is zero.</error>
+        <error code="AllocMemory">Failed to create a new memory block</error>
+        <error code="NotInitialised">No output configuration is available; Status.Rate is zero.</error>
         <error code="NullArgs">Function call missing argument value(s)</error>
       </result>
+      <tags>caller-owns-result</tags>
     </method>
 
     <method>
@@ -422,12 +419,23 @@
     </field>
 
     <field>
+      <name>Dither</name>
+      <comment>Selects triangular dither for integer output.</comment>
+      <access read="R" write="W">Read/Write</access>
+      <type lookup="ADITHER">ADITHER</type>
+      <description>
+<p>The default is <code>ADITHER::AUTO</code>.  Real-time changes take effect at the next mixer-window boundary.</p>
+<types lookup="ADITHER"/>
+      </description>
+    </field>
+
+    <field>
       <name>Flags</name>
       <comment>Special audio flags can be set here.</comment>
-      <access read="R" write="I">Read/Init</access>
+      <access read="R" write="S">Read/Set</access>
       <type lookup="ADF">ADF</type>
       <description>
-<p>The audio class supports a number of special flags that affect internal behaviour.  The following table illustrates the publicly available flags:</p>
+<p>Flags can be selected before initialisation.  Source resampling is controlled by <fl>Quality</fl>.</p>
 <types lookup="ADF"/>
       </description>
     </field>
@@ -489,7 +497,7 @@
       <name>OutputLayout</name>
       <comment>The requested output channel layout.</comment>
       <access read="G" write="S">Get/Set</access>
-      <type>INT[]</type>
+      <type>INT []</type>
       <description>
 <p>OutputLayout lists the channel identities of the requested output, in interleaved frame order.  The default is stereo: <code>FRONT_LEFT</code>, <code>FRONT_RIGHT</code>.  Wider layouts are never enabled automatically.  Use ExpandLayout() to obtain the layout of a named preset:</p>
 <pre>err, layout = mAudio.ExpandLayout(ACL_MONO)
@@ -544,15 +552,16 @@ audio = obj.new('Audio', { outputLayout=layout })
       <access read="R" write="S">Read/Set</access>
       <type>INT</type>
       <description>
-<p>The Quality field controls the precision and filtering applied during audio mixing operations. This setting automatically configures multiple internal processing parameters to balance audio fidelity against computational overhead.</p>
-<p>The value range spans from 0 (minimal processing) to 100 (maximum fidelity), with recommended settings between 70-80 for most applications. This range provides an optimal balance between audio clarity and system performance.</p>
-<p>Setting the Quality value automatically adjusts the following processing flags:</p>
+<p>Quality selects source resampling and integer output dither.  No profile enables post-mix smoothing. All profiles mix in 32-bit floating-point; this field does not change arithmetic precision or perform true oversampling. The default is 80. Values outside 0..100 return <code>ERR::OutOfRange</code> without changing the current profile.  Invalid saved values retain the default.</p>
 <list type="bullet">
-<li><b>Quality 0-9</b>: Minimal processing, no filtering or oversampling applied.</li>
-<li><b>Quality 10-32</b>: Enables <code>ADF::FILTER_LOW</code> for basic output filtering.</li>
-<li><b>Quality 33-65</b>: Activates <code>ADF::FILTER_HIGH</code> for enhanced frequency response.</li>
-<li><b>Quality 66-100</b>: Implements <code>ADF::OVER_SAMPLING</code> and <code>ADF::FILTER_HIGH</code> for maximum fidelity.</li>
+<li><b>Quality 0-9</b>: Nearest-neighbour resampling.</li>
+<li><b>Quality 10-32</b>: Linear interpolation.</li>
+<li><b>Quality 33-65</b>: Bounded four-point cubic Hermite interpolation.</li>
+<li><b>Quality 66-100</b>: Ratio-aware band-limited sinc resampling.
+Quality 90-100 currently aliases High; it does not select a longer kernel.</li>
 </list>
+<p>With <fl>Dither</fl> set to <code>ADITHER::AUTO</code>, Quality 33 and above enables TPDF dither for 8-bit and 16-bit output. <code>ADITHER::OFF</code> always disables it; <code>ADITHER::TPDF</code> enables it at every Quality.  Float conversion is unchanged. Dither is added immediately before rounding to nearest integer, with triangular noise bounded by one destination LSB in either direction.  Both representable endpoints saturate, including samples at or beyond -1 and +1. Exact-zero samples suppress noise immediately, without a silent-interval timer.  Independent channel streams advance through silence and reset to fixed seeds on deactivation and every committed output configuration. Live policy changes do not reset the streams.  No noise shaping is applied.</p>
+<p>A live Quality change takes effect as a complete profile at the next mixer-window boundary; processing already in progress retains its selected profile. Source interpolation blends to the new mode over 32 rendered output frames per channel, independently of volume ramping. Ordinary source endpoints repeat the endpoint value, while looping sources extend their loop.  Neither linear nor cubic interpolation is a ratio-dependent anti-alias filter.  High uses a centred 128-tap Blackman-windowed sinc with 256 fractional phases. Its per-source cutoff follows the playback-to-output rate ratio; unity-rate and upsampled sources use the full source bandwidth.  Coefficients are prepared during module loading.  Streaming retains 63 past frames and requires 64 future frames; starvation waits without advancing the source clock, and end-of-source repeats the last frame. The centred interpolation preserves source timing and adds no effect latency or delayed command completion. The fixed kernel is characterised through 2.7 times downsampling; at extreme ratios its finite support limits anti-alias rejection.  Sinc overshoot is preserved until final output conversion.</p>
       </description>
     </field>
 
@@ -560,11 +569,14 @@ audio = obj.new('Audio', { outputLayout=layout })
   <types>
     <constants lookup="ADF" comment="Optional flags for the Audio object.">
       <const name="AUTO_SAVE">Save configuration information on exit.</const>
-      <const name="FILTER_HIGH">Enable a high level of output filtering to minimise distortion.</const>
-      <const name="FILTER_LOW">Enable a low level of output filtering to minimise distortion.</const>
-      <const name="OVER_SAMPLING">Enables oversampling for higher quality audio at the cost of slower mixing.</const>
       <const name="SYSTEM_WIDE">Mixer changes should be applied system-wide.</const>
-      <const name="VOL_RAMPING">Enable volume ramping for softer playback when a sample is played multiple times (enabled by default).</const>
+      <const name="VOL_RAMPING">Enable channel gain and voice de-clicking at every Quality (enabled by default).</const>
+    </constants>
+
+    <constants lookup="ADITHER" comment="Integer output dither policy.">
+      <const name="AUTO">Enable TPDF for Quality 33 and above (the default).</const>
+      <const name="OFF">Disable dither regardless of Quality.</const>
+      <const name="TPDF">Enable triangular dither for all Quality settings.</const>
     </constants>
 
     <constants lookup="ADS" comment="Effect drain states reported by GetEffectStatus().">
@@ -646,6 +658,16 @@ audio = obj.new('Audio', { outputLayout=layout })
       <field name="Loop1End" type="INT64">Byte position at the end of the first loop</field>
       <field name="Loop2Start" type="INT64">Byte position at the start of the second loop</field>
       <field name="Loop2End" type="INT64">Byte position at the end of the second loop</field>
+    </struct>
+
+    <struct name="EffectStatus" comment="One coherent latency and drain-state snapshot from GetEffectStatus().">
+      <field name="Application" type="INT64">Application-chain algorithmic latency in frames</field>
+      <field name="Global" type="INT64">Global-chain algorithmic latency in frames</field>
+      <field name="Total" type="INT64">Total algorithmic latency along the selected path in frames</field>
+      <field name="Rate" type="INT">Negotiated output rate, or zero before configuration</field>
+      <field name="Generation" type="INT64">Configuration generation shared by all paths</field>
+      <field name="State" type="ADS" lookup="ADS">Selected chain's drain state</field>
+      <field name="Truncated" type="INT">One if automatic drain reached its safety deadline</field>
     </struct>
 
   </structs>

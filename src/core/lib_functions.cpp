@@ -761,7 +761,20 @@ ERR RegisterFD(int FD, RFD Flags, void (*Routine)(HOSTHANDLE, APTR), APTR Data)
    if (FD IS -1) return log.warning(ERR::Args);
 #endif
 
-   if (glFDProtected) { // Cache the request while glFDTable is in use.
+   auto events = RFD::READ|RFD::WRITE|RFD::EXCEPT|RFD::ALWAYS_CALL;
+   if ((Flags & RFD::REMOVE) != RFD::NIL) {
+      if ((Flags & events) IS RFD::NIL) Flags |= events;
+   }
+   else if ((Flags & events) IS RFD::NIL) Flags |= RFD::READ;
+
+   if (glFDProtected) { // Defer structural edits, but retire callback identities immediately.
+      for (auto &record : glFDTable) {
+         if (record.FD != FD or (record.Flags & Flags & events) IS RFD::NIL) continue;
+         if ((Flags & RFD::REMOVE) != RFD::NIL) {
+            if (not Routine or record.Routine IS Routine) record.Flags |= RFD::REMOVE;
+         }
+         else if (record.Routine != Routine or record.Data != Data) record.Flags |= RFD::REMOVE;
+      }
       glRegisterFD.emplace_back(FD, Routine, Data, Flags);
       return ERR::Okay;
    }
@@ -781,13 +794,22 @@ ERR RegisterFD(int FD, RFD Flags, void (*Routine)(HOSTHANDLE, APTR), APTR Data)
 
    if ((Flags & (RFD::READ|RFD::WRITE|RFD::EXCEPT|RFD::REMOVE|RFD::ALWAYS_CALL)) IS RFD::NIL) Flags |= RFD::READ;
 
-   for (auto &fd : glFDTable) {
-      if ((fd.FD IS FD) and ((Flags & (fd.Flags & (RFD::READ|RFD::WRITE|RFD::EXCEPT|RFD::ALWAYS_CALL))) != RFD::NIL)) {
-         fd.Routine = Routine;
-         fd.Flags   = Flags;
-         fd.Data    = Data;
-         return ERR::Okay;
+   auto replacement = glFDTable.end();
+   for (auto it = glFDTable.begin(); it != glFDTable.end();) {
+      if ((it->FD IS FD) and ((Flags & (it->Flags & events)) != RFD::NIL)) {
+         if (replacement IS glFDTable.end()) {
+            replacement = it;
+            ++it;
+         }
+         else it = glFDTable.erase(it); // A replacement may cover several existing subscriptions.
       }
+      else ++it;
+   }
+   if (replacement != glFDTable.end()) {
+      replacement->Routine = Routine;
+      replacement->Flags   = Flags;
+      replacement->Data    = Data;
+      return ERR::Okay;
    }
 
    log.function("FD: %" PRId64 ", Routine: %p, Flags: $%.2x (New)", (MAXINT)FD, Routine, int(Flags));

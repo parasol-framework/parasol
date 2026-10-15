@@ -53,6 +53,24 @@ function assertContains(Text:str, Needle:str, Message:str)
    assert(Text and Text.find(Needle, 0, true), Message .. f' Expected "{Needle}" in "{Text}".')
 end
 
+@Test function WeakAttributeHoverIsContextual()
+   hover, token = hoverAt('local target <we|ak>:table = {}\n')
+   assertContains(hover, '**<weak>**', 'Weak attributes must have hover documentation')
+   assertContains(hover, 'strong reference', 'Hover must explain strong acquisition')
+   assertContains(hover, 'Sticky target types', 'Hover must describe the target type contract')
+   for source in values(array<str> {
+      'local target <we|ak> -- starts empty\n', 'target < we|ak >-- starts empty\n',
+      'target <we|ak> --[[ starts empty ]]\n'
+   }) do
+      hover, token = hoverAt(source)
+      assertContains(hover, '**<weak>**', 'Trailing comments must preserve weak attribute hover')
+   end
+   hover, token = hoverAt('local we|ak = 1\n')
+   assert(not hover or not hover.find('Declaration attribute'), 'Ordinary weak identifiers must retain their hover')
+   hover, token = hoverAt('local text = "<we|ak>"\n')
+   assert(not hover or not hover.find('Declaration attribute'), 'Strings must not receive weak attribute hover')
+end
+
 @Test function HandlerAdvertisesHover()
    server = {
       _handlers = {},
@@ -112,6 +130,29 @@ end
 
    assert(token and token.text is 'ResolvePath', 'Hover should identify a declared module function.')
    assertContains(hover, 'ResolvePath', 'Declared module hover should use generated module documentation.')
+end
+
+@Test function UsingMemberHoverIsContextual()
+   for source in values(array<str> {
+      "local value = { us|ing = 'member' }\n",
+      "local value = { using = 'member' }\nprint(value.us|ing)\n",
+      "local value = { using = function() end }\nvalue.us|ing()\n",
+      'local us|ing = {}\n', 'local text = "us|ing context do"\n'
+   }) do
+      hover = hoverAt(source)
+      assert(not hover or not hover.find('**using** _(Keyword)_'),
+         'Ordinary using names and strings must not receive context keyword hover.')
+   end
+   hover = hoverAt('local context = {}\nus|ing context\n-- opener\ndo\nend\n')
+   assertContains(hover, '**using** _(Keyword)_', 'Split using headers must retain keyword hover.')
+end
+
+@Test function UsingKeywordHover()
+   hover, token = hoverAt('us|ing context do\nend\n')
+   assert(token and token.text is 'using', 'Hover token extraction should identify using.')
+   assertContains(hover, '**using** _(Keyword)_', 'Using hover should identify the keyword.')
+   assertContains(hover, 'current context', 'Using hover should explain context activation.')
+   assertContains(hover, 'restored on every exit path', 'Using hover should explain context restoration.')
 end
 
 @Test function ExternKeywordHover()

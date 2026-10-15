@@ -231,7 +231,7 @@ struct sockaddr_un * get_socket_path(int ProcessID, socklen_t *Size)
       init = true;
    }
 
-   ((int *)(tlSocket.sun_path+4))[0] = ProcessID;
+   std::memcpy(tlSocket.sun_path + 4, &ProcessID, sizeof(ProcessID));
    *Size = sizeof(sa_family_t) + 4 + sizeof(int);
    return &tlSocket;
 }

@@ -40,6 +40,8 @@ header({ path="system/registry", copyright="Paul Manias 1996-2026" }, function()
     "AUDIOSATURATOR",
     "AUDIOSPLITTER",
     "AUDIOSTEREO",
+    "AUDIOCROSSFEED",
+    "AUDIOPITCHSHIFT",
     "AUDIOANALYSER",
     "CLIPBOARD",
     "DOCUMENT",
@@ -131,5 +133,7 @@ header({ path="system/registry", copyright="Paul Manias 1996-2026" }, function()
     "LZMASTREAM",
     "HASH",
     "WEBSOCKET",
-    "WEBSOCKETSERVER")
+    "WEBSOCKETSERVER",
+    "PEERCONNECTION",
+    "WEBCHANNEL")
 end)

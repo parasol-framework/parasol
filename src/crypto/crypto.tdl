@@ -33,5 +33,7 @@ module({ name="Crypto", copyright="Paul Manias © 2026", version=1.0, timestamp=
     "VerifyJWK",
     "WriteProtectedFile",
     "Hash",
-    "HMAC")
+    "HMAC",
+    "CRC32",
+    "GenerateP256Certificate")
 end)

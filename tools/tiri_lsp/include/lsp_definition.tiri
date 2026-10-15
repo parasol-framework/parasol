@@ -1,4 +1,4 @@
-extern maskNonCode
+extern maskNonCode, maskDeclarationTypeParameters
 module tiri as mTiri
 
 ----------------------------------------------------------------------------------------------------------------------
@@ -7,8 +7,13 @@ module tiri as mTiri
 rx_def_func           <const> = <{ regex.new([[\bfunction\s+([A-Za-z_][A-Za-z0-9_:.]*)\s*\(([^\)]*)\)]]) }>
 rx_def_decl           <const> = <{ regex.new([[\b(local|global)\s+([A-Za-z_][A-Za-z0-9_]*)]]) }>
 rx_def_assign_func    <const> = <{ regex.new([[\b([A-Za-z_][A-Za-z0-9_]*)\s*=\s*function\s*\(([^\)]*)\)]]) }>
-rx_def_assign         <const> = <{ regex.new([[^\s*([A-Za-z_][A-Za-z0-9_]*)\s*=]]) }>
+rx_def_assign         <const> = <{ regex.new(
+   [[^\s*([A-Za-z_][A-Za-z0-9_]*)(?:\s*:\s*[A-Za-z_]\w*(?:<(?!\s*weak\s*>)[^>\n]*>)?)?]] ..
+   [[\s*(?:<\s*weak\s*>)?(?:\s*:\s*[A-Za-z_]\w*(?:<(?!\s*weak\s*>)[^>\n]*>)?)?]] .. [[\s*(?:\?\??)?=]]) }>
 rx_def_param          <const> = <{ regex.new([[([A-Za-z_][A-Za-z0-9_]*)]]) }>
+rx_def_weak_empty <const> = <{ regex.new(
+   [[^\s*([A-Za-z_]\w*)(?:\s*:\s*[A-Za-z_]\w*(?:<(?!\s*weak\s*>)[^>\n]*>)?)?\s*<\s*weak\s*>]] ..
+   [[(?:\s*:\s*[A-Za-z_]\w*(?:<(?!\s*weak\s*>)[^>\n]*>)?)?\s*(?:;|$)]]) }>
 rx_def_struct         <const> = <{ regex.new([[^\s*struct\s+([A-Za-z_][A-Za-z0-9_]*)\b]]) }>
 rx_def_namespace      <const> = <{ regex.new([[^\s*namespace\s+([A-Za-z_][A-Za-z0-9_]*)\b]]) }>
 rx_def_module_namespace <const> = <{ regex.new(
@@ -404,7 +409,8 @@ global function extractDefinitionSymbols(Doc:table):array<table>
          end
       end
 
-      for start, stop, cap in rx_def_assign.findAll(line_code) do
+      declaration_code = maskDeclarationTypeParameters(line_code)
+      for start, stop, cap in rx_def_assign.findAll(declaration_code) do
          name = cap[0]
          if name and name != 'local' and name != 'global' and not in_table_literal then
             name_start = line_text.find(name, start, true) or start
@@ -414,6 +420,14 @@ global function extractDefinitionSymbols(Doc:table):array<table>
             if eq_pos and next_char != '=' and next_char != '>' then
                addSymbol(symbols, name, 'variable', line_num, name_start, name_start + #name)
             end
+         end
+      end
+
+      if not in_table_literal then
+         for start, stop, cap in rx_def_weak_empty.findAll(declaration_code) do
+            name = cap[0]
+            name_start = line_text.find(name, start, true) or start
+            addSymbol(symbols, name, 'variable', line_num, name_start, name_start + #name)
          end
       end
 

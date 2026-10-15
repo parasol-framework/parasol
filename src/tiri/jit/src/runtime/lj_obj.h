@@ -904,7 +904,8 @@ struct CompilationSourceEntry {
    uint8_t reserved;           // Reserved for source-map format extensions.
 };
 
-struct CompilationSourceMap {
+// Trailing entries contain GC references and must retain their natural alignment.
+struct alignas(CompilationSourceEntry) CompilationSourceMap {
    uint8_t version;  // Serialised source-map format version.
    uint8_t count;    // Number of trailing CompilationSourceEntry records.
    uint8_t root;     // Index of the compilation unit's root source entry.
@@ -995,6 +996,7 @@ typedef struct GCproto {
    BCLine firstline;  //  First line of the function definition.
    BCLine numline;    //  Number of lines for the function definition.
    uint8_t file_source_idx;  //  Index into lua_State::file_sources (fallback for edge cases).
+   uint8_t ordinary; // Immutable entity-member dispatch policy: 0 contextual, 1 caller context.
    uint8_t interpreter_required; // Deterministic policy reconstructed from this prototype's bytecode.
    GCRef source_root;        // Root prototype which owns the compilation-unit source descriptor.
    MRef compilation_sources; // CompilationSourceMap owned by the root prototype only.
@@ -1136,6 +1138,7 @@ inline void proto_restore_jit_policy(GCproto *Proto) noexcept
 
 inline void proto_metadata_init(GCproto *Proto) noexcept
 {
+   Proto->ordinary = 0;
    Proto->interpreter_required = 0;
    setmref(Proto->contract_cache, nullptr);
    Proto->file_source_idx = 0;
@@ -1338,6 +1341,12 @@ typedef union GCfunc {
    return check_exp(isluafunc(fn), (GCproto*)(mref<char>(fn->l.pc) - sizeof(GCproto)));
 }
 
+[[nodiscard]] inline bool func_is_ordinary(const GCfunc *Function) noexcept
+{
+   return isluafunc(Function) and funcproto(Function)->ordinary != 0;
+}
+
+
 [[nodiscard]] constexpr inline size_t sizeCfunc(MSize n) noexcept {
    return sizeof(GCfuncC) - sizeof(TValue) + sizeof(TValue) * n;
 }
@@ -1372,6 +1381,9 @@ inline constexpr uint32_t TAB_METHOD_COMPATIBLE_BIT = 2; // Bit index for explic
 inline constexpr uint8_t  TAB_METHOD_COMPATIBLE = (uint8_t)(1u << TAB_METHOD_COMPATIBLE_BIT);
 inline constexpr uint32_t TAB_CONTEXTUAL_BIT = 3; // Bit index for permanently designated contextual tables.
 inline constexpr uint8_t  TAB_CONTEXTUAL = (uint8_t)(1u << TAB_CONTEXTUAL_BIT);
+
+// Compiler-private weak-cell metatables.  Retained in table templates even in stripped bytecode.
+inline constexpr uint8_t TAB_WEAK_BINDING = uint8_t(1u << 4);
 
 // Either flag makes the sequence length meaningless, so '#' reports nil and sequence library functions refuse to
 // infer a boundary.  Backends test this composite mask in one operation.
@@ -2168,7 +2180,8 @@ template<typename T> [[nodiscard]] inline GCobj * obj2gco(T *v) noexcept { retur
 
 // String accessors
 
-[[nodiscard]] inline GCstr * strref(GCRef r) noexcept { return &gcref(r)->str; }
+// Parser references can contain fixed-name sentinels; the union's string member has the same address.
+[[nodiscard]] inline GCstr * strref(GCRef Ref) noexcept { return (GCstr *)gcref(Ref); }
 
 // Prototype accessors
 
@@ -2176,7 +2189,10 @@ template<typename T> [[nodiscard]] inline GCobj * obj2gco(T *v) noexcept { retur
 [[nodiscard]] inline const char * proto_chunk_namestr(const GCproto *pt) noexcept { return strdata(proto_chunk_name(pt)); }
 
 // Table accessors
-[[nodiscard]] inline GCtab * tabref(GCRef r) noexcept { return &gcref(r)->tab; }
+[[nodiscard]] inline GCtab * tabref(GCRef Ref) noexcept {
+   auto object = gcref(Ref);
+   return object ? &object->tab : nullptr;
+}
 
 // Array accessors
 [[nodiscard]] inline GCarray * arrayref(GCRef r) noexcept { return &gcref(r)->arr; }

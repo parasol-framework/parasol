@@ -40,6 +40,7 @@ inline const TiriConstant * lookup_constant(const GCstr *Name)
 }
 
 static bool is_named_external_global(GCstr *Name);
+static bool has_runtime_annotations(const std::vector<AnnotationEntry> &Annotations);
 
 // Canonical object methods are callable syntax, not object fields.  A bare lookup must therefore retain ordinary
 // table indexing, which lets the runtime return a real field when present or nil when it is absent.
@@ -70,12 +71,6 @@ static bool receiver_uses_contextual_call(const ParserContext &Context, const Ex
    if (descriptor.contextuality IS StaticContextuality::Contextual) return true;
    return not (descriptor.proved() and descriptor.primary != TiriType::Unknown and
       descriptor.primary != TiriType::Any and descriptor.primary != TiriType::Table);
-}
-
-static bool receiver_is_proven_contextual(const ParserContext &Context, const ExprNode &Receiver)
-{
-   if (not Receiver.static_value) return false;
-   return Context.descriptors().value(Receiver.static_value).contextuality IS StaticContextuality::Contextual;
 }
 
 static const ExprNode *call_receiver(const CallExprPayload &Payload)
@@ -2150,6 +2145,35 @@ ParserResult<IrEmitUnit> IrEmitter::emit_local_decl_stmt(const LocalDeclStmtPayl
       // If no initialiser and no annotation, fixed_type remains Unknown (set in var_add)
    }
 
+   // Build each cell only after multiple-result adjustment and initial target contract checks.  The target remains
+   // rooted in its local slot throughout allocation; replacing that slot removes the last compiler-owned strong copy.
+   for (auto i = BCReg(0); i < nvars; ++i) {
+      if (not Payload.names[i.raw()].has_weak) continue;
+      BCREG slot = base.raw() + i.raw();
+      auto *fs = &this->func_state;
+      BCREG call = fs->freereg;
+      BCREG cell = call + 1 + LJ_FR2;
+      BCREG meta = cell + 1;
+      bcreg_reserve(fs, 3 + LJ_FR2);
+      (void)bcemit_builtin_callable(fs, builtin_callable_id(FastFunc::setmetatable), call);
+      bcemit_AD(fs, BC_TNEW, cell, 1);
+      GCtab *template_table = lj_tab_new(fs->L, 0, 1);
+      template_table->flags |= TAB_WEAK_BINDING;
+      BCREG constant = const_gc(fs, obj2gco(template_table), LJ_TTAB);
+      GCstr *mode = lj_str_newlit(fs->L, "__mode");
+      GCstr *weak = lj_str_newlit(fs->L, "v");
+      setstrV(fs->L, lj_tab_setstr(fs->L, template_table, mode), weak);
+      lj_gc_anybarriert(fs->L, template_table);
+      bcemit_AD(fs, BC_TDUP, meta, constant);
+      bcemit_ABC(fs, BC_CALL, call, 2, 3);
+      bcemit_ABC(fs, BC_TSETB, slot, call, 0);
+      bcemit_AD(fs, BC_MOV, slot, call);
+      // Call arguments can remain in unused frame slots.  Explicitly clear them rather than depending on the next call.
+      bcemit_AD(fs, BC_KNIL, call, meta);
+      fs->var_get(slot).info |= VarInfoFlag::Weak;
+      fs->reset_freereg();
+   }
+
    for (auto i = BCReg(0); i < nvars; ++i) {
       const Identifier& identifier = Payload.names[i.raw()];
       if (is_blank_symbol(identifier)) continue;
@@ -3275,9 +3299,17 @@ ParserResult<ExpDesc> IrEmitter::emit_expression(const ExprNode& expr)
       case AstNodeKind::ChooseExpr:
          result = this->emit_choose_expr(std::get<ChooseExprPayload>(expr.data));
          break;
-      case AstNodeKind::FunctionExpr:
-         result = this->emit_function_expr(std::get<FunctionExprPayload>(expr.data));
+      case AstNodeKind::FunctionExpr: {
+         const auto &function = std::get<FunctionExprPayload>(expr.data);
+         result = this->emit_function_expr(function);
+         if (result.ok() and has_runtime_annotations(function.annotations)) {
+            this->materialise_to_next_reg(result.value_ref(), "annotated function expression");
+            auto registered = this->emit_annotation_registration(
+               BCReg(result.value_ref().u.s.info), function.annotations, nullptr);
+            if (not registered.ok()) return ParserResult<ExpDesc>::failure(registered.error_ref());
+         }
          break;
+      }
       default:
          result = this->unsupported_expr(expr.kind, expr.span);
          break;
@@ -3359,7 +3391,10 @@ ParserResult<ExpDesc> IrEmitter::emit_literal_expr(const LiteralValue& literal)
 
 ParserResult<ExpDesc> IrEmitter::emit_current_context_expr()
 {
-   if (not this->context_sources.empty()) {
+   // Argument context follows CTXENTER policy and may differ from the retained call receiver.  Materialise it
+   // into an expression temporary instead of overwriting that receiver, which CTXCALL and CTXCALLT still need.
+   if (not this->context_sources.empty() and
+       this->context_sources.back().kind != ContextSourceKind::DynamicArgument) {
       const ContextSource &source = this->context_sources.back();
       ExpDesc expr(ExpKind::NonReloc, source.slot.raw());
       expr.result_type = TiriType::Table;
@@ -3461,6 +3496,7 @@ ParserResult<ExpDesc> IrEmitter::emit_identifier_expr(const NameRef& reference, 
       }
    }
 
+   expr_weak_cell(&this->func_state, &resolved);
    return ParserResult<ExpDesc>::success(resolved);
 }
 

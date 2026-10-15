@@ -121,6 +121,7 @@ struct StaticBindingDescriptor {
    uint16_t function_depth = 0;
    bool immutable = true;
    bool is_const = false;
+   bool is_weak = false;
    bool is_parameter = false;
    bool is_variant = false;
    bool captured = false;

@@ -540,8 +540,12 @@ void lj_debug_pushloc(lua_State *L, GCproto *pt, BCPOS pc)
 {
    CSTRING name = nullptr;
    if (ar) {
-      TValue* o = debug_localname(L, ar, &name, n);
+      cTValue* o = debug_localname(L, ar, &name, n);
       if (name) {
+         if (lj_tab_is_weak_binding(o)) {
+            if (strncmp(name, "!weak:", 6) IS 0) name += 6;
+            o = lj_tab_getint(tabV(o), 0);
+         }
          copyTV(L, L->top, o);
          incr_top(L);
       }
@@ -549,6 +553,7 @@ void lj_debug_pushloc(lua_State *L, GCproto *pt, BCPOS pc)
    else if (tvisfunc(L->top - 1) and isluafunc(funcV(L->top - 1))) {
       name = debug_varname(funcproto(funcV(L->top - 1)), 0, (BCREG)n - 1);
    }
+   if (name and strncmp(name, "!weak:", 6) IS 0) name += 6;
    return name;
 }
 
@@ -560,7 +565,7 @@ extern CSTRING lua_setlocal(lua_State *L, const lua_Debug *ar, int n)
 {
    CSTRING name = nullptr;
    TValue *o = debug_localname(L, ar, &name, n);
-   if (name and strcmp(name, "(context cache)") IS 0) {
+   if (name and (strcmp(name, "(context cache)") IS 0 or lj_tab_is_weak_binding(o))) {
       name = nullptr;
       o = nullptr;
    }

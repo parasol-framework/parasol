@@ -10,11 +10,11 @@ and an exact sample format.  `plughw:0,0` adds ALSA format conversion.  `null` c
 is suitable for functional tests only.  ALSA output supports 8-bit unsigned, 16-bit signed and 32-bit float, mono/stereo;
 24-bit output is unsupported.
 
-Saved `user:config/audio.cfg` uses the `AUDIO` keys `PeriodFrames` and `Periods`.  Legacy `PeriodSize` bytes are converted
-using saved bit depth and channels.  `StreamBufferMs` is a separate prefetch duration: default 1000, range 100–10000 ms,
-limited to 8 MiB per stream and 64 MiB per Audio object.  It is based on output rate, so higher source frequencies shorten
-its effective duration.  It does not add PCM output latency.  Process client messages to refill streams and receive
-completion callbacks; memory-resident playback continues while the client is blocked.  Starved streams insert silence
+Saved `user:config/audio.cfg` uses the `AUDIO` keys `PeriodFrames` and `Periods`.  `PeriodFrames` is measured in frames;
+the legacy byte-based `PeriodSize` key is ignored.  `StreamBufferMs` is a separate prefetch duration: default 1000,
+range 100–10000 ms, limited to 8 MiB per stream and 64 MiB per Audio object.  It is based on output rate, so higher source
+frequencies shorten its effective duration.  It does not add PCM output latency.  Process client messages to refill streams
+and receive completion callbacks; memory-resident playback continues while the client is blocked.  Starved streams insert silence
 without advancing their source position and resume when data becomes available.
 
 ## Automated tests

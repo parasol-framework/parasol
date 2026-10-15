@@ -4,23 +4,39 @@ This file provides guidance to Agentic programs when working with code in this r
 
 ### Essential Build Commands
 
-**Configure build:**
-- `cmake -S . -B build/agents -DCMAKE_BUILD_TYPE=Debug -DCMAKE_INSTALL_PREFIX=build/agents-install -DRUN_ANYWHERE=TRUE -DKOTUKU_STATIC=OFF -DUNIT_TESTS=ON -DORIGO_CONSOLE=ON -DLINKED_PACKAGES=ON`
-- Modular/Static builds: Use `-DKOTUKU_STATIC=OFF` for modular builds and `-DKOTUKU_STATIC=ON` for static.
-- Always use Debug builds unless the user requests otherwise.
-- `UNIT_TESTS=ON` enables compiled C++ unit tests and prolongs the build.  Note that this is not declared as a CMake
-  `option()`; it is consumed directly by `src/core/CMakeLists.txt`, so it will not appear in the options listing.
+Prefer the shared presets in `CMakePresets.json` (CMake 3.28 or newer).  Run commands from the repository root.
+Use `cmake --list-presets=all` to list the available presets.  For a complete modular Debug configure, build, install,
+and test cycle, use `cmake --workflow --preset agents`; this installs the build before running tests.
 
-If `build/agents` is already present and configured for a different platform, use `build/agents-[platform]`
+**Configure build:**
+
+- Preferred: `cmake --preset agents`.  This uses `build/agents` and installs to `build/agents-install`.
+- Static build: `cmake --preset agents -DKOTUKU_STATIC=ON`.  Then use the separate build/install and test commands below;
+  the `agents` workflow reconfigures with the modular defaults.
+- Explicit alternative: `cmake -S . -B build/agents -DCMAKE_BUILD_TYPE=Debug -DCMAKE_INSTALL_PREFIX=build/agents-install -DRUN_ANYWHERE=TRUE -DKOTUKU_STATIC=OFF -DUNIT_TESTS=ON -DORIGO_CONSOLE=ON -DLINKED_PACKAGES=ON`
+- Modular/Static builds: Use `-DKOTUKU_STATIC=OFF` for modular builds and `-DKOTUKU_STATIC=ON` for static.
+- Always use Debug builds unless the user requests otherwise, or if the task requires use of performant Release binaries.
+- `UNIT_TESTS=ON` enables compiled C++ unit tests and prolongs the build.  The agent presets enable `BUILD_TESTING`,
+  `BUILD_TESTS`, and `UNIT_TESTS` for integration and unit tests.
+
+If `build/agents` is already configured for a different platform, use `cmake --preset agents-platform`.
+This selects `build/agents-${hostSystemName}` (for example, `build/agents-Linux`) and retains `build/agents-install`.
+Use the corresponding `agents-platform`, `agents-platform-install`, and `agents-platform-headers` build presets,
+and the `agents-platform` test or workflow preset for that tree.
 
 **Build and install:**
-- Build and install: `cmake --build build/agents --config Debug --parallel && cmake --install build/agents --config Debug`
+
+- Preferred: `cmake --build --preset agents-install` (parallel Debug build and install).
+- Build only: `cmake --build --preset agents`.
+- Explicit alternative: `cmake --build build/agents --config Debug --parallel && cmake --install build/agents --config Debug`
 - To build an individual module, append `--target [module]` to the build command, e.g. `--target network`.  In static builds, use `--target [module] origo_cmd` to ensure that the origo executable is rebuilt to include the changes.
 
 **Testing:**
+
 - Always install your latest build before running `ctest`.
-- Run all integration tests: `ctest --build-config Debug --test-dir build/agents --output-on-failure`
-- Run single integration test: `ctest --build-config Debug --test-dir build/agents --output-on-failure -L TEST_LABEL`
+- Run all registered tests: `ctest --preset agents`.
+- Run tests with a specific label: `ctest --preset agents -L TEST_LABEL`.
+- Explicit alternative: `ctest --build-config Debug --test-dir build/agents --output-on-failure` (append `-L TEST_LABEL` to filter).
 - Tiri tests are always written for the Flute tool.
 - Use the `flute-testing` skill before writing, reviewing, planning, or running Flute tests.
 - When running the Origo executable for individual tests, append `--log-warning` at a minimum for log messages, or `--log-api` if more detail is required.  Log output is directed to stderr.
@@ -81,7 +97,8 @@ The build system heavily uses code generation:
 - TDL files are processed by `tools/idl/idl-c.tiri` to generate C headers
 - `tools/idl/idl-compile.tiri` generates IDL definition strings
 - Normal agent builds consume the existing generated files.  When headers or XML documentation require regeneration,
-  run `cmake --build build/agents --config Debug --target build_headers --parallel` from a configured build tree.
+  run `cmake --build --preset agents-headers` after configuring the agent build.  The explicit alternative is
+  `cmake --build build/agents --config Debug --target build_headers --parallel`.
 - The `build_headers` target requires a working installed `origo` executable so that the IDL tools can run.
 
 ### Multi-Platform Considerations
@@ -111,3 +128,4 @@ Lower snake-case is the preferred string format for new file names.
 - Always give an honest, balanced opinion in your responses
 - Encourage testing and validation of changes.  Analysis should be presented alongside evidence.
 - If you are asked to do work that relates to an existing plan file, update the plan at the end of the session to indicate what was achieved.
+- Read AGENTS.local.md if present

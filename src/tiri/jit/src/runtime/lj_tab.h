@@ -88,6 +88,14 @@ LJ_FUNC void lj_tab_free(global_State* g, GCtab* t);
 LJ_FUNC void lj_tab_resize(lua_State* L, GCtab* t, uint32_t asize, uint32_t hbits);
 LJ_FUNCA void lj_tab_reasize(lua_State* L, GCtab* t, uint32_t nasize);
 
+// A private metatable marker prevents debug APIs from exposing or replacing cell storage, including stripped code.
+[[nodiscard]] inline bool lj_tab_is_weak_binding(cTValue *Value) noexcept
+{
+   if (not tvistab(Value)) return false;
+   GCtab *meta = tabref(tabV(Value)->metatable);
+   return meta and (meta->flags & TAB_WEAK_BINDING) != 0;
+}
+
 // Caveat: all getters except lj_tab_get() can return NULL!
 
 LJ_FUNCA [[nodiscard]] cTValue* lj_tab_getinth(GCtab* t, int32_t key);

@@ -7,6 +7,11 @@
 
    namespace openai { }
 
+websocket_available = false
+@if(exists='modules:websocket')
+websocket_available = true
+@end
+
 function redact(Text:str):str
    secret = regex.new('("(?:access_token|refresh_token|id_token|api_key|authorization)"\\s*:\\s*")[^"]*"',
       regex.ICASE)
@@ -322,7 +327,7 @@ function applyErrorPolicy(Policy:table, Error:table):table
 end
 
 @Doc(text=[[
-Creates a client for the OpenAI Models and Responses HTTP APIs.
+Creates a client for the OpenAI Models and Responses APIs, including Responses WebSocket mode.
 
 The client holds no process-global state.  Requests are copied and validated before they are sent, so caller tables are
 never modified.  Model identifiers are always chosen by the caller.
@@ -351,7 +356,7 @@ refreshableBearer() or a library such as `ai/chatgpt`.  Optional fields are `bas
 `policy` (a request policy such as `chatgpt.policy()`).
 
 -RESULTS-
-table: The client, providing `capabilities()`, `models.list()` and `responses.create()`.
+table: The client, providing `capabilities()`, `models.list()`, `responses.create()` and `responses.connect()`.
 ]])
 openai.client = function(Options:table):table
    options = Options or {}
@@ -438,7 +443,7 @@ Describes what this client supports, for adapting an application's user interfac
 
 The result reports transport and feature flags, such as `streaming`, `nonStreaming`, `previousResponseID`,
 `structuredOutputs`, `customFunctions`, `webSearch` and `hostedTools`, and the credential's capabilities in
-`credential`.  Background Responses, Conversations, WebSocket and Realtime are reported as unsupported.  An attached
+`credential`.  Background Responses, Conversations and Realtime are reported as unsupported.  An attached
 policy can narrow the result; for example, a ChatGPT-plan client reports `nonStreaming=false`.
 
 -RESULTS-
@@ -459,7 +464,7 @@ table: A new capability table.
          hostedTools   = false,
          background    = false,
          conversations = false,
-         websocket     = false,
+         websocket     = websocket_available,
          realtime      = false,
          credential    = credential.capabilities and credential.capabilities() or { kind=credential.kind or 'custom' }
       }
@@ -527,6 +532,46 @@ table: Error table on failure.
    end
 
    self.responses = {}
+
+   @Doc(text=[[
+Opens a persistent Responses WebSocket connection.  The returned connection has `create(Request, StreamID)`,
+`state()` and `close()` methods.  `create()` returns a stream with the same event and completion methods as an HTTP
+stream.  StreamID is optional; named streams allow concurrent responses on one connection.  At most one response may
+run on each stream.  The caller supplies `previous_response_id` for continuation and opens a new connection after a
+disconnect.  Canceling a stream stops local delivery; close the connection to stop its transport.
+
+-RESULTS-
+table: The connection, or `nil` on failure.
+table: Error table on failure.
+]])
+   self.responses.connect = function():<table, table>
+      if not websocket_available then
+         return nil, clientError('capability', 'unsupported_capability',
+            'The WebSocket module is unavailable')
+      end
+      if options.policy and options.policy.capabilities and options.policy.capabilities().websocket is false then
+         return nil, clientError('capability', 'unsupported_capability',
+            'This Responses route does not support WebSocket connections')
+      end
+      request_headers, auth_err = headers()
+      if auth_err then return nil, auth_err end
+      function prepare(Request:table):<table, table>
+         validated, validation_err = openai_responses.validate(Request)
+         if validation_err then
+            validation_err.kind = 'invalid_request'; validation_err.retryable = false
+            return nil, validation_err
+         end
+         if options.policy and options.policy.validate then return options.policy.validate(validated) end
+         return validated
+      end
+      ws_url = base_url.startsWith('https://') ? 'wss://' .. base_url.sub(8) :
+         'ws://' .. base_url.sub(7)
+      return openai_stream.connect({ url=ws_url .. '/responses', headers=request_headers,
+         timeout=options.timeout or 60, maxMessageBytes=options.maxResponseBytes or 16777216,
+         limits=options.streamLimits, prepare=prepare, encode=openai_responses.encode,
+         responseDecoder=openai_responses.response, itemDecoder=openai_responses.item,
+         translateError=options.policy?.translateError })
+   end
 
    @Doc(text=[[
 Creates a model response.

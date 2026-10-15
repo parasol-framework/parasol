@@ -9,16 +9,19 @@ Windows.
 **********************************************************************************************************************
 
 -MODULE-
-Crypto: Provides hashing, secure random data, base64 coding, RSA signature verification and protected persistence.
+Crypto: Provides cryptographic primitives for binary data.
+
+BETA: This module is not finalised for production use.
 
 The Crypto module provides a small set of cryptographic primitives for binary data.  All inputs are treated as raw
-byte arrays and may contain null bytes.  Hashing and signature verification use BearSSL on Linux and CNG on Windows;
-random data is obtained from the host platform.  MD5 and SHA-1 are available only for compatibility uses such as
+byte arrays and may contain null bytes.  Hashing and signature verification use BearSSL on Linux and CNG on Windows.
+Certificate generation uses OpenSSL on Linux and CNG on Windows.  Random data is obtained from the host platform.
+MD5 and SHA-1 are available only for compatibility uses such as
 checksums, ETags, git object identifiers, UUID version 5 and HTTP digest authentication.  They are not suitable for
 security purposes; use SHA-256 or SHA-512 for new designs.
 
-Each input array argument is limited to 1 MiB (1048576 bytes).  The functions do not allocate memory for results; any
-output is written to an array supplied by the caller.
+Each input array argument is limited to 1 MiB (1048576 bytes).  Array results are written to caller-supplied buffers.
+Certificate generation instead returns PEM and fingerprint strings supplied by the caller.
 
 ~WriteProtectedFile() is the exception to the otherwise in-memory API.  It is a small persistence primitive for
 security-sensitive records that need owner-only access and atomic replacement.
@@ -33,11 +36,23 @@ security-sensitive records that need owner-only access and atomic replacement.
 #include <kotuku/modules/crypto.h>
 #include <kotuku/modules/module.h>
 
+#include <algorithm>
 #include <array>
+#include <memory>
+#include <string>
 #include <string_view>
+#include <utility>
 #include <vector>
 
+#ifdef CRYPTO_PROTOCOL_OPENSSL
+#include <openssl/bio.h>
+#include <openssl/crypto.h>
+#include <openssl/pem.h>
+#include <openssl/x509.h>
+#endif
+
 #include "crypto_internal.h"
+#include "protocol_primitives.h"
 
 static ERR MODInit(OBJECTPTR, struct CoreBase *);
 static ERR MODExpunge(void);
@@ -225,7 +240,140 @@ ERR HMAC(HASH Algorithm, const std::span<const int8_t> &Key, const std::span<con
    if (not size) return ERR::NoSupport;
    if ((Key.size() > MAX_CRYPTO_INPUT) or (Input.size() > MAX_CRYPTO_INPUT) or (Output.size() != size) or
        (overlaps(Key, Output)) or (overlaps(Input, Output))) return ERR::Args;
+#ifdef CRYPTO_PROTOCOL_OPENSSL
+   if (Algorithm IS HASH::SHA1) {
+      auto result = crypto_protocol::hmac_sha1(
+         std::span<const uint8_t>((const uint8_t *)Key.data(), Key.size()),
+         std::span<const uint8_t>((const uint8_t *)Input.data(), Input.size()),
+         std::span<uint8_t, 20>((uint8_t *)Output.data(), 20));
+      if (result) return ERR::Okay;
+      std::fill(Output.begin(), Output.end(), 0);
+      return ERR::Failed;
+   }
+#endif
    return crypto_backend::hmac(Algorithm, Key, Input, Output);
+}
+
+/*********************************************************************************************************************
+
+-FUNCTION-
+CRC32: Computes the IEEE CRC-32 checksum of a byte array.
+
+The result uses the polynomial and initial/final complement required by STUN FINGERPRINT.  An empty array produces
+zero.  This checksum detects accidental corruption; it is not an authentication code.
+
+-INPUT-
+array(char) Input: The bytes to checksum, up to 1 MiB.
+&uint Result: Receives the checksum.
+
+-ERRORS-
+Okay
+Args: `Result` is null or `Input` exceeds 1 MiB.
+
+-TAGS-
+thread-safe
+
+-END-
+
+*********************************************************************************************************************/
+
+ERR CRC32(const std::span<const int8_t> &Input, uint32_t *Result)
+{
+   if ((not Result) or (Input.size() > MAX_CRYPTO_INPUT)) return ERR::Args;
+   *Result = crypto_protocol::crc32(std::span<const uint8_t>((const uint8_t *)Input.data(), Input.size()));
+   return ERR::Okay;
+}
+
+/*********************************************************************************************************************
+
+-FUNCTION-
+GenerateP256Certificate: Creates a self-signed ECDSA P-256 certificate for a DTLS peer.
+
+Each call generates a new private key and a certificate valid for 30 days.  The certificate and unencrypted private
+key are returned as PEM strings.  Keep the private key secret and clear it when it is no longer needed.  The SHA-256
+fingerprint is returned as 32 upper-case hexadecimal octets separated by colons, suitable for an SDP fingerprint.
+
+-INPUT-
+strview CommonName: Certificate subject name, one to 128 bytes with no null bytes.
+^&string CertificatePEM: Receives the certificate in PEM format.
+^&string PrivateKeyPEM: Receives the unencrypted private key in PEM format.
+^&string Fingerprint: Receives the SHA-256 certificate fingerprint.
+
+-ERRORS-
+Okay
+Args: The common name is invalid or output strings alias.
+NullArgs: An output string pointer is null.
+NoSupport: No certificate backend is available on this platform.
+Failed: Certificate generation or encoding failed.
+
+-TAGS-
+thread-safe
+
+-END-
+
+*********************************************************************************************************************/
+
+ERR GenerateP256Certificate(const std::string_view &CommonName, std::string *CertificatePEM,
+   std::string *PrivateKeyPEM, std::string *Fingerprint)
+{
+   if (not CertificatePEM or not PrivateKeyPEM or not Fingerprint) return ERR::NullArgs;
+   if (CertificatePEM IS PrivateKeyPEM or CertificatePEM IS Fingerprint or PrivateKeyPEM IS Fingerprint or
+       CommonName.empty() or CommonName.size() > 128 or CommonName.find('\0') != std::string_view::npos) {
+      return ERR::Args;
+   }
+   std::string common_name(CommonName);
+   CertificatePEM->clear();
+   std::fill(PrivateKeyPEM->begin(), PrivateKeyPEM->end(), '\0');
+   PrivateKeyPEM->clear();
+   Fingerprint->clear();
+#ifdef _WIN32
+   return crypto_backend::generate_p256_certificate(common_name, *CertificatePEM, *PrivateKeyPEM, *Fingerprint);
+#elif defined(CRYPTO_PROTOCOL_OPENSSL)
+   EVP_PKEY *key_raw = nullptr;
+   X509 *certificate_raw = nullptr;
+   auto generated = crypto_protocol::generate_p256_certificate(common_name, key_raw, certificate_raw);
+   auto key = std::unique_ptr<EVP_PKEY, decltype(&EVP_PKEY_free)>(key_raw, EVP_PKEY_free);
+   auto certificate = std::unique_ptr<X509, decltype(&X509_free)>(certificate_raw, X509_free);
+   if (not generated) return ERR::Failed;
+
+   auto cert_bio = std::unique_ptr<BIO, decltype(&BIO_free)>(BIO_new(BIO_s_mem()), BIO_free);
+   auto key_bio = std::unique_ptr<BIO, decltype(&BIO_free)>(BIO_new(BIO_s_mem()), BIO_free);
+   auto clear_key_bio = kt::Defer([&]() {
+      if (not key_bio) return;
+      char *data = nullptr;
+      auto length = BIO_get_mem_data(key_bio.get(), &data);
+      if (length > 0 and data) OPENSSL_cleanse(data, size_t(length));
+   });
+   if (not cert_bio or not key_bio or
+       PEM_write_bio_X509(cert_bio.get(), certificate.get()) != 1 or
+       PEM_write_bio_PrivateKey(key_bio.get(), key.get(), nullptr, nullptr, 0, nullptr, nullptr) != 1) {
+      return ERR::Failed;
+   }
+
+   std::array<uint8_t, 32> digest{};
+   unsigned int digest_size = 0;
+   if (X509_digest(certificate.get(), EVP_sha256(), digest.data(), &digest_size) != 1 or
+       digest_size != digest.size()) return ERR::Failed;
+   static constexpr char HEX[] = "0123456789ABCDEF";
+   std::string fingerprint;
+   fingerprint.reserve(95);
+   for (size_t i = 0; i < digest.size(); ++i) {
+      if (i) fingerprint += ':';
+      fingerprint += HEX[digest[i] >> 4];
+      fingerprint += HEX[digest[i] & 15];
+   }
+
+   char *cert_data = nullptr, *key_data = nullptr;
+   auto cert_length = BIO_get_mem_data(cert_bio.get(), &cert_data);
+   auto key_length = BIO_get_mem_data(key_bio.get(), &key_data);
+   if (cert_length <= 0 or key_length <= 0 or not cert_data or not key_data) return ERR::Failed;
+   CertificatePEM->assign(cert_data, size_t(cert_length));
+   PrivateKeyPEM->assign(key_data, size_t(key_length));
+   *Fingerprint = std::move(fingerprint);
+   return ERR::Okay;
+#else
+   return ERR::NoSupport;
+#endif
 }
 
 /*********************************************************************************************************************

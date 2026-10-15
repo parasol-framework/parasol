@@ -44,14 +44,16 @@ inline void skip_whitespace(std::string_view &IRI)
    if (i) IRI.remove_prefix(i);
 }
 
-static double parse_number(std::string_view &IRI)
+static double parse_number(std::string_view &IRI, std::errc *Error = nullptr)
 {
+   if (Error) *Error = std::errc::invalid_argument;
    skip_whitespace(IRI);
    if (IRI.empty()) return 0;
    if (IRI.starts_with('+')) IRI.remove_prefix(1);
 
    double value = 0;
    auto [ ptr, error ] = std::from_chars(IRI.data(), IRI.data() + IRI.size(), value);
+   if (Error) *Error = error;
    if (error IS std::errc()) IRI.remove_prefix(ptr - IRI.data());
    return value;
 }
@@ -395,23 +397,46 @@ static float parse_hsx_alpha(std::string_view &IRI)
    return std::clamp(alpha, 0.0f, 1.0f);
 }
 
-static void parse_hsx(std::string_view &IRI, double &Hue, double &Sat, double &Third, float &Alpha)
+// Supports both the legacy comma-separated format: hsl(H,S,L) / hsla(H,S,L,A)
+// and the modern CSS space-separated format: hsl(H S L) / hsl(H S L / A)
+// The hue accepts the CSS angle units and wraps to the range 0 - 360 degrees.
+
+static ERR parse_hsx(std::string_view &IRI, double &Hue, double &Sat, double &Third, float &Alpha)
 {
-   Hue = std::clamp(parse_number(IRI) * (1.0 / 360.0), 0.0, 1.0);
+   std::errc error;
+   double hue = parse_number(IRI, &error);
+   if ((error != std::errc()) or (not std::isfinite(hue))) return ERR::Syntax;
 
-   if (auto comma = IRI.find(','); comma != std::string_view::npos) IRI.remove_prefix(comma + 1);
-   else IRI = std::string_view();
+   double period = 360.0;
+   if (kt::startswith("deg", IRI)) IRI.remove_prefix(3);
+   else if (kt::startswith("grad", IRI)) { period = 400.0; IRI.remove_prefix(4); }
+   else if (kt::startswith("rad", IRI)) { period = 2.0 * agg::pi; IRI.remove_prefix(3); }
+   else if (kt::startswith("turn", IRI)) { period = 1.0; IRI.remove_prefix(4); }
+
+   // Wrap in the original unit so large finite angles cannot overflow during conversion.
+   hue = std::fmod(hue, period);
+   if (hue < 0) hue += period;
+   Hue = hue / period;
+   skip_whitespace(IRI);
+
+   const bool legacy = IRI.starts_with(',');
+   if (legacy) IRI.remove_prefix(1);
    Sat = parse_hsx_percent(IRI);
+   skip_whitespace(IRI);
 
-   if (auto comma = IRI.find(','); comma != std::string_view::npos) IRI.remove_prefix(comma + 1);
-   else IRI = std::string_view();
+   if (legacy and IRI.starts_with(',')) IRI.remove_prefix(1);
    Third = parse_hsx_percent(IRI);
+   skip_whitespace(IRI);
 
-   if (auto comma = IRI.find(','); comma != std::string_view::npos) {
-      IRI.remove_prefix(comma + 1);
-      Alpha = parse_hsx_alpha(IRI);
+   if (legacy) {
+      if (IRI.starts_with(',')) {
+         IRI.remove_prefix(1);
+         Alpha = parse_hsx_alpha(IRI);
+      }
+      else Alpha = 1.0f;
    }
-   else Alpha = 1.0f;
+   else Alpha = parse_css_alpha(IRI);
+   return ERR::Okay;
 }
 
 //********************************************************************************************************************
@@ -420,7 +445,7 @@ static ERR parse_hsl(std::string_view IRI, VectorPainter *Painter, std::string_v
 {
    auto &rgb = Painter->Colour;
    double hue, sat, light;
-   parse_hsx(IRI, hue, sat, light, rgb.Alpha);
+   if (auto error = parse_hsx(IRI, hue, sat, light, rgb.Alpha); error != ERR::Okay) return error;
 
    // Convert HSL to RGB.  HSL values are from 0.0 - 1.0
 
@@ -454,7 +479,7 @@ static ERR parse_hsv(std::string_view IRI, VectorPainter *Painter, std::string_v
 {
    auto &rgb = Painter->Colour;
    double hue, sat, val;
-   parse_hsx(IRI, hue, sat, val, rgb.Alpha);
+   if (auto error = parse_hsx(IRI, hue, sat, val, rgb.Alpha); error != ERR::Okay) return error;
 
    hue = hue * 6.0;
    int i = floor(hue);
@@ -568,10 +593,14 @@ or from `0%` to `100%`.  The alpha component ranges from `0.0` to `1.0` (or `0%`
 <type name="rgb(R G B) / rgb(R G B / A)">Modern CSS space-separated format.  Component values range from `0` to
 `255`, or from `0%` to `100%`.  Alpha is optional, preceded by `/`, and ranges from `0.0` to `1.0` (or `0%` to
 `100%`).</type>
-<type name="hsl(H,S,L) / hsla(H,S,L,A)">Hue is expressed in degrees (`0`-`360`).  Saturation and lightness are
-percentages.  Alpha ranges from `0.0` to `1.0`.</type>
-<type name="hsv(H,S,V)">Hue in degrees (`0`-`360`), saturation and value as percentages.  An optional alpha
-component ranging from `0.0` to `1.0` is supported.</type>
+<type name="hsl(H,S,L) / hsla(H,S,L,A)">Legacy comma-separated format.  Hue is expressed in degrees (`0`-`360`)
+and may carry a `deg`, `grad`, `rad` or `turn` unit; values outside the range wrap.  Saturation and lightness are
+percentages.  Alpha ranges from `0.0` to `1.0` (or `0%` to `100%`).</type>
+<type name="hsl(H S L) / hsl(H S L / A)">Modern CSS space-separated format, with the same component ranges as the
+legacy format.  Alpha is optional and preceded by `/`.</type>
+<type name="hsv(H,S,V) / hsv(H S V / A)">Hue in degrees (`0`-`360`), saturation and value as percentages.  Both the
+comma-separated and space-separated forms are accepted, with an optional alpha component ranging from `0.0` to
+`1.0`.</type>
 <type name="oklab(L a b [/ A])">CSS Color Level 4 OKLAB colour space.  Lightness (`L`) is `0`-`1` or `0%`-`100%`.
 The `a` and `b` axes range from approximately `-0.4` to `0.4`, or as percentages where `100%` equals `0.4`.
 Alpha (`A`) is optional, preceded by `/`, and ranges from `0.0` to `1.0` or `0%` to `100%`.</type>

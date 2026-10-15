@@ -182,23 +182,17 @@ ParserResult<ExpDesc> IrEmitter::emit_runtime_builtin_method_pipe(
 
    ContextSourceScope argument_context_scope;
    if (contextual_field) {
-      if (receiver_is_proven_contextual(this->ctx, *receiver_node)) {
-         argument_context_scope.activate(this,
-            ContextSource{ .slot = call_base, .kind = ContextSourceKind::ContextualArgument });
+      // CTXENTER resolves the function policy before argument context is read.
+      bool arguments_use_context = this->expression_uses_context(*Payload.lhs);
+      for (const ExprNodePtr &argument : Call.arguments) {
+         if (argument and this->expression_uses_context(*argument)) {
+            arguments_use_context = true;
+            break;
+         }
       }
-      else {
-         bool arguments_use_context = this->expression_uses_context(*Payload.lhs);
-         for (const ExprNodePtr &argument : Call.arguments) {
-            if (argument and this->expression_uses_context(*argument)) {
-               arguments_use_context = true;
-               break;
-            }
-         }
-         if (arguments_use_context) {
-            bcemit_AD(state, BC_CTXGET, call_base.raw(), 0);
-            argument_context_scope.activate(this,
-               ContextSource{ .slot = call_base, .kind = ContextSourceKind::ContextualArgument });
-         }
+      if (arguments_use_context) {
+         argument_context_scope.activate(this,
+            ContextSource{ .kind = ContextSourceKind::DynamicArgument });
       }
    }
 
@@ -342,23 +336,17 @@ ParserResult<ExpDesc> IrEmitter::emit_pipe_expr(const PipeExprPayload &Payload)
 
       bcemit_INS(fs, BCINS_AD(BC_CTXENTER, base, 0));
       ContextSourceScope context_scope;
-      if (receiver_is_proven_contextual(this->ctx, *context_receiver_node)) {
-         context_scope.activate(this,
-            ContextSource{ .slot = context_result_base, .kind = ContextSourceKind::ContextualArgument });
+      // CTXENTER resolves the function policy before argument context is read.
+      bool arguments_use_context = this->expression_uses_context(*Payload.lhs);
+      for (const ExprNodePtr &argument : call_payload.arguments) {
+         if (argument and this->expression_uses_context(*argument)) {
+            arguments_use_context = true;
+            break;
+         }
       }
-      else {
-         bool arguments_use_context = this->expression_uses_context(*Payload.lhs);
-         for (const ExprNodePtr &argument : call_payload.arguments) {
-            if (argument and this->expression_uses_context(*argument)) {
-               arguments_use_context = true;
-               break;
-            }
-         }
-         if (arguments_use_context) {
-            bcemit_AD(fs, BC_CTXGET, context_result_base.raw(), 0);
-            context_scope.activate(this,
-               ContextSource{ .slot = context_result_base, .kind = ContextSourceKind::ContextualArgument });
-         }
+      if (arguments_use_context) {
+         context_scope.activate(this,
+            ContextSource{ .kind = ContextSourceKind::DynamicArgument });
       }
 
       auto finish_unreachable = [&]() -> ParserResult<ExpDesc> {
@@ -759,23 +747,17 @@ ParserResult<ExpDesc> IrEmitter::emit_runtime_builtin_method_call(const CallExpr
 
    ContextSourceScope argument_context_scope;
    if (contextual_field) {
-      if (receiver_is_proven_contextual(this->ctx, *receiver_node)) {
-         argument_context_scope.activate(this,
-            ContextSource{ .slot = call_base, .kind = ContextSourceKind::ContextualArgument });
+      // CTXENTER resolves the function policy before argument context is read.
+      bool arguments_use_context = false;
+      for (const ExprNodePtr &argument : Payload.arguments) {
+         if (argument and this->expression_uses_context(*argument)) {
+            arguments_use_context = true;
+            break;
+         }
       }
-      else {
-         bool arguments_use_context = false;
-         for (const ExprNodePtr &argument : Payload.arguments) {
-            if (argument and this->expression_uses_context(*argument)) {
-               arguments_use_context = true;
-               break;
-            }
-         }
-         if (arguments_use_context) {
-            bcemit_AD(state, BC_CTXGET, call_base.raw(), 0);
-            argument_context_scope.activate(this,
-               ContextSource{ .slot = call_base, .kind = ContextSourceKind::ContextualArgument });
-         }
+      if (arguments_use_context) {
+         argument_context_scope.activate(this,
+            ContextSource{ .kind = ContextSourceKind::DynamicArgument });
       }
    }
 
@@ -1069,23 +1051,17 @@ ParserResult<ExpDesc> IrEmitter::emit_call_expr(const CallExprPayload &Payload)
    ContextSourceScope argument_context_scope;
    if (is_contextual_call) {
       bcemit_INS(&this->func_state, BCINS_AD(BC_CTXENTER, base, 0));
-      if (context_receiver_node and receiver_is_proven_contextual(this->ctx, *context_receiver_node)) {
-         argument_context_scope.activate(this,
-            ContextSource{ .slot = context_result_base, .kind = ContextSourceKind::ContextualArgument });
+      // CTXENTER resolves the function policy before argument context is read.
+      bool arguments_use_context = false;
+      for (const ExprNodePtr &argument : Payload.arguments) {
+         if (argument and this->expression_uses_context(*argument)) {
+            arguments_use_context = true;
+            break;
+         }
       }
-      else {
-         bool arguments_use_context = false;
-         for (const ExprNodePtr &argument : Payload.arguments) {
-            if (argument and this->expression_uses_context(*argument)) {
-               arguments_use_context = true;
-               break;
-            }
-         }
-         if (arguments_use_context) {
-            bcemit_AD(&this->func_state, BC_CTXGET, context_result_base.raw(), 0);
-            argument_context_scope.activate(this,
-               ContextSource{ .slot = context_result_base, .kind = ContextSourceKind::ContextualArgument });
-         }
+      if (arguments_use_context) {
+         argument_context_scope.activate(this,
+            ContextSource{ .kind = ContextSourceKind::DynamicArgument });
       }
    }
 

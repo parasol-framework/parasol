@@ -22,12 +22,6 @@ constexpr bool audio_buffer_valid(uint64_t Period, uint64_t Buffer, unsigned Fra
       Buffer <= 1048576 and FrameBytes > 0 and FrameBytes <= 8;
 }
 
-constexpr int legacy_period_frames(int Bytes, int Bits, bool Stereo)
-{
-   const int frame_bytes = std::max(1, Bits / 8) * (Stereo ? 2 : 1);
-   return std::clamp(Bytes / frame_bytes, 32, 16384);
-}
-
 // A produced period is immutable until every frame has been accepted.  Recovery leaves the suffix intact.
 struct RetainedAudioPeriod {
    size_t Remaining = 0;

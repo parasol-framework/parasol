@@ -875,8 +875,8 @@ static ERR resolve_module(std::string_view Name, ModuleBinding *&Result)
 }
 
 //********************************************************************************************************************
-// Destroy every registered module.  All Tiri states must be unable to execute before this runs, because published
-// ModuleCallable addresses are retained by closures and compiler symbols for the lifetime of the registry.
+// Destroy every registered module.  Normal Tiri execution must have stopped before this runs, but module-owned
+// states can still execute finalisers during teardown.  Keep every binding alive until those states have closed.
 //
 // The index holds only non-owning pointers, so it is discarded before the bindings it refers to.  Binding destruction
 // runs after releasing the registry mutex because FreeResource() executes external module teardown code that must be
@@ -890,6 +890,13 @@ void expunge_modules()
       glModuleRegistry.Expunging = true;
       glModuleRegistry.Index.clear();
       bindings.swap(glModuleRegistry.Bindings);
+   }
+
+   // A module-owned state's finaliser can retain a callable from any binding, including an earlier module.
+   // Release all module objects before destroying any callable records or their signature storage.
+   for (auto &binding : bindings) {
+      auto module = std::exchange(binding->Module, nullptr);
+      if (module) FreeResource(module);
    }
 }
 

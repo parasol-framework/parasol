@@ -489,10 +489,14 @@ or from <code>0%</code> to <code>100%</code>.  The alpha component ranges from <
 <type name="rgb(R G B) / rgb(R G B / A)">Modern CSS space-separated format.  Component values range from <code>0</code> to
 <code>255</code>, or from <code>0%</code> to <code>100%</code>.  Alpha is optional, preceded by <code>/</code>, and ranges from <code>0.0</code> to <code>1.0</code> (or <code>0%</code> to
 <code>100%</code>).</type>
-<type name="hsl(H,S,L) / hsla(H,S,L,A)">Hue is expressed in degrees (<code>0</code>-<code>360</code>).  Saturation and lightness are
-percentages.  Alpha ranges from <code>0.0</code> to <code>1.0</code>.</type>
-<type name="hsv(H,S,V)">Hue in degrees (<code>0</code>-<code>360</code>), saturation and value as percentages.  An optional alpha
-component ranging from <code>0.0</code> to <code>1.0</code> is supported.</type>
+<type name="hsl(H,S,L) / hsla(H,S,L,A)">Legacy comma-separated format.  Hue is expressed in degrees (<code>0</code>-<code>360</code>)
+and may carry a <code>deg</code>, <code>grad</code>, <code>rad</code> or <code>turn</code> unit; values outside the range wrap.  Saturation and lightness are
+percentages.  Alpha ranges from <code>0.0</code> to <code>1.0</code> (or <code>0%</code> to <code>100%</code>).</type>
+<type name="hsl(H S L) / hsl(H S L / A)">Modern CSS space-separated format, with the same component ranges as the
+legacy format.  Alpha is optional and preceded by <code>/</code>.</type>
+<type name="hsv(H,S,V) / hsv(H S V / A)">Hue in degrees (<code>0</code>-<code>360</code>), saturation and value as percentages.  Both the
+comma-separated and space-separated forms are accepted, with an optional alpha component ranging from <code>0.0</code> to
+<code>1.0</code>.</type>
 <type name="oklab(L a b [/ A])">CSS Color Level 4 OKLAB colour space.  Lightness (<code>L</code>) is <code>0</code>-<code>1</code> or <code>0%</code>-<code>100%</code>.
 The <code>a</code> and <code>b</code> axes range from approximately <code>-0.4</code> to <code>0.4</code>, or as percentages where <code>100%</code> equals <code>0.4</code>.
 Alpha (<code>A</code>) is optional, preceded by <code>/</code>, and ranges from <code>0.0</code> to <code>1.0</code> or <code>0%</code> to <code>100%</code>.</type>

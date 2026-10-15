@@ -10,6 +10,8 @@ extern ERR VerifyJWK(CSIG Algorithm, const std::string_view & N, const std::stri
 extern ERR WriteProtectedFile(const std::string_view & Path, const std::span<const int8_t> &Data);
 extern ERR Hash(HASH Algorithm, const std::span<const int8_t> &Input, const std::span<int8_t> &Output);
 extern ERR HMAC(HASH Algorithm, const std::span<const int8_t> &Key, const std::span<const int8_t> &Input, const std::span<int8_t> &Output);
+extern ERR CRC32(const std::span<const int8_t> &Input, uint32_t * Result);
+extern ERR GenerateP256Certificate(const std::string_view & CommonName, std::string * CertificatePEM, std::string * PrivateKeyPEM, std::string * Fingerprint);
 
 } // namespace
 #ifndef FDEF
@@ -18,7 +20,9 @@ extern ERR HMAC(HASH Algorithm, const std::span<const int8_t> &Key, const std::s
 
 FDEF argsBase64Decode[] = { { "Error", FD_INT|FD_ERROR }, { "Input", FDF_SPAN|FD_BYTE }, { "Mode", FD_INT }, { "Output", FDF_SPAN|FD_MUTABLE|FD_BYTE }, { "Result", FD_RESULT|FD_INT }, { 0, 0 } };
 FDEF argsBase64Encode[] = { { "Error", FD_INT|FD_ERROR }, { "Input", FDF_SPAN|FD_BYTE }, { "Mode", FD_INT }, { "Output", FDF_SPAN|FD_MUTABLE|FD_BYTE }, { "Result", FD_RESULT|FD_INT }, { 0, 0 } };
+FDEF argsCRC32[] = { { "Error", FD_INT|FD_ERROR }, { "Input", FDF_SPAN|FD_BYTE }, { "Result", FD_RESULT|FD_INT|FD_UNSIGNED }, { 0, 0 } };
 FDEF argsConstantTimeEqual[] = { { "Error", FD_INT|FD_ERROR }, { "A", FDF_SPAN|FD_BYTE }, { "B", FDF_SPAN|FD_BYTE }, { "Equal", FD_RESULT|FD_INT }, { 0, 0 } };
+FDEF argsGenerateP256Certificate[] = { { "Error", FD_INT|FD_ERROR }, { "CommonName", FDF_CPPSTRING }, { "CertificatePEM", FD_RESULT|FD_MUTABLE|FDF_CPPSTRING }, { "PrivateKeyPEM", FD_RESULT|FD_MUTABLE|FDF_CPPSTRING }, { "Fingerprint", FD_RESULT|FD_MUTABLE|FDF_CPPSTRING }, { 0, 0 } };
 FDEF argsHMAC[] = { { "Error", FD_INT|FD_ERROR }, { "Algorithm", FD_INT }, { "Key", FDF_SPAN|FD_BYTE }, { "Input", FDF_SPAN|FD_BYTE }, { "Output", FDF_SPAN|FD_MUTABLE|FD_BYTE }, { 0, 0 } };
 FDEF argsHash[] = { { "Error", FD_INT|FD_ERROR }, { "Algorithm", FD_INT }, { "Input", FDF_SPAN|FD_BYTE }, { "Output", FDF_SPAN|FD_MUTABLE|FD_BYTE }, { 0, 0 } };
 FDEF argsRandomBytes[] = { { "Error", FD_INT|FD_ERROR }, { "Output", FDF_SPAN|FD_MUTABLE|FD_BYTE }, { 0, 0 } };
@@ -36,6 +40,8 @@ const struct Function glFunctions[] = {
    { (APTR)crypto::WriteProtectedFile, "WriteProtectedFile", argsWriteProtectedFile },
    { (APTR)crypto::Hash, "Hash", argsHash },
    { (APTR)crypto::HMAC, "HMAC", argsHMAC },
+   { (APTR)crypto::CRC32, "CRC32", argsCRC32 },
+   { (APTR)crypto::GenerateP256Certificate, "GenerateP256Certificate", argsGenerateP256Certificate },
    { nullptr, nullptr, nullptr }
 };
 

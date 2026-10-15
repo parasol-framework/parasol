@@ -915,7 +915,7 @@ static bool starts_bare_annotated_name_list(TokenStreamAdapter &Tokens)
          GCstr *attribute = attribute_token.kind() IS TokenKind::Identifier ? attribute_token.identifier() : nullptr;
          if (attribute) {
             std::string_view name(strdata(attribute), attribute->len);
-            if ((name IS "const" or name IS "close" or name IS "view") and
+            if ((name IS "const" or name IS "close" or name IS "view" or name IS "weak") and
                   Tokens.peek(pos + 2).raw() IS '>') return true;
          }
       }

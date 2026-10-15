@@ -119,6 +119,7 @@ option (DISABLE_SCINTILLA "Disable Scintilla API" ON)
 option (DISABLE_SVG       "Disable SVG support" OFF)
 option (DISABLE_VECTOR    "Disable Vector API" OFF)
 option (DISABLE_WEBSOCKET "Disable WebSocket API" OFF)
+option (DISABLE_WEBRTC    "Disable WebRTC support" OFF)
 option (DISABLE_XSLT      "Disable XSLT API" OFF)
 option (INSTALL_EXAMPLES  "Install the example scripts, typically for compiling a distribution" OFF)
 option (INSTALL_INCLUDES  "Install the header files.  Turn this off for client releases." OFF)
@@ -663,6 +664,9 @@ if (MSVC)
       add_link_options ("/fsanitize=address")
    endif ()
 
+   # Remove CMake's default exception model so it does not conflict with the configuration-specific flags below.
+   string (REGEX REPLACE "(^|[ \t])[-/]EHsc([ \t]|$)" "\\1\\2" CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
+
    # We don't use exceptions in optimised configurations, so disable exception support there.
    add_compile_definitions ("$<$<OR:$<CONFIG:Release>,$<CONFIG:FastBuild>>:_HAS_EXCEPTIONS=0>")
    add_compile_options (
@@ -767,6 +771,14 @@ endif (MINGW)
 add_library(linear_rgb OBJECT src/link/linear_rgb.cpp)
 add_library(unicode OBJECT src/link/unicode.cpp)
 add_library(base64 OBJECT src/link/base64.cpp)
+
+if (UNIT_TESTS)
+   add_executable (test_unicode src/link/tests/test_unicode.cpp)
+   target_link_libraries (test_unicode PRIVATE unicode)
+   set_target_properties (test_unicode PROPERTIES CXX_STANDARD 20 CXX_STANDARD_REQUIRED ON)
+   add_test (NAME unicode_scalar_values COMMAND test_unicode)
+   set_tests_properties (unicode_scalar_values PROPERTIES LABELS unicode)
+endif ()
 
 # --------------------------------------------------------------------------------------------------------------------
 
@@ -1043,10 +1055,6 @@ if (NOT DISABLE_AUDIO)
    list (APPEND LIB_LIST audio)
 endif ()
 
-if (NOT DISABLE_BACKSTAGE AND NOT DISABLE_NETWORK)
-   add_subdirectory (src/backstage)
-   list (APPEND LIB_LIST backstage)
-endif()
 
 if (NOT DISABLE_DISPLAY)
    add_subdirectory (src/display)
@@ -1103,6 +1111,22 @@ if (NOT DISABLE_WEBSOCKET)
       message (STATUS "WebSocket module disabled: requires the Network, HTTP and Crypto modules.")
    endif ()
 endif ()
+
+if (NOT DISABLE_WEBRTC)
+   if (TARGET network AND TARGET crypto)
+      add_subdirectory (src/webrtc)
+      if (TARGET webrtc)
+         list (APPEND LIB_LIST webrtc)
+      endif ()
+   else ()
+      message (STATUS "WebRTC disabled: requires the Network and Crypto modules.")
+   endif ()
+endif ()
+
+if (NOT DISABLE_BACKSTAGE AND TARGET network AND TARGET websocket AND TARGET http)
+   add_subdirectory (src/backstage)
+   list (APPEND LIB_LIST backstage)
+endif()
 
 if (NOT DISABLE_IMAGE AND NOT DISABLE_DISPLAY)
    add_subdirectory (src/image)

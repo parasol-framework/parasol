@@ -46,7 +46,8 @@ function wait_for_idle(Audio:obj, Set:num):<num, num>
    state, truncated = -1, 0
    deadline = mSys.PreciseTime() + 5000000
    while mSys.PreciseTime() < deadline do
-      err, _, _, _, _, _, state, truncated = Audio.mtGetEffectStatus(Set)
+      err, status = Audio.mtGetEffectStatus(Set)
+      state, truncated = status.state, status.truncated
       assert(err is ERR_Okay)
       if state is ADS_IDLE then break end
       processing.sleep(0.01)
@@ -238,7 +239,8 @@ end
    saturator <close>, channel = new_saturator(audio)
    limiter <close> = obj.new('AudioLimiter', { audio=audio, channel=channel, order=1 })
    check audio.acActivate()
-   err, application, _, total = audio.mtGetEffectStatus(channel)
+   err, status = audio.mtGetEffectStatus(channel)
+   application, total = status.application, status.total
    assert(err is ERR_Okay)
    assert(application is 304, f'64 frames of saturator latency plus 240 of limiter lookahead, got {application}')
    assert(total is 304, f'The global path adds nothing, got {total}')
@@ -275,7 +277,8 @@ end
    sound <close> = obj.new('Sound', { audio=audio, path=glFolder .. 'low-tone.wav',
       onStop=function(Sound)
          count.stops++
-         err, _, _, _, _, _, state = audio.mtGetEffectStatus(Sound.channelIndex & 0xffff0000)
+         err, status = audio.mtGetEffectStatus(Sound.channelIndex & 0xffff0000)
+         state = status.state
          state_at_stop = state
       end })
    saturator <close> = obj.new('AudioSaturator', { audio=audio, channel=sound.channelIndex & 0xffff0000 })

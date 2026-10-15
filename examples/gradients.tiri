@@ -8,14 +8,16 @@ Gradient Demonstration
 
 local win, viewport, gradientVP, rect
 local focalEllipse, contourShape, distalShape, uiEvent
+-- Keep the controls alive after buildScene() returns; slider callbacks hold only weak widget references.
+local slResolution, slRadius, slGamma
 
-radiusChanged = function() end
-glColourMap = 'cmap:magma'
+radiusChanged  = function() end
+glColourMap    = 'cmap:magma'
 glSpreadMethod = VSPREAD_REFLECT
-glRadius = 100
-glResolution = 1.0
-glEasing = GEZ_LINEAR
-glGamma = 1.0
+glRadius       = 100
+glResolution   = 1.0
+glEasing       = GEZ_LINEAR
+glGamma        = 1.0
 glActiveGradient = nil
 MIN_RADIUS <const> = 2
 MAX_RADIUS <const> = 400
@@ -107,8 +109,8 @@ function selectGradient(Text):obj
       })
 
       uiEvent = function(ev:table!)
-         gradient.fX = (ev.x / gradientVP.width * 100) .. '%'
-         gradient.fY = (ev.y / gradientVP.height * 100) .. '%'
+         gradient.fx = (ev.x / gradientVP.width * 100) .. '%'
+         gradient.fy = (ev.y / gradientVP.height * 100) .. '%'
       end
 
       radiusChanged = function(Radius:num!)
@@ -126,8 +128,8 @@ function selectGradient(Text):obj
       })
 
       uiEvent = function(ev:table!)
-         gradient.cX = (ev.x / gradientVP.width * 100) .. '%'
-         gradient.cY = (ev.y / gradientVP.height * 100) .. '%'
+         gradient.cx = (ev.x / gradientVP.width * 100) .. '%'
+         gradient.cy = (ev.y / gradientVP.height * 100) .. '%'
       end
 
       radiusChanged = function(Radius:num!)
@@ -140,8 +142,8 @@ function selectGradient(Text):obj
       })
 
       uiEvent = function(ev:table!)
-         gradient.cX = (ev.x / gradientVP.width * 100) .. '%'
-         gradient.cY = (ev.y / gradientVP.height * 100) .. '%'
+         gradient.cx = (ev.x / gradientVP.width * 100) .. '%'
+         gradient.cy = (ev.y / gradientVP.height * 100) .. '%'
       end
 
       radiusChanged = function(Radius:num!)
@@ -181,12 +183,14 @@ function selectGradient(Text):obj
       end
    elseif Text is 'Distal' then
       gradient = createGradient('GradientDistal', {
-         colourMap = glColourMap, units='boundingBox', spreadMethod=glSpreadMethod,
-         radius = glRadius,
-         innerFall = GFALL_LINEAR,
-         outerFall = GFALL_LINEAR,
-         floor = 0, -- Added to the signed DT base values (0 - 1.0)
-         multiplier = 1  -- Multiplier of the base DT value (0.01 - 10.0)
+         colourMap    = glColourMap,
+         units        = 'boundingBox',
+         spreadMethod = glSpreadMethod,
+         radius       = glRadius,
+         innerFall    = GFALL_LINEAR,
+         outerFall    = GFALL_LINEAR,
+         floor        = 0, -- Added to the signed DT base values (0 - 1.0)
+         multiplier   = 1  -- Multiplier of the base DT value (0.01 - 10.0)
       })
 
       if not distalShape then
@@ -310,7 +314,7 @@ function buildScene()
          { item='Gouraud' }
       },
       events = {
-         activate = function(Widget, Text)
+         activate = function(Text)
             glActiveGradient = selectGradient(Text)
          end
       }
@@ -324,7 +328,7 @@ function buildScene()
       y      = 10,
       items  = array<table> { { item='Pad' }, { item='Repeat' }, { item='Reflect' }, { item='Clip' } },
       events = {
-         activate = function(Widget, Text)
+         activate = function(Text)
             glSpreadMethod = choose Text from
                'Pad'     -> VSPREAD_PAD
                'Reflect' -> VSPREAD_REFLECT
@@ -349,7 +353,7 @@ function buildScene()
          { item='Flare' }, { item='Crest' }, { item='Viridis' }, { item='Plasma' }, { item='Inferno' }
       },
       events = {
-         activate = function(Widget, Text)
+         activate = function(Text)
             glColourMap = 'cmap:' .. Text.lower()
             glActiveGradient.colourMap = glColourMap
             gradientVP.scene.surface.mtScheduleRedraw()
@@ -368,7 +372,7 @@ function buildScene()
          { item='In' }, { item='In Out' }, { item='Linear' }, { item='Out' }
       },
       events = {
-         activate = function(Widget:table, Text:str!)
+         activate = function(Text:str!)
             glEasing = choose Text from
                'Cubic In'     -> GEZ_CUBIC_IN
                'Cubic In Out' -> GEZ_CUBIC_IN_OUT
@@ -394,7 +398,7 @@ function buildScene()
       x      = cmbEasing.viewport.x + cmbEasing.viewport.width + 10,
       y      = 10,
       events = {
-         activate = function(Widget, Value)
+         activate = function(Value)
             glResolution = Value
             glActiveGradient.resolution = glResolution
             gradientVP.scene.surface.mtScheduleRedraw()
@@ -411,7 +415,7 @@ function buildScene()
       x      = slResolution.viewport.x + slResolution.viewport.width + 10,
       y      = 10,
       events = {
-         activate = function(Widget:table, Value:num!)
+         activate = function(Value:num!)
             glRadius = Value
             radiusChanged(Value)
             gradientVP.scene.surface.mtScheduleRedraw()
@@ -428,7 +432,7 @@ function buildScene()
       x      = slRadius.viewport.x + slRadius.viewport.width + 10,
       y      = 10,
       events = {
-         activate = function(Widget:table, Value:num!)
+         activate = function(Value:num!)
             glGamma = Value
             glActiveGradient.gamma = glGamma
             gradientVP.scene.surface.mtScheduleRedraw()
@@ -443,7 +447,7 @@ function buildScene()
       icon    = 'items/file_saveas',
       size    = cmbColours.viewport.height,
       events  = {
-         activate = function(Button)
+         activate = function()
             gui.dialog.file({
                title       = 'Save Gradient as PNG Image',
                okText      = 'Save',

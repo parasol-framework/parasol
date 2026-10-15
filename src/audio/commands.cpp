@@ -1,9 +1,9 @@
 //********************************************************************************************************************
-// It is a requirement that VOL_RAMPING or OVER_SAMPLING flags have been set in the target Audio object.
+// Volume transitions are independent of the source resampler.
 
 static ERR fade_in(extAudio *Audio, AudioChannel *channel)
 {
-   if (((Audio->Flags & ADF::VOL_RAMPING) IS ADF::NIL) or ((Audio->Flags & ADF::OVER_SAMPLING) IS ADF::NIL)) return ERR::Okay;
+   if ((Audio->Flags & ADF::VOL_RAMPING) IS ADF::NIL) return ERR::Okay;
 
    channel->LVolume = 0;
    channel->RVolume = 0;
@@ -11,21 +11,28 @@ static ERR fade_in(extAudio *Audio, AudioChannel *channel)
 }
 
 //********************************************************************************************************************
-// In oversampling mode, active samples are faded-out on a shadow channel rather than stopped abruptly.
+// Preserve the audible contribution of a superseded voice on a preallocated shadow channel.
 
 static ERR fade_out(extAudio *Audio, int Handle)
 {
-   if ((Audio->Flags & ADF::OVER_SAMPLING) IS ADF::NIL) return ERR::Okay;
+   if ((Audio->Flags & ADF::VOL_RAMPING) IS ADF::NIL) return ERR::Okay;
 
    auto channel = Audio->GetChannel(Handle);
-   if (Audio->Samples[channel->SampleHandle].Stream) return ERR::Okay;
    auto shadow  = Audio->GetShadow(Handle);
 
-   if (channel->isStopped() or
-       (shadow->State IS CHS::FADE_OUT) or
-       ((channel->LVolume < 0.01) and (channel->RVolume < 0.01))) return ERR::Okay;
+   if (channel->isStopped()) return ERR::Okay;
 
+   const bool held = Audio->Samples[channel->SampleHandle].Stream or
+      ((channel->Flags & CHF::CHANGED) != CHF::NIL) or !shadow->isStopped();
+   const float left = channel->LastLeft + (shadow->isStopped() ? 0 : shadow->LastLeft);
+   const float right = channel->LastRight + (shadow->isStopped() ? 0 : shadow->LastRight);
    *shadow = *channel;
+   if (held) {
+      // Keep the audible cache valid if another command supersedes this tail before the next render.
+      shadow->LastLeft = shadow->HeldLeft = left;
+      shadow->LastRight = shadow->HeldRight = right;
+      shadow->HeldFrames = glRampFrames;
+   }
    shadow->Volume = 0;
    shadow->State  = CHS::FADE_OUT;
    set_channel_volume(Audio, shadow);
@@ -354,8 +361,8 @@ Pan is a mono/stereo balance control for the front speaker pair.  It is not an a
 speakers.  Mono and stereo sources in a wider output layout are placed on the front pair.  Sources with more than two
 channels require explicit routing, which is not yet available; such sources must use a neutral pan of zero.
 
-The pan applies from the next mixed frame, ramping towards the new gains if both `ADF::VOL_RAMPING` and
-`ADF::OVER_SAMPLING` are enabled.  When the
+The pan applies from the next mixed frame, ramping towards the new gains if `ADF::VOL_RAMPING` is
+enabled, independently of Quality.  Gains move by at most 0.01 per output frame.  When the
 mixer runs on a worker thread, `Okay` confirms that the command was accepted for application before the next period
 is rendered.
 
@@ -486,6 +493,7 @@ ERR MixPlay(objAudio *Audio, int Handle, int64_t Position)
       return ERR::FieldNotSet;
    }
 
+   fade_out((extAudio *)Audio, Handle);
    ((extAudio *)Audio)->finish(*channel, false); // Turn off previous sound
 
    auto &sample = ((extAudio *)Audio)->Samples[channel->SampleHandle];
@@ -510,6 +518,7 @@ ERR MixPlay(objAudio *Audio, int Handle, int64_t Position)
       sample.Ring.Read = sample.Ring.Used = 0;
       sample.SourceOffset = Position;
       sample.SourceSeek = true;
+      sample.HistoryFrames = 0;
       sample.Refilling = false;
       sample.RefillPending = false;
       sample.RetryAt = 0;
@@ -528,7 +537,7 @@ ERR MixPlay(objAudio *Audio, int Handle, int64_t Position)
    }
    else if (bitpos > sample.SampleLength) return log.warning(ERR::OutOfRange);
 
-   fade_out((extAudio *)Audio, Handle);
+   channel->LastLeft = channel->LastRight = 0;
    ++channel->PlaybackGeneration;
 
    channel->Flags &= ~CHF::CHANGED;
@@ -556,6 +565,10 @@ ERR MixPlay(objAudio *Audio, int Handle, int64_t Position)
          if (bitpos < sample.SampleLength) {
             channel->Position    = bitpos;
             channel->PositionLow = 0;
+            channel->LoopHistory = false;
+            channel->LoopTimeline = false;
+            channel->TimelineOffset = 0;
+            channel->Resampler = {};
             channel->State       = CHS::PLAYING;
             channel->Flags       &= ~CHF::BACKWARD;
          }
@@ -568,6 +581,10 @@ ERR MixPlay(objAudio *Audio, int Handle, int64_t Position)
          if (bitpos < sample.Loop1End) channel->Position = bitpos;
          else channel->Position = sample.Loop1Start;
          channel->PositionLow = 0;
+         channel->LoopHistory = false;
+         channel->LoopTimeline = false;
+         channel->TimelineOffset = 0;
+         channel->Resampler = {};
          channel->State       = CHS::PLAYING;
          channel->Flags      &= ~CHF::BACKWARD;
          break;
@@ -584,6 +601,10 @@ ERR MixPlay(objAudio *Audio, int Handle, int64_t Position)
             channel->Flags |= CHF::BACKWARD;
          }
          channel->PositionLow = 0;
+         channel->LoopHistory = false;
+         channel->LoopTimeline = false;
+         channel->TimelineOffset = 0;
+         channel->Resampler = {};
          channel->State = CHS::PLAYING;
    }
 
@@ -741,6 +762,9 @@ ERR MixSample(objAudio *Audio, int Handle, int SampleIndex)
 
    channel->SampleHandle = idx;     // Set new sample number to channel
    channel->Flags |= CHF::CHANGED;  // Sample has been changed
+   // The unfolded timeline belongs to the previous source; retain spatial playback position and direction.
+   channel->LoopTimeline = false;
+   channel->TimelineOffset = 0;
 
    // If the new sample has one Amiga-compatible loop and playing has ended (not released or stopped), set the new
    // sample and start playing from loop start.
@@ -749,7 +773,7 @@ ERR MixSample(objAudio *Audio, int Handle, int SampleIndex)
    if ((s.LoopMode IS LOOP::AMIGA) and (channel->State IS CHS::FINISHED)) {
       // Set Amiga sample and start playing.  We won't do this with interpolated mixing, as this tends to cause clicks.
 
-      if ((Audio->Flags & ADF::OVER_SAMPLING) IS ADF::NIL) {
+      if (((extAudio *)Audio)->MixConfig.resampler IS ResamplerMode::NEAREST) {
          channel->State = CHS::PLAYING;
          snd::MixPlay(Audio, Handle, s.Loop1Start);
       }
@@ -816,10 +840,8 @@ ERR MixStop(objAudio *Audio, int Handle)
    self->finish(*channel, true);
    channel->State = CHS::STOPPED;
 
-   if ((Audio->Flags & ADF::OVER_SAMPLING) != ADF::NIL) {
-      auto shadow = self->GetShadow(Handle);
-      shadow->State = CHS::STOPPED;
-   }
+   auto shadow = self->GetShadow(Handle);
+   shadow->State = CHS::STOPPED;
 
    return ERR::Okay;
 }
@@ -1007,8 +1029,8 @@ infinities) are rejected with `OutOfRange` and the channel is not modified.
 The rendered gain of each side is the product of the channel volume, the pan attenuation described in
 ~MixPan() and the Audio object's `MasterVolume`.  Stereo samples mixed to mono output are additionally halved.
 
-The volume applies from the next mixed frame, ramping towards the new gains if both `ADF::VOL_RAMPING` and
-`ADF::OVER_SAMPLING` are enabled.  When the
+The volume applies from the next mixed frame, ramping towards the new gains if `ADF::VOL_RAMPING` is
+enabled, independently of Quality.  Gains move by at most 0.01 per output frame.  When the
 mixer runs on a worker thread, `Okay` confirms that the command was accepted for application before the next period
 is rendered.
 

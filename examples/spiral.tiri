@@ -6,6 +6,7 @@ Spiral Demonstration
    import 'gui', 'gui/window', 'gui/combobox', 'gui/slider', 'gui/checkbox'
 
    local glWindow, glViewport, glSpiralView, glSpiral
+   sliders = array<table>
    glY = 14
 
 ----------------------------------------------------------------------------------------------------------------------
@@ -18,24 +19,24 @@ end
 -- Keep the widget range above zero: the slider's default-value handling treats zero as an unset value.
 
 function addSlider(Label:str, Value:num, Min:num, Max:num, Apply:func)
-   caption = glViewport.new('VectorText', {
+   caption = glViewport.new('VectorText', table.merge({
       x = 16, y = glY + 14,
-      face = gui.fonts.label.face, fontSize = '10pt', fill = gui.getTheme(glViewport).window.text,
+      face = gui.fonts.label.face, fontSize = '10pt',
       string = string.format('%s: %.2f', Label, Value)
-   })
+   }, gui.getTheme(glViewport).window.text))
 
-   gui.slider({
-      target = glViewport, x = 16, y = glY + 20, size = 270,
+   sliders.push(gui.slider({
+      target = glViewport, x = 16, y = glY + 20, width = 270,
       min = Min, max = Max, value = Value,
       events = {
-         activate = function(Widget:table, Position:num)
+         activate = function(Position:num)
             value = Position
             Apply(value)
             caption.string = string.format('%s: %.2f', Label, value)
             redraw()
          end
       }
-   })
+   }))
    glY += 52
 end
 
@@ -87,7 +88,7 @@ function buildScene()
       target = glViewport, label = 'Winding:', text = 'Clockwise', x = 16, y = glY,
       items = array<table> { { item = 'Clockwise' }, { item = 'Anticlockwise' } },
       events = {
-         activate = function(Widget:table, Text:str)
+         activate = function(Text:str)
             glSpiral.clockwise = (Text is 'Clockwise') ? 1 : 0
             redraw()
          end

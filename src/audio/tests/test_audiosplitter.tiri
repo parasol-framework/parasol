@@ -189,7 +189,8 @@ end
    -- The splitter's latency is its budget, independent of its branches.
 
    assert(splitter.latency is 240)
-   err, app, master, total = audio.mtGetEffectStatus(channel)
+   err, status = audio.mtGetEffectStatus(channel)
+   app, master, total = status.application, status.global, status.total
    assert(err is ERR_Okay and app is 240, f'The chain latency must include the budget, got {app}')
    limiter.flags = AEF_BYPASS
    assert(splitter.latency is 240, 'Bypass inside a branch does not change the splitter latency')
@@ -346,7 +347,8 @@ end
    sound <close> = obj.new('Sound', { audio=audio, path=glFolder .. 'low-tone.wav',
       onStop=function(Sound)
          stops++
-         err, _, _, _, _, _, state = audio.mtGetEffectStatus(Sound.channelIndex & 0xffff0000)
+         err, status = audio.mtGetEffectStatus(Sound.channelIndex & 0xffff0000)
+         state = status.state
          state_at_stop = state
       end })
    splitter <close> = obj.new('AudioSplitter', { audio=audio, channel=sound.channelIndex & 0xffff0000 })

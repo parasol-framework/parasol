@@ -935,9 +935,14 @@ LJLIB_ASM(tonumber)      LJLIB_REC(.)
 
 LJLIB_ASM(tostring)      LJLIB_REC(.)
 {
-   StackFrame frame(L);
+   // Preserve the error stack during unwinding; successful paths set their own result extent.
+   // A missing argument has the same representation as an explicit nil.
+   if (L->top IS L->base) {
+      setnilV(L->top);
+      L->top++;
+   }
 
-   TValue *o = lj_lib_checkany(L, 1);
+   TValue *o = L->base;
    cTValue *mo;
    if (!tvisnil(mo = lj_meta_lookup(L, o, MM_tostring))) {
       if (tvistab(o)) {
@@ -946,7 +951,6 @@ LJLIB_ASM(tostring)      LJLIB_REC(.)
       }
       else L->top = o + 1;
       copyTV(L, L->base - 2, mo);  //  Replace callable.
-      frame.disarm();  // Disarm before tail call
       return FFH_TAILCALL;
    }
 
@@ -954,7 +958,6 @@ LJLIB_ASM(tostring)      LJLIB_REC(.)
 
    lj_gc_check(L);
    setstrV(L, L->base - 2, lj_strfmt_obj(L, L->base));
-   frame.disarm();  // Disarm - result already in place
    return FFH_RES(1);
 }
 

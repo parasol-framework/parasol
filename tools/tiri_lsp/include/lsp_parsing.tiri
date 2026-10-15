@@ -1,7 +1,6 @@
 
 -- Deferred regex patterns for folding range detection
-rx_quote_char  = <{ regex.new([["']]) }>
-rx_trim_start  = <{ regex.new([[^\s*(.*)]], regex.DOT_ALL) }>
+rx_quote_char  = <{ regex.new("[\"']") }>
 rx_func_sig    = <{ regex.new("\\bfunction\\s+[\\w]") }>
 rx_func_paren  = <{ regex.new([[\bfunction\s*\(]]) }>
 rx_kw_if       = <{ regex.new([[\bif\b]]) }>
@@ -9,6 +8,9 @@ rx_kw_then     = <{ regex.new([[\bthen\b]]) }>
 rx_kw_for      = <{ regex.new([[\bfor\b]]) }>
 rx_kw_do       = <{ regex.new([[\bdo\b]]) }>
 rx_kw_while    = <{ regex.new([[\bwhile\b]]) }>
+rx_using_header = <{ regex.new([[\busing\s+([A-Za-z_][A-Za-z0-9_]*)\b]]) }>
+rx_using_member = <{ regex.new([[^\.\s*[A-Za-z_][A-Za-z0-9_]*]]) }>
+rx_using_do = <{ regex.new([[^do\b]]) }>
 rx_kw_repeat   = <{ regex.new([[\brepeat\b]]) }>
 rx_kw_defer    = <{ regex.new([[\bdefer\b]]) }>
 rx_kw_end      = <{ regex.new([[\bend\b]]) }>
@@ -16,9 +18,96 @@ rx_kw_until    = <{ regex.new([[\buntil\b]]) }>
 rx_kw_struct   = <{ regex.new([[^\s*struct\s+[A-Za-z_][A-Za-z0-9_]*\b]]) }>
 
 -- Deferred regex patterns for token parsing
+rx_weak_attribute = <{ regex.new([[^<([ \t]*)(weak)[ \t]*>(?=[ \t]*(?::|\?\??=|=|,|;|--|\r|\n|$))]]) }>
 rx_global_var   = <{ regex.new("^gl[A-Z]") }>
 rx_starts_upper = <{ regex.new("^[A-Z]") }>
 rx_all_upper    = <{ regex.new([[^[A-Z0-9_]+$]]) }>
+rx_annotation_parameters = <{ regex.new([[:\s*[A-Za-z_]\w*\s*<(?!\s*weak\s*>)]]) }>
+
+-- Hide balanced type parameters from declaration regexes without changing source offsets.  Keeping the outer
+-- brackets lets their flat annotation patterns accept any nesting depth while preserving declaration attributes.
+global function maskDeclarationTypeParameters(LineCode:str):str
+   result = ''
+   copied = 0
+   pos = 0
+
+   while pos < #LineCode do
+      start_pos, stop_pos = rx_annotation_parameters.findFirst(LineCode, pos)
+      if not start_pos then break end
+      open_pos = stop_pos - 1
+      pos = stop_pos
+      depth = 1
+
+      while pos < #LineCode and depth > 0 do
+         char = LineCode.sub(pos, pos + 1)
+         if char is '<' then depth++
+         elseif char is '>' then depth -= 1
+         elseif char is '=' or char is ';' then break end
+         pos++
+      end
+
+      if depth is 0 then
+         result ..= LineCode.sub(copied, open_pos + 1) .. ' '.rep(pos - open_pos - 2) .. '>'
+         copied = pos
+      end
+   end
+
+   return result .. LineCode.sub(copied)
+end
+
+-- Share context-header recognition between semantic tokens and folding.  Mask trivia before matching so comments
+-- and quoted indices cannot supply keywords, and keep offsets across newlines for split headers.
+global function findUsingHeaders(Doc:table):array<table>
+   headers = array<table>
+   if not Doc.content.find('using') then return headers end
+   code = ''
+   in_non_code = false
+   for line_num in {0 to getTotalLines(Doc)} do
+      line_code, in_non_code = maskNonCode(getLine(Doc, line_num), in_non_code)
+      code ..= line_code .. '\n'
+   end
+
+   offset = 0
+   while offset < #code do
+      start_pos, stop_pos = rx_using_header.findFirst(code, offset)
+      if not start_pos then break end
+      offset = stop_pos
+      -- A member named using cannot start a context block.
+      before = code.sub(0, start_pos).rtrim()
+      if before.endsWith('.') or before.endsWith('&') then continue end
+      pos = stop_pos
+      while pos < #code do
+         char = code.sub(pos, pos + 1)
+         if char is ' ' or char is '\t' or char is '\r' or char is '\n' then
+            pos++
+         elseif char is '.' then
+            member_start, member_stop = rx_using_member.findFirst(code.sub(pos))
+            if not member_start then break end
+            pos += member_stop
+         elseif char is '[' then
+            depth = 1
+            pos++
+            while pos < #code and depth > 0 do
+               char = code.sub(pos, pos + 1)
+               if char is '[' then depth++
+               elseif char is ']' then depth -= 1 end
+               pos++
+            end
+            if depth > 0 then break end
+         else
+            if rx_using_do.test(code.sub(pos)) then
+               headers.push({
+                  offset = start_pos,
+                  line = code.sub(0, start_pos).count('\n'),
+                  doLine = code.sub(0, pos).count('\n')
+               })
+            end
+            break
+         end
+      end
+   end
+   return headers
+end
 
 -- Multi-byte (non-ASCII) operators recognised by the Tiri lexer, keyed by their UTF-8 byte sequence.  These are
 -- scanned byte-at-a-time by .sub(), so the tokeniser cannot match them with a single-character comparison and must
@@ -44,6 +133,10 @@ global function tokenizeTiri(Source:str, ModulePrefixes:table):array<table>
    library_namespaces = { }
    import_state = nil
    import_path_line = nil
+   using_headers = {}
+   for header in values(findUsingHeaders({ content=Source, lineIndex=nil })) do
+      using_headers[header.offset] = true
+   end
 
    -- Helper to add a token (skips zero-length tokens)
    function addToken(TokenLine, TokenCol, TokenLen, TokenType, TokenMod)
@@ -978,6 +1071,8 @@ global function tokenizeTiri(Source:str, ModulePrefixes:table):array<table>
                col = probe_col
                line = probe_line
             end
+         elseif ident is 'using' and using_headers[pos - ident_len] then
+            addToken(line, ident_start, ident_len, 0, 0)
          elseif FLUID_KEYWORDS[ident] then
             if import_state then import_state = nil end
             addToken(line, ident_start, ident_len, 0, 0)  -- keyword
@@ -1213,7 +1308,22 @@ global function tokenizeTiri(Source:str, ModulePrefixes:table):array<table>
             col++
          end
       elseif c is '<' then
-         if tokenizeTypeTest(nil, nil, true, true) then
+         -- Avoid copying the remaining document for ordinary comparisons and type descriptors.
+         local attribute_pos = pos + 1
+         while attribute_pos < len and (Source.sub(attribute_pos, attribute_pos + 1) is ' ' or
+               Source.sub(attribute_pos, attribute_pos + 1) is '\t') do
+            attribute_pos++
+         end
+         local attribute_stop:num
+         local attribute:array<str>
+         if Source.sub(attribute_pos, attribute_pos + 4) is 'weak' then
+            _, attribute_stop, attribute = rx_weak_attribute.findFirst(Source.sub(pos))
+         end
+         if attribute_stop then
+            addToken(line, col + 1 + #attribute[0], 4, 0, 0) -- declaration attribute
+            pos += attribute_stop
+            col += attribute_stop
+         elseif tokenizeTypeTest(nil, nil, true, true) then
             -- A descriptor-shaped choose arm was emitted by tokenizeTypeTest().
          else
             op_start = col
@@ -1344,11 +1454,23 @@ global function extractFoldingRanges(Doc:table):array<table>
    ranges = array<table>
    total_lines = getTotalLines(Doc)
    block_stack = array<table>  -- Stack of { line, kind } for nested blocks
+   in_non_code = false
    in_block_comment = false
    block_comment_start = 0
+   using_headers = {}
+   for header in values(findUsingHeaders(Doc)) do
+      headers = using_headers[header.doLine]
+      if not headers then
+         headers = array<table>
+         using_headers[header.doLine] = headers
+      end
+      headers.push(header)
+   end
 
    for line_num in {0 to total_lines} do
       line_text = getLine(Doc, line_num)
+      was_in_non_code = in_non_code
+      line_code, in_non_code = maskNonCode(line_text, in_non_code)
 
       -- Handle block comments --[[ ... ]]
       if in_block_comment then
@@ -1368,35 +1490,21 @@ global function extractFoldingRanges(Doc:table):array<table>
 
       -- Check for block comment start
       block_comment_pos = line_text.find('--[[')
-      if block_comment_pos then
+      if block_comment_pos and not was_in_non_code then
          -- Check it's not inside a string (simplified check)
          before = line_text.sub(0, block_comment_pos)
-         if not rx_quote_char.test(before) then
+         if not rx_quote_char.test(before) and not line_text.find(']]', block_comment_pos + 4) then
             in_block_comment = true
             block_comment_start = line_num
             continue
          end
       end
 
-      -- Check for block openers: function, if...then, for...do, while...do, repeat, defer
-      -- We need to be careful not to match keywords in comments or strings
-
-      -- Skip if line is a comment
-      trimmed = rx_trim_start.extract(line_text)
-      if trimmed.sub(0, 2) is '--' then
-         continue
-      end
-
-      -- Find comment position to avoid matching keywords in comments
-      comment_pos = line_text.find('--')
-
-      -- Check for block openers (only if not in a comment)
+      -- Check for block openers: function, if...then, for...do, while...do, using...do, repeat, defer
+      -- Masked code preserves byte offsets and excludes strings and comments across line boundaries.
       function checkKeyword(RxPattern):num
-         start_pos, stop_pos = RxPattern.findFirst(line_text)
-         if start_pos and (not comment_pos or start_pos < comment_pos) then
-            return start_pos
-         end
-         return nil
+         start_pos, stop_pos = RxPattern.findFirst(line_code)
+         return start_pos
       end
 
       -- function ... (opens a block)
@@ -1419,6 +1527,13 @@ global function extractFoldingRanges(Doc:table):array<table>
          block_stack.push({ line = line_num, kind = 'while' })
       end
 
+      -- using reference do (opens a context block)
+      if using_headers[line_num] then
+         for header in values(using_headers[line_num]) do
+            block_stack.push({ line = header.line, kind = 'using' })
+         end
+      end
+
       -- repeat (opens a block, closed by until)
       if checkKeyword(rx_kw_repeat) then
          block_stack.push({ line = line_num, kind = 'repeat' })
@@ -1435,7 +1550,7 @@ global function extractFoldingRanges(Doc:table):array<table>
       end
 
       -- Check for block closers
-      -- 'end' closes function, if, for, while, defer and struct declarations
+      -- 'end' closes function, if, for, while, using, defer and struct declarations
       if checkKeyword(rx_kw_end) then
          if #block_stack > 0 then
             block_start = block_stack.pop()

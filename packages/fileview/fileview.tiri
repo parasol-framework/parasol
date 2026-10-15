@@ -318,13 +318,23 @@ function displayFilters(self)
          visibility = VIS_HIDDEN, x = 0, y = self.toolbar.viewport.height, xOffset = 0, height = 1
       })
       self.filterViewport.detach()
-      self.filterViewport.new('VectorRectangle', { width='100%', height='100%', fill=self.theme.page.bkgd })
+      self.filterViewport.new('VectorRectangle', table.merge({
+         width='100%', height='100%'
+      }, self.theme.page.bkgd))
 
       local height = 2, text_x, text_y, item_height, descent
       for item in values(self.filterList) do
-         item.vp        = self.filterViewport.new('VectorViewport', { x = 0, y = height, width = '100%', height = 1 })
-         item.highlight = item.vp.new('VectorRectangle', { x = 0, y = 0, width='100%', height='100%', fill=self.theme.page.textSelectBkgd, visibility = VIS_HIDDEN })
-         item.txt       = item.vp.new('VectorText', { x=0, y=0, string=item.name, fill=self.theme.page.text, face=gui.fonts.widget.face, fontSize='10pt' })
+         item.vp = self.filterViewport.new('VectorViewport', { x = 0, y = height, width = '100%', height = 1 })
+
+         item.highlight = item.vp.new('VectorRectangle', {
+            x = 0, y = 0, width='100%', height='100%',
+            fill = self.theme.page.textSelectBkgd, visibility = VIS_HIDDEN
+         })
+
+         item.txt = item.vp.new('VectorText', table.merge({
+            x=0, y=0, string=item.name, face=gui.fonts.widget.face, fontSize='10pt'
+         }, self.theme.page.text, false))
+
          if not descent then
             descent = math.round(item.txt.descent)
             height  = descent
@@ -349,7 +359,7 @@ function displayFilters(self)
                         if (not self.strictFilter) or (selectedFilters(self) > 1) then
                            item.highlight.visibility = VIS_HIDDEN
                            item.selected = false
-                           item.txt.fill = self.theme.page.text
+                           item.txt.fill = self.theme.page.text.fill
                            self._filters = nil
                         end
                      else
@@ -485,15 +495,15 @@ function createFileItem(self, Info)
    if Info.flags has RDF_VOLUME then -- Get the icon to use for displaying the volume
       icon = getFileIcon(Info.name .. ':')
       if icon is 'icons:folders/folder' then icon = 'folders/folder_shortcut' end
-      icon ?= 'folders/folder_shortcut'
-      colour = 'blue'
+      icon      ?= 'folders/folder_shortcut'
+      colour     = nil
       total_size = nil
       free_space = nil
-      device = obj.new('storagedevice', { volume = Info.name .. ':' } )
+      device     = obj.new('storagedevice', { volume = Info.name .. ':' } )
+
       if device.deviceFlags has DEVICE_BOOKMARK then -- User shortcut
-         colour = self.theme.palette.type is 'light' ? 'carbon' : 'pearl'
+         -- colour = ?
       elseif device.deviceFlags has (DEVICE_FLOPPY_DISK|DEVICE_FIXED|DEVICE_HARD_DISK|DEVICE_COMPACT_DISC) then
-         colour = 'green'
          if device.deviceSize >= 1 then total_size = sortNum(device.deviceSize) end
          if device.bytesFree >= 1 then free_space = sortNum(device.bytesFree) end
       end
@@ -926,7 +936,7 @@ gui.fileview = function(Options)
                type     = 'question',
                options  = { { id=-1, text='No', icon='items/cancel' },
                             { id=1, text='Yes', icon='items/checkmark' } },
-               popover  = self._surface,
+               popOver  = self._surface,
                modal    = true,
                feedback = function(Dialog, Response, State)
                   if mSys.MoveFile(Dialog.var.src, Dialog.var.dest) is ERR_Okay then
@@ -1105,7 +1115,7 @@ gui.fileview = function(Options)
             options   = { { id=-1, text='Cancel', icon='items/cancel' },
                           { id=1, text='Okay', icon='items/checkmark' } },
             modal     = true,
-            popover   = self._surface,
+            popOver   = self._surface,
             userInput = true,
             inputRequired = true,
             feedback = function(Dialog, Response, State)
@@ -1149,7 +1159,7 @@ gui.fileview = function(Options)
          icon    = 'folders/folder',
          type    = 'request',
          message = Message,
-         popover = self._surface,
+         popOver = self._surface,
          options = {
             { id=-1, text='Cancel', icon='items/cancel' },
             { id=1, text='Okay', icon='items/checkmark' }
@@ -1191,7 +1201,7 @@ gui.fileview = function(Options)
          options  = { { id=-1, text='No', icon='items/cancel' },
                       { id=1, text='Yes', icon='items/checkmark' } },
          message  = msg,
-         popover  = self._surface,
+         popOver  = self._surface,
          modal    = true,
          feedback = function(Dialog, Response, State)
             if Response.id > 0 then
@@ -1277,7 +1287,7 @@ gui.fileview = function(Options)
                        { id=1, text='Okay', icon='items/checkmark' } },
          modal     = true,
          userInput = sel,
-         popover   = self._surface,
+         popOver   = self._surface,
          inputRequired = true,
          feedback  = responseRename
       })
@@ -1384,7 +1394,6 @@ gui.fileview = function(Options)
                KEY_C -> self.copyFiles()
                KEY_X -> self.cutFiles()
                KEY_V -> self.pasteFiles()
-               KEY_A -> self.view.selectAll()
             end
          elseif Value is KEY_DELETE then
             self.deleteFiles()
@@ -1400,7 +1409,7 @@ gui.fileview = function(Options)
 
       -- Browse the currently selected file or folder.
 
-      self.view.itemActivated = function(View, Reason, Item)
+      self.view.events.itemActivated = function(View, Reason, Item)
          choose Item.type from
             'folder' -> self.browse((self.path ?? '') .. Item.filename .. '/')
             'volume' -> self.browse(Item.filename .. ':')
@@ -1540,11 +1549,15 @@ gui.fileview = function(Options)
                         cancelText = 'Exit',
                         modal      = true,
                         popOver    = self._surface,
-                        feedback = function(Dialog, Accepted)
+                        feedback = function(Accepted)
                            if Accepted then
-                              ViewOptions.fontFace  = Dialog.face
-                              ViewOptions.fontSize  = Dialog.pointSize
-                              ViewOptions.fontStyle = Dialog.style
+                              ViewOptions.theme = table.merge(ViewOptions.theme, {
+                                 page = { text = {
+                                    face = &face,
+                                    fontSize = string.format('%.2fpt', &pointSize),
+                                    fontStyle = &style
+                                 } }
+                              }, true, true)
                               self.view.free()
                               self.view = choose self.style from
                                  'column' -> gui.columnView(ViewOptions)
@@ -1647,16 +1660,22 @@ gui.fileview = function(Options)
    -- View initialisation
 
    vo = {
-      target      = Options.target,
-      fontFace    = gui.fonts.filesys.face,
-      fontSize    = gui.fonts.filesys.size,
-      fontStyle   = gui.fonts.filesys.style,
+      target = Options.target,
+      theme = {
+         page = {
+            text = {
+               face      = gui.fonts.filesys.face,
+               fontSize  = string.format('%.2fpt', gui.fonts.filesys.size),
+               fontStyle = gui.fonts.filesys.style
+            }
+         }
+      },
       dragDrop    = true,
       multiSelect = Options.multiSelect,
       borderless  = true
    }
 
-   for k,v in pairs(Options.viewOptions) do vo[k] = v end
+   vo = table.merge(vo, Options.viewOptions, true, true)
 
    if Options.style is 'column' then
       self.view = gui.columnView(vo)
@@ -1783,6 +1802,23 @@ gui.fileview = function(Options)
          self.watch = nil
          err, self.timer = mSys.SubscribeTimer(self.refreshRate, incrementalRefresh)
       end
+   end
+
+   -- File-system subscriptions belong to the host viewport, which survives view-style recreation.
+   local released = false
+   function releaseSubscriptions()
+      if released then return end
+      released = true
+      if self.timer then mSys.UpdateTimer(self.timer, 0); self.timer = nil end
+      if self.evVolumeCreated then unsubscribeEvent(self.evVolumeCreated); self.evVolumeCreated = nil end
+      if self.evVolumeDeleted then unsubscribeEvent(self.evVolumeDeleted); self.evVolumeDeleted = nil end
+      self.watch = nil
+      drag_clipboard.free()
+   end
+   Options.target.subscribe('free', releaseSubscriptions)
+   self.free = function()
+      releaseSubscriptions()
+      self.view?.free()
    end
 
    self._surface = Options.target.scene.surface

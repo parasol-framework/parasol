@@ -219,6 +219,11 @@ glKeywords = {
       'clause.' },
 
    -- Special
+   ['using'] = {
+      comment = 'Activates a table reference as the current context inside using reference do ... end. ' ..
+         'Context fields use &name and && yields the current table. The previous context is restored on every ' ..
+         'exit path; ordinary tables are not promoted to entities.'
+   },
    ['defer'] = { comment = 'Deferred execution - code runs when scope exits.' },
    ['try'] = { comment = 'Opens an exception-handling block. Pair with `except`.' },
    ['except'] = { comment = 'Catches an exception raised by the preceding `try` block. Use `when` ' ..

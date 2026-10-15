@@ -187,6 +187,8 @@ private:
       binding.result_position = ResultPosition;
       binding.function_depth = this->function_depth_;
       binding.is_const = Name.has_const;
+      binding.is_weak = Name.has_weak;
+      if (Name.has_weak) binding.immutable = false;
       binding.is_parameter = IsParameter;
       binding.is_variant = Name.type IS TiriType::Any;
       StaticBindingID id = this->catalogue_.add_binding(binding);
@@ -1917,6 +1919,7 @@ private:
             for (size_t id = 1; id < this->catalogue_.binding_count(); ++id) {
                auto &binding = this->catalogue_.binding(StaticBindingID(id));
                StaticValueDescriptor value = this->catalogue_.value(binding.value);
+               if (binding.is_weak) value.nullable = true;
                if (value.contextuality != StaticContextuality::Ordinary) continue;
                value.contextuality = StaticContextuality::Unknown;
                binding.value = this->add_value(value);
@@ -2023,6 +2026,7 @@ private:
             if (reference.binding_id) {
                const auto &binding = this->catalogue_.binding(reference.binding_id);
                value = this->catalogue_.value(binding.value);
+               if (binding.is_weak) value.nullable = true;
                if (binding.function_depth != this->function_depth_) {
                   value.contextuality = StaticContextuality::Unknown;
                }
@@ -2306,11 +2310,18 @@ private:
          }
          else value = this->descriptor_of(*Initialiser);
       }
+      else if (Name.type IS TiriType::Unknown) {
+         // A declaration without an initialiser stores nil, not an unconstrained runtime value.
+         value.primary = TiriType::Nil;
+         value.proof = StaticProof::Closed;
+         value.nullable = true;
+      }
 
       // An explicit `any` binding may later receive a different table identity, including one designated elsewhere.
       // Preserve useful value-shape information but never bake the initial table's contextuality into member calls.
       if (Name.type IS TiriType::Any) value.contextuality = StaticContextuality::Unknown;
 
+      if (binding.is_weak) value.nullable = true;
       if (value.module and not binding.immutable) value.module = nullptr;
       if (not binding.immutable) binding.callable = {};
       binding.value = this->add_value(value);
@@ -2325,8 +2336,9 @@ private:
 
       auto &binding = this->catalogue_.binding(reference.binding_id);
       StaticValueDescriptor previous = this->catalogue_.value(binding.value);
-      StaticValueDescriptor joined = previous.primary IS TiriType::Unknown and not previous.array_element.known ?
-         Assigned : join_static_descriptors(previous, Assigned);
+      // Unknown may come from a dynamic factory result.  It is not proof that the binding has never been assigned;
+      // in particular, a later closure assigning nil must not narrow that runtime value to a proved nil.
+      StaticValueDescriptor joined = join_static_descriptors(previous, Assigned);
       binding.value = this->add_value(joined);
       binding.callable = {};
       reference.identifier.static_value = binding.value;

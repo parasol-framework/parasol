@@ -4,13 +4,7 @@
 Documentation is available in the Kotuku Wiki.
 --]]
 
-   import 'gui'
-   import 'gui/fileview'
-   import 'gui/columnview'
-   import 'gui/button'
-   import 'gui/combobox'
-   import 'gui/input'
-   import 'gui/window'
+   import 'gui', 'gui/fileview', 'gui/columnview', 'gui/button', 'gui/combobox', 'gui/input', 'gui/window'
 
    namespace gui
 
@@ -32,7 +26,22 @@ gui.dialog.file = function(Options)
       allowNew    = Options.allowNew
    }
 
+   local accepting = false
+   local closed = false
+
+   function closeDialog()
+      if closed then return end
+      closed = true
+      accepting = false
+      self.fileview?.free()
+      local window = self.window
+      self.window = nil
+      window?.surface?.free()
+      self.clear()
+   end
+
    function processFeedback()
+      if accepting or closed then return true end
       list = self.fileview.view.selectedItems()
 
       if (#list <= 1) and self.filebox then
@@ -44,8 +53,14 @@ gui.dialog.file = function(Options)
       end
 
       if (self.warnExists is true) and (#list > 0) then
-         local _, type = mSys.AnalysePath((self.fileview.path ?? '') .. list[0].filename)
-         if type is LOC_FILE then
+         local exists = false
+         local accepted_path = self.fileview.path
+         for item in values(list) do
+            local _, location = mSys.AnalysePath((accepted_path ?? '') .. item.filename)
+            if location is LOC_FILE then exists = true end
+         end
+         if exists then
+            accepting = true
             local msg
 
             if #list is 1 then
@@ -64,9 +79,12 @@ gui.dialog.file = function(Options)
                message = msg,
                popOver = self.windowID,
                feedback = function(Dialog, Response, State)
-                  if Response?.id is 1 then
-                     self?.feedback(self, self.fileview.path, list)
-                     self.window = nil
+                  if closed then return end
+                  if Response?.id is 1 and accepting then
+                     self?.feedback(self, accepted_path, list)
+                     closeDialog()
+                  else
+                     accepting = false
                   end
                end
             })
@@ -76,9 +94,10 @@ gui.dialog.file = function(Options)
          end
       end
 
+      accepting = true
       self?.feedback(self, self.fileview.path, #list > 0 ? list : nil)
 
-      self.clear()
+      closeDialog()
       processing.collect('defer')
       return true
    end
@@ -90,18 +109,21 @@ gui.dialog.file = function(Options)
       minHeight    = 150,
       quit         = false,
       popOver      = Options.popOver,
-      parent       = Options.target,
       icon         = Options.icon ?? 'icons:folders/folder',
       title        = Options.title ?? 'Select a file',
       modal        = Options.modal ?? false,
       events = {
-         close = function(Window)
+         close = function()
+            if closed then return end
+            accepting = true
             Options?.feedback(self, nil)
-            self.clear()
+            closeDialog()
             processing.collect('defer')
          end
       }
    })
+
+   self.windowID = self.window.surface.id
 
    theme = self.window.theme
 
@@ -115,11 +137,12 @@ gui.dialog.file = function(Options)
       y          = 0,
       xOffset    = 0,
       text       = self.currentPath,
-      textFace   = gui.fonts.filesys.face,
-      flushEdges = true,
-      bkgd       = 'none',
+      theme      = {
+         bkgd = { fill = 'none', stroke = 'none', roundX = 0, roundY = 0 },
+         text = { face = gui.fonts.filesys.face }
+      },
       events = {
-         activate = function(Input, Event)
+         activate = function(Event)
             self.fileview.browse(Event.text)
          end
       }
@@ -139,21 +162,23 @@ gui.dialog.file = function(Options)
       yOffset = footer,
       icon    = 'items/cancel',
       events = {
-         activate = function(Button)
+         activate = function()
+            if closed then return end
+            accepting = true
             Options?.feedback(self, nil)
-            self.clear()
+            closeDialog()
             processing.collect()
          end
       }
    })
 
    lOkayButton = gui.button({
-      target     = self.viewport,
-      text       = Options.okText ?? 'Okay',
-      xOffset    = lCancelButton.viewport.width + (GAP * 2),
-      yOffset    = footer,
-      icon       = 'items/checkmark',
-      events = {
+      target  = self.viewport,
+      text    = Options.okText ?? 'Okay',
+      xOffset = lCancelButton.viewport.width + (GAP * 2),
+      yOffset = footer,
+      icon    = 'items/checkmark',
+      events  = {
          activate = processFeedback
       }
    })
@@ -167,11 +192,13 @@ gui.dialog.file = function(Options)
          yOffset     = footer,
          xOffset     = 0,
          shadowLabel = 'Enter file name',
-         textFace    = gui.fonts.filesys.face,
-         flushEdges  = true,
-         text        = target_file,
+         theme       = {
+            bkgd = { fill = 'none', stroke = 'none', roundX = 0, roundY = 0 },
+            text = { face = gui.fonts.filesys.face }
+         },
+         text = target_file,
          events = {
-            activate = function(Widget:table!, Event:table!)
+            activate = function(Event:table!)
                if Event.state is 'activated' then
                   processFeedback()
                end
@@ -224,6 +251,7 @@ gui.dialog.file = function(Options)
       strictFilter  = Options.strictFilter,
       sysKeys       = true,
       fileSelected  = processFeedback,
+      multiSelect   = self.multiSelect,
       style         = 'column', -- column, list, tree
       toolBar       = { clipboard=true, settings=true },
       viewOptions   = { },

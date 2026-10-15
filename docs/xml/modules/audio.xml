@@ -20,12 +20,10 @@ object.</li>
 </list>
 <p>The internal mixer processes all audio as normalised 32-bit floating-point data regardless of the output bit depth. A magnitude of 1.0 is 0 dBFS, while intermediate buses retain finite values above unity as headroom.  The final output conversion is the only stage that clips and quantises samples for the selected hardware format.  The mixer supports:</p>
 <list type="bullet">
-<li>Linear interpolation between sample frames when <code>ADF::OVER_SAMPLING</code> is enabled, reducing aliasing when samples are
-played at rates that differ from the output rate.</li>
-<li>Volume ramping to avoid clicks when channel volumes change, enabled by <code>ADF::VOL_RAMPING</code> in combination with
-<code>ADF::OVER_SAMPLING</code>.</li>
-<li>Two levels of low-pass output smoothing, selected with <code>ADF::FILTER_LOW</code> or <code>ADF::FILTER_HIGH</code>.  The <class name="Audio" field="Quality">Audio.Quality</class>
-field configures the filtering and oversampling flags as a group.</li>
+<li>Nearest-neighbour, linear, bounded cubic Hermite or ratio-aware band-limited sinc source resampling selected by
+<class name="Audio" field="Quality">Audio.Quality</class>.</li>
+<li>Volume ramping to avoid clicks when channel volumes change, enabled by <code>ADF::VOL_RAMPING</code> independently of Quality.
+Gains move by at most 0.01 per output frame, so a full-scale transition takes 100 output frames.</li>
 <li>Unidirectional and bidirectional sample looping, including a secondary loop region.</li>
 <li>Per-channel and global effect chains built from <class name="AudioEffect">AudioEffect</class> processors.</li>
 </list>
@@ -56,6 +54,7 @@ mixing.</li>
       <class>AudioAnalyser</class>
       <class>AudioChorus</class>
       <class>AudioCompressor</class>
+      <class>AudioCrossfeed</class>
       <class>AudioDelay</class>
       <class>AudioEffect</class>
       <class>AudioEqualiser</class>
@@ -64,6 +63,7 @@ mixing.</li>
       <class>AudioLimiter</class>
       <class>AudioLoudness</class>
       <class>AudioPhaser</class>
+      <class>AudioPitchShift</class>
       <class>AudioReverb</class>
       <class>AudioSaturator</class>
       <class>AudioSplitter</class>
@@ -196,7 +196,7 @@ mixing.</li>
 <p>Use this function to set a mixer channel's panning value, from -1.0 (left) through 0 (centre) to 1.0 (right). Finite values outside this range are clamped.  Non-finite values (NaN and infinities) are rejected with <code>OutOfRange</code> and the channel is not modified.</p>
 <p>Panning uses a linear balance law.  The side being panned towards keeps the channel's full volume, while the opposite side is attenuated linearly: for a volume <code>V</code> and a pan <code>P</code> below zero, the left gain is <code>V</code> and the right gain is <code>V * (1 + P)</code>; above zero, the left gain is <code>V * (1 - P)</code> and the right gain is <code>V</code>.  A centred channel is therefore played at full volume on both sides, not at constant power.  Pan has no effect when the Audio object outputs in mono.</p>
 <p>Pan is a mono/stereo balance control for the front speaker pair.  It is not an azimuth and does not address other speakers.  Mono and stereo sources in a wider output layout are placed on the front pair.  Sources with more than two channels require explicit routing, which is not yet available; such sources must use a neutral pan of zero.</p>
-<p>The pan applies from the next mixed frame, ramping towards the new gains if both <code>ADF::VOL_RAMPING</code> and <code>ADF::OVER_SAMPLING</code> are enabled.  When the mixer runs on a worker thread, <code>Okay</code> confirms that the command was accepted for application before the next period is rendered.</p>
+<p>The pan applies from the next mixed frame, ramping towards the new gains if <code>ADF::VOL_RAMPING</code> is enabled, independently of Quality.  Gains move by at most 0.01 per output frame.  When the mixer runs on a worker thread, <code>Okay</code> confirms that the command was accepted for application before the next period is rendered.</p>
     </description>
     <result type="ERR">
       <error code="Okay">Operation successful.</error>
@@ -413,7 +413,7 @@ A stream without a loop is unaffected.</li>
     <description>
 <p>This function will change the volume of the mixer channel identified by Handle.  Volume is a linear amplitude multiplier from 0 (silent) to 1.0 (unity gain).  It is not expressed in decibels; a value of 0.5 attenuates the channel by approximately 6 dB.  Finite values outside this range are clamped.  Non-finite values (NaN and infinities) are rejected with <code>OutOfRange</code> and the channel is not modified.</p>
 <p>The rendered gain of each side is the product of the channel volume, the pan attenuation described in <function>MixPan</function> and the Audio object's <code>MasterVolume</code>.  Stereo samples mixed to mono output are additionally halved.</p>
-<p>The volume applies from the next mixed frame, ramping towards the new gains if both <code>ADF::VOL_RAMPING</code> and <code>ADF::OVER_SAMPLING</code> are enabled.  When the mixer runs on a worker thread, <code>Okay</code> confirms that the command was accepted for application before the next period is rendered.</p>
+<p>The volume applies from the next mixed frame, ramping towards the new gains if <code>ADF::VOL_RAMPING</code> is enabled, independently of Quality.  Gains move by at most 0.01 per output frame.  When the mixer runs on a worker thread, <code>Okay</code> confirms that the command was accepted for application before the next period is rendered.</p>
     </description>
     <result type="ERR">
       <error code="Okay">Operation successful.</error>
@@ -428,6 +428,12 @@ A stream without a loop is unaffected.</li>
       <const name="STEREO"><code>FRONT_LEFT</code>, <code>FRONT_RIGHT</code>.</const>
       <const name="SURROUND_5_1_REAR"><code>FRONT_LEFT</code>, <code>FRONT_RIGHT</code>, <code>CENTRE</code>, <code>LFE</code>, <code>REAR_LEFT</code>, <code>REAR_RIGHT</code>.</const>
       <const name="SURROUND_5_1_SIDE"><code>FRONT_LEFT</code>, <code>FRONT_RIGHT</code>, <code>CENTRE</code>, <code>LFE</code>, <code>SIDE_LEFT</code>, <code>SIDE_RIGHT</code>.</const>
+    </constants>
+
+    <constants lookup="ADS" comment="Effect drain states reported by GetEffectStatus().">
+      <const name="ACTIVE">At least one source on the selected path is playing.</const>
+      <const name="DRAINING">Sources have stopped, but one or more effects are still producing tail output.</const>
+      <const name="IDLE">No sources are playing and no effect has pending output.</const>
     </constants>
 
     <constants lookup="AFF" comment="Optional AudioFormat flags.">
@@ -519,6 +525,16 @@ A stream without a loop is unaffected.</li>
       <field name="Handle" type="INT">Target channel; all commands in a batch must use the same channel set</field>
       <field name="Integer" type="INT64">Integer argument for the selected operation; otherwise ignored</field>
       <field name="Value" type="DOUBLE">Finite floating-point argument for PAN and VOLUME; otherwise ignored</field>
+    </struct>
+
+    <struct name="EffectStatus" comment="One coherent latency and drain-state snapshot from GetEffectStatus().">
+      <field name="Application" type="INT64">Application-chain algorithmic latency in frames</field>
+      <field name="Global" type="INT64">Global-chain algorithmic latency in frames</field>
+      <field name="Total" type="INT64">Total algorithmic latency along the selected path in frames</field>
+      <field name="Rate" type="INT">Negotiated output rate, or zero before configuration</field>
+      <field name="Generation" type="INT64">Configuration generation shared by all paths</field>
+      <field name="State" type="ADS" lookup="ADS">Selected chain's drain state</field>
+      <field name="Truncated" type="INT">One if automatic drain reached its safety deadline</field>
     </struct>
 
     <struct name="MeterInfo" comment="Describes one value published by an effect's meters.">

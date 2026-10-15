@@ -20,7 +20,7 @@
 ** structs = lengthU structB*
 ** proto  = lengthU pdata
 ** pdata  = phead signatureB* dependB* bcinsW* uvdataH* kgc* knum* [debugB*]
-** phead  = flagsB numparamsB framesizeB numuvB numkgcU numknU numbcU siglenU deplenU
+** phead  = flagsB numparamsB framesizeB numuvB ordinaryB sourceB numkgcU numknU numbcU siglenU deplenU
 **          [debuglenU [firstlineU numlineU]]
 ** signature = sigversionB sigflagsB paramcountU resultcountU resultentriesU typeentry*
 ** typeentry = typeB metaflagsB constraintU
@@ -74,7 +74,10 @@ constexpr uint8_t BCDUMP_HEAD3 = 0x4a;
 // Version 0xa9 invalidates roots whose imported modules used caller-specific resolution observations.
 // Version 0xaa adds immutable compilation-unit package metadata.
 // Version 0xab adds the canonical transitive runtime-compatibility manifest.
-constexpr uint8_t BCDUMP_VERSION = 0xac;
+// Version 0xad adds table.merge and shifts the generated fast-function ordering.
+// Version 0xae adds table.clone and shifts the generated fast-function ordering.
+// Version 0xaf persists the compiler-only @Ordinary function policy.
+constexpr uint8_t BCDUMP_VERSION = 0xaf;
 
 // Compatibility flags.
 

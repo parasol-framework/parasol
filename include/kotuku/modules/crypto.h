@@ -110,6 +110,8 @@ struct CryptoBase {
    ERR (*_WriteProtectedFile)(const std::string_view &Path, const std::span<const int8_t> &Data);
    ERR (*_Hash)(HASH Algorithm, const std::span<const int8_t> &Input, const std::span<int8_t> &Output);
    ERR (*_HMAC)(HASH Algorithm, const std::span<const int8_t> &Key, const std::span<const int8_t> &Input, const std::span<int8_t> &Output);
+   ERR (*_CRC32)(const std::span<const int8_t> &Input, uint32_t *Result);
+   ERR (*_GenerateP256Certificate)(const std::string_view &CommonName, std::string *CertificatePEM, std::string *PrivateKeyPEM, std::string *Fingerprint);
 #endif // KOTUKU_STATIC
 };
 
@@ -125,6 +127,8 @@ inline ERR VerifyJWK(CSIG Algorithm, const std::string_view &N, const std::strin
 inline ERR WriteProtectedFile(const std::string_view &Path, const std::span<const int8_t> &Data) { return CryptoBase->_WriteProtectedFile(Path,Data); }
 inline ERR Hash(HASH Algorithm, const std::span<const int8_t> &Input, const std::span<int8_t> &Output) { return CryptoBase->_Hash(Algorithm,Input,Output); }
 inline ERR HMAC(HASH Algorithm, const std::span<const int8_t> &Key, const std::span<const int8_t> &Input, const std::span<int8_t> &Output) { return CryptoBase->_HMAC(Algorithm,Key,Input,Output); }
+inline ERR CRC32(const std::span<const int8_t> &Input, uint32_t *Result) { return CryptoBase->_CRC32(Input,Result); }
+inline ERR GenerateP256Certificate(const std::string_view &CommonName, std::string *CertificatePEM, std::string *PrivateKeyPEM, std::string *Fingerprint) { return CryptoBase->_GenerateP256Certificate(CommonName,CertificatePEM,PrivateKeyPEM,Fingerprint); }
 } // namespace
 #else
 namespace crypto {
@@ -137,5 +141,7 @@ extern ERR VerifyJWK(CSIG Algorithm, const std::string_view &N, const std::strin
 extern ERR WriteProtectedFile(const std::string_view &Path, const std::span<const int8_t> &Data);
 extern ERR Hash(HASH Algorithm, const std::span<const int8_t> &Input, const std::span<int8_t> &Output);
 extern ERR HMAC(HASH Algorithm, const std::span<const int8_t> &Key, const std::span<const int8_t> &Input, const std::span<int8_t> &Output);
+extern ERR CRC32(const std::span<const int8_t> &Input, uint32_t *Result);
+extern ERR GenerateP256Certificate(const std::string_view &CommonName, std::string *CertificatePEM, std::string *PrivateKeyPEM, std::string *Fingerprint);
 } // namespace
 #endif // KOTUKU_STATIC

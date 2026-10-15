@@ -113,6 +113,52 @@ end
 
 -- Edge cases
 
+@Test(hotpath=true) function ExistingTypedParameters()
+   function boundary():<num, num, num, num, num>
+      return 0, 11, 22, 33, 44
+   end
+   function update(RefTop:num, RefHeight:num)
+      _, _, RefTop, _, RefHeight = boundary()
+      assert(RefTop is 22, 'Typed parameters must retain the third result after discarded values')
+      assert(RefHeight is 44, 'Typed parameters must retain the fifth result')
+   end
+   update(1, 2)
+end
+
+@Test(hotpath=true) function ExistingLocalsAndTrailingBlanks()
+   function values():<num, num, num, num, num>
+      return 0, 11, 22, 33, 44
+   end
+   local first = 1
+   local second = 2
+   _, _, first, _, second = values()
+   assert(first is 22 and second is 44, 'Existing locals must consume every discarded call result')
+   first, _, second, _, _ = values()
+   assert(first is 0 and second is 22, 'Trailing blanks must consume call results before earlier stores')
+   first, _, second, _, _ = 5, 6, 7, 8, 9
+   assert(first is 5 and second is 7, 'Trailing blank expressions must preserve earlier positions')
+   first, _, second, _ = 5, 6, 7, values()
+   assert(first is 5 and second is 7, 'A discarded tail call must release its result register')
+   first, _, second, _ = 10, 20
+   assert(first is 10 and second is nil, 'Discarded padded nil values must preserve earlier positions')
+end
+
+@Test(hotpath=true) function ExistingParametersWithVarargs()
+   function update(First, Second, ...)
+      _, _, First, _, Second = ...
+      assert(First is 22 and Second is 44, 'Untyped parameters must consume discarded vararg results')
+      First, _, Second, _, _ = ...
+      assert(First is 0 and Second is 22, 'Trailing blank varargs must preserve earlier positions')
+   end
+   update(1, 2, 0, 11, 22, 33, 44)
+end
+
+@Test(hotpath=true) function ExistingIndexedTargets()
+   local target = { first=1, second=2 }
+   target.first, _, target.second, _ = 10, 20, 30, 40
+   assert(target.first is 10 and target.second is 30, 'Indexed stores must consume discarded expression values')
+end
+
 @Test(hotpath=true) function NestedFunctions()
    function outer()
       _, x = 1, 2

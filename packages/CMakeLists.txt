@@ -3,7 +3,7 @@
 # Only the supported bundled libraries are published.  Locally present, unpublished manifests remain private.
 
 set (BUNDLED_PACKAGES
-   benchmark button checkbox colourdialog combobox config dialog divider dropdown filedialog filemgr filesearch
+   benchmark button checkbox colourdialog combobox config dialog divider filedialog filemgr filesearch
    fileview fontdialog git gui httpserver icon input json menu menubar oauth2 openai openapi options proxyserver scrollbar
    slider smtp tempus toolbar tooltip url vfx view window)
 
@@ -225,6 +225,11 @@ endif ()
 flute_test (package_openapi "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_openapi.tiri")
 flute_test (package_oauth2 "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_oauth2.tiri")
 flute_test (package_openai_streaming "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_openai_streaming.tiri")
+if (TARGET websocket)
+   flute_test (package_openai_websocket "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_openai_websocket.tiri")
+endif ()
 flute_test (package_openai "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_openai.tiri")
 flute_test (package_chatgpt "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_chatgpt.tiri")
 flute_test (package_smtp "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_smtp.tiri")
+flute_test (package_gui_menu "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_gui_menu.tiri")
+flute_test (package_gui_slider "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_gui_slider.tiri")

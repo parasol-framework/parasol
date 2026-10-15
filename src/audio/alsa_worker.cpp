@@ -177,7 +177,6 @@ static ERR start_audio_worker(extAudio *Self)
       return ERR::SystemCall;
    }
 
-   std::fill_n(Self->FilterHistory, 4, 0);
    Self->WorkerError = 0;
    Self->StopWorker = false;
    Self->WorkerStats = {};

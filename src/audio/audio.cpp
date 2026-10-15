@@ -25,12 +25,10 @@ A magnitude of 1.0 is 0 dBFS, while intermediate buses retain finite values abov
 conversion is the only stage that clips and quantises samples for the selected hardware format.  The mixer supports:
 
 <list type="bullet">
-<li>Linear interpolation between sample frames when `ADF::OVER_SAMPLING` is enabled, reducing aliasing when samples are
-played at rates that differ from the output rate.</li>
-<li>Volume ramping to avoid clicks when channel volumes change, enabled by `ADF::VOL_RAMPING` in combination with
-`ADF::OVER_SAMPLING`.</li>
-<li>Two levels of low-pass output smoothing, selected with `ADF::FILTER_LOW` or `ADF::FILTER_HIGH`.  The @Audio.Quality
-field configures the filtering and oversampling flags as a group.</li>
+<li>Nearest-neighbour, linear, bounded cubic Hermite or ratio-aware band-limited sinc source resampling selected by
+@Audio.Quality.</li>
+<li>Volume ramping to avoid clicks when channel volumes change, enabled by `ADF::VOL_RAMPING` independently of Quality.
+Gains move by at most 0.01 per output frame, so a full-scale transition takes 100 output frames.</li>
 <li>Unidirectional and bidirectional sample looping, including a secondary loop region.</li>
 <li>Per-channel and global effect chains built from @AudioEffect processors.</li>
 </list>
@@ -92,6 +90,7 @@ mixing.</li>
 #include <kotuku/modules/module.h>
 #include <kotuku/strings.hpp>
 #include <sstream>
+#include <cstdlib>
 #include <algorithm>
 
 static ERR MODInit(OBJECTPTR, struct CoreBase *);
@@ -116,6 +115,8 @@ static OBJECTPTR clAudioLoudness = nullptr;
 static OBJECTPTR clAudioSaturator = nullptr;
 static OBJECTPTR clAudioSplitter = nullptr;
 static OBJECTPTR clAudioStereo = nullptr;
+static OBJECTPTR clAudioCrossfeed = nullptr;
+static OBJECTPTR clAudioPitchShift = nullptr;
 static OBJECTPTR clAudioAnalyser = nullptr;
 static ERR add_audioeffect_class();
 static ERR add_audioequaliser_class();
@@ -131,6 +132,8 @@ static ERR add_audioloudness_class();
 static ERR add_audiosaturator_class();
 static ERR add_audiosplitter_class();
 static ERR add_audiostereo_class();
+static ERR add_audiocrossfeed_class();
+static ERR add_audiopitchshift_class();
 static ERR add_audioanalyser_class();
 static ankerl::unordered_dense::map<OBJECTID, int> glSoundChannels;
 static std::string glAudioDevice;
@@ -207,6 +210,8 @@ static ERR MODInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
    if (add_audiosaturator_class() != ERR::Okay) return ERR::AddClass;
    if (add_audiosplitter_class() != ERR::Okay) return ERR::AddClass;
    if (add_audiostereo_class() != ERR::Okay) return ERR::AddClass;
+   if (add_audiocrossfeed_class() != ERR::Okay) return ERR::AddClass;
+   if (add_audiopitchshift_class() != ERR::Okay) return ERR::AddClass;
    if (add_audioanalyser_class() != ERR::Okay) return ERR::AddClass;
    if (add_sound_class() != ERR::Okay) return ERR::AddClass;
    return ERR::Okay;
@@ -230,6 +235,8 @@ static ERR MODExpunge(void)
    glSoundChannels.clear();
 
    if (clAudioAnalyser) { FreeResource(clAudioAnalyser); clAudioAnalyser = nullptr; }
+   if (clAudioPitchShift) { FreeResource(clAudioPitchShift); clAudioPitchShift = nullptr; }
+   if (clAudioCrossfeed) { FreeResource(clAudioCrossfeed); clAudioCrossfeed = nullptr; }
    if (clAudioStereo) { FreeResource(clAudioStereo); clAudioStereo = nullptr; }
    if (clAudioSplitter) { FreeResource(clAudioSplitter); clAudioSplitter = nullptr; }
    if (clAudioSaturator) { FreeResource(clAudioSaturator); clAudioSaturator = nullptr; }
@@ -273,6 +280,8 @@ static ERR MODExpunge(void)
 #include "class_audiosaturator.cpp"
 #include "class_audiosplitter.cpp"
 #include "class_audiostereo.cpp"
+#include "class_audiocrossfeed.cpp"
+#include "class_audiopitchshift.cpp"
 #include "class_audioanalyser.cpp"
 #include "class_audio.cpp"
 #include "class_sound.cpp"
@@ -299,9 +308,14 @@ static ERR MODExpunge(void)
 #include "tests/test_audio_saturator_dsp.cpp"
 #include "tests/test_audio_splitter_dsp.cpp"
 #include "tests/test_audio_stereo_dsp.cpp"
+#include "tests/test_audio_crossfeed_dsp.cpp"
+#include "tests/test_audio_pitchshift_dsp.cpp"
 #include "tests/test_audio_analyser_dsp.cpp"
 #include "tests/test_mixers.cpp"
+#include "tests/test_resampler.cpp"
 #include "tests/test_audio_format.cpp"
+#include "tests/test_audio_quality.cpp"
+#include "tests/test_audio_dither.cpp"
 #ifdef ALSA_ENABLED
 #include "tests/test_audio_worker.cpp"
 #endif
@@ -343,9 +357,14 @@ static void MODTest(std::string_view Options, int *Passed, int *Total)
    }
    run("splitter DSP", audio_tests_audio_splitter_dsp::run);
    run("stereo DSP", audio_tests_audio_stereo_dsp::run);
+   run("crossfeed DSP", audio_tests_audio_crossfeed_dsp::run);
+   run("pitch shift DSP", audio_tests_audio_pitchshift_dsp::run);
    run("analyser DSP", audio_tests_audio_analyser_dsp::run);
    run("mixer", audio_tests_mixers::run);
+   run("resampler", audio_tests_resampler::run);
    run("format", audio_tests_audio_format::run);
+   run("quality", audio_tests_audio_quality::run);
+   run("dither", audio_tests_audio_dither::run);
 #ifdef ALSA_ENABLED
    run("ALSA worker", audio_tests_audio_worker::run);
 #endif

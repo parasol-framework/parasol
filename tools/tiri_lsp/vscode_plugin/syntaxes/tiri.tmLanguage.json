@@ -9,7 +9,9 @@
       { "include": "#annotations" },
       { "include": "#typetests" },
       { "include": "#choose-type-patterns" },
+      { "include": "#weak-bindings" },
       { "include": "#functions" },
+      { "include": "#using-blocks" },
       { "include": "#keywords" },
       { "include": "#operators" },
       { "include": "#numbers" },
@@ -17,6 +19,49 @@
       { "include": "#variables" }
    ],
    "repository": {
+      "using-blocks": {
+         "patterns": [
+            {
+               "name": "meta.context.header.tiri",
+               "begin": "(?<![.\\w&])\\b(using)\\b(?=[ \\t]*(?:$|--|[ \\t]+[A-Za-z_][A-Za-z0-9_]*\\b))",
+               "beginCaptures": {
+                  "1": {
+                     "name": "keyword.control.tiri"
+                  }
+               },
+               "end": "\\b(do)\\b|(?=[=;])",
+               "endCaptures": {
+                  "1": {
+                     "name": "keyword.control.tiri"
+                  }
+               },
+               "patterns": [
+                  {
+                     "include": "#comments"
+                  },
+                  {
+                     "include": "#strings"
+                  },
+                  {
+                     "include": "#variables"
+                  }
+               ]
+            }
+         ]
+      },
+      "weak-bindings": {
+         "patterns": [
+            {
+               "name": "meta.declaration.attribute.tiri",
+               "match": "(<)[ \\t]*(weak)[ \\t]*(>)(?=[ \\t]*(?::|\\?\\??=|=|,|;|--|$))",
+               "captures": {
+                  "1": { "name": "punctuation.definition.attribute.begin.tiri" },
+                  "2": { "name": "storage.modifier.tiri" },
+                  "3": { "name": "punctuation.definition.attribute.end.tiri" }
+               }
+            }
+         ]
+      },
       "versioned-imports": {
          "patterns": [
             {

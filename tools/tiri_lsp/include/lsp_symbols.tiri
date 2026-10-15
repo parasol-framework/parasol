@@ -1,4 +1,4 @@
-extern maskNonCode
+extern maskNonCode, maskDeclarationTypeParameters
 
 ----------------------------------------------------------------------------------------------------------------------
 -- Document Symbol Support
@@ -6,9 +6,16 @@ extern maskNonCode
 rx_symbol_trim            = <{ regex.new([[^\s*(.*)]], regex.DOT_ALL) }>
 rx_symbol_named_function  = <{ regex.new([[\s*(local\s+|global\s+)?(function|thunk)\s+([A-Za-z_][A-Za-z0-9_:.]*)\s*\(]]) }>
 rx_symbol_assign_function = <{ regex.new([[\s*(local\s+|global\s+)?([A-Za-z_][A-Za-z0-9_]*(?:[.:][A-Za-z_][A-Za-z0-9_]*)*)\s*=\s*(function|thunk)\s*\(]]) }>
-rx_symbol_decl            = <{ regex.new([[\s*(local|global)\s+([A-Za-z_][A-Za-z0-9_]*)\s*(<const>)?]]) }>
-rx_symbol_assign          = <{ regex.new([[\s*([A-Za-z_][A-Za-z0-9_]*(?:[.:][A-Za-z_][A-Za-z0-9_]*)*)\s*(<const>)?\s*=]]) }>
+rx_symbol_decl            = <{ regex.new(
+   [[\s*(local|global)\s+([A-Za-z_][A-Za-z0-9_]*)(?:\s*:\s*[A-Za-z_]\w*(?:<(?!\s*weak\s*>)[^>\n]*>)?)?]] ..
+   [[\s*(<\s*(?:const|weak)\s*>)?(?:\s*:\s*[A-Za-z_]\w*(?:<(?!\s*weak\s*>)[^>\n]*>)?)?]]) }>
+rx_symbol_assign          = <{ regex.new(
+   [[\s*([A-Za-z_][A-Za-z0-9_]*(?:[.][A-Za-z_][A-Za-z0-9_]*)*)(?:\s*:\s*[A-Za-z_]\w*(?:<(?!\s*weak\s*>)[^>\n]*>)?)?]] ..
+   [[\s*(<\s*(?:const|weak)\s*>)?(?:\s*:\s*[A-Za-z_]\w*(?:<(?!\s*weak\s*>)[^>\n]*>)?)?]] .. [[\s*(?:\?\??)?=]]) }>
 rx_symbol_struct          = <{ regex.new([[^\s*struct\s+([A-Za-z_][A-Za-z0-9_]*)\b]]) }>
+rx_symbol_weak_empty = <{ regex.new(
+   [[^\s*([A-Za-z_]\w*)(?:\s*:\s*[A-Za-z_]\w*(?:<(?!\s*weak\s*>)[^>\n]*>)?)?\s*<\s*weak\s*>]] ..
+   [[(?:\s*:\s*[A-Za-z_]\w*(?:<(?!\s*weak\s*>)[^>\n]*>)?)?\s*(?:;|$)]]) }>
 rx_symbol_struct_field    = <{ regex.new([[([A-Za-z_][A-Za-z0-9_]*)\s*:]]) }>
 rx_symbol_struct_end      = <{ regex.new([[\s+end\s*$]]) }>
 rx_symbol_module_decl = <{ regex.new(
@@ -297,26 +304,36 @@ function symbolDetectModuleValue(LineCode:str, LineText:str, LineNo:num):table
          'module ' .. module_name, nil)
    end
 
-   start_pos, stop_pos, cap = rx_symbol_decl.findFirst(LineCode)
+   declaration_code = maskDeclarationTypeParameters(LineCode)
+   start_pos, stop_pos, cap = rx_symbol_decl.findFirst(declaration_code)
    if start_pos then
       scope = cap[0]
       name = cap[1]
       if name is 'function' then return nil end
 
       name_start = LineText.find(name, start_pos, true) or start_pos
-      is_const = cap[2] and cap[2] != ''
-      detail = is_const and (scope .. ' const') or scope
+      is_const = cap[2] and cap[2].find('const') != nil
+      is_weak = cap[2] and cap[2].find('weak') != nil
+      detail = is_const and (scope .. ' const') or (is_weak and (scope .. ' weak') or scope)
       kind = is_const and SYMBOL_KIND.CONSTANT or SYMBOL_KIND.VARIABLE
       return symbolMakeDocumentSymbol(name, kind, LineNo, LineText, name_start, detail, nil)
    end
 
-   start_pos, stop_pos, cap = rx_symbol_assign.findFirst(LineCode)
+   start_pos, stop_pos, cap = rx_symbol_weak_empty.findFirst(declaration_code)
+   if start_pos then
+      name = cap[0]
+      name_start = LineText.find(name, start_pos, true) or start_pos
+      return symbolMakeDocumentSymbol(name, SYMBOL_KIND.VARIABLE, LineNo, LineText, name_start, 'weak', nil)
+   end
+
+   start_pos, stop_pos, cap = rx_symbol_assign.findFirst(declaration_code)
    if start_pos then
       line_start = symbolSkipSpaces(LineCode, 0)
       if start_pos != line_start then return nil end
 
       name = cap[0]
-      is_const = cap[1] and cap[1] != ''
+      is_const = cap[1] and cap[1].find('const') != nil
+      is_weak = cap[1] and cap[1].find('weak') != nil
       name_start = LineText.find(name, start_pos, true) or start_pos
 
       eq_pos = stop_pos - 1
@@ -332,7 +349,7 @@ function symbolDetectModuleValue(LineCode:str, LineText:str, LineNo:num):table
       after_assign = LineCode.sub(stop_pos)
       is_table = rx_symbol_trim.extract(after_assign).startsWith('{')
       kind = is_table and SYMBOL_KIND.OBJECT or (is_const and SYMBOL_KIND.CONSTANT or SYMBOL_KIND.VARIABLE)
-      detail = is_table and 'table' or (is_const and 'const' or nil)
+      detail = is_weak and 'weak' or (is_table and 'table' or (is_const and 'const' or nil))
       return symbolMakeDocumentSymbol(name, kind, LineNo, LineText, name_start, detail, nil)
    end
 

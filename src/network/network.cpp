@@ -54,6 +54,7 @@ sockets and HTTP, please refer to the @NetSocket, @NetServer and @HTTP classes.
   #endif
 #endif
 
+#include <atomic>
 #include <mutex>
 #include <shared_mutex>
 #include <thread>
@@ -178,6 +179,9 @@ class extNetServer : public extNetSocket {
    int    ClientLimit = 1024;  // The maximum number of client IP addresses that can be connected to the NetServer.
    int    SocketLimit = 256;   // Limits the number of connected sockets per client IP address.
    int    TotalClients;        // Indicates the total number of clients currently connected to the NetServer.
+   int    ConnectionRateLimit = 100; // Maximum accepted connections per one-second window; zero disables the limit.
+   int    ConnectionRateCount = 0;
+   int64_t ConnectionRateWindow = 0;
 
    objNetClient *LastClient;   // For linked-list management.
 
@@ -196,7 +200,11 @@ class extNetLookup : public objNetLookup {
    public:
    FUNCTION Callback;
    struct DNSEntry Info;
-   std::vector<std::unique_ptr<std::jthread>> Threads; // Simple mechanism for auto-joining all the threads on object destruction
+   struct LookupThread {
+      std::shared_ptr<std::atomic<bool>> Finished;
+      std::jthread Thread;
+   };
+   std::vector<LookupThread> Threads;
 
    extNetLookup(objMetaClass *ClassPtr, OBJECTID ObjectID) noexcept : objNetLookup(ClassPtr, ObjectID) { }
 
@@ -244,7 +252,6 @@ JUMPTABLE_CORE
     static ERR tls_accept_client(extClientSocket *, extNetServer *);
   #else
     // OpenSSL forward declarations
-    static bool ssl_init = false;
     static ERR tls_connect(extNetSocket *);
     static ERR sslLinkSocket(extNetSocket *);
     static ERR tls_setup_client(extNetSocket *);
@@ -630,12 +637,13 @@ static ERR MODExpunge(void)
   #ifdef _WIN32
     ssl_cleanup();
   #else
-    if (ssl_init) {
+    if (glSSLInitialised) {
        if (glClientSSL)   { SSL_CTX_free(glClientSSL);   glClientSSL = nullptr; }
        if (glClientSSLNV) { SSL_CTX_free(glClientSSLNV); glClientSSLNV = nullptr; }
        ERR_free_strings();
        EVP_cleanup();
        CRYPTO_cleanup_all_ex_data();
+       glSSLInitialised = false;
     }
   #endif
 #endif
