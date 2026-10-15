@@ -180,8 +180,13 @@ search tools, and mixed editor environments.
   - common element types include `byte`, `int16`, `int`, `int64`, `float`, `double`, `str`, `obj`, `struct<Name>`,
     `int8`, `uint8`, `uint16`, `uint`, `uint64`, `table`, `array`, and `any`
   - useful methods include `push`, `pop`, `clear`, `resize`, `fill`, `insert`, `remove`, `reverse`, `sort`,
-    `contains`, `first`, `last`, `find`, `copy`, `getString`, `setString`, `slice`, `concat`, `clone`,
+    `first`, `last`, `find`, `findIndex`, `indexOf`, `copy`, `getString`, `setString`, `slice`, `concat`, `clone`,
     `each`, `map`, `filter`, `reduce`, `any`, and `all`
+- Arrays have no `contains()` method; use `value in arr` for membership. Use `arr.indexOf(Value)` for an equality
+  search returning a zero-based index, or `nil` when absent.
+- `arr.find(Predicate)` takes a function called as `Predicate(Value, Index)` and returns the first matching element,
+  or `nil` when absent; it does not accept a search value. For example, `arr.find(Value => Value > 20)` finds the
+  first element greater than 20. Use `arr.findIndex(Predicate)` when the matching index is needed instead.
 - Array writes enforce element categories without string/number coercion. Integer elements truncate then wrap to
   their storage width; bitwise operands instead round to nearest even. Validate numeric bounds when wrapping is unwanted.
 - `arr.map()` produces `array<any>` unless an element type is supplied; `arr.mapSame()` retains the source type.
