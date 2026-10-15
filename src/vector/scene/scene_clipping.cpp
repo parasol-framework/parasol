@@ -167,7 +167,8 @@ void SceneRenderer::ClipBuffer::draw_clips(SceneRenderer &Render, extVector *Sha
 
                      if (node->Fill->Pattern) {
                         fill_pattern(state, node->Bounds, &node->BasePath, node->Scene->SampleMethod, t,
-                           Render.view_width(), Render.view_height(), *((extVectorPattern *)node->Fill->Pattern), rb, Raster);
+                           Render.view_width(), Render.view_height(), *((extVectorPattern *)node->Fill->Pattern),
+                           rb, Raster, node->FillOpacity);
                      }
                   }
                }

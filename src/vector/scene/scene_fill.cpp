@@ -84,7 +84,7 @@ void SceneRenderer::render_fill(VectorState &State, extVector &Vector, agg::rast
       fill_pattern(State, Vector.Bounds, &Vector.BasePath, Vector.Scene->SampleMethod,
          build_fill_transform(Vector, Painter.Pattern->Units IS VUNIT::USERSPACE, State),
          mView->vpFixedWidth, mView->vpFixedHeight, *((extVectorPattern *)Painter.Pattern), mRenderBase, Raster,
-         this);
+         State.mOpacity * Vector.FillOpacity, this);
    }
 }
 
@@ -1760,7 +1760,7 @@ static void fill_gradient(VectorState &State, const TClipRectangle<double> &Boun
 static void fill_pattern(VectorState &State, const TClipRectangle<double> &Bounds, agg::path_storage *Path,
    VSM SampleMethod, const agg::trans_affine &Transform, double ViewWidth, double ViewHeight,
    extVectorPattern &Pattern, agg::renderer_base<agg::pixfmt_psl> &RenderBase,
-   agg::rasterizer_scanline_aa<> &Raster, SceneRenderer *Render)
+   agg::rasterizer_scanline_aa<> &Raster, double Alpha, SceneRenderer *Render)
 {
    constexpr bool SCALE_BITMAP = true; // Should always be true for fidelity, but switch to false if debugging coordinate issues.
    const double elem_width  = (Pattern.Units IS VUNIT::USERSPACE) ? ViewWidth : Bounds.width();
@@ -1884,11 +1884,11 @@ static void fill_pattern(VectorState &State, const TClipRectangle<double> &Bound
       agg::alpha_mask_gray8 alpha_mask(Render->clip_stack_top().m_renderer);
       agg::scanline_u8_am<agg::alpha_mask_gray8> masked_scanline(alpha_mask);
       drawBitmap(masked_scanline, SampleMethod, RenderBase, Raster, Pattern.Bitmap, Pattern.SpreadMethod,
-         Pattern.Opacity, &transform);
+         Pattern.Opacity * Alpha, &transform);
    }
    else {
       agg::scanline_u8 scanline;
-      drawBitmap(scanline, SampleMethod, RenderBase, Raster, Pattern.Bitmap, Pattern.SpreadMethod, Pattern.Opacity,
-         &transform);
+      drawBitmap(scanline, SampleMethod, RenderBase, Raster, Pattern.Bitmap, Pattern.SpreadMethod,
+         Pattern.Opacity * Alpha, &transform);
    }
 }

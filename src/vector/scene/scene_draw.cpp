@@ -748,7 +748,8 @@ void SceneRenderer::render_stroke(VectorState &State, extVector &Vector)
       if (Vector.Stroke.Pattern) {
          fill_pattern(State, Vector.Bounds, &Vector.BasePath, Vector.Scene->SampleMethod,
             build_fill_transform(Vector, Vector.Stroke.Pattern->Units IS VUNIT::USERSPACE, State),
-            view_width(), view_height(), *((extVectorPattern *)Vector.Stroke.Pattern), mRenderBase, raster, this);
+            view_width(), view_height(), *((extVectorPattern *)Vector.Stroke.Pattern), mRenderBase, raster,
+            State.mOpacity * Vector.StrokeOpacity, this);
          return;
       }
 
