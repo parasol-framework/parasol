@@ -5,7 +5,9 @@ Documentation is available in the Kotuku Wiki.
 --]]
 
    import 'gui'
+
    module vector as mVec
+   include 'vector'
 
    namespace gui
 
@@ -99,6 +101,8 @@ gui.slider = function(Options:table!)
       labelAlign = Options.labelAlign ?? 'left',
       thickness  = Options.thickness ?? DEFAULT_THICKNESS, -- Breadth of the track
       thumbSize  = Options.thumbSize ? Options.thumbSize : '100%', -- Pixels or % of thickness
+      thumbLength = Options.thumbLength, -- Thumb size along the track in pixels or % of thickness; defaults to thumbSize
+      increment  = Options.increment, -- Change per arrow key or wheel event; nil for the default
       ticks      = Options.ticks, -- true, an interval, { major, minor } or an array of values
       tickPos    = Options.tickPos ?? 'end',
       events     = Options.events ?? { },
@@ -124,7 +128,7 @@ gui.slider = function(Options:table!)
       setTicks = function(Ticks:any)
          &prvCheckTicks(Ticks)
          &ticks = Ticks
-         &prvReserveTicks(&prvSliderHostVP)
+         &prvReserveTicks(&trackVP)
          &prvTickKey = nil
          if &labelText then &prvPlaceLabel(&viewport.width, &viewport.height) end
          &prvPlaceSlider()
@@ -252,7 +256,7 @@ gui.slider = function(Options:table!)
          if minor and (stride is 1) and ((minor * scale) >= (TICK_MIN_SPACING - 1e-9)) then
             j = 1
             major_index = 0
-            origin = (&orientation is 'V') ? &prvSliderHostVP.y : &prvSliderHostVP.x
+            origin = (&orientation is 'V') ? &trackVP.y : &trackVP.x
             previous = nil
             value = &min + minor
             while value < (&max - tolerance) do
@@ -278,7 +282,7 @@ gui.slider = function(Options:table!)
       prvTickPosition = function(Value:num!, Travel:num!, Origin:num!):num
          fraction = (Value - &min) / (&max - &min)
          if &orientation is 'V' then fraction = 1 - fraction end
-         return math.floor(Origin + (&prvThumbSize * 0.5) + (fraction * Travel)) + 0.5
+         return math.floor(Origin + (&prvThumbLength * 0.5) + (fraction * Travel)) + 0.5
       end,
 
       -- Each tick is drawn where the thumb centre sits for its value, snapped to a pixel centre.  Paths are rebuilt
@@ -286,7 +290,7 @@ gui.slider = function(Options:table!)
 
       prvPlaceTicks = function(Width:num!, Height:num!)
          if (not &ticks) and (#&prvTickStops is 0) then return end
-         host = &prvSliderHostVP
+         host = &trackVP
          host_x = host.x
          host_y = host.y
          key = f'{Width}|{Height}|{host_x}|{host_y}|{&min}|{&max}'
@@ -294,7 +298,7 @@ gui.slider = function(Options:table!)
          &prvTickKey = key
 
          vertical = &orientation is 'V'
-         travel = (vertical ? Height : Width) - &prvThumbSize
+         travel = (vertical ? Height : Width) - &prvThumbLength
          majors, minors = &prvTickLayout(travel)
 
          &prvTickStops = majors.clone()
@@ -356,20 +360,29 @@ gui.slider = function(Options:table!)
          &setValue((Direction > 0) ? &max : &min)
       end,
 
-      setValue = function(Value:num)
+      -- Silent updates do not call the activate event, so that a client can reflect external state in the slider.
+
+      setValue = function(Value:num, Silent:bool)
          Value = &prvSnap(Value)
          if Value is &value then return end
          &value = Value
          &prvPlaceSlider()
          &viewport.scene.surface.mtScheduleRedraw()
-         &events?.activate(Value)
+         if not Silent then &events?.activate(Value) end
+      end,
+
+      -- The increment defaults to the step, or one percent of the range for continuous sliders.
+
+      prvIncrement = function():num
+         if &increment then return &increment end
+         return (&step > 0) ? &step : ((&max - &min) / 100)
       end,
 
       -- Keyboard and wheel input share increments and handling of a maximum outside the step grid.
 
       prvAdjust = function(Steps:num!)
-         increment = (&step > 0) ? &step : ((&max - &min) / 100)
-         if (Steps <= -1) and (&step > 0) and (&value is &max) then
+         increment = &prvIncrement()
+         if (&increment is nil) and (Steps <= -1) and (&step > 0) and (&value is &max) then
             previous = &min + ((math.ceil((&max - &min) / &step) - 1) * &step)
             -- Decimal round-off can reconstruct the maximum; ensure the snapped value actually decreases.
             if &prvSnap(previous) is &max then previous -= &step end
@@ -393,7 +406,7 @@ gui.slider = function(Options:table!)
       -- Convert a slider position within the track to a value.  Vertical sliders place max at the top.
 
       prvTrackValue = function(Position:num):num
-         track = ((&orientation is 'V') ? &prvSliderHostVP.height : &prvSliderHostVP.width) - &prvThumbSize
+         track = ((&orientation is 'V') ? &trackVP.height : &trackVP.width) - &prvThumbLength
          if track <= 0 then return &value end -- Pointer input cannot adjust a thumb with no room to travel.
 
          if &orientation is 'V' then
@@ -464,11 +477,11 @@ gui.slider = function(Options:table!)
          &prvValueBaseline = (&prvValueHeight + ascent) * 0.5
          &valueText.string = string.format(format, &value)
 
-         if &prvValueSide and &prvSliderHostVP then
+         if &prvValueSide and &trackVP then
             space = ((&prvValueSide is 'x') or (&prvValueSide is 'xOffset')) ? &prvValueWidth : &prvValueHeight
             space += MARGIN
             delta = space - &prvValueSpace
-            &prvSliderHostVP[&prvValueSide] = &prvSliderHostVP[&prvValueSide] + delta
+            &trackVP[&prvValueSide] = &trackVP[&prvValueSide] + delta
 
             if ((&prvValueSide is 'x') or (&prvValueSide is 'xOffset')) and &prvAutoWidth then
                &viewport.width += delta
@@ -479,16 +492,16 @@ gui.slider = function(Options:table!)
             &prvValueSpace = space
          end
 
-         if &prvSliderHostVP and &prvAutoWidth and (&orientation is 'H') and &valuePos.startsWith('in-') then
-            extra = &prvValueWidth + (MARGIN * 2) - &prvSliderHostVP.width
+         if &trackVP and &prvAutoWidth and (&orientation is 'H') and &valuePos.startsWith('in-') then
+            extra = &prvValueWidth + (MARGIN * 2) - &trackVP.width
             if extra > 0 then &viewport.width += extra end
          end
       end,
 
       prvPlaceValue = function(Width:num!, Height:num!)
          &valueText.string = string.format(&prvValueFormat(), &value)
-         x = &prvSliderHostVP.x
-         y = &prvSliderHostVP.y
+         x = &trackVP.x
+         y = &trackVP.y
          text_width = &valueText.textWidth
          outside = &valuePos.startsWith('out-')
          position = &valuePos.sub(outside ? 4 : 3)
@@ -527,7 +540,7 @@ gui.slider = function(Options:table!)
       -- it.  Centred labels follow the track, which excludes space reserved for outside value text.
 
       prvPlaceLabel = function(Width:num!, Height:num!)
-         host = &prvSliderHostVP
+         host = &trackVP
          if &orientation is 'V' then
             label_height = &labelText.textWidth
             side = (&labelPos is 'left') or (&labelPos is 'right')
@@ -568,18 +581,18 @@ gui.slider = function(Options:table!)
       -- The track and thumb are centred across the host; whole-pixel offsets keep their edges sharp.
 
       prvPlaceSlider = function(Width:num, Height:num)
-         width = (Width != nil) ? Width : &prvSliderHostVP.width
-         height = (Height != nil) ? Height : &prvSliderHostVP.height
+         width = (Width != nil) ? Width : &trackVP.width
+         height = (Height != nil) ? Height : &trackVP.height
          fraction = (&value - &min) / (&max - &min)
 
          if &orientation is 'V' then
-            track = math.max(0, height - &prvThumbSize)
-            &prvSliderVP.y = track - (fraction * track)
-            &prvSliderVP.x = math.floor((width - &prvThumbSize) * 0.5)
+            track = math.max(0, height - &prvThumbLength)
+            &thumbVP.y = track - (fraction * track)
+            &thumbVP.x = math.floor((width - &prvThumbSize) * 0.5)
             &prvBarBkgd.x = math.floor((width - &thickness) * 0.5)
          else
-            &prvSliderVP.x = fraction * math.max(0, width - &prvThumbSize)
-            &prvSliderVP.y = math.floor((height - &prvThumbSize) * 0.5)
+            &thumbVP.x = fraction * math.max(0, width - &prvThumbLength)
+            &thumbVP.y = math.floor((height - &prvThumbSize) * 0.5)
             &prvBarBkgd.y = math.floor((height - &thickness) * 0.5)
          end
 
@@ -631,14 +644,19 @@ gui.slider = function(Options:table!)
 
       assert((&thickness is <num>) and (&thickness > 0), f"Invalid thickness '{&thickness}'")
 
-      if (&thumbSize is <str>) and &thumbSize.endsWith('%') then
-         percent = tonumber(&thumbSize.sub(0, -1))
-         assert(percent and (percent > 0), f"Invalid thumbSize '{&thumbSize}'")
-         &prvThumbSize = math.max(1, math.round(&thickness * percent / 100))
-      else
-         assert((&thumbSize is <num>) and (&thumbSize > 0), f"Invalid thumbSize '{&thumbSize}'")
-         &prvThumbSize = &thumbSize
+      function thumbPixels(Size:any, Name:str!):num
+         if (Size is <str>) and Size.endsWith('%') then
+            percent = tonumber(Size.sub(0, -1))
+            assert(percent and (percent > 0), f"Invalid {Name} '{Size}'")
+            return math.max(1, math.round(&thickness * percent / 100))
+         end
+         assert((Size is <num>) and (Size > 0), f"Invalid {Name} '{Size}'")
+         return Size
       end
+
+      &prvThumbSize = thumbPixels(&thumbSize, 'thumbSize') -- Breadth across the track
+      &prvThumbLength = (&thumbLength != nil) ? thumbPixels(&thumbLength, 'thumbLength') : &prvThumbSize
+      assert((&increment is nil) or ((&increment is <num>) and (&increment > 0)), f"Invalid increment '{&increment}'")
 
       breadth = math.max(&thickness, &prvThumbSize)
 
@@ -759,33 +777,47 @@ gui.slider = function(Options:table!)
       end
 
       &prvReserveTicks(host) -- Ticks sit between the track and any outside value text or label
-      &prvSliderHostVP = &viewport.new('VectorViewport', host)
+      &trackVP = &viewport.new('VectorViewport', host)
       if &labelText then &prvPlaceLabel(&viewport.width, &viewport.height) end -- Centre on the track
-      &prvBarBkgd = &prvSliderHostVP.new('VectorRectangle', table.merge({
+      &prvBarBkgd = &trackVP.new('VectorRectangle', table.merge({
+         flags = VF_STICK_TO_BACK,
          x = 0, y = 0,
          width = (&orientation is 'V') ? &thickness : '100%',
          height = (&orientation is 'V') ? '100%' : &thickness
       }, &prvTheme.slider.bkgd))
 
-      &prvSliderVP = &prvSliderHostVP.new('VectorViewport', { width = &prvThumbSize, height = &prvThumbSize })
+      &thumbVP = &trackVP.new('VectorViewport', {
+         width  = (&orientation is 'V') ? &prvThumbSize : &prvThumbLength,
+         height = (&orientation is 'V') ? &prvThumbLength : &prvThumbSize
+      })
 
-      -- Drag coordinates are relative to the drag origin, so snapping the slider does not impede its movement.
+      -- Drag coordinates are relative to the drag origin, so snapping the slider does not impede its movement.  The
+      -- pointer movement is measured in display pixels, so it is converted to track units when an ancestor scales the
+      -- slider, e.g. with a view box.
 
       @Ordinary
-      self.prvSliderVP.dragCallback = function(Viewport:obj!, X:num!, Y:num!)
+      self.thumbVP.dragCallback = function(Viewport:obj!, X:num!, Y:num!, OriginX:num!, OriginY:num!)
          local slider = weak_self
          if not slider then return end
 
          using slider do
             if &disabled then return end
-            &setValue(&prvTrackValue((&orientation is 'V') ? Y : X))
+            local track_vp = &trackVP
+            _, _, _, display_w, display_h = track_vp.mtGetBoundary(0)
+            if &orientation is 'V' then
+               scale = ((display_h ?? 0) > 0) ? display_h / track_vp.height : 1
+               &setValue(&prvTrackValue(OriginY + ((Y - OriginY) / scale)))
+            else
+               scale = ((display_w ?? 0) > 0) ? display_w / track_vp.width : 1
+               &setValue(&prvTrackValue(OriginX + ((X - OriginX) / scale)))
+            end
          end
       end
 
       &prvPlaceSlider()
 
       @Ordinary
-      self.prvSliderVP.resizeEvent = function(Viewport, Vector, X, Y, Width, Height)
+      self.thumbVP.resizeEvent = function(Viewport, Vector, X, Y, Width, Height)
          local slider = weak_self
          if not slider then return end
 
@@ -795,14 +827,17 @@ gui.slider = function(Options:table!)
       end
 
       GAP <const> = &prvTheme.slider.bkgd.strokeWidth
+      -- Reduce each inset independently to leave at least one pixel, or the full dimension for subpixel thumbs.
+      x_gap = math.min(GAP, math.max(0, (&thumbVP.width - 1) * 0.5))
+      y_gap = math.min(GAP, math.max(0, (&thumbVP.height - 1) * 0.5))
 
-      &button = &prvSliderVP.new('VectorRectangle', table.merge({
-         x = GAP, y = GAP, width = &prvSliderVP.width-(GAP*2), height = &prvSliderVP.height-(GAP*2)
+      &button = &thumbVP.new('VectorRectangle', table.merge({
+         x = x_gap, y = y_gap, width = &thumbVP.width-(x_gap*2), height = &thumbVP.height-(y_gap*2)
       }, &prvTheme.slider.fore))
 
       if &valueText then
          &valueText.acMoveToFront()
-         &prvPlaceValue(&prvSliderHostVP.width, &prvSliderHostVP.height)
+         &prvPlaceValue(&trackVP.width, &trackVP.height)
       end
 
       @Ordinary
@@ -826,9 +861,8 @@ gui.slider = function(Options:table!)
 
       &viewport.mtSubscribeFeedback(FM_HAS_FOCUS | FM_CHILD_HAS_FOCUS | FM_LOST_FOCUS, focusFeedback)
 
-      -- Keyboard registration makes the whole widget a single stop in the scene's tab order.  Continuous sliders
-      -- use one percent of the range per arrow press; Page Up/Down move to the next tick, or ten increments if the
-      -- slider has no ticks.
+      -- Keyboard registration makes the whole widget a single stop in the scene's tab order.  The arrow keys move one
+      -- increment; Page Up/Down move to the next tick, or ten increments if the slider has no ticks.
 
       @Ordinary
       function keyboardInput(Viewport:obj!, Qualifiers:num!, Code:num!, Unicode)
@@ -838,7 +872,7 @@ gui.slider = function(Options:table!)
          using slider do
             if &disabled or not (Qualifiers has KQ_PRESSED) then return end
 
-            increment = (&step > 0) ? &step : ((&max - &min) / 100)
+            increment = &prvIncrement()
             if (Code is KEY_RIGHT) or (Code is KEY_UP) then
                &prvAdjust(1)
             elseif (Code is KEY_LEFT) or (Code is KEY_DOWN) then
@@ -855,7 +889,7 @@ gui.slider = function(Options:table!)
          end
       end
 
-      &viewport.mtSubscribeKeyboard(keyboardInput)
+      if Options.keyboard != false then &viewport.mtSubscribeKeyboard(keyboardInput) end
 
       @Ordinary
       function wheelInput(Viewport:obj!, Msg)
@@ -865,8 +899,13 @@ gui.slider = function(Options:table!)
          using slider do
             if &disabled then return end
 
+            -- Upward rotation is reported as a negative value and increases the slider.  Display drivers scale the value
+            -- inconsistently (a notch can be 3 or 9 units), so each wheel event moves one increment regardless of size.
+
             repeat
-               if (Msg.type is JET_WHEEL) and (Msg.value != 0) then &prvAdjust(Msg.value) end
+               if (Msg.type is JET_WHEEL) and (Msg.value != 0) then
+                  &prvAdjust((Msg.value < 0) ? 1 : -1)
+               end
                Msg = Msg.next
             until not Msg
          end
@@ -896,7 +935,7 @@ gui.slider = function(Options:table!)
          end
       end
 
-      &prvSliderVP.mtSubscribeInput(JTYPE_CROSSING, crossingInput)
+      &thumbVP.mtSubscribeInput(JTYPE_CROSSING, crossingInput)
 
       @Ordinary
       function trackInput(Viewport:obj!, Msg)
@@ -907,7 +946,7 @@ gui.slider = function(Options:table!)
             repeat
                if (Msg.type is JET_LMB) and (Msg.value > 0) and (not &disabled) then
                   -- Centre the slider on the click position.
-                  position = ((&orientation is 'V') ? Msg.y : Msg.x) - (&prvThumbSize * 0.5)
+                  position = ((&orientation is 'V') ? Msg.y : Msg.x) - (&prvThumbLength * 0.5)
                   &setValue(&prvTrackValue(position))
                end
                Msg = Msg.next
@@ -915,7 +954,7 @@ gui.slider = function(Options:table!)
          end
       end
 
-      &prvSliderHostVP.mtSubscribeInput(JTYPE_BUTTON, trackInput)
+      &trackVP.mtSubscribeInput(JTYPE_BUTTON, trackInput)
 
       if Options.disabled then &disable() end
       &events?.show()
