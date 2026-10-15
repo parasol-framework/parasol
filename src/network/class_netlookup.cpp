@@ -22,7 +22,7 @@ Use the NetLookup class for resolving network names to IP addresses and vice ver
 struct resolve_buffer {
    OBJECTID NetLookupID = 0;
    ERR Error = ERR::Okay;
-   IPAddress IP;
+   IPAddress IP = {};
    std::string Address;
 
    resolve_buffer(OBJECTID pNLID, IPAddress pIP, std::string_view pAddress) :
@@ -35,11 +35,11 @@ struct resolve_buffer {
       std::vector<int8_t> ser;
       ser.resize(sizeof(OBJECTID) + sizeof(ERR) + sizeof(IPAddress) + Address.size() + 1);
       auto ptr = ser.data();
-      *(OBJECTID *)ptr = NetLookupID;
+      std::memcpy(ptr, &NetLookupID, sizeof(NetLookupID));
       ptr       += sizeof(OBJECTID);
-      *(ERR*)ptr = Error;
+      std::memcpy(ptr, &Error, sizeof(Error));
       ptr       += sizeof(ERR);
-      *(IPAddress *)ptr = IP;
+      std::memcpy(ptr, &IP, sizeof(IP));
       ptr       += sizeof(IPAddress);
       if (not Address.empty()) kt::copymem(Address.data(), ptr, Address.size() + 1);
       return ser;
@@ -47,11 +47,11 @@ struct resolve_buffer {
 
    resolve_buffer(int8_t *Data) {
       auto ptr = Data;
-      NetLookupID = *(OBJECTID *)ptr;
+      std::memcpy(&NetLookupID, ptr, sizeof(NetLookupID));
       ptr  += sizeof(OBJECTID);
-      Error = *(ERR *)ptr;
+      std::memcpy(&Error, ptr, sizeof(Error));
       ptr  += sizeof(ERR);
-      IP    = *(IPAddress *)ptr;
+      std::memcpy(&IP, ptr, sizeof(IP));
       ptr  += sizeof(IPAddress);
       Address.assign((char *)ptr);
    }

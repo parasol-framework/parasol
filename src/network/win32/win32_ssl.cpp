@@ -245,6 +245,7 @@ template <class T> ERR tls_handshake_received(T *Self, const void *Data, int Len
          log.warning("SSL handshake failed: %d; SecStatus: 0x%08X; WinError: %d", result,
             ssl_last_security_status(Self->TLS.Handle),
             ssl_last_win32_error(Self->TLS.Handle));
+         if constexpr (requires { Self->Error; }) Self->Error = ERR::Handshake;
          Self->setState(NTC::DISCONNECTED);
          return ERR::Handshake;
    }
@@ -286,6 +287,7 @@ template <class T> ERR tls_connect(T *Self)
          log.warning("Security status: 0x%08X, Win32 error: %d",
             ssl_last_security_status(Self->TLS.Handle),
             ssl_last_win32_error(Self->TLS.Handle));
+         if constexpr (requires { Self->Error; }) Self->Error = ERR::Handshake;
          Self->setState(NTC::DISCONNECTED);
          return ERR::Handshake;
    }
