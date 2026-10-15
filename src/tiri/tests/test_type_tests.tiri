@@ -84,7 +84,7 @@ end
 
 @Test function LeftOperandRunsOnce()
    local count = 0
-   function next_value():any
+   function next_value():<any, str>
       count++
       return 10, 'ignored'
    end

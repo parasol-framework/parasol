@@ -409,7 +409,8 @@ end
    function typed_pair():<num, str> return dynamic_pair() end
    expect_contract_failure(function() typed_pair() end, 'result')
 
-   function extra_results():num return 1, 'extra', false end
+   function extra_source() return 1, 'extra', false end
+   function extra_results():num return extra_source() end
    local first, second, third = extra_results()
    assert(first is 1 and second is nil and third is nil,
       'A fixed return declaration must truncate extra results')
@@ -1495,7 +1496,8 @@ end
 
 @Test function HotContractParity()
    function hot(Value:num):num return Value + 1 end
-   function hot_results(Value:num):<num, str> return Value, 'kept', false end
+   function hot_source(Value:num) return Value, 'kept', false end
+   function hot_results(Value:num):<num, str> return hot_source(Value) end
    function hot_userdata(Value:userdata):userdata return Value end
    global glHotInferredContract = 0
    global glHotTimeObject = obj.new('time')
@@ -1559,4 +1561,35 @@ end
    local access = disassembly.find('AGET')
    assert(guard != nil and access != nil and guard < access,
       'CONTRACT must precede specialised array access, got:\n' .. disassembly)
+end
+
+@Test function RequiredObjectMutableCapture()
+   local resource
+   function accept(Value:obj!):str return Value.name end
+   function later():str return accept(resource) end
+   resource = obj.new('Time', { name='compiler_capture_test' })
+   assert(later() is 'compiler_capture_test', 'A closure should read the object assigned after its definition')
+   resource = nil
+   expect_contract_failure(later, 'required captured object')
+end
+
+@Test function RequiredArgumentKnownNilStillRejected()
+   try
+      exec('local value; function accept(Value:obj!) end; accept(value)')
+   except e
+      assert(e.message.find('required argument 1 cannot be nil') != nil, e.message)
+   success
+      assert(false, 'A known nil argument in the current function should still be rejected')
+   end
+end
+
+@Test function RequiredObjectAssignedByClosure()
+   local resource
+   function initialise()
+      resource = obj.new('Time', { name='compiler_capture_write_test' })
+   end
+   function accept(Value:obj!):str return Value.name end
+   initialise()
+   assert(accept(resource) is 'compiler_capture_write_test',
+      'An assignment in a closure should still establish the captured local type')
 end

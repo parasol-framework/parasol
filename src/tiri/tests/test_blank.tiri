@@ -297,3 +297,51 @@ end
       assert(false, "Expected parsing to fail when reading blank identifier")
    end
 end
+
+@Test function DiscardedFieldReadsStillRaise()
+   for _, source in {
+      "_ = obj.find('compiler_missing_discard_test').name",
+      "local _ = obj.find('compiler_missing_discard_test').name",
+      "local value = 0; value, _ = 1, obj.find('compiler_missing_discard_test').name"
+   } do
+      try
+         exec(source)
+      except e
+         assert(e.message.find('index') != nil, e.message)
+      success
+         assert(false, 'Discarding a field read must preserve its exception')
+      end
+   end
+end
+
+@Test function DiscardedReadsInvokeMetamethod()
+   local reads = 0
+   local target = setmetatable({}, { __index = function(_, Key):any
+      reads++
+      return Key
+   end })
+   _ = target.name
+   assert(reads is 1, 'A discarded field read should invoke __index once')
+end
+
+@Test function MissingArrayMemberDiagnostic()
+   try
+      local items = array<int> { 1 }
+      items.compiler_missing_method()
+   except e
+      assert(e.message.find("Unknown array member 'compiler_missing_method'") != nil, e.message)
+   success
+      assert(false, 'An unknown array member should raise')
+   end
+end
+
+@Test function NilCallResultDiagnostic()
+   try
+      local value = obj.find('compiler_missing_diagnostic_test').name
+   except e
+      assert(e.message.find('nil value') != nil, e.message)
+      assert(e.message.find("global 'obj'") is nil, 'A call result must not be attributed to global obj')
+   success
+      assert(false, 'Indexing a nil call result should raise')
+   end
+end
