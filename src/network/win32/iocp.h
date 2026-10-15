@@ -42,7 +42,7 @@ void iocp_set_socket_object(WSW_SOCKET Socket, int ObjectID);
 ERR iocp_prepare_connect(WSW_SOCKET Socket, const void *Address, int AddressSize);
 ERR iocp_begin_connect_wait(WSW_SOCKET Socket, int ObjectID, uintptr_t Callback);
 ERR iocp_complete_connect(WSW_SOCKET Socket);
-bool iocp_validate_completion(WSW_SOCKET Socket, uint64_t Generation);
+bool iocp_validate_completion(WSW_SOCKET Socket, uint64_t Generation, bool BeginUDPDispatch = false);
 
 ERR iocp_bind(WSW_SOCKET Socket, const void *Address, int AddressSize);
 ERR iocp_listen(WSW_SOCKET Socket, int Backlog);

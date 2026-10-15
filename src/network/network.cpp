@@ -54,6 +54,7 @@ sockets and HTTP, please refer to the @NetSocket, @NetServer and @HTTP classes.
   #endif
 #endif
 
+#include <atomic>
 #include <mutex>
 #include <shared_mutex>
 #include <thread>
@@ -199,7 +200,11 @@ class extNetLookup : public objNetLookup {
    public:
    FUNCTION Callback;
    struct DNSEntry Info;
-   std::vector<std::unique_ptr<std::jthread>> Threads; // Simple mechanism for auto-joining all the threads on object destruction
+   struct LookupThread {
+      std::shared_ptr<std::atomic<bool>> Finished;
+      std::jthread Thread;
+   };
+   std::vector<LookupThread> Threads;
 
    extNetLookup(objMetaClass *ClassPtr, OBJECTID ObjectID) noexcept : objNetLookup(ClassPtr, ObjectID) { }
 

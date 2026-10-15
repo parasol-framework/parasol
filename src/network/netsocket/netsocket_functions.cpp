@@ -280,6 +280,16 @@ restart:
    Self->IncomingRecursion = 0;
 }
 
+static size_t netsocket_pending_tls_output(extNetSocket *Self)
+{
+#if !defined(DISABLE_SSL) and defined(_WIN32)
+   return Self->TLS.Handle ? ssl_pending_output_size(Self->TLS.Handle) : 0;
+#else
+   (void)Self;
+   return 0;
+#endif
+}
+
 //********************************************************************************************************************
 // This function sends data to the client if there is queued data waiting to go out.  Otherwise it does nothing.
 //
@@ -336,10 +346,22 @@ static void netsocket_outgoing_impl(HOSTHANDLE SocketFD, extNetSocket *Self)
    Self->OutgoingRecursion++;
 
    auto error = ERR::Okay;
+   bool tls_output_blocked = false;
+
+#if !defined(DISABLE_SSL) and defined(_WIN32)
+   // The final plaintext write can leave an encrypted record waiting for IOCP capacity after WriteQueue empties.
+   if (netsocket_pending_tls_output(Self)) {
+      error = tls_flush_output(Self);
+      if (error IS ERR::BufferOverflow) {
+         error = ERR::Okay;
+         tls_output_blocked = true;
+      }
+   }
+#endif
 
    // Send out remaining queued data before getting new data to send
 
-   while (!Self->WriteQueue.Buffer.empty()) {
+   while ((!error) and (!tls_output_blocked) and (not Self->WriteQueue.Buffer.empty())) {
       size_t len = Self->WriteQueue.Buffer.size() - Self->WriteQueue.Index;
       #ifndef DISABLE_SSL
          if ((!Self->TLS.Handle) and (len > glMaxWriteLen)) len = glMaxWriteLen;
@@ -367,6 +389,7 @@ static void netsocket_outgoing_impl(HOSTHANDLE SocketFD, extNetSocket *Self)
    // Before feeding new data into the queue, the current buffer must be empty.
 
    if ((!error) and Self->CloseAfterWrite and Self->WriteQueue.Buffer.empty() and
+       (not netsocket_pending_tls_output(Self)) and
        (not network_platform().has_pending_write(Self->Handle))) {
       Self->InUse--;
       Self->OutgoingRecursion--;
@@ -395,15 +418,16 @@ static void netsocket_outgoing_impl(HOSTHANDLE SocketFD, extNetSocket *Self)
       // be assigned temporarily.
 
       if ((!Self->Outgoing.defined()) and (Self->WriteQueue.Buffer.empty()) and
+          (not netsocket_pending_tls_output(Self)) and
           (not network_platform().has_pending_write(Self->Handle))) {
          log.trace("Write-queue listening on socket %d will now stop.", Self->UID, Self->Handle.int_value());
          if (auto error = network_platform().remove_write(Self->Handle); error != ERR::Okay) log.warning(error);
       }
+   }
 
-      if (error != ERR::Okay) {
-         Self->ErrorCountdown--;
-         if (!Self->ErrorCountdown) Self->setState(NTC::DISCONNECTED);
-      }
+   if (error != ERR::Okay and error != ERR::BufferOverflow and error != ERR::Busy) {
+      Self->ErrorCountdown--;
+      if (!Self->ErrorCountdown) Self->setState(NTC::DISCONNECTED);
    }
 
    Self->InUse--;

@@ -155,7 +155,8 @@ static ERR iocp_completion_receiver(APTR Custom, int MsgID, MSGID MsgType, std::
 
    auto handle = SocketHandle(completion->Socket);
    if (!validate_iocp_completion_object(lock.obj, handle)) return ERR::Okay;
-   if (!iocp_validate_completion(completion->Socket, completion->Generation)) return ERR::Okay;
+   if (!iocp_validate_completion(completion->Socket, completion->Generation,
+       completion->Type IS IocpOperationType::UDP_RECEIVE)) return ERR::Okay;
 
    auto callback = (void (*)(HOSTHANDLE, APTR))completion->Callback;
    callback(handle.hosthandle(), lock.obj);
