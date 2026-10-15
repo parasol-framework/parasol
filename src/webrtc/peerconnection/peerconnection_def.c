@@ -78,4 +78,3 @@ static const struct ActionArray clPeerConnectionActions[] = {
    { AC::New, PEERCONNECTION_New },
    { AC::NIL, nullptr }
 };
-

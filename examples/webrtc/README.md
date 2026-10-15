@@ -1,8 +1,8 @@
 # Local native WebRTC chat (Linux)
 
 Run these commands from the repository root after the modular Debug build and install described in
-`docs/plans/webrtc_phase_2_linux.md`.  The example uses the installed `net/webrtc` package; configure with
-`LINKED_PACKAGES=ON`.
+`docs/plans/webrtc_phase_2_linux.md`.  The example uses the installed WebRTC module; configure with
+`LINKED_PACKAGES=ON` for its JSON package import.
 
 In one terminal:
 

@@ -1,7 +1,7 @@
 -- Test-only mDNS signalling and echo; all host candidates must retain their obfuscated identity.
    include 'websocket'
+   include 'webrtc'
    import 'json'
-   import 'net/webrtc'
    local sessions = {}
    local port = tonumber(arg('port', '9324'))
 function send(Socket:obj, Message:table)
@@ -35,7 +35,7 @@ end
                      end
                   })
                   if message.nativeOffer then
-                     local _, channel = check webRTC.createChannel(session.peer, 'echo')
+                     local _, channel = check session.peer.mtCreateWebChannel('echo', '', true, false, -1, -1, -1)
                      attach(session, channel)
                      check session.peer.mtCreateOffer()
                      check session.peer.mtSetLocalDescription(session.peer.localDescription)

@@ -168,7 +168,7 @@ def main():
                 relay_ip = route.getsockname()[0]
             if relay_ip.startswith('127.'):
                 raise RuntimeError('Browser TURN fixture needs a non-loopback local IPv4 relay address')
-        config = work / 'turnserver.conf' 
+        config = work / 'turnserver.conf'
         config.write_text(f'''listening-ip=127.0.0.1
 relay-ip={relay_ip}
 listening-port={args.port}

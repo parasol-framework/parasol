@@ -1,7 +1,7 @@
 -- Local Linux WebChannel chat/echo demonstration.  Each WebSocket owns one native peer.
    include 'websocket'
+   include 'webrtc'
    import 'json'
-   import 'net/webrtc'
 
    local port = tonumber(arg('port', '9320'))
    assert(port and port >= 1024 and port <= 65535, 'Invalid signalling port')
@@ -63,13 +63,13 @@ function start(Session:table, NativeOffer:bool)
    })
    local peer = Session.peer
    for mode in {0 to 6} do
-      local _, channel = check webRTC.createChannel(peer, f'native-{mode}', 'echo', mode < 3,
+      local _, channel = check peer.mtCreateWebChannel(f'native-{mode}', 'echo', mode < 3,
          false, -1, mode % 3 is 1 ? 0 : -1, mode % 3 is 2 ? 5000 : -1)
       attach(Session, channel)
    end
-   local _, negotiated = check webRTC.createChannel(peer, 'negotiated', '', true, true, 100)
+   local _, negotiated = check peer.mtCreateWebChannel('negotiated', '', true, true, 100, -1, -1)
    attach(Session, negotiated)
-   local _, chat = check webRTC.createChannel(peer, 'chat', 'chat')
+   local _, chat = check peer.mtCreateWebChannel('chat', 'chat', true, false, -1, -1, -1)
    attach(Session, chat)
    if NativeOffer then
       check peer.mtCreateOffer()

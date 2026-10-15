@@ -1,7 +1,7 @@
 -- Test-only relay signalling and echo.  Credentials remain in a private fixture file.
    include 'websocket'
+   include 'webrtc'
    import 'json'
-   import 'net/webrtc'
    local config_file <close> = obj.new('file', { path=arg('config'), flags=FL_READ })
    local config_buffer = array<byte, config_file.size>
    check config_file.acRead(config_buffer)
@@ -45,7 +45,7 @@ end
                      end
                   })
                   if message.nativeOffer then
-                     local _, channel = check webRTC.createChannel(session.peer, 'echo')
+                     local _, channel = check session.peer.mtCreateWebChannel('echo', '', true, false, -1, -1, -1)
                      attach(session, channel)
                      check session.peer.mtCreateOffer()
                      check session.peer.mtSetLocalDescription(session.peer.localDescription)
