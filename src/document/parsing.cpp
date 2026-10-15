@@ -3054,7 +3054,7 @@ void parser::tag_table(const tag_view &Tag)
             }
          }
 
-         if (end IS std::string_view::npos) break;
+         if (end IS std::string_view::npos) { parsed_columns++; break; }
          remaining.remove_prefix(end + 1);
       }
 

@@ -135,7 +135,7 @@ public:
       void draw(SceneRenderer &);
       void draw_viewport(SceneRenderer &);
       void draw_clips(SceneRenderer &, extVector *, agg::rasterizer_scanline_aa<> &,
-         agg::renderer_base<agg::pixfmt_gray8> &, const agg::trans_affine &);
+         agg::renderer_base<agg::pixfmt_gray8> &, const agg::trans_affine &, double = 1.0);
       void draw_bounding_box(SceneRenderer &);
       void draw_userspace(SceneRenderer &);
       bool use_cached_mask(const agg::trans_affine &, double, double);
