@@ -121,12 +121,13 @@ typedef int SOCKET_HANDLE;
     { id=3, name="SendTo" },
     { id=4, name="RecvFrom" },
     { id=5, name="JoinMulticastGroup" },
-    { id=6, name="LeaveMulticastGroup" }
+    { id=6, name="LeaveMulticastGroup" },
+    { id=7, name="SetBufferSizes" }
   })
 
   methods("NetServer", "ns", {
-    { id=7, name="DisconnectClient" },
-    { id=8, name="DisconnectSocket" }
+    { id=20, name="DisconnectClient" },
+    { id=21, name="DisconnectSocket" }
   })
 
   klass("NetSocket", {
