@@ -32,3 +32,4 @@ static const struct ActionArray clWebChannelActions[] = {
    { AC::New, WEBCHANNEL_New },
    { AC::NIL, nullptr }
 };
+
