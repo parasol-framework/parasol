@@ -7,16 +7,14 @@ struct AudioQualityProfile {
    int Minimum;
    int Maximum;
    AudioQualityMode Mode;
-   ADF Flags;
    ResamplerMode Resampler;
 };
 
-inline constexpr ADF glQualityFlags = ADF::OVER_SAMPLING | ADF::FILTER_LOW | ADF::FILTER_HIGH;
 inline constexpr AudioQualityProfile glQualityProfiles[] = {
-   { 0, 9, AudioQualityMode::DRAFT, ADF::NIL, ResamplerMode::NEAREST },
-   { 10, 32, AudioQualityMode::LOW, ADF::OVER_SAMPLING | ADF::FILTER_LOW, ResamplerMode::LINEAR },
-   { 33, 65, AudioQualityMode::STANDARD, ADF::OVER_SAMPLING | ADF::FILTER_HIGH, ResamplerMode::CUBIC },
-   { 66, 100, AudioQualityMode::HIGH, ADF::OVER_SAMPLING | ADF::FILTER_HIGH, ResamplerMode::SINC }
+   { 0, 9, AudioQualityMode::DRAFT, ResamplerMode::NEAREST },
+   { 10, 32, AudioQualityMode::LOW, ResamplerMode::LINEAR },
+   { 33, 65, AudioQualityMode::STANDARD, ResamplerMode::CUBIC },
+   { 66, 100, AudioQualityMode::HIGH, ResamplerMode::SINC }
 };
 
 inline constexpr const AudioQualityProfile * audio_quality_profile(int Quality)

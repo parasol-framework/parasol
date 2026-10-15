@@ -127,7 +127,7 @@ static void channel_gain_contract(AudioTestContext &Test)
    }
 }
 
-// Device-free fixtures inspect the source bus before quality-owned output smoothing.
+// Device-free fixtures inspect the source bus before global effects and output conversion.
 static void ramp_envelopes(AudioTestContext &Test)
 {
    for (int quality : { 0, 80 }) for (bool enabled : { false, true })

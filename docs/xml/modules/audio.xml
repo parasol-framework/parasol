@@ -21,12 +21,9 @@ object.</li>
 <p>The internal mixer processes all audio as normalised 32-bit floating-point data regardless of the output bit depth. A magnitude of 1.0 is 0 dBFS, while intermediate buses retain finite values above unity as headroom.  The final output conversion is the only stage that clips and quantises samples for the selected hardware format.  The mixer supports:</p>
 <list type="bullet">
 <li>Nearest-neighbour, linear, bounded cubic Hermite or ratio-aware band-limited sinc source resampling selected by
-<class name="Audio" field="Quality">Audio.Quality</class>.  The legacy <code>ADF::OVER_SAMPLING</code> bit indicates source interpolation.</li>
+<class name="Audio" field="Quality">Audio.Quality</class>.</li>
 <li>Volume ramping to avoid clicks when channel volumes change, enabled by <code>ADF::VOL_RAMPING</code> independently of Quality.
 Gains move by at most 0.01 per output frame, so a full-scale transition takes 100 output frames.</li>
-<li>Two levels of low-pass output smoothing, selected with <code>ADF::FILTER_LOW</code> or <code>ADF::FILTER_HIGH</code>.  The <class name="Audio" field="Quality">Audio.Quality</class>
-field selects source resampling and fixed smoothing as a group.  The legacy bits reflect that
-selection and cannot override it; Quality changes do not alter arithmetic precision or perform true oversampling.</li>
 <li>Unidirectional and bidirectional sample looping, including a secondary loop region.</li>
 <li>Per-channel and global effect chains built from <class name="AudioEffect">AudioEffect</class> processors.</li>
 </list>

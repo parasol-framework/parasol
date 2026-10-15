@@ -7,8 +7,6 @@ constexpr int glRampFrames = 100;
 #include "mixer_dispatch.h"
 #include "audio_batch.h"
 
-static void filter_float_mono(extAudio *, float *, int);
-static void filter_float_stereo(extAudio *, float *, int);
 static void mix_channel(extAudio *, AudioChannel &, int, APTR);
 static ERR mix_data(extAudio *, int, APTR);
 static ERR process_commands(extAudio *, SAMPLE);
@@ -534,13 +532,6 @@ static bool handle_sample_end(extAudio *Self, AudioChannel &Channel)
       render_effects(*Self->GlobalEffects, Self->MixBuffer.data(), window, source_frames,
          uint64_t(Self->MaxDrain * Self->OutputRate), source_active, upstream_bound, upstream_pending);
 
-      // Do optional post-processing
-
-      if ((Self->WindowFlags & (ADF::FILTER_LOW|ADF::FILTER_HIGH)) != ADF::NIL) {
-         if (Self->Stereo) filter_float_stereo(Self, Self->MixBuffer.data(), window);
-         else filter_float_mono(Self, Self->MixBuffer.data(), window);
-      }
-
       // Convert the floating point data to the correct output format
 
       if (Self->BitDepth IS 32) { // Presumes a floating point target identical to our own
@@ -806,80 +797,5 @@ static void mix_channel(extAudio *Self, AudioChannel &Channel, int TotalSamples,
       // Check if we reached loop/sample/whatever end
 
       if (handle_sample_end(Self, Channel)) return;
-   }
-}
-
-//********************************************************************************************************************
-// Mono output filtering routines.
-
-static void filter_float_mono(extAudio *Self, float *Data, int TotalSamples)
-{
-#ifdef AUDIO_WORKER
-   auto &d1l = Self->FilterHistory[0];
-   auto &d2l = Self->FilterHistory[1];
-#else
-   static float d1l=0, d2l=0;
-#endif
-
-   if ((Self->WindowFlags & ADF::FILTER_LOW) != ADF::NIL) {
-      while (TotalSamples > 0) {
-         float s = (d1l + 2.0f * Data[0]) * (1.0f / 3.0f);
-         d1l = Data[0];
-         *(Data++) = s;
-         TotalSamples--;
-      }
-   }
-   else if ((Self->WindowFlags & ADF::FILTER_HIGH) != ADF::NIL) {
-      while (TotalSamples > 0) {
-         float s = (d1l + 3.0f * d2l + 4.0f * Data[0]) * (1.0f / 8.0f);
-         d1l = d2l;
-         d2l = Data[0];
-         *(Data++) = s;
-         TotalSamples--;
-      }
-   }
-}
-
-//********************************************************************************************************************
-// Stereo output filtering routines.
-
-static void filter_float_stereo(extAudio *Self, float *Data, int TotalSamples)
-{
-#ifdef AUDIO_WORKER
-   auto &d1l = Self->FilterHistory[0];
-   auto &d2l = Self->FilterHistory[1];
-   auto &d1r = Self->FilterHistory[2];
-   auto &d2r = Self->FilterHistory[3];
-#else
-   static double d1l = 0, d1r = 0, d2l = 0, d2r = 0;
-#endif
-
-   if ((Self->WindowFlags & ADF::FILTER_LOW) != ADF::NIL) {
-      while (TotalSamples > 0) {
-         float s = (d1l + 2.0 * Data[0]) * (1.0 / 3.0);
-         d1l = Data[0];
-         *(Data++) = s;
-
-         s = (d1r + 2.0 * Data[0]) * (1.0 / 3.0);
-         d1r = Data[0];
-         *(Data++) = s;
-
-         TotalSamples--;
-      }
-   }
-   else if ((Self->WindowFlags & ADF::FILTER_HIGH) != ADF::NIL) {
-      while (TotalSamples > 0) {
-         float s = (d1l + 3.0 * d2l + 4.0 * Data[0]) * (1.0 / 8.0);
-         d1l = d2l;
-         d2l = Data[0];
-         *(Data++) = s;
-
-         s = (d1r + 3.0 * d2r + 4.0 * Data[0]) * (1.0 / 8.0);
-         d1r = d2r;
-         d2r = Data[0];
-         *(Data++) = s;
-
-         TotalSamples--;
-      }
    }
 }

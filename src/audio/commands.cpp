@@ -773,7 +773,7 @@ ERR MixSample(objAudio *Audio, int Handle, int SampleIndex)
    if ((s.LoopMode IS LOOP::AMIGA) and (channel->State IS CHS::FINISHED)) {
       // Set Amiga sample and start playing.  We won't do this with interpolated mixing, as this tends to cause clicks.
 
-      if ((Audio->Flags & ADF::OVER_SAMPLING) IS ADF::NIL) {
+      if (((extAudio *)Audio)->MixConfig.resampler IS ResamplerMode::NEAREST) {
          channel->State = CHS::PLAYING;
          snd::MixPlay(Audio, Handle, s.Loop1Start);
       }

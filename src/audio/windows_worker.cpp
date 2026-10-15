@@ -29,7 +29,6 @@ static bool windows_render(void *Context, float *Output, unsigned Frames, unsign
    }
    else {
       self->QueuedFrames = Padding;
-      std::fill_n(self->FilterHistory, 4, 0.0f);
       // audio_playing() has already idled each effect chain.  Stopping the transport must not turn that ordinary idle
       // transition into a hard reset, because some processor control state spans adjacent sounds.
    }
@@ -76,7 +75,6 @@ static ERR start_audio_worker(extAudio *Self)
 {
    if (RegisterFD(wasapi_notification(Self->RenderStream), RFD::READ, windows_client_ready,
          (APTR)uintptr_t(Self->UID)) != ERR::Okay) return ERR::SystemCall;
-   std::fill_n(Self->FilterHistory, 4, 0.0f);
    Self->WorkerError = 0;
    Self->StopWorker = false;
    Self->WorkerStarted = true;

@@ -26,12 +26,9 @@ conversion is the only stage that clips and quantises samples for the selected h
 
 <list type="bullet">
 <li>Nearest-neighbour, linear, bounded cubic Hermite or ratio-aware band-limited sinc source resampling selected by
-@Audio.Quality.  The legacy `ADF::OVER_SAMPLING` bit indicates source interpolation.</li>
+@Audio.Quality.</li>
 <li>Volume ramping to avoid clicks when channel volumes change, enabled by `ADF::VOL_RAMPING` independently of Quality.
 Gains move by at most 0.01 per output frame, so a full-scale transition takes 100 output frames.</li>
-<li>Two levels of low-pass output smoothing, selected with `ADF::FILTER_LOW` or `ADF::FILTER_HIGH`.  The @Audio.Quality
-field selects source resampling and fixed smoothing as a group.  The legacy bits reflect that
-selection and cannot override it; Quality changes do not alter arithmetic precision or perform true oversampling.</li>
 <li>Unidirectional and bidirectional sample looping, including a secondary loop region.</li>
 <li>Per-channel and global effect chains built from @AudioEffect processors.</li>
 </list>

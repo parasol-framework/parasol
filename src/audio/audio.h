@@ -560,7 +560,6 @@ class extAudio : public objAudio {
       uint64_t Starvations = 0;  // Count of streamed samples that ran out of buffered data.
       uint64_t PeriodFrames = 0; // Frames per device period (ALSA).
       uint64_t BufferFrames = 0; // Total frames in the device buffer.
-      float    FilterHistory[4] = {}; // Low/high-pass filter state: left d1, d2, then right d1, d2.
       unsigned FrameBytes = 0; // Bytes per frame in the device output format.
       std::vector<uint8_t> AudioBuffer; // One period of device-format output awaiting write.
    #endif
@@ -580,7 +579,7 @@ class extAudio : public objAudio {
       auto local_dither = Dither; // Copy to avoid data race
       EffectiveQuality = *audio_effective_quality_profile(Quality);
       WindowDither = local_dither IS ADITHER::TPDF or (local_dither IS ADITHER::AUTO and Quality >= 33);
-      WindowFlags = (Flags & ~glQualityFlags) | EffectiveQuality.Flags;
+      WindowFlags = Flags;
       WindowConfig = AudioConfig(Stereo, EffectiveQuality.Resampler);
    }
 

@@ -435,7 +435,7 @@
       <access read="R" write="S">Read/Set</access>
       <type lookup="ADF">ADF</type>
       <description>
-<p>The <code>OVER_SAMPLING</code>, <code>FILTER_LOW</code> and <code>FILTER_HIGH</code> bits reflect <fl>Quality</fl> and are preserved when Flags is written. Other flags can be selected before initialisation.  <code>OVER_SAMPLING</code> is the legacy indication of source interpolation.</p>
+<p>Flags can be selected before initialisation.  Source resampling is controlled by <fl>Quality</fl>.</p>
 <types lookup="ADF"/>
       </description>
     </field>
@@ -552,16 +552,16 @@ audio = obj.new('Audio', { outputLayout=layout })
       <access read="R" write="S">Read/Set</access>
       <type>INT</type>
       <description>
-<p>Quality selects source resampling, fixed post-mix smoothing and integer output dither.  All profiles mix in 32-bit floating-point; this field does not change arithmetic precision or perform true oversampling.  The default is 80. Values outside 0..100 return <code>ERR::OutOfRange</code> without changing the current profile.  Invalid saved values retain the default.</p>
+<p>Quality selects source resampling and integer output dither.  No profile enables post-mix smoothing. All profiles mix in 32-bit floating-point; this field does not change arithmetic precision or perform true oversampling. The default is 80. Values outside 0..100 return <code>ERR::OutOfRange</code> without changing the current profile.  Invalid saved values retain the default.</p>
 <list type="bullet">
-<li><b>Quality 0-9</b>: Nearest-neighbour resampling without output smoothing.</li>
-<li><b>Quality 10-32</b>: Linear interpolation with <code>ADF::FILTER_LOW</code> smoothing.</li>
-<li><b>Quality 33-65</b>: Bounded four-point cubic Hermite interpolation with <code>ADF::FILTER_HIGH</code> smoothing.</li>
-<li><b>Quality 66-100</b>: Ratio-aware band-limited sinc resampling with <code>ADF::FILTER_HIGH</code> smoothing.
+<li><b>Quality 0-9</b>: Nearest-neighbour resampling.</li>
+<li><b>Quality 10-32</b>: Linear interpolation.</li>
+<li><b>Quality 33-65</b>: Bounded four-point cubic Hermite interpolation.</li>
+<li><b>Quality 66-100</b>: Ratio-aware band-limited sinc resampling.
 Quality 90-100 currently aliases High; it does not select a longer kernel.</li>
 </list>
 <p>With <fl>Dither</fl> set to <code>ADITHER::AUTO</code>, Quality 33 and above enables TPDF dither for 8-bit and 16-bit output. <code>ADITHER::OFF</code> always disables it; <code>ADITHER::TPDF</code> enables it at every Quality.  Float conversion is unchanged. Dither is added immediately before rounding to nearest integer, with triangular noise bounded by one destination LSB in either direction.  Both representable endpoints saturate, including samples at or beyond -1 and +1. Exact-zero samples suppress noise immediately, without a silent-interval timer.  Independent channel streams advance through silence and reset to fixed seeds on deactivation and every committed output configuration. Live policy changes do not reset the streams.  No noise shaping is applied.</p>
-<p>The legacy <code>OVER_SAMPLING</code>, <code>FILTER_LOW</code> and <code>FILTER_HIGH</code> bits in <fl>Flags</fl> are derived from Quality.  Writes to Flags preserve the Quality-selected bits.  A live Quality change takes effect as a complete profile at the next mixer-window boundary; processing already in progress retains its selected profile.  Source interpolation blends to the new mode over 32 rendered output frames per channel, independently of volume ramping.  Ordinary source endpoints repeat the endpoint value, while looping sources extend their loop.  Neither linear nor cubic interpolation is a ratio-dependent anti-alias filter.  High uses a centred 128-tap Blackman-windowed sinc with 256 fractional phases. Its per-source cutoff follows the playback-to-output rate ratio; unity-rate and upsampled sources use the full source bandwidth.  Coefficients are prepared during module loading.  Streaming retains 63 past frames and requires 64 future frames; starvation waits without advancing the source clock, and end-of-source repeats the last frame. The centred interpolation preserves source timing and adds no effect latency or delayed command completion. The fixed kernel is characterised through 2.7 times downsampling; at extreme ratios its finite support limits anti-alias rejection.  Sinc overshoot is preserved until final output conversion.</p>
+<p>A live Quality change takes effect as a complete profile at the next mixer-window boundary; processing already in progress retains its selected profile. Source interpolation blends to the new mode over 32 rendered output frames per channel, independently of volume ramping. Ordinary source endpoints repeat the endpoint value, while looping sources extend their loop.  Neither linear nor cubic interpolation is a ratio-dependent anti-alias filter.  High uses a centred 128-tap Blackman-windowed sinc with 256 fractional phases. Its per-source cutoff follows the playback-to-output rate ratio; unity-rate and upsampled sources use the full source bandwidth.  Coefficients are prepared during module loading.  Streaming retains 63 past frames and requires 64 future frames; starvation waits without advancing the source clock, and end-of-source repeats the last frame. The centred interpolation preserves source timing and adds no effect latency or delayed command completion. The fixed kernel is characterised through 2.7 times downsampling; at extreme ratios its finite support limits anti-alias rejection.  Sinc overshoot is preserved until final output conversion.</p>
       </description>
     </field>
 
@@ -569,11 +569,8 @@ Quality 90-100 currently aliases High; it does not select a longer kernel.</li>
   <types>
     <constants lookup="ADF" comment="Optional flags for the Audio object.">
       <const name="AUTO_SAVE">Save configuration information on exit.</const>
-      <const name="FILTER_HIGH">High fixed post-mix smoothing, derived from Audio.Quality.</const>
-      <const name="FILTER_LOW">Low fixed post-mix smoothing, derived from Audio.Quality.</const>
-      <const name="OVER_SAMPLING">Legacy indication of linear or cubic source interpolation, derived from Audio.Quality.</const>
       <const name="SYSTEM_WIDE">Mixer changes should be applied system-wide.</const>
-      <const name="VOL_RAMPING">Enable de-clicking for channel gain and voice changes independently of Quality (enabled by default).</const>
+      <const name="VOL_RAMPING">Enable channel gain and voice de-clicking at every Quality (enabled by default).</const>
     </constants>
 
     <constants lookup="ADITHER" comment="Integer output dither policy.">

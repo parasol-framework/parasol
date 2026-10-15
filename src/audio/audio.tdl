@@ -2,12 +2,9 @@
 
 module({ name="Audio", copyright="Paul Manias © 2002-2026", version=1.0, timestamp=20240611, src={ "audio.cpp", "commands.cpp" } }, function()
   flags("ADF", { comment="Optional flags for the Audio object." },
-    "OVER_SAMPLING: Legacy indication of linear or cubic source interpolation, derived from Audio.Quality.",
-    "FILTER_LOW: Low fixed post-mix smoothing, derived from Audio.Quality.",
-    "FILTER_HIGH: High fixed post-mix smoothing, derived from Audio.Quality.",
-    "VOL_RAMPING: Enable de-clicking for channel gain and voice changes independently of Quality (enabled by default).",
-    "AUTO_SAVE: Save configuration information on exit.",
-    "SYSTEM_WIDE: Mixer changes should be applied system-wide.")
+    { VOL_RAMPING = "0x00000008: Enable channel gain and voice de-clicking at every Quality (enabled by default)." },
+    { AUTO_SAVE = "0x00000010: Save configuration information on exit." },
+    { SYSTEM_WIDE = "0x00000020: Mixer changes should be applied system-wide." })
 
   enums("ADITHER", { type="int", start=0, comment="Integer output dither policy." },
     "AUTO: Enable TPDF for Quality 33 and above (the default).",

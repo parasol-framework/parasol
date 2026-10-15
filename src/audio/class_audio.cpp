@@ -1451,9 +1451,7 @@ The default is `ADITHER::AUTO`.  Real-time changes take effect at the next mixer
 Flags: Special audio flags can be set here.
 Lookup: ADF
 
-The `OVER_SAMPLING`, `FILTER_LOW` and `FILTER_HIGH` bits reflect #Quality and are preserved when Flags is written.
-Other flags can be selected before initialisation.  `OVER_SAMPLING` is the legacy indication of source
-interpolation.
+Flags can be selected before initialisation.  Source resampling is controlled by #Quality.
 
 -FIELD-
 InputRate: Determines the frequency to use when recording audio data.
@@ -1607,16 +1605,17 @@ static ERR SET_PeriodSize(extAudio *Self, int Value)
 -FIELD-
 Quality: Determines the quality of the audio mixing.
 
-Quality selects source resampling, fixed post-mix smoothing and integer output dither.  All profiles mix in 32-bit
-floating-point; this field does not change arithmetic precision or perform true oversampling.  The default is 80.
+Quality selects source resampling and integer output dither.  No profile enables post-mix smoothing.
+All profiles mix in 32-bit floating-point; this field does not change arithmetic precision or perform true oversampling.
+The default is 80.
 Values outside
 0..100 return `ERR::OutOfRange` without changing the current profile.  Invalid saved values retain the default.
 
 <list type="bullet">
-<li><b>Quality 0-9</b>: Nearest-neighbour resampling without output smoothing.</li>
-<li><b>Quality 10-32</b>: Linear interpolation with `ADF::FILTER_LOW` smoothing.</li>
-<li><b>Quality 33-65</b>: Bounded four-point cubic Hermite interpolation with `ADF::FILTER_HIGH` smoothing.</li>
-<li><b>Quality 66-100</b>: Ratio-aware band-limited sinc resampling with `ADF::FILTER_HIGH` smoothing.
+<li><b>Quality 0-9</b>: Nearest-neighbour resampling.</li>
+<li><b>Quality 10-32</b>: Linear interpolation.</li>
+<li><b>Quality 33-65</b>: Bounded four-point cubic Hermite interpolation.</li>
+<li><b>Quality 66-100</b>: Ratio-aware band-limited sinc resampling.
 Quality 90-100 currently aliases High; it does not select a longer kernel.</li>
 </list>
 
@@ -1628,12 +1627,11 @@ Exact-zero samples suppress noise immediately, without a silent-interval timer. 
 advance through silence and reset to fixed seeds on deactivation and every committed output configuration.
 Live policy changes do not reset the streams.  No noise shaping is applied.
 
-The legacy `OVER_SAMPLING`, `FILTER_LOW` and `FILTER_HIGH` bits in #Flags are derived from Quality.  Writes to Flags
-preserve the Quality-selected bits.  A live Quality change takes effect as a complete profile at the next mixer-window
-boundary; processing already in progress retains its selected profile.  Source interpolation blends to the new
-mode over 32 rendered output frames per channel, independently of volume ramping.  Ordinary source endpoints repeat
-the endpoint value, while looping sources extend their loop.  Neither linear nor cubic interpolation is a
-ratio-dependent anti-alias filter.  High uses a centred 128-tap Blackman-windowed sinc with 256 fractional phases.
+A live Quality change takes effect as a complete profile at the next mixer-window boundary; processing already in
+progress retains its selected profile.
+Source interpolation blends to the new mode over 32 rendered output frames per channel, independently of volume ramping.
+Ordinary source endpoints repeat the endpoint value, while looping sources extend their loop.  Neither linear nor
+cubic interpolation is a ratio-dependent anti-alias filter.  High uses a centred 128-tap Blackman-windowed sinc with 256 fractional phases.
 Its per-source cutoff follows the playback-to-output rate ratio; unity-rate and upsampled sources use the full
 source bandwidth.  Coefficients are prepared during module loading.  Streaming retains 63 past frames and requires
 64 future frames; starvation waits without advancing the source clock, and end-of-source repeats the last frame.
@@ -1650,7 +1648,6 @@ static ERR SET_Quality(extAudio *Self, int Value)
    std::lock_guard mixer_lock(Self->MixerMutex);
    Self->Quality = Value;
    Self->RequestedQuality = *profile;
-   Self->Flags = (Self->Flags & ~glQualityFlags) | profile->Flags;
    Self->MixConfig = AudioConfig(Self->Stereo, profile->Resampler);
    return ERR::Okay;
 }
@@ -1658,9 +1655,9 @@ static ERR SET_Quality(extAudio *Self, int Value)
 static ERR SET_Flags(extAudio *Self, int Value)
 {
    if (Self->initialised()) return ERR::ImmutableField;
-   std::lock_guard mixer_lock(Self->MixerMutex);
-   const auto profile = audio_quality_profile(Self->Quality);
-   Self->Flags = (ADF(Value) & ~glQualityFlags) | profile->Flags;
+   const auto flags = ADF(Value);
+   if ((flags & ~(ADF::VOL_RAMPING | ADF::AUTO_SAVE | ADF::SYSTEM_WIDE)) != ADF::NIL) return ERR::Args;
+   Self->Flags = flags;
    return ERR::Okay;
 }
 
