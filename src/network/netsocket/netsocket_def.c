@@ -37,7 +37,7 @@ static const struct MethodEntry clNetSocketMethods[] = {
    { AC(-4), (APTR)NETSOCKET_RecvFrom, "RecvFrom", maRecvFrom, sizeof(struct ns::RecvFrom) },
    { AC(-5), (APTR)NETSOCKET_JoinMulticastGroup, "JoinMulticastGroup", maJoinMulticastGroup, sizeof(struct ns::JoinMulticastGroup) },
    { AC(-6), (APTR)NETSOCKET_LeaveMulticastGroup, "LeaveMulticastGroup", maLeaveMulticastGroup, sizeof(struct ns::LeaveMulticastGroup) },
-   { AC(-9), (APTR)NETSOCKET_SetBufferSizes, "SetBufferSizes", maSetBufferSizes, sizeof(struct ns::SetBufferSizes) },
+   { AC(-7), (APTR)NETSOCKET_SetBufferSizes, "SetBufferSizes", maSetBufferSizes, sizeof(struct ns::SetBufferSizes) },
    { AC::NIL, 0, 0, 0, 0 }
 };
 

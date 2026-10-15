@@ -554,7 +554,7 @@ struct SendTo { struct IPAddress *Dest; std::span<const int8_t> Data; int BytesS
 struct RecvFrom { struct IPAddress *Source; std::span<int8_t> Buffer; int BytesRead; static const AC id = AC(-4); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
 struct JoinMulticastGroup { std::string_view Group; static const AC id = AC(-5); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
 struct LeaveMulticastGroup { std::string_view Group; static const AC id = AC(-6); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
-struct SetBufferSizes { int ReceiveBytes; int SendBytes; static const AC id = AC(-9); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct SetBufferSizes { int ReceiveBytes; int SendBytes; static const AC id = AC(-7); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
 
 } // namespace
 
@@ -651,7 +651,7 @@ class objNetSocket : public Object {
    }
    inline ERR setBufferSizes(int ReceiveBytes, int SendBytes) noexcept {
       struct ns::SetBufferSizes args = { ReceiveBytes, SendBytes };
-      return Action(AC(-9), this, &args);
+      return Action(AC(-7), this, &args);
    }
 
    // Customised field getting
@@ -844,8 +844,8 @@ class objNetSocket : public Object {
 // NetServer methods
 
 namespace ns {
-struct DisconnectClient { objNetClient *Client; static const AC id = AC(-7); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
-struct DisconnectSocket { objClientSocket *Socket; static const AC id = AC(-8); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct DisconnectClient { objNetClient *Client; static const AC id = AC(-20); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct DisconnectSocket { objClientSocket *Socket; static const AC id = AC(-21); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
 
 } // namespace
 
@@ -897,11 +897,11 @@ class objNetServer : public objNetSocket {
    }
    inline ERR disconnectClient(objNetClient * Client) noexcept {
       struct ns::DisconnectClient args = { Client };
-      return Action(AC(-7), this, &args);
+      return Action(AC(-20), this, &args);
    }
    inline ERR disconnectSocket(objClientSocket * Socket) noexcept {
       struct ns::DisconnectSocket args = { Socket };
-      return Action(AC(-8), this, &args);
+      return Action(AC(-21), this, &args);
    }
 
    // Customised field getting
