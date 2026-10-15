@@ -536,6 +536,32 @@ end
 
 ----------------------------------------------------------------------------------------------------------------------
 
+@Test function CopyFileFeedbackPayloads()
+   src_path = glTempRoot .. 'copy_feedback_source.tmp'
+   dest_path = glTempRoot .. 'copy_feedback_dest.tmp'
+   writeFile(src_path, 'Feedback payload')
+
+   for result in values(array<int> { FFR_SKIP, FFR_ABORT }) do
+      mSys.DeleteFile(dest_path)
+      hits = 0
+      err = mSys.CopyFile(src_path, dest_path, function(Size, Position, Path, Dest, FeedbackID, Extra):num
+         assert(Extra is nil, 'The explicit result sink must not become a callback argument')
+         hits++
+         return result
+      end)
+      assert(hits > 0, 'CopyFile() must invoke its feedback callback')
+      if result is FFR_ABORT then
+         assert(err is ERR_Cancelled, 'FFR_ABORT must cancel the copy rather than become an ERR code')
+      else
+         assert(err is ERR_Okay, 'FFR_SKIP must skip the copy without an error')
+      end
+      err = mSys.AnalysePath(dest_path)
+      assert(err != ERR_Okay, 'Skipped or aborted copies must not create the destination')
+   end
+end
+
+----------------------------------------------------------------------------------------------------------------------
+
 @Test function MoveFile()
    src_path = glTempRoot .. 'move_source.tmp'
    dest_path = glTempRoot .. 'move_dest.tmp'

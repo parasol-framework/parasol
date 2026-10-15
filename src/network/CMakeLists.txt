@@ -186,7 +186,7 @@ elseif (NOT DISABLE_SSL AND (WIN32 OR OPENSSL_FOUND))
 endif ()
 
 set (NETWORK_TESTS
-   bind_address dns_parallel dns_capacity server_io client_server error_handling ipv6 concurrency
+   bind_address callback_results dns_parallel dns_capacity server_io client_server error_handling ipv6 concurrency
    performance keep_alive package_regressions
    # UDP Tests
    udp_basic udp_ipv6 udp_broadcast_multicast udp_tcp_coexistence udp_performance

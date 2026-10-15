@@ -1081,8 +1081,9 @@ static ERR run_script(extTiri *Self)
          if ((args = Self->ProcArgs)) {
             for (int i=0; i < Self->TotalArgs; i++, args++) {
                int type = args->Type;
-               // An explicit ERR result sink is not a positional callback argument.
-               if ((type & (FD_PTR|FD_RESULT|FD_ERROR)) IS (FD_PTR|FD_RESULT|FD_ERROR)) continue;
+               // Explicit scalar result sinks are not positional callback arguments.
+               if (((type & (FD_PTR|FD_RESULT)) IS (FD_PTR|FD_RESULT)) and
+                   (type & (FD_ERROR|FD_INT))) continue;
 
                if ((type & FDF_SPAN) IS FDF_SPAN) {
                   auto span = (std::span<std::byte> *)args->Address;
@@ -1196,19 +1197,31 @@ static ERR run_script(extTiri *Self)
    if (not pcall_failed) { // If the procedure returned results, copy them to the Results field of the Script.
       int results = lua_gettop(Self->Lua) - top + 1;
 
-      // Capture a typed callback result before conversion or nested message dispatch can overwrite Results.
+      // Capture callback results before conversion or nested message dispatch can overwrite Results.
+      // An explicit sink selects a payload contract; otherwise a native callback returns an ERR code.
+      bool explicit_result = false;
       for (int i = 0; Self->ProcArgs and (i < Self->TotalArgs); ++i) {
          const auto &arg = Self->ProcArgs[i];
-         if (((arg.Type & (FD_PTR|FD_RESULT|FD_ERROR)) IS (FD_PTR|FD_RESULT|FD_ERROR)) and
-             arg.Address and (results > 0)) {
-            auto result = (ERR *)arg.Address;
-            *result = ERR::InvalidValue;
+         if (((arg.Type & (FD_PTR|FD_RESULT)) IS (FD_PTR|FD_RESULT)) and (arg.Type & (FD_ERROR|FD_INT))) {
+            explicit_result = true;
+            if ((not arg.Address) or (results <= 0)) continue;
+            if (arg.Type & FD_ERROR) *((ERR *)arg.Address) = ERR::InvalidValue;
             if (lua_type(Self->Lua, -results) IS LUA_TNUMBER) {
                double value = lua_tonumber(Self->Lua, -results);
                if ((value >= 0) and (value <= std::numeric_limits<int>::max()) and (value IS double(int(value)))) {
-                  *result = ERR(int(value));
+                  if (arg.Type & FD_ERROR) *((ERR *)arg.Address) = ERR(int(value));
+                  else *((int *)arg.Address) = int(value);
                }
             }
+         }
+      }
+      ERR callback_error = ERR::Okay;
+      if (native_callback and (not explicit_result) and (results > 0) and
+          (lua_type(Self->Lua, -results) IS LUA_TNUMBER)) {
+         double value = lua_tonumber(Self->Lua, -results);
+         callback_error = ERR::InvalidValue;
+         if ((value >= 0) and (value <= std::numeric_limits<int>::max()) and (value IS double(int(value)))) {
+            callback_error = ERR(int(value));
          }
       }
       ERR error = ERR::Okay;
@@ -1224,6 +1237,8 @@ static ERR run_script(extTiri *Self)
          Self->setResults(array);
          lua_pop(Self->Lua, results);  // pop returned values
       }
+
+      if (Self->Error IS ERR::Okay) Self->Error = callback_error;
 
       // Flush pending messages before returning (critical - some message handlers may assume that
       // pointers to the script object are valid, so flushing ensures safety).
