@@ -601,26 +601,6 @@ static void convert_styles(objXML::TAGS &Tags)
 
 //********************************************************************************************************************
 
-static void update_dpi(void)
-{
-   static int64_t last_update = -0x7fffffff;
-   int64_t current_time = PreciseTime();
-
-   if (current_time - last_update > 3000000LL) {
-      DisplayInfo *display;
-      if (!gfx::GetDisplayInfo(0, &display)) {
-         last_update = PreciseTime();
-         if ((display->VDensity >= 72) and (display->HDensity >= 72)) {
-            glDisplayVDPI = display->VDensity;
-            glDisplayHDPI = display->HDensity;
-            glDisplayDPI = (glDisplayVDPI + glDisplayHDPI) * 0.5;
-         }
-      }
-   }
-}
-
-//********************************************************************************************************************
-
 static bool read_integer_value(std::string_view Value, int &Result) noexcept
 {
    Value = next_value(Value);

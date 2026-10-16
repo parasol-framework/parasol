@@ -45,7 +45,6 @@ JUMPTABLE_DISPLAY
 JUMPTABLE_VECTOR
 
 static OBJECTPTR clSVG = nullptr, clRSVG = nullptr, modDisplay = nullptr, modVector = nullptr, modImage = nullptr;
-static double glDisplayHDPI = 96, glDisplayVDPI = 96, glDisplayDPI = 96;
 
 struct svgInherit {
    OBJECTPTR Object;
@@ -156,7 +155,10 @@ private:
    class extSVG *Self;
    objVectorScene *Scene;
 
-   inline Unit SVGUnit(std::string_view Value) const { return Unit(Value, m_font_size_px, glDisplayDPI); }
+   // Physical units convert at the fixed CSS reference density (1in = 96px = 72pt), never the display density.  This
+   // keeps all units coherent with each other and with VectorText, and makes rendering independent of the display.
+
+   inline Unit SVGUnit(std::string_view Value) const { return Unit(Value, m_font_size_px, Unit::DefaultDPI); }
 
 public:
    svgState(class extSVG *pSVG) : m_color(pSVG->Colour), m_fill("rgb(0,0,0)"), m_font_size("12pt"), m_font_family("Noto Sans"), m_font_size_px(16), m_stroke_width(0),
@@ -735,8 +737,6 @@ static ERR MODInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
    if (!objModule::load("image", &modImage)) { // RSVG has a Image class dependency
       if (init_rsvg() != ERR::Okay) return ERR::AddClass;
    }
-
-   update_dpi();
 
    return ERR::Okay;
 }

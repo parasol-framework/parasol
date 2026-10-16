@@ -32,7 +32,7 @@
 #include "ankerl/unordered_dense.h"
 #endif
 
-#define CORE_BUILD_DATE 20261015
+#define CORE_BUILD_DATE 20261016
 class objMetaClass;
 
 // Predefined cursor styles
@@ -1319,8 +1319,8 @@ struct Unit {
       else if (String.starts_with("in")) Value *= DPI;
       else if (String.starts_with("cm")) Value *= (1.0 / 2.54) * DPI;
       else if (String.starts_with("mm")) Value *= (1.0 / 25.4) * DPI;
-      else if (String.starts_with("pt")) Value *= (4.0 / 3.0);
-      else if (String.starts_with("pc")) Value *= (4.0 / 3.0) * 12.0;
+      else if (String.starts_with("pt")) Value *= (1.0 / 72.0) * DPI; // 72 points per inch
+      else if (String.starts_with("pc")) Value *= (12.0 / 72.0) * DPI; // 1 pica = 12 points
    }
 };
 
