@@ -4379,6 +4379,7 @@ class objVectorPath : public objVector {
 
 namespace vt {
 struct DeleteLine { int Line; static const AC id = AC(-30); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct SelectArea { int Row; int Column; int EndRow; int EndColumn; static const AC id = AC(-31); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
 
 } // namespace
 
@@ -4396,6 +4397,10 @@ class objVectorText : public objVector {
    inline ERR deleteLine(int Line) noexcept {
       struct vt::DeleteLine args = { Line };
       return Action(AC(-30), this, &args);
+   }
+   inline ERR selectArea(int Row, int Column, int EndRow, int EndColumn) noexcept {
+      struct vt::SelectArea args = { Row, Column, EndRow, EndColumn };
+      return Action(AC(-31), this, &args);
    }
 
    // Customised field getting

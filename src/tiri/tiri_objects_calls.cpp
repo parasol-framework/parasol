@@ -156,6 +156,81 @@ static int object_method_call(lua_State *Lua)
 //********************************************************************************************************************
 // Helpers for argument building
 
+// The private registry table maps callback functions/context tables to shared registry references, and those
+// references to owner counts.  Keeping both entries until the final release preserves identity without changing
+// FUNCTION's transport layout.  The key is shared, but each Lua state's registry owns its own table.
+
+static char glCallbackReferencesKey;
+
+static void push_callback_references(lua_State *Lua)
+{
+   lua_pushlightuserdata(Lua, &glCallbackReferencesKey);
+   lua_rawget(Lua, LUA_REGISTRYINDEX);
+   if (lua_isnil(Lua, -1)) {
+      lua_pop(Lua, 1);
+      lua_newtable(Lua);
+      lua_pushlightuserdata(Lua, &glCallbackReferencesKey);
+      lua_pushvalue(Lua, -2);
+      lua_rawset(Lua, LUA_REGISTRYINDEX);
+   }
+}
+
+// Consumes the value on top of the stack, like luaL_ref().
+
+static int retain_callback_reference(lua_State *Lua)
+{
+   int value_index = lua_gettop(Lua);
+   push_callback_references(Lua);
+   int references = lua_gettop(Lua);
+   lua_pushvalue(Lua, value_index);
+   lua_rawget(Lua, references);
+   int reference = int(lua_tointeger(Lua, -1));
+   lua_pop(Lua, 1);
+
+   if (not reference) {
+      lua_pushvalue(Lua, value_index);
+      reference = luaL_ref(Lua, LUA_REGISTRYINDEX);
+      lua_pushvalue(Lua, value_index);
+      lua_pushinteger(Lua, reference);
+      lua_rawset(Lua, references);
+   }
+
+   lua_rawgeti(Lua, references, reference);
+   int owners = int(lua_tointeger(Lua, -1));
+   lua_pop(Lua, 1);
+   lua_pushinteger(Lua, owners + 1);
+   lua_rawseti(Lua, references, reference);
+   lua_pop(Lua, 2);
+   return reference;
+}
+
+static void release_callback_reference(lua_State *Lua, int Reference)
+{
+   lj_state_checkstack(Lua, 4);
+   push_callback_references(Lua);
+   int references = lua_gettop(Lua);
+   lua_rawgeti(Lua, references, Reference);
+   int owners = int(lua_tointeger(Lua, -1));
+   lua_pop(Lua, 1);
+
+   if (owners > 1) {
+      lua_pushinteger(Lua, owners - 1);
+      lua_rawseti(Lua, references, Reference);
+   }
+   else {
+      if (owners IS 1) {
+         lua_rawgeti(Lua, LUA_REGISTRYINDEX, Reference);
+         lua_pushnil(Lua);
+         lua_rawset(Lua, references);
+         lua_pushnil(Lua);
+         lua_rawseti(Lua, references, Reference);
+      }
+      // References created through GetProcedureID() are not interned and retain their original release behaviour.
+      luaL_unref(Lua, LUA_REGISTRYINDEX, Reference);
+   }
+   lua_pop(Lua, 1);
+}
+
 ERR capture_tiri_function(lua_State *Lua, int ValueIndex, FUNCTION &Function)
 {
    int value_index = ValueIndex;
@@ -167,15 +242,15 @@ ERR capture_tiri_function(lua_State *Lua, int ValueIndex, FUNCTION &Function)
    }
 
    GCtab *context = lj_context_current(Lua);
-   lj_state_checkstack(Lua, context != tabref(Lua->env) ? 2 : 1);
+   lj_state_checkstack(Lua, 6);
    lua_pushvalue(Lua, value_index);
    // Ordinary callbacks start from the script root without retaining the registration context.
    bool capture_context = not func_is_ordinary(funcV(Lua->top - 1)) and context != tabref(Lua->env);
-   int procedure_id = luaL_ref(Lua, LUA_REGISTRYINDEX);
+   int procedure_id = retain_callback_reference(Lua);
    int context_id = 0;
    if (capture_context) {
       settabV(Lua, Lua->top++, context);
-      context_id = luaL_ref(Lua, LUA_REGISTRYINDEX);
+      context_id = retain_callback_reference(Lua);
    }
 
    if (resolved_name) lua_pop(Lua, 1);
@@ -210,8 +285,8 @@ void release_tiri_function(lua_State *Lua, FUNCTION *Function)
    if ((not Function) or (not Function->isScript())) return;
 
    if (Lua) {
-      if (Function->procedureID() > 0) luaL_unref(Lua, LUA_REGISTRYINDEX, int(Function->procedureID()));
-      if (Function->contextID() > 0) luaL_unref(Lua, LUA_REGISTRYINDEX, Function->contextID());
+      if (Function->procedureID() > 0) release_callback_reference(Lua, int(Function->procedureID()));
+      if (Function->contextID() > 0) release_callback_reference(Lua, Function->contextID());
    }
    Function->clearScript();
 }

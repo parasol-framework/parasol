@@ -811,7 +811,8 @@ module({ name='Vector', copyright='Paul Manias © 2010-2026', version=1.0, times
   -- VectorText method ID's start high enough to give a cushion from inherited Vector methods.
 
   methods('VectorText', 'VT', {
-    { id=30, name='DeleteLine' }
+    { id=30, name='DeleteLine' },
+    { id=31, name='SelectArea' }
   })
 
   klass('VectorText', { base='Vector', src='vectors/text.cpp', output='vectors/text_def.cpp', references={ 'VTXF' }, extended=true }, [[
