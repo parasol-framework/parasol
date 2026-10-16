@@ -1914,24 +1914,20 @@ static void delete_selection(extVectorText *Self)
 
    int row, column, end_row, end_column;
    Self->txCursor.selectedArea(Self, &row, &column, &end_row, &end_column);
-   column = Self->txLines[row].utf8CharOffset(column);
-   end_column = Self->txLines[end_row].utf8CharOffset(end_column);
+   auto start_offset = Self->txLines[row].utf8CharOffset(column);
+   auto end_offset = Self->txLines[end_row].utf8CharOffset(end_column);
 
    if (row IS end_row) { // Selection limited to one line
-      Self->txLines[row].replace(column, end_column - column, "");
-      Self->txCursor.move(Self, row, column);
+      Self->txLines[row].erase(start_offset, end_offset - start_offset);
    }
    else {
-      Self->txLines[row].resize(column); // Truncate to end of the first line
-      Self->txCursor.move(Self, row, column);
-
-      row++;
-      if (row < end_row) Self->txLines.erase(Self->txLines.begin() + row, Self->txLines.begin() + end_row);
-
-      if (end_column > 0) Self->txLines[row].replace(0, end_column, "");
+      Self->txLines[row].resize(start_offset);
+      Self->txLines[row].append(Self->txLines[end_row], end_offset, std::string::npos);
+      Self->txLines.erase(Self->txLines.begin() + row + 1, Self->txLines.begin() + end_row + 1);
    }
 
    mark_dirty(Self, RC::BASE_PATH);
+   Self->txCursor.move(Self, row, column);
 }
 
 //********************************************************************************************************************
