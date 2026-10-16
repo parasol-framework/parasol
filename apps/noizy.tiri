@@ -1,0 +1,3144 @@
+#!/usr/bin/env origo
+--[[
+Noizy is a skinnable, fully scalable media player.
+
+Audio files are played through the Sound class, so any format with an installed Sound decoder is supported.  Tracks
+without a file, such as the sample tracks used in snapshot mode, have their playback simulated.  The spectrum and
+oscilloscope measure the audio output with an AudioAnalyser, and are synthesised for simulated tracks.  The equaliser
+and preamp are applied to the audio output by an AudioEqualiser.  The Enhancer window adds a bass and music
+enhancer in the style of the JAMMIX Enhancer, which is built from audio effects by noizy_enhancer.tiri.
+
+The player's state is saved to user:config/noizy.xml on exit and restored on the next launch.  This covers the
+playlist, the current track and playback position, all player and equaliser settings, and the size, position and
+visibility of each window.
+
+Command-line arguments:
+
+   scale=N       Interface scale factor, from 1 to 4.  Overrides the saved size of the main window (default 2).
+   snapshot=F    Render the interface to PNG file F and exit.  Useful for automated visual review.  The config file is
+                 neither read nor written in this mode.
+   animation=off Disable playback animation.
+   src=F         Add audio file F to the playlist and play it on launch.
+   EFFECT=on     Enable an installed audio effect with its defaults (for example delay=on or reverb=on).
+   EFFECT-KEY=V  Set an effect parameter, for example equaliser-bands[0].type=low_shelf equaliser-bands[0].gain=10.
+                 Use help=EFFECT for parameters and ranges.  Effects apply alongside the equaliser sliders for this
+                 session and are not saved in the config file.
+   config=F      Load and save the player state with file F instead of user:config/noizy.xml.
+
+Keyboard shortcuts follow Winamp conventions: Z (previous), X (play), C (pause), V (stop), Shift+V (fade out and
+stop), B (next), L (add files), Space (play/pause), S (shuffle), R (repeat), Alt+G (equaliser), Alt+E (playlist),
+Alt+N (enhancer), Left/Right (seek) and Up/Down (volume).
+
+The mouse wheel adjusts the slider under the pointer, and seeks in steps of 5 seconds over the seek bar.  Elsewhere in
+the main window it adjusts the volume.
+
+--]]
+
+   import 'gui', 'gui/window', 'gui/menu', 'gui/slider', 'gui/tooltip', 'gui/dialog', 'gui/filedialog', 'options',
+      './audio_effects', './noizy_enhancer'
+   include 'display', 'vector', 'image', 'audio'
+
+   module display as mGfx
+
+MIN_SCALE <const> = 1
+MAX_SCALE <const> = 4
+DEFAULT_SCALE <const> = 2
+
+   glEffects = audio_effects.discover({ scale=true, snapshot=true, animation=true, config=true, src=true, help=true })
+   glActiveEffects = array<obj> -- Session effects, independent of the ten-band equaliser controls
+   glEffectsReady = false
+
+   parser_config = {
+      name        = 'Noizy',
+      autoHelp    = false, -- Open the player when launched without arguments.
+      description = 'A skinnable media player with a vector-drawn interface.',
+      epilog      = 'Use help=EFFECT for effect parameters.  Command-line effects are applied in the order listed, ' ..
+         'in addition to the equaliser sliders, and are not saved in the config file.',
+      args        = array<table> {
+         { name = 'scale', type = 'num', -- No default, so that an explicit scale can override the saved size
+           comment = 'Interface scale factor, from 1 to 4 (default 2).',
+           exec = function(Parser:table, ArgName:str, Value:any!, Param:table)
+              if Value < MIN_SCALE or Value > MAX_SCALE then
+                 raise f"Parameter '{ArgName}' must be between {MIN_SCALE} and {MAX_SCALE}."
+              end
+           end
+         },
+         { name = 'snapshot', type = 'file',
+           comment = 'Render the interface to this PNG file and exit.' },
+         { name = 'animation', kind = 'flag', default = true,
+           comment = 'Enable/disable animation.' },
+         { name = 'config', type = 'file', default = 'user:config/noizy.xml',
+           comment = 'File used to save and restore the player state.' },
+         { name = 'src', type = 'file', exists = true,
+           comment = 'Add this audio file to the playlist and play it on launch.' },
+         { name = 'help', type = 'str', hidden = true, implicit = true,
+           exec = function(Parser:table!, ArgName:str!, Value:any!, Param:table!)
+              topic = (Value is true or Value is 'true') ? nil : Value
+              print(Parser.getHelp(nil, topic))
+              raise ERR_Terminate
+           end
+         }
+      }
+   }
+
+   audio_effects.addOptions(parser_config.args, glEffects)
+   glParser = options(parser_config)
+
+   glArgs = glParser.process()
+   if glArgs is nil then return end
+
+global S         <const> = glArgs.scale ?? DEFAULT_SCALE -- Pixels per skin unit
+global WIDTH     <const> = 275 -- All layout values are expressed in skin units
+global MAIN_H    <const> = 108
+global EQ_H      <const> = 116
+global FX_H      <const> = 136
+global PL_H      <const> = 198
+global PL_ROW_H  <const> = 10
+global PL_ROWS   <const> = 15
+global PL_LIST_H <const> = PL_ROW_H * PL_ROWS
+global PL_CHROME_H <const> = PL_H - PL_LIST_H -- Height of the title and bottom bars that surround the list
+global PL_MIN_ROWS <const> = 4
+global PL_MAX_ROWS <const> = 50
+global PL_MAX_W    <const> = 675
+global TOTAL_BARS  <const> = 19
+global SPEC_LOW    <const> = 50    -- Lowest and highest frequencies of the spectrum bars, in hertz
+global SPEC_HIGH   <const> = 16000
+global SPEC_FLOOR  <const> = -66   -- Band levels in dBFS that map to empty and full spectrum bars
+global SPEC_CEIL   <const> = -12
+global SCOPE_GAIN  <const> = 1.5   -- Oscilloscope amplification, where 1.0 fits a full-scale waveform to the display
+global TICK_RATE   <const> = 1 / 30
+global FADE_TIME   <const> = 2 -- Seconds taken to fade out when stopping with Shift+V
+global CLASSID_SOUND <const> = 'sound'.hash()
+
+COL = {
+   frameLight  = '#6a6d8c',
+   frameDark   = '#0c0c14',
+   titleText   = '#f4f0d8',
+   titleStripe = '#c9b458',
+   text        = '#c8cadc',
+   label       = '#9fa3c0',
+   glyph       = '#1a1b26',
+   buttonEdge  = '#101018',
+   buttonLight = '#c4c6da',
+   ledOn       = '#40ff40',
+   ledOff      = '#1c3a1c',
+   lcdBkgd     = '#000000',
+   lcdText     = '#00e800',
+   lcdDim      = '#0b3a0b',
+   lcdAlert    = '#ff2828',
+   lcdEdge     = '#2e3042',
+   textDim     = 'rgb(0,0,0,.7)'
+   groove      = '#0b0b12',
+   plText      = '#00e800',
+   plCurrent   = '#ffffff',
+   plSelect    = '#0000c6',
+   eqCurve     = '#8cff4a',
+   eqPreamp    = '#2f6a2f'
+}
+
+EQ_BANDS = array<str> { '60', '170', '310', '600', '1K', '3K', '6K', '12K', '14K', '16K' }
+EQ_FREQS = array<double> { 60, 170, 310, 600, 1000, 3000, 6000, 12000, 14000, 16000 } -- Band centres in hertz
+
+glPresets = array<table> {
+   { name='Flat',        bands=array<double> { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 } },
+   { name='Classical',   bands=array<double> { 0, 0, 0, 0, 0, 0, -7.2, -7.2, -7.2, -9.6 } },
+   { name='Club',        bands=array<double> { 0, 0, 8, 5.6, 5.6, 5.6, 3.2, 0, 0, 0 } },
+   { name='Dance',       bands=array<double> { 9.6, 7.2, 2.4, 0, 0, -5.6, -7.2, -7.2, 0, 0 } },
+   { name='Full Bass',   bands=array<double> { -8, 9.6, 9.6, 5.6, 1.6, -4, -8, -10.4, -11.2, -11.2 } },
+   { name='Full Treble', bands=array<double> { -9.6, -9.6, -9.6, -4, 2.4, 11.2, 12, 12, 12, 12 } },
+   { name='Live',        bands=array<double> { -4.8, 0, 4, 5.6, 5.6, 5.6, 4, 2.4, 2.4, 2.4 } },
+   { name='Pop',         bands=array<double> { -1.6, 4.8, 7.2, 8, 5.6, 0, -2.4, -2.4, -1.6, -1.6 } },
+   { name='Rock',        bands=array<double> { 8, 4.8, -5.6, -8, -3.2, 4, 8.8, 11.2, 11.2, 11.2 } },
+   { name='Techno',      bands=array<double> { 8, 5.6, 0, -5.6, -4.8, 0, 8, 9.6, 9.6, 8.8 } }
+}
+
+glPlaylist = array<table> { }
+
+-- Fill the playlist with sample tracks, so that snapshot mode can populate every display element without loading
+-- any files.  Durations are in seconds.
+
+function loadSampleTracks()
+   bit_rates = array<int> { 128, 192, 256, 320 }
+   samples = array<table> {
+      { artist='DJ Mike Llama', title='Llama Whippin\' Intro', duration=5 },
+      { artist='Aphex Twin', title='Windowlicker', duration=367 },
+      { artist='Daft Punk', title='Around the World', duration=429 },
+      { artist='Massive Attack', title='Teardrop', duration=330 },
+      { artist='Portishead', title='Glory Box', duration=301 },
+      { artist='The Chemical Brothers', title='Block Rockin\' Beats', duration=313 },
+      { artist='Moby', title='Porcelain', duration=241 },
+      { artist='Air', title='La Femme d\'Argent', duration=429 },
+      { artist='Boards of Canada', title='Roygbiv', duration=151 },
+      { artist='Underworld', title='Born Slippy .NUXX', duration=584 },
+      { artist='Orbital', title='Halcyon On and On', duration=567 },
+      { artist='Leftfield', title='Open Up', duration=411 }
+   }
+
+   glPlaylist.clear()
+   for i in {0 to #samples} do
+      track = samples[i]
+      track.kbps   = bit_rates[i % 4]
+      track.khz    = (i % 5 is 3) ? 48 : 44
+      track.stereo = (i % 7) != 5
+      glPlaylist.push(track)
+   end
+end
+
+glState = {
+   track      = 0,     -- Index of the current track in glPlaylist
+   position   = 0,     -- Playback position in seconds
+   playing    = false,
+   paused     = false,
+   volume     = 0.7,
+   balance    = 0,
+   shuffle    = false,
+   repeatMode = false,
+   remaining  = false, -- Show remaining time instead of elapsed
+   vis        = 0,     -- Visualisation mode: 0 = spectrum, 1 = oscilloscope, 2 = off
+   eqOn       = true,
+   eqAuto     = false,
+   preamp     = 0,
+   bands      = array<double> { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 },
+   showEQ     = false,
+   showPL     = false,
+   showFX     = false,
+   fx         = { enabled = false, tab = 'bass', values = noizy_enhancer.defaults() }, -- Enhancer settings
+   plTop      = 0,     -- First visible playlist row
+   plW        = WIDTH, -- Playlist panel size in skin units
+   plH        = PL_H,
+   seekHold   = 0,     -- Suppresses seek bar updates while the user is dragging it
+   fade       = 0,     -- Remaining fade-out time in seconds; playback stops when it expires
+   flashTime  = 0,     -- Remaining display time for a transient marquee message
+   clock      = 0      -- Animation clock in seconds
+}
+
+   local glScene, glTimer, glLastTime
+   glWindows = { } -- The main, eq, pl and fx windows
+   ui = { menus = { } }
+   glLevels = array<double>
+   glPeaks  = array<double>
+   for i in {0 to TOTAL_BARS} do
+      glLevels.push(0)
+      glPeaks.push(0)
+   end
+
+   -- Measurement of the audio output.  The analyser is attached to the mix of the Audio object that plays glSound.
+   -- Spectrum bars span logarithmically spaced bands, and the oscilloscope shows 12 ms of audio at 48 kHz.
+
+   glAnalyser   = nil
+   glEqualiser  = nil -- Applies the equaliser settings to the channel set that plays glSound
+   glEnhancer   = nil -- The enhancer's effect graph on the same channel set, from noizy_enhancer.create()
+   glBandEdges  = array<double>
+   glBandLevels = array<double>
+   glWaveform   = array<float, 576>
+   for i in {0 into TOTAL_BARS} do
+      local edge = SPEC_LOW * math.exp(math.log(SPEC_HIGH / SPEC_LOW) * i / TOTAL_BARS)
+      glBandEdges.push(edge)
+      if i < TOTAL_BARS then glBandLevels.push(SPEC_FLOOR) end
+   end
+
+   -- List every class derived from Sound.
+
+   glSoundClasses = array<table>
+   glAllExtensions = array<str>
+
+   _, classdb = check mSys.ClassDatabase()
+   for cl in values(classdb) do
+      if cl.parentID is CLASSID_SOUND or cl.classID is CLASSID_SOUND then
+         ext_list = cl?.extension?.split('|')
+         glSoundClasses.push({ name = cl.name, id = cl.classID, extensions = ext_list })
+         glAllExtensions.resize(#glAllExtensions + #ext_list)
+         glAllExtensions.copy(ext_list)
+      end
+   end
+
+----------------------------------------------------------------------------------------------------------------------
+-- General utilities
+
+function u(N:num):num
+   return N * S
+end
+
+-- Returns the Noizy window that contains Vector.  Object references are compared by ID because each reference to the
+-- same object can be a distinct wrapper.
+
+function windowOf(Vector:obj!):table
+   local id = Vector.scene.surface.id
+   for win in values(array<table> { glWindows.pl, glWindows.eq, glWindows.fx }) do
+      if win.surface.id is id then return win end
+   end
+   return glWindows.main
+end
+
+-- Returns the current display scale of the window containing Vector, relative to its designed size.  The client
+-- viewport of each window has a view width of u(unitW), so the scale is derived from the window's surface width.
+-- Viewport drag callbacks report unscaled surface movement and use this to convert it to viewport units.
+
+function dragScale(Vector:obj!):num
+   local win = windowOf(Vector)
+   return win.surface.width / u(win.unitW)
+end
+
+-- Schedule a redraw of the window that contains Vector, or the main window if no vector is specified.
+
+function redraw(Vector:obj)
+   local scene = Vector ? Vector.scene : glScene
+   if scene then scene.surface.mtScheduleRedraw() end
+end
+
+-- Wheel events are delivered only to the front-most input subscriber under the pointer and do not propagate to its
+-- parents, so every subscribed viewport must handle the wheel itself.  Callback receives the wheel value, which is
+-- negative for upward rotation.
+
+function subscribeWheel(Viewport:obj!, Callback:func!)
+   Viewport.mtSubscribeInput(JTYPE_EXT_MOVEMENT, function(Viewport:obj!, Msg)
+      repeat
+         if Msg.type is JET_WHEEL then Callback(Msg.value) end
+         Msg = Msg.next
+      until not Msg
+   end)
+end
+
+-- Widgets without a wheel action of their own pass the wheel to their window's onWheel handler.
+
+function forwardWheel(Viewport:obj!)
+   subscribeWheel(Viewport, function(Value)
+      win = windowOf(Viewport)
+      if win.onWheel then win.onWheel(Value) end
+   end)
+end
+
+function fmtTime(Seconds:num):str
+   if (Seconds is nil) or (Seconds < 0) then return '--:--' end
+   secs = math.floor(Seconds)
+   if secs >= 3600 then
+      return string.format('%d:%02d:%02d', math.floor(secs / 3600), math.floor((secs % 3600) / 60), secs % 60)
+   end
+   return string.format('%d:%02d', math.floor(secs / 60), secs % 60)
+end
+
+function trackDuration(Track:table!):num
+   return Track.duration ?? 180 -- Unknown durations are simulated as three minutes
+end
+
+----------------------------------------------------------------------------------------------------------------------
+-- List every class derived from AudioEffect.
+
+thunk getEffects():array<table>
+   result = array<table>
+   CLASSID_EFFECT = 'AudioEffect'.hash()
+
+   err, classdb = check mSys.ClassDatabase()
+   for cl in values(classdb) do
+      if cl.parentID is CLASSID_EFFECT then
+         result.push({ name = cl.name, id = cl.classID })
+      end
+   end
+   return result
+end
+
+----------------------------------------------------------------------------------------------------------------------
+-- Vector drawing primitives.  All coordinates are in skin units and converted to pixels here.
+
+function newText(Parent:obj!, X:num!, Y:num!, String:str!, Options:table):obj
+   Options ?= { }
+   return Parent.new('VectorText', {
+      x         = u(X),
+      y         = u(Y),
+      string    = String,
+      face      = Options.face ?? 'Noto Sans',
+      fontStyle = Options.style ?? 'Regular',
+      fontSize  = u(Options.size ?? 7),
+      fill      = Options.fill ?? COL.text,
+      align     = Options.align ?? 'start'
+   })
+end
+
+function newRect(Parent:obj!, X:num!, Y:num!, W:num!, H:num!, Fill:str!, Options:table):obj
+   Options ?= { }
+   local rect = Parent.new('VectorRectangle', { x=u(X), y=u(Y), width=u(W), height=u(H), fill=Fill })
+   if Options.stroke then
+      rect.stroke = Options.stroke
+      rect.strokeWidth = u(Options.strokeWidth ?? 0.5)
+   end
+   if Options.round then
+      rect.roundX = u(Options.round)
+      rect.roundY = u(Options.round)
+   end
+   return rect
+end
+
+function toPoints(Points:array<double>!):str
+   pts = ''
+   for i in {0 to #Points by 2} do
+      pts ..= f'{u(Points[i])},{u(Points[i+1])} '
+   end
+   return pts
+end
+
+-- Filled shapes are closed; stroked lines are left open.
+
+function newPoly(Parent:obj!, Points:array<double>!, Options:table!):obj
+   if Options.stroke then
+      return Parent.new('VectorPolygon', {
+         points=toPoints(Points), closed=false, fill='none', stroke=Options.stroke,
+         strokeWidth=u(Options.strokeWidth ?? 0.5)
+      })
+   else
+      return Parent.new('VectorPolygon', { points=toPoints(Points), fill=Options.fill })
+   end
+end
+
+function bevel(Parent:obj!, X:num!, Y:num!, W:num!, H:num!, Light:str!, Dark:str!)
+   newPoly(Parent, array<double> { X, Y + H, X, Y, X + W, Y }, { stroke=Light })
+   newPoly(Parent, array<double> { X + W, Y, X + W, Y + H, X, Y + H }, { stroke=Dark })
+end
+
+-- A recessed display box in the style of an LCD panel.
+
+function insetBox(Parent:obj!, X:num!, Y:num!, W:num!, H:num!, Fill:str):obj
+   local box = newRect(Parent, X, Y, W, H, Fill ?? COL.lcdBkgd)
+   bevel(Parent, X, Y, W, H, COL.frameDark, COL.frameLight)
+   return box
+end
+
+function panelFrame(Parent:obj!, H:num!, W:num)
+   W ?= WIDTH
+   newRect(Parent, 0, 0, W, H, 'url(#nzFrame)')
+   bevel(Parent, 0.5, 0.5, W - 1, H - 1, COL.frameLight, COL.frameDark)
+end
+
+function createGradients(Scene:obj!)
+   function gradient(Name:str!, Colours:array<str>!, X2:num!, Y2:num!, Units:str)
+      colours = array<table>
+      for c in values(Colours) do colours.push(gui.strToRGB(c)) end
+      gui.simpleGradient(Scene, Name, colours, 0, 0, X2, Y2, Units ?? 'boundingbox')
+   end
+
+   gradient('nzFrame', array<str> { '#3f4260', '#262840', '#181a28' }, 0, 1)
+   gradient('nzTitle', array<str> { '#7282bc', '#3a4678', '#252c52' }, 0, 1)
+   gradient('nzButton', array<str> { '#9ea0b8', '#6c6e88', '#50526a' }, 0, 1)
+   gradient('nzButtonHover', array<str> { '#b8bad2', '#7e809c', '#5c5e78' }, 0, 1)
+   gradient('nzButtonDown', array<str> { '#3c3d50', '#50526a', '#626480' }, 0, 1)
+   gradient('nzVolume', array<str> { '#1c9c1c', '#d8d020', '#d82020' }, 1, 0)
+   gradient('nzGroove', array<str> { '#e03a20', '#e0c020', '#20b020' }, 0, 1)
+   gradient('nzSpectrum', array<str> { '#ff3018', '#f0d020', '#18c818' }, 0, u(14), 'userspace')
+end
+
+----------------------------------------------------------------------------------------------------------------------
+-- Transport button glyphs.  Each receives the button viewport, its size in skin units and the horizontal centre of
+-- the area available to the glyph, which excludes the LED on toggle buttons.
+
+function glyphPlay(VP:obj!, W:num!, H:num!)
+   cx = W * 0.5
+   cy = H * 0.5
+   newPoly(VP, array<double> { cx - 3.5, cy - 4.5, cx + 4.5, cy, cx - 3.5, cy + 4.5 }, { fill=COL.glyph })
+end
+
+function glyphPause(VP:obj!, W:num!, H:num!)
+   cx = W * 0.5
+   cy = H * 0.5
+   newRect(VP, cx - 4, cy - 4.5, 3, 9, COL.glyph)
+   newRect(VP, cx + 1, cy - 4.5, 3, 9, COL.glyph)
+end
+
+function glyphStop(VP:obj!, W:num!, H:num!)
+   newRect(VP, W * 0.5 - 4.5, H * 0.5 - 4.5, 9, 9, COL.glyph)
+end
+
+function glyphPrev(VP:obj!, W:num!, H:num!)
+   cx = W * 0.5
+   cy = H * 0.5
+   newRect(VP, cx - 6, cy - 4, 1.6, 8, COL.glyph)
+   newPoly(VP, array<double> { cx - 4.4, cy, cx + 0.6, cy - 4, cx + 0.6, cy + 4 }, { fill=COL.glyph })
+   newPoly(VP, array<double> { cx + 0.6, cy, cx + 5.6, cy - 4, cx + 5.6, cy + 4 }, { fill=COL.glyph })
+end
+
+function glyphNext(VP:obj!, W:num!, H:num!)
+   cx = W * 0.5
+   cy = H * 0.5
+   newPoly(VP, array<double> { cx - 5.6, cy - 4, cx - 0.6, cy, cx - 5.6, cy + 4 }, { fill=COL.glyph })
+   newPoly(VP, array<double> { cx - 0.6, cy - 4, cx + 4.4, cy, cx - 0.6, cy + 4 }, { fill=COL.glyph })
+   newRect(VP, cx + 4.4, cy - 4, 1.6, 8, COL.glyph)
+end
+
+function glyphEject(VP:obj!, W:num!, H:num!)
+   cx = W * 0.5
+   cy = H * 0.5
+   newPoly(VP, array<double> { cx - 5, cy + 1, cx, cy - 4.5, cx + 5, cy + 1 }, { fill=COL.glyph })
+   newRect(VP, cx - 5, cy + 2.5, 10, 2, COL.glyph)
+end
+
+-- Draw an SVG path centred on (CX, CY) and scaled to Height skin units.  ViewBox is { x, y, width, height }.
+
+function glyphIcon(VP:obj!, CX:num!, CY:num!, Height:num!, ViewBox:array<double>!, Sequence:str!):obj
+   width = Height * ViewBox[2] / ViewBox[3]
+   icon = VP.new('VectorViewport', {
+      x=u(CX - (width * 0.5)), y=u(CY - (Height * 0.5)), width=u(width), height=u(Height),
+      viewX=ViewBox[0], viewY=ViewBox[1], viewWidth=ViewBox[2], viewHeight=ViewBox[3], aspectRatio='XMid|YMid|Meet'
+   })
+   return icon.new('VectorPath', { sequence=Sequence, fill=COL.glyph })
+end
+
+-- Paths are borrowed from the items/player_shuffle.svg and items/player_repeat.svg icons.
+
+function glyphShuffle(VP:obj!, W:num!, H:num!, CX:num!):obj
+   return glyphIcon(VP, CX, H * 0.5, H * 0.75, array<double> { 14.25, 17.4167, 47.5, 41.1666 },
+      'M 14.25,45.9166 L 20.5834,45.9167 L 39.1874,23.75 L 47.8958,23.75 L 41.1667,17.4167 L 51.4583,17.4167 ' ..
+      'L 61.75,26.9166 L 51.4583,36.4167 L 41.1667,36.4167 L 47.8958,30.0833 L 41.1667,30.0833 L 22.1667,52.25 ' ..
+      'L 14.25,52.25 L 14.25,45.9166 Z M 14.25,30.0833 L 14.25,23.75 L 22.1667,23.75 L 29.6875,32.5243 ' ..
+      'L 26.1226,36.6834 L 20.5833,30.0833 L 14.25,30.0833 Z M 41.1667,45.9167 L 47.8958,45.9167 ' ..
+      'L 41.1666,39.5833 L 51.4583,39.5834 L 61.75,49.0834 L 51.4583,58.5833 L 41.1666,58.5833 L 47.8958,52.25 ' ..
+      'L 39.1873,52.25 L 31.9416,43.6167 L 35.5684,39.3854 L 41.1667,45.9167 Z')
+end
+
+function glyphRepeat(VP:obj!, W:num!, H:num!, CX:num!):obj
+   return glyphIcon(VP, CX, H * 0.5, H * 0.75, array<double> { 15.8333, 19, 44.3334, 38 },
+      'M 15.8335,42.75 L 15.8334,25.3333 L 46.3125,25.3333 L 39.5833,19 L 49.875,19 L 60.1667,28.5 L 49.875,38 ' ..
+      'L 39.5833,38 L 46.3125,31.6667 L 22.1667,31.6667 L 22.1667,37.2083 L 15.8335,42.75 Z ' ..
+      'M 60.1667,33.25 L 60.1667,50.6667 L 29.6875,50.6667 L 36.4167,57 L 26.125,57 L 15.8333,47.5 L 26.125,38 ' ..
+      'L 36.4167,38 L 29.6875,44.3334 L 53.8333,44.3333 L 53.8333,38.7917 L 60.1667,33.25 Z')
+end
+
+function glyphClose(VP:obj!, W:num!, H:num!)
+   newPoly(VP, array<double> { 2.5, 2.5, W - 2.5, H - 2.5 }, { stroke=COL.glyph, strokeWidth=1.2 })
+   newPoly(VP, array<double> { W - 2.5, 2.5, 2.5, H - 2.5 }, { stroke=COL.glyph, strokeWidth=1.2 })
+end
+
+function glyphMenu(VP:obj!, W:num!, H:num!)
+   for i in {0 to 3} do
+      newRect(VP, 2, 2 + (i * 1.8), W - 4, 0.9, COL.glyph)
+   end
+end
+
+----------------------------------------------------------------------------------------------------------------------
+-- Skinned button.  Set 'toggle' for a latching button with an indicator LED.  Set 'plain' to draw only the glyph,
+-- which must return the object to colour; plain toggles light the glyph instead of an LED.  The onClick callback fires
+-- on release.
+
+function skinButton(Parent:obj!, X:num!, Y:num!, W:num!, H:num!, Options:table!):table
+   local self = { active = Options.active ?? false, toggle = Options.toggle ?? false }
+   local pressed = false
+   local hover = false
+   local face:obj, glyph:obj
+
+   vp = Parent.new('VectorViewport', { x=u(X), y=u(Y), width=u(W), height=u(H) })
+
+   if not Options.plain then
+      face = newRect(vp, 0, 0, W, H, 'url(#nzButton)', { stroke=COL.buttonEdge, round=1 })
+      newPoly(vp, array<double> { 1, H - 1, 1, 1, W - 1, 1 }, { stroke=COL.buttonLight, strokeWidth=0.4 })
+   end
+
+   label_x = W * 0.5
+   if self.toggle and not Options.plain then
+      self.led = newRect(vp, 3, (H - 3) * 0.5, 3, 3, COL.ledOff, { round=0.6, stroke=COL.buttonEdge, strokeWidth=0.3 })
+      label_x = (W + 5) * 0.5
+   end
+
+   if Options.glyph then glyph = Options.glyph(vp, W, H, label_x) end
+
+   if Options.label then
+      size = Options.labelSize ?? 5.5
+      newText(vp, label_x, (H + (size * 0.72)) * 0.5, Options.label, {
+         size=size, style='Bold', fill=COL.glyph, align='middle'
+      })
+   end
+
+   refresh = function()
+      if Options.plain then -- Plain buttons have no face; the glyph lights up when active
+         if glyph then glyph.fill = self.active ? COL.ledOn : (hover ? COL.text : COL.label) end
+      elseif pressed then
+         face.fill = 'url(#nzButtonDown)'
+      elseif hover then
+         face.fill = 'url(#nzButtonHover)'
+      else
+         face.fill = 'url(#nzButton)'
+      end
+   end
+
+   self.setActive = function(Active:bool)
+      self.active = Active
+      if self.led then self.led.fill = Active ? COL.ledOn : COL.ledOff end
+      refresh()
+   end
+
+   self.setActive(self.active)
+
+   forwardWheel(vp)
+
+   vp.mtSubscribeInput(JTYPE_BUTTON | JTYPE_CROSSING, function(Viewport:obj!, Msg)
+      repeat
+         if Msg.type is JET_CROSSED_IN then
+            hover = true
+         elseif Msg.type is JET_CROSSED_OUT then
+            hover = false
+         elseif Msg.type is JET_LMB then
+            if Msg.value > 0 then
+               pressed = true
+            elseif pressed then
+               pressed = false
+               if hover then -- Releasing outside of the button cancels the click
+                  if self.toggle then self.setActive(not self.active) end
+                  if Options.onClick then Options.onClick(self) end
+               end
+            end
+         end
+         Msg = Msg.next
+      until not Msg
+      refresh()
+      redraw(vp)
+   end)
+
+   self.viewport = vp
+   return self
+end
+
+----------------------------------------------------------------------------------------------------------------------
+-- Sliders are standard gui.slider widgets, skinned through a theme override.  The theme is in pixels, so the
+-- dimensions are converted from skin units.  The thumbL option is the thumb's length along the track, and the thumb
+-- spans the slider's breadth.  Keyboard input is disabled because the arrow keys are the player's seek and volume
+-- shortcuts.
+
+function skinSlider(Parent:obj!, X:num!, Y:num!, W:num!, H:num!, Options:table!):table
+   thumb_w = Options.vertical ? W : Options.thumbL
+   thumb_h = Options.vertical ? Options.thumbL : H
+
+   self = gui.slider({
+      target = Parent, x = u(X), y = u(Y), width = u(W), height = u(H), keyboard = false,
+      orientation = Options.vertical ? 'vertical' : 'horizontal',
+      min = Options.min, max = Options.max, value = Options.value, increment = Options.increment,
+      thickness = u(Options.groove), thumbSize = u(Options.vertical ? W : H), thumbLength = u(Options.thumbL),
+      theme = {
+         bkgd = {
+            fill = COL.groove, stroke = COL.frameDark, strokeWidth = u(0.5), roundX = u(1), roundY = u(1), opacity = 1
+         },
+         fore = {
+            x = 0, y = 0, width = u(thumb_w), height = u(thumb_h), fill = 'url(#nzButton)', stroke = COL.buttonEdge,
+            strokeWidth = u(0.5), roundX = u(Options.thumbRound), roundY = u(Options.thumbRound), opacity = 1
+         },
+         foreHighlight = { fill = 'url(#nzButtonHover)' },
+         foreFocus     = { stroke = COL.buttonEdge, strokeWidth = u(0.5) }
+      },
+      events = {
+         activate = function(Value)
+            if Options.onChange then Options.onChange(Value) end
+         end
+      }
+   })
+
+   self.track = self.trackVP -- Overlays are drawn between the groove and the thumb
+   self.thumb = self.thumbVP
+
+   -- Every value change, including silent updates, refreshes the overlays.
+
+   base_set = self.setValue
+   self.setValue = function(Value:num!, Silent:bool)
+      if Options.snap and (math.abs(Value) < Options.snap) then Value = 0 end
+      base_set(Value, Silent)
+      if Options.onPlace then Options.onPlace(self) end
+   end
+
+   self.setThumbVisible = function(Visible:bool)
+      self.thumb.visibility = Visible ? 'visible' : 'hidden'
+   end
+
+   return self
+end
+
+-- Horizontal slider.  The optional 'levelFill' paints the groove up to the thumb position.  The onChange callback
+-- receives the new value whenever the user moves the slider.  The wheel steps the value by the increment, which
+-- defaults to a twentieth of the range.  The optional 'offStep' gives a slider that starts at zero an off position:
+-- values below offStep snap to zero, and a mark in the groove shows where the off position ends.
+
+function hSlider(Parent:obj!, X:num!, Y:num!, W:num!, H:num!, Options:table!):table
+   thumb_w = Options.thumbWidth ?? 14
+   min = Options.min ?? 0
+   max = Options.max ?? 1
+   level = nil
+
+   self = skinSlider(Parent, X, Y, W, H, {
+      min = min, max = max, value = Options.value ?? 0, groove = 4, thumbL = thumb_w, thumbRound = 1.2,
+      snap = Options.snap ?? Options.offStep, onChange = Options.onChange,
+      increment = Options.increment ?? ((max - min) / 20),
+      onPlace = function(Slider:table!)
+         if level then level.width = Slider.thumb.x + u(thumb_w * 0.5) end
+      end
+   })
+
+   groove_y = (H - 4) * 0.5
+   if Options.centreMark then
+      newRect(self.track, (W * 0.5) - 0.3, groove_y - 1, 0.6, 6, COL.label)
+   end
+
+   if Options.offStep then
+      off_x = (thumb_w * 0.5) + ((W - thumb_w) * Options.offStep / (max - min))
+      newRect(self.track, off_x - 0.3, groove_y - 1, 0.6, 6, COL.label)
+   end
+
+   if Options.levelFill then
+      level = newRect(self.track, 0, groove_y, 0, 4, Options.levelFill, { round=1 })
+      level.width = self.thumb.x + u(thumb_w * 0.5)
+   end
+
+   for i in {-1 into 1} do
+      newRect(self.thumb, (thumb_w * 0.5) + (i * 2) - 0.3, 2, 0.6, H - 4, COL.glyph)
+   end
+
+   self.thumb.acMoveToFront()
+   return self
+end
+
+----------------------------------------------------------------------------------------------------------------------
+-- Vertical slider for the equaliser.  The maximum value is at the top.  The level bar extends from the zero line to
+-- the thumb, indicating boost or cut.
+
+function vSlider(Parent:obj!, X:num!, Y:num!, W:num!, H:num!, Options:table!):table
+   thumb_h = 6
+   level = nil
+
+   function place(Slider:table!)
+      centre = u(H * 0.5)
+      thumb_centre = Slider.thumb.y + u(thumb_h * 0.5)
+      level.y = math.min(centre, thumb_centre)
+      level.height = math.abs(centre - thumb_centre)
+   end
+
+   self = skinSlider(Parent, X, Y, W, H, {
+      vertical = true, min = Options.min ?? -12, max = Options.max ?? 12, value = Options.value ?? 0, groove = 3,
+      thumbL = thumb_h, thumbRound = 1, onChange = Options.onChange, increment = 1, -- Steps of 1dB
+      onPlace = function(Slider:table!) if level then place(Slider) end end
+   })
+
+   level = newRect(self.track, (W - 3) * 0.5, H * 0.5, 3, 0, 'url(#nzGroove)', { round=1 })
+   newRect(self.thumb, 2, (thumb_h * 0.5) - 0.3, W - 4, 0.6, COL.glyph)
+   self.thumb.acMoveToFront()
+   place(self)
+   return self
+end
+
+----------------------------------------------------------------------------------------------------------------------
+-- Title bar with the striped caption, an optional menu button on the left and a close button on the right.
+
+function titleBar(Parent:obj!, Title:str!, OnClose:func, OnMenu:func, W:num)
+   W ?= WIDTH
+   newRect(Parent, 2, 2, W - 4, 11, 'url(#nzTitle)', { round=1 })
+
+   caption = newText(Parent, W * 0.5, 10.5, Title, {
+      size=7, style='Bold', fill=COL.titleText, align='middle'
+   })
+
+   half_caption = (caption.textWidth / S) * 0.5
+   left_end = (W * 0.5) - half_caption - 5
+   right_start = (W * 0.5) + half_caption + 5
+   for i in {0 to 4} do
+      y = 4.5 + (i * 1.8)
+      newRect(Parent, 16, y, left_end - 16, 0.8, COL.titleStripe)
+      newRect(Parent, right_start, y, (W - 17) - right_start, 0.8, COL.titleStripe)
+   end
+
+   if OnMenu then
+      skinButton(Parent, 4, 3.5, 9, 8, { glyph=glyphMenu, onClick=OnMenu })
+   end
+
+   if OnClose then
+      skinButton(Parent, W - 13, 3.5, 9, 8, { glyph=glyphClose, onClick=OnClose })
+   end
+end
+
+----------------------------------------------------------------------------------------------------------------------
+-- Pop-up menus are created on first use and cached.  Each item provides an 'action' function.
+
+function showMenu(Name:str!, Items:array<table>!)
+   if not ui.menus[Name] then
+      config = array<table>
+      for item in values(Items) do
+         if item.group then
+            config.push({ group=item.group })
+         else
+            local action = item.action
+            config.push({ item=item.item, onActivate=function(Menu, Item) action() end })
+         end
+      end
+
+      ui.menus[Name] = gui.menu({
+         popup     = true,
+         showIcons = false,
+         config    = config,
+         hostScene = glWindows.pl.scene,
+         theme     = { bkgd = { fill = 'url(#nzFrame)' } }
+      })
+   end
+   ui.menus[Name].show()
+end
+
+----------------------------------------------------------------------------------------------------------------------
+-- Display updates
+
+function setMarquee(Text:str!)
+   ui.marqueeText = Text
+   ui.marquee.x = 0
+   ui.marquee.string = Text
+   single = ui.marquee.textWidth
+   if single > ui.marqueeVP.width then
+      ui.marquee.string = Text .. Text -- Duplicated so that the scroll wraps seamlessly
+      ui.marqueeWidth = single
+   else
+      ui.marqueeWidth = 0
+   end
+end
+
+function currentTrackText():str
+   if #glPlaylist is 0 then return 'NOIZY - NO TRACKS LOADED   ***   ' end
+   track = glPlaylist[glState.track]
+   return f'{glState.track + 1}. {track.artist.trim()} - {track.title.trim()} ({fmtTime(trackDuration(track))})   ***   '
+end
+
+-- Show a short-lived message in the marquee, e.g. while a slider is adjusted.
+
+function flashMessage(Text:str!)
+   if glState.flashTime <= 0 then
+      ui.marquee.x = 0
+   end
+   glState.flashTime = 1.2
+   ui.marquee.string = Text
+   ui.marqueeWidth = 0
+   redraw()
+end
+
+function updateTimeDisplay()
+   if not glState.playing then
+      ui.timeText.string = '  :  '
+      ui.timeMinus.visibility = 'hidden'
+      ui.timeUnlit.visibility = 'visible'
+      return
+   end
+
+   local seconds = glState.position
+   if glState.remaining and (#glPlaylist > 0) then
+      seconds = math.max(0, trackDuration(glPlaylist[glState.track]) - glState.position)
+   end
+   secs = math.floor(seconds)
+   ui.timeText.string = string.format('%02d:%02d', math.min(99, math.floor(secs / 60)), secs % 60)
+   ui.timeMinus.visibility = glState.remaining ? 'visible' : 'hidden'
+
+   -- Winamp convention: the time display blinks while paused.
+   if glState.paused and ((glState.clock % 1) > 0.5) then
+      ui.timeText.string = '  :  '
+      ui.timeUnlit.visibility = 'hidden'
+   else
+      ui.timeUnlit.visibility = 'hidden'
+   end
+end
+
+-- Set the visualisation mode: 0 = spectrum, 1 = oscilloscope, 2 = off.
+
+function setVisMode(Mode:num!)
+   glState.vis = Mode
+   ui.scope.visibility = (Mode is 1) ? 'visible' : 'hidden'
+   for i in {0 to TOTAL_BARS} do
+      ui.bars[i].visibility  = (Mode is 0) ? 'visible' : 'hidden'
+      ui.peaks[i].visibility = (Mode is 0) ? 'visible' : 'hidden'
+   end
+   redraw()
+end
+
+function updateIndicators()
+   ui.indPlay.visibility  = (glState.playing and not glState.paused) ? 'visible' : 'hidden'
+   ui.indPause.visibility = (glState.playing and glState.paused) ? 'visible' : 'hidden'
+   ui.indStop.visibility  = (not glState.playing) ? 'visible' : 'hidden'
+
+   if glState.playing and (#glPlaylist > 0) then
+      track = glPlaylist[glState.track]
+      ui.kbps.string   = f'{track.kbps ?? 128} kbps'
+      ui.khz.string    = f'{track.khz ?? 44} khz'
+      ui.kbps.fill     = COL.lcdText
+      ui.khz.fill      = COL.lcdText
+      ui.mono.fill     = track.stereo ? COL.textDim : COL.lcdText
+      ui.stereo.fill   = track.stereo ? COL.lcdText : COL.textDim
+   else
+      ui.kbps.string   = 'kbps'
+      ui.khz.string    = 'khz'
+      ui.kbps.fill     = COL.textDim
+      ui.khz.fill      = COL.textDim
+      ui.mono.fill     = COL.textDim
+      ui.stereo.fill   = COL.textDim
+   end
+
+   ui.seek.setThumbVisible(glState.playing)
+   updateTimeDisplay()
+   redraw()
+end
+
+-- Draw the equaliser response curve as a Catmull-Rom spline through the band values.
+
+function updateEqGraph()
+   gw = 113
+   gh = 19
+   points = array<double>
+   for i in {0 to 10} do
+      points.push(3 + (i * ((gw - 6) / 9)))
+      points.push((gh * 0.5) - (glState.bands[i] / 12) * ((gh * 0.5) - 2))
+   end
+
+   seq = f'M {u(points[0])},{u(points[1])}'
+   for i in {0 to 9} do
+      p0 = math.max(i - 1, 0) * 2
+      p1 = i * 2
+      p2 = (i + 1) * 2
+      p3 = math.min(i + 2, 9) * 2
+      c1x = points[p1] + ((points[p2] - points[p0]) / 6)
+      c1y = points[p1 + 1] + ((points[p2 + 1] - points[p0 + 1]) / 6)
+      c2x = points[p2] - ((points[p3] - points[p1]) / 6)
+      c2y = points[p2 + 1] - ((points[p3 + 1] - points[p1 + 1]) / 6)
+      seq ..= f' C {u(c1x)},{u(c1y)} {u(c2x)},{u(c2y)} {u(points[p2])},{u(points[p2 + 1])}'
+   end
+   ui.eqCurve.sequence = seq
+   ui.eqCurve.stroke = glState.eqOn ? COL.eqCurve : COL.eqPreamp
+
+   ui.eqPreampLine.y = u((gh * 0.5) - (glState.preamp / 12) * ((gh * 0.5) - 2))
+   redraw(ui.eqCurve)
+end
+
+-- The height of the playlist's list area, and the number of rows that fit in it completely.  The list can end with a
+-- partially visible row because the playlist accepts any window size.
+
+function plListH():num
+   return glState.plH - PL_CHROME_H
+end
+
+function plRows():num
+   return math.floor(plListH() / PL_ROW_H)
+end
+
+function refreshPlaylist()
+   total = #glPlaylist
+   max_top = math.max(0, total - plRows())
+   glState.plTop = math.clamp(glState.plTop, 0, max_top)
+
+   visible = math.ceil(plListH() / PL_ROW_H)
+   for r in {0 to #ui.plRows} do
+      row = ui.plRows[r]
+      index = glState.plTop + r
+      if (r < visible) and (index < total) then
+         item = glPlaylist[index]
+         colour = (index is glState.track) ? COL.plCurrent : COL.plText
+         row.title.string = f'{index + 1}. {item.artist.trim()} - {item.title.trim()}'
+         row.time.string  = fmtTime(item.duration)
+         row.title.fill   = colour
+         row.time.fill    = colour
+         row.title.visibility = 'visible'
+         row.time.visibility  = 'visible'
+         row.bkgd.visibility  = item.selected ? 'visible' : 'hidden'
+      else
+         row.title.visibility = 'hidden'
+         row.time.visibility  = 'hidden'
+         row.bkgd.visibility  = 'hidden'
+      end
+   end
+
+   -- Scrollbar thumb
+
+   track_h = u(plListH() - 18)
+   ui.plThumb.y = (max_top > 0) ? (glState.plTop / max_top) * track_h : 0
+
+   -- Selected and total play time
+
+   sel_time = 0
+   total_time = 0
+   for item in values(glPlaylist) do
+      total_time += trackDuration(item)
+      if item.selected then sel_time += trackDuration(item) end
+   end
+   ui.plTotal.string = f'{fmtTime(sel_time)}/{fmtTime(total_time)}'
+   redraw(ui.plTotal)
+end
+
+function scrollPlaylist(Delta:num!)
+   glState.plTop += Delta
+   refreshPlaylist()
+end
+
+function ensureTrackVisible()
+   if glState.track < glState.plTop then
+      glState.plTop = glState.track
+   elseif glState.track >= glState.plTop + plRows() then
+      glState.plTop = glState.track - plRows() + 1
+   end
+end
+
+-- Show a secondary window at the same scale as the main window.  The window is resized only when it opens, so that a
+-- window that is already visible does not jump in size.  A window restored from the config file keeps its saved size
+-- the first time that it is shown.
+
+function showWindow(Win:table!)
+   if Win.visible then return end
+   if Win.keepSize then
+      Win.keepSize = nil
+   else
+      scale  = dragScale(glWindows.main.root)
+      width  = math.round(u(Win.unitW) * scale)
+      height = math.round(u(Win.unitH) * scale)
+      if (width != Win.surface.width) or (height != Win.surface.height) then
+         Win.resizeClientArea(width, height)
+      end
+   end
+   Win.show()
+end
+
+-- Place the enhancer window to the right of the main window, or to its left if there is no room on the right.
+
+function placeEnhancer()
+   local main = glWindows.main.surface
+   local fx = glWindows.fx.surface
+   local screen_w, _ = glWindows.main.parentSize()
+   local x = main.x + main.width
+   if x + fx.width > screen_w then x = math.max(0, main.x - fx.width) end
+   fx.acMoveToPoint(x, main.y, 0, MTF_X|MTF_Y)
+   glWindows.fx.placed = true
+end
+
+-- Show or hide the equaliser, playlist and enhancer windows to match the current state.  The enhancer is not docked
+-- with the other windows, so the first time it is shown it is placed beside the main window.
+
+function updateWindows()
+   if glState.showEQ then
+      showWindow(glWindows.eq)
+   else
+      glWindows.eq.hide()
+   end
+   if glState.showPL then showWindow(glWindows.pl) else glWindows.pl.hide() end
+
+   if glState.showFX then
+      showWindow(glWindows.fx)
+      if not glWindows.fx.placed then placeEnhancer() end
+   else
+      glWindows.fx.hide()
+   end
+   redraw()
+end
+
+function toggleEnhancer()
+   glState.showFX = not glState.showFX
+   updateWindows()
+end
+
+-- Dock the equaliser and playlist windows beneath the main window, in the Winamp arrangement.  The windows are
+-- borderless, so no frame allowance is needed.  Windows keep their position when hidden and shown again.
+
+function stackWindows()
+   main = glWindows.main.surface
+   _, monitor_height = glWindows.main.parentSize()
+   total_height = main.height + glWindows.eq.surface.height + glWindows.pl.surface.height
+   y = math.max(0, (monitor_height - total_height) * 0.5)
+   main.acMoveToPoint(main.x, y, 0, MTF_X|MTF_Y)
+
+   y += main.height
+   for win in values(array<table> { glWindows.eq, glWindows.pl }) do
+      win.surface.acMoveToPoint(main.x, y, 0, MTF_X|MTF_Y)
+      y += win.surface.height
+   end
+end
+
+----------------------------------------------------------------------------------------------------------------------
+-- Audio engine.  Tracks with a file path are played through a Sound object.  Tracks without a path, i.e. the sample
+-- tracks used in snapshot mode and placeholder tracks, have their playback simulated by tick().
+--
+-- The current track's Sound object is retained while the track is stopped, so that it can be replayed without
+-- reloading the file.  It is released when a different track is played.
+
+   local glSound        -- Sound object for glSoundTrack, or nil if no file is loaded
+   local glSoundTrack   -- The playlist entry that glSound was loaded from
+   glSoundLive = false  -- True if glSound has been activated and not deactivated since.  A paused sound is live.
+   local soundStopped   -- OnStop handler, defined after the playback controls that it calls
+
+-- Volume is applied on a square law so that the slider's response is closer to perceived loudness.
+
+function soundVolume():num
+   return glState.volume * glState.volume
+end
+
+function releaseSound()
+   if not glSound then return end
+   local sound = glSound
+   glSound      = nil
+   glSoundTrack = nil
+   glSoundLive  = false
+   sound.acDeactivate()
+   sound.free()
+end
+
+----------------------------------------------------------------------------------------------------------------------
+-- Equaliser.  Each band is a peak filter in an AudioEqualiser on the channel set that plays glSound, and the preamp
+-- is the equaliser's output trim.  Neighbouring filters overlap, so giving each filter its slider's gain would
+-- exaggerate broad changes, e.g. every slider at +12 dB would produce close to +20 dB with a ripple.  The filter gains
+-- are instead solved so that the combined response matches each slider at its band's centre frequency.  A band's
+-- width is 1.5 times the spacing of its neighbours on a logarithmic scale, which keeps the ripple between centres to
+-- a few dB without making the solution ill-conditioned.
+
+EQ_WIDTH <const> = 1.5 -- Band width relative to the spacing of neighbouring bands
+EQ_PROTO <const> = 12  -- Filter gain in dB used to model the interaction between bands
+EQ_LIMIT <const> = 24  -- Limit for solved filter gains in dB
+FX_ORDER <const> = 100 -- Position of the enhancer in the channel set's effect chain
+
+-- Q of band I.  The outer bands mirror the spacing of their only neighbour.
+
+function eqBandQ(I:num):num
+   local f  = EQ_FREQS[I]
+   local lo = (I > 0) ? EQ_FREQS[I - 1] : f * f / EQ_FREQS[I + 1]
+   local hi = (I < #EQ_FREQS - 1) ? EQ_FREQS[I + 1] : f * f / EQ_FREQS[I - 1]
+   local octaves = EQ_WIDTH * 0.5 * math.log(hi / lo) / math.log(2)
+   return math.sqrt(2 ** octaves) / ((2 ** octaves) - 1)
+end
+
+-- Response in decibels at frequency F of the RBJ peak filter that AudioEqualiser uses for a band.
+
+function peakResponse(Centre:num!, Gain:num!, Q:num!, F:num!, Rate:num!):num
+   local amp   = 10 ** (Gain / 40)
+   local w0    = 2 * math.pi * Centre / Rate
+   local alpha = math.sin(w0) / (2 * Q)
+   local b0, b2 = 1 + (alpha * amp), 1 - (alpha * amp)
+   local a0, a2 = 1 + (alpha / amp), 1 - (alpha / amp)
+   local b1 = -2 * math.cos(w0) -- Also a1
+   local w  = 2 * math.pi * F / Rate
+   local cos1, cos2, sin1, sin2 = math.cos(w), math.cos(2 * w), math.sin(w), math.sin(2 * w)
+   local nr, ni = b0 + (b1 * cos1) + (b2 * cos2), (b1 * sin1) + (b2 * sin2)
+   local dr, di = a0 + (b1 * cos1) + (a2 * cos2), (b1 * sin1) + (a2 * sin2)
+   return 10 * math.log10(((nr * nr) + (ni * ni)) / ((dr * dr) + (di * di)))
+end
+
+-- Solve the N x N system Matrix * X = Values by Gaussian elimination with partial pivoting.  Matrix is row-major and
+-- both arrays are modified.
+
+function solveLinear(Matrix:array<double>!, Values:array<double>!, N:num!):array<double>
+   for col in {0 to N} do
+      local pivot = col
+      for row in {col + 1 to N} do
+         if math.abs(Matrix[(row * N) + col]) > math.abs(Matrix[(pivot * N) + col]) then pivot = row end
+      end
+
+      if pivot != col then
+         for k in {0 to N} do
+            local t = Matrix[(col * N) + k]
+            Matrix[(col * N) + k]   = Matrix[(pivot * N) + k]
+            Matrix[(pivot * N) + k] = t
+         end
+         local t = Values[col]
+         Values[col]   = Values[pivot]
+         Values[pivot] = t
+      end
+
+      for row in {col + 1 to N} do
+         local f = Matrix[(row * N) + col] / Matrix[(col * N) + col]
+         for k in {col to N} do
+            Matrix[(row * N) + k] -= f * Matrix[(col * N) + k]
+         end
+         Values[row] -= f * Values[col]
+      end
+   end
+
+   local result = array<double, N>
+   for row in {N - 1 into 0 by -1} do
+      local sum = Values[row]
+      for k in {row + 1 to N} do sum -= Matrix[(row * N) + k] * result[k] end
+      result[row] = sum / Matrix[(row * N) + row]
+   end
+   return result
+end
+
+-- Return the filter gains that realise Targets at the band centres.  The interaction between bands is modelled as
+-- linear for a first estimate, then refined against the exact response.  Bands at or above 90% of the Nyquist
+-- frequency are excluded, so N may be less than the total number of bands.
+
+function eqFilterGains(Targets:array<double>!, Q:array<double>!, N:num!, Rate:num!):array<double>
+   local cells = N * N
+   local interaction = array<double, cells>
+   for i in {0 to N} do
+      for j in {0 to N} do
+         interaction[(i * N) + j] = peakResponse(EQ_FREQS[j], EQ_PROTO, Q[j], EQ_FREQS[i], Rate) / EQ_PROTO
+      end
+   end
+
+   local gains = array<double, N>
+   for _ in {0 to 4} do
+      local residual = array<double, N>
+      for i in {0 to N} do
+         local response = 0
+         for j in {0 to N} do response += peakResponse(EQ_FREQS[j], gains[j], Q[j], EQ_FREQS[i], Rate) end
+         residual[i] = Targets[i] - response
+      end
+      local correction = solveLinear(interaction.clone(), residual, N)
+      for j in {0 to N} do gains[j] = math.clamp(gains[j] + correction[j], -EQ_LIMIT, EQ_LIMIT) end
+   end
+   return gains
+end
+
+-- Apply the equaliser settings to the audio output.  A disabled or flat equaliser has no filters, and changes are
+-- crossfaded by the AudioEqualiser so that they can be made during playback.
+
+function updateEqualiser()
+   if not glEqualiser then return end
+
+   local rate:num = glEqualiser.outputRate
+   if rate <= 0 then rate = 48000 end
+
+   local n = 0
+   local flat = glState.preamp is 0
+   for i in {0 to #EQ_FREQS} do
+      if EQ_FREQS[i] < rate * 0.45 then n = i + 1 end
+      if glState.bands[i] != 0 then flat = false end
+   end
+
+   local bands = array<struct<AudioEQBand>>
+   if glState.eqOn and not flat then
+      local q = array<double>
+      for i in {0 to n} do q.push(eqBandQ(i)) end
+      local gains = eqFilterGains(glState.bands.clone(), q, n, rate)
+      for i in {0 to n} do
+         bands.push(struct.new('AudioEQBand', { type=EQB_PEAK, frequency=EQ_FREQS[i], gain=gains[i], q=q[i] }))
+      end
+   end
+
+   try
+      glEqualiser.bands = bands
+      glEqualiser.gain  = glState.eqOn ? glState.preamp : 0
+   except ex
+      print(f'Unable to update the equaliser: {ex.message}')
+   end
+end
+
+----------------------------------------------------------------------------------------------------------------------
+-- Enhancer.  The effect graph is created with the equaliser and serves every track.  Key names the control that
+-- changed, or nil to apply every control.
+
+function updateEnhancer(Key:str)
+   if glEnhancer then noizy_enhancer.apply(glEnhancer, glState.fx.values, Key) end
+end
+
+function setEnhancerEnabled(Enabled:bool!)
+   glState.fx.enabled = Enabled
+   if glEnhancer then noizy_enhancer.setEnabled(glEnhancer, Enabled) end
+   flashMessage(Enabled ? 'ENHANCER: ON' : 'ENHANCER: OFF')
+end
+
+----------------------------------------------------------------------------------------------------------------------
+
+-- Load Track into glSound, reusing the current Sound object if it belongs to the same track.  The track's duration and
+-- stream details are updated from the file, and its tags replace the names that were derived from the file name.
+-- Returns false if the file cannot be loaded.
+
+function loadSound(Track:table!):bool
+   if glSound and (glSoundTrack is Track) then return true end
+   releaseSound()
+
+   local sound
+   try
+      sound = obj.new('sound', { path=Track.path, volume=soundVolume(), pan=glState.balance })
+   except ex
+      print(f'Unable to load "{Track.path}": {ex.message}')
+      return false
+   end
+
+   sound.onStop = soundStopped
+
+   -- The analyser measures the global mix, so one analyser serves every Sound on the same Audio object.
+
+   if not glAnalyser then
+      try
+         glAnalyser = obj.new('AudioAnalyser', { audio=sound.audio })
+      except ex
+         print(f'Unable to create an audio analyser: {ex.message}')
+      end
+   end
+
+   -- Keep the command-line processors separate from the slider equaliser, so slider changes preserve custom
+   -- filter types and the delay/reverb settings.  They share the channel set used by every track.
+
+   if not glEffectsReady then
+      local effects = array<obj>
+      defer
+         if not glEffectsReady then
+            for effect in values(effects) do effect.free() end
+         end
+      end
+      for fx in values(glEffects) do
+         if glArgs[fx.name] then
+            local effect = audio_effects.configure(fx, glArgs[fx.name], sound.audio, sound.channelIndex & 0xffff0000)
+            if not effect then return false end
+            effects.push(effect)
+         end
+      end
+      glActiveEffects = effects
+      glEffectsReady = true
+   end
+
+   -- Every Sound on the same Audio object plays through one channel set, so one equaliser serves every track.
+
+   if not glEqualiser then
+      --try
+         glEqualiser = obj.new('AudioEqualiser', { audio=sound.audio, channel=sound.channelIndex & 0xffff0000 })
+         updateEqualiser()
+      --except ex
+      --   print(f'Unable to create an audio equaliser: {ex.message}')
+      --end
+   end
+
+   -- The enhancer follows the equaliser and command-line effects, which have the default order of zero.
+
+   if not glEnhancer then
+      try
+         glEnhancer = noizy_enhancer.create(sound.audio, sound.channelIndex & 0xffff0000, FX_ORDER)
+         updateEnhancer()
+         noizy_enhancer.setEnabled(glEnhancer, glState.fx.enabled)
+      except ex
+         print(f'Unable to create the enhancer: {ex.message}')
+      end
+   end
+
+   Track.duration = sound.duration
+   Track.khz      = math.round(sound.sampleRate / 1000)
+   Track.stereo   = sound.channels > 1
+
+   -- The bit rate is an average over the whole file, so embedded tags and artwork inflate it slightly.
+
+   try
+      local file <close> = obj.new('file', { path=Track.path, flags=FL_READ })
+      if Track.duration > 0 then Track.kbps = math.round(file.size * 8 / Track.duration / 1000) end
+   except
+   end
+
+   err, title = sound.acGetKey('Title')
+   if (err is ERR_Okay) and (title != '') then Track.title = title end
+   err, artist = sound.acGetKey('Author')
+   if (err is ERR_Okay) and (artist != '') then Track.artist = artist end
+
+   glSound = sound
+   glSoundTrack = Track
+   return true
+end
+
+-- Prepare Track for playback and, if Activate is set, play it from Position seconds.  Returns false on failure.
+
+function startSound(Track:table!, Position:num!, Activate:bool!):bool
+   if not loadSound(Track) then return false end
+
+   if glSoundLive then
+      glSound.acDeactivate()
+      glSoundLive = false
+   end
+
+   if not Activate then return true end
+
+   if glSound.duration > 0 then
+      glSound.acSeek(math.clamp(Position / glSound.duration, 0, 1), SEEK_RELATIVE)
+   end
+
+   if glSound.acActivate() != ERR_Okay then return false end
+   glSoundLive = true
+   return true
+end
+
+-- Move the sound to glState.position.  A paused sound stays paused and resumes from the new position.  A sound that
+-- has not been activated is positioned by startSound() when it is played.
+
+function seekSound()
+   if glSound and glSoundLive and (glSound.duration > 0) then
+      glSound.acSeek(glState.position / glSound.duration, SEEK_RELATIVE)
+   end
+end
+
+-- Update glState.position from the sound's playback position.
+
+function syncPosition()
+   if glSound and glSoundLive and glState.playing then glState.position = glSound.elapsed end
+end
+
+----------------------------------------------------------------------------------------------------------------------
+-- Cancel a fade-out and restore the volume and its slider.  The fade never alters glState.volume, so it retains the
+-- setting from before the fade started.
+
+function cancelFade()
+   if glState.fade <= 0 then return end
+   glState.fade = 0
+   if glSound then glSound.volume = soundVolume() end
+   ui.volume.setValue(glState.volume, true)
+end
+
+-- Returns the fade-out multiplier for the volume, which is 1 when no fade is in progress.
+
+function fadeLevel():num
+   return (glState.fade > 0) ? (glState.fade / FADE_TIME) : 1
+end
+
+-- Playback control.  Position is the start position in seconds, and Paused prepares the track without playing it.
+
+function playTrack(Index:num!, Position:num, Paused:bool)
+   if #glPlaylist is 0 then return end
+   glState.track    = math.clamp(Index, 0, #glPlaylist - 1)
+   glState.position = math.max(0, Position ?? 0)
+   glState.playing  = true
+   glState.paused   = Paused is true
+   glState.seekHold = 0
+   cancelFade()
+
+   local track = glPlaylist[glState.track]
+   local ok = true
+   if track.path then
+      ok = startSound(track, glState.position, not glState.paused)
+   else
+      releaseSound()
+   end
+
+   if not ok then
+      releaseSound()
+      glState.playing  = false
+      glState.paused   = false
+      glState.position = 0
+   end
+
+   setMarquee(currentTrackText())
+   ensureTrackVisible()
+   refreshPlaylist()
+   updateIndicators()
+
+   if not ok then flashMessage(f'CANNOT PLAY: {track.title.upper()}') end
+end
+
+-- Toggle the pause state.  A sound that was prepared in the paused state, e.g. by restorePlayback(), has not been
+-- activated yet, so it is started from the current position when it resumes.
+
+function pause()
+   if not glState.playing then return end
+   glState.paused = not glState.paused
+   cancelFade()
+
+   if glSound then
+      if glState.paused then
+         if glSoundLive then
+            glSound.acDisable()
+            glState.position = glSound.elapsed
+         end
+      elseif glSoundLive then
+         glSound.acEnable()
+      elseif not startSound(glSoundTrack, glState.position, true) then
+         playTrack(glState.track) -- Reports the failure
+         return
+      end
+   end
+
+   updateIndicators()
+end
+
+-- Winamp restarts the current track when play is pressed during playback.
+
+function play()
+   if glState.playing and glState.paused then
+      pause()
+   else
+      playTrack(glState.track)
+   end
+end
+
+function stop()
+   if glSound and glSoundLive then
+      glSound.acDeactivate()
+      glSoundLive = false
+   end
+   glState.playing  = false
+   glState.paused   = false
+   glState.position = 0
+   glState.seekHold = 0
+   cancelFade()
+   updateIndicators()
+end
+
+-- Fade the volume out over FADE_TIME and then stop.  The fade is driven by tick(), so playback stops immediately if
+-- it is paused or animation is disabled.
+
+function fadeOut()
+   if (not glState.playing) or glState.paused or (not glArgs.animation) then
+      stop()
+   elseif glState.fade <= 0 then
+      glState.fade = FADE_TIME
+   end
+end
+
+function nextTrack()
+   total = #glPlaylist
+   if total is 0 then return end
+
+   local index = glState.track + 1
+   if glState.shuffle and (total > 1) then
+      repeat
+         index = math.floor(math.random() * total)
+      until index != glState.track
+   elseif index >= total then
+      index = 0
+   end
+
+   if glState.playing then
+      playTrack(index)
+   else
+      glState.track = index
+      setMarquee(currentTrackText())
+      ensureTrackVisible()
+      refreshPlaylist()
+   end
+end
+
+function prevTrack()
+   total = #glPlaylist
+   if total is 0 then return end
+
+   local index = glState.track - 1
+   if index < 0 then index = total - 1 end
+
+   if glState.playing then
+      playTrack(index)
+   else
+      glState.track = index
+      setMarquee(currentTrackText())
+      ensureTrackVisible()
+      refreshPlaylist()
+   end
+end
+
+-- Called when the current track reaches its end.
+
+function trackFinished()
+   total = #glPlaylist
+   if glState.shuffle or glState.repeatMode or (glState.track < total - 1) then
+      nextTrack()
+   else
+      stop()
+   end
+end
+
+-- OnStop is delivered asynchronously, so a notification caused by a manual stop or restart can arrive after playback
+-- has resumed.  A notification is only treated as the end of the track if it is for the current sound, playback is
+-- expected to be in progress, and the sound's channel has ended.  The check is deferred to the next message cycle
+-- because finishing the track can free the Sound object that is making the call.
+
+soundStopped = function(Sound:obj)
+   local id = Sound.id
+   processing.delayedCall(function()
+      if (not glSound) or (glSound.id != id) then return end
+      if (not glState.playing) or glState.paused or (glSound.active != 0) then return end
+      glSoundLive = false
+      trackFinished()
+   end)
+end
+
+-- Seeking to the end of a sound finishes the track, as it would at the end of playback.  This also applies while
+-- paused, because the sound's channel ends and could not be resumed.
+
+function seekTo(Seconds:num!)
+   if (not glState.playing) or (#glPlaylist is 0) then return end
+   duration = trackDuration(glPlaylist[glState.track])
+   glState.position = math.clamp(Seconds, 0, duration)
+   glState.seekHold = 0
+
+   if glSound and (glState.position >= duration) then
+      trackFinished()
+      return
+   end
+
+   seekSound()
+   ui.seek.setValue(glState.position / duration, true)
+   updateTimeDisplay()
+   redraw()
+end
+
+function setVolume(Value:num!)
+   cancelFade() -- Playback continues if the user takes control of the volume during a fade
+   glState.volume = math.clamp(Value, 0, 1)
+   ui.volume.setValue(glState.volume, true)
+   if glSound then glSound.volume = soundVolume() end
+   flashMessage(f'VOLUME: {math.round(glState.volume * 100)}%')
+end
+
+function setBalance(Value:num!)
+   glState.balance = Value
+   if glSound then glSound.pan = Value end
+   if Value is 0 then
+      flashMessage('BALANCE: CENTER')
+   elseif Value < 0 then
+      flashMessage(f'BALANCE: {math.round(-Value * 100)}% LEFT')
+   else
+      flashMessage(f'BALANCE: {math.round(Value * 100)}% RIGHT')
+   end
+end
+
+function setShuffle(On:bool!)
+   glState.shuffle = On
+   ui.btnShuffle.setActive(On)
+   flashMessage(On ? 'SHUFFLE: ON' : 'SHUFFLE: OFF')
+   redraw()
+end
+
+function setRepeat(On:bool!)
+   glState.repeatMode = On
+   ui.btnRepeat.setActive(On)
+   flashMessage(On ? 'REPEAT: ON' : 'REPEAT: OFF')
+   redraw()
+end
+
+function applyPreset(Preset:table!)
+   for i in {0 to 10} do
+      glState.bands[i] = Preset.bands[i]
+      ui.bands[i].setValue(Preset.bands[i], true)
+   end
+   glState.preamp = 0
+   ui.preamp.setValue(0, true)
+   updateEqGraph()
+   updateEqualiser()
+   flashMessage(f'EQ PRESET: {Preset.name.upper()}')
+end
+
+-- Split 'Artist - Title.ext' style file names for display until tag reading is implemented.
+
+rxTrackName = regex.new([[^(.*?) - (.*)$]])
+rxExtension = regex.new([[^(.*)\.[^.]+$]])
+
+function addFiles(Path:str!, Files:any)
+   for file in values(Files) do
+      name = rxExtension.extract(file.filename) ?? file.filename
+      artist, title = rxTrackName.extract(name)
+      glPlaylist.push({
+         artist = artist ?? 'Unknown Artist', title = title ?? name, path = Path .. file.filename,
+         kbps = 192, khz = 44, stereo = true
+      })
+   end
+   refreshPlaylist()
+end
+
+function openFiles(Replace:bool)
+   -- Start browsing from the folder of the track being played, if any.  The file name is dropped so that the dialog
+   -- does not preselect the current track.
+
+   local folder
+   if #glPlaylist > 0 then folder = io.splitPath(glPlaylist[glState.track].path) end
+
+   gui.dialog.file({
+      path        = folder,
+      title       = Replace ? 'Open Files' : 'Add Files to Playlist',
+      okText      = Replace ? 'Open' : 'Add',
+      cancelText  = 'Cancel',
+      modal       = true,
+      popOver     = glWindows.main.surface,
+      multiSelect = true,
+      filterList  = array<table> {
+         { name='Audio Files', ext=glAllExtensions }
+      },
+      feedback = function(Dialog, Path, Files)
+         Files ?! return
+         start = Replace ? 0 : #glPlaylist
+         if Replace then
+            stop()
+            glPlaylist.clear()
+         end
+         addFiles(Path, Files)
+         if Replace then playTrack(start) end
+      end
+   })
+end
+
+function selectAll(Selected:bool!)
+   for item in values(glPlaylist) do item.selected = Selected end
+   refreshPlaylist()
+end
+
+function removeSelected(Crop:bool)
+   current = (#glPlaylist > 0) ? glPlaylist[glState.track] : nil
+   i = #glPlaylist - 1
+   while i >= 0 do
+      remove = Crop ? (not glPlaylist[i].selected) : glPlaylist[i].selected
+      if remove then glPlaylist.remove(i) end
+      i -= 1
+   end
+
+   -- Keep the current track if it survived, otherwise stop playback.
+
+   glState.track = 0
+   for i in {0 to #glPlaylist} do
+      if glPlaylist[i] is current then
+         glState.track = i
+         setMarquee(currentTrackText())
+         refreshPlaylist()
+         return
+      end
+   end
+
+   stop()
+   setMarquee(currentTrackText())
+   refreshPlaylist()
+end
+
+function showAbout()
+   gui.dialog.message({
+      modal   = true,
+      image   = 'media/audio',
+      title   = 'About Noizy',
+      message = 'Noizy is a skinned media player built with Kōtuku widgets and real-time vector graphics.',
+      options = array<table> { { id=1, text='Close', icon='items/checkmark' } }
+   })
+end
+
+----------------------------------------------------------------------------------------------------------------------
+-- Main player panel
+
+function buildMainPanel(Parent:obj!):obj
+   vp = Parent.new('VectorViewport', { name='vp_main', x=0, y=0, width=u(WIDTH), height=u(MAIN_H), overflow='hidden' })
+   panelFrame(vp, MAIN_H)
+
+   titleBar(vp, 'NOIZY', function()
+      mSys.SendMessage(MSGID_QUIT)
+   end, function()
+      showMenu('main', array<table> {
+         { item='Play File...', action=function() openFiles(true) end },
+         { item='Add Files...', action=function() openFiles(false) end },
+         { group='Windows' },
+         { item='Equaliser', action=function() glState.showEQ = not glState.showEQ; updateWindows() end },
+         { item='Playlist Editor', action=function() glState.showPL = not glState.showPL; updateWindows() end },
+         { item='Enhancer', action=toggleEnhancer },
+         { group='Noizy' },
+         { item='About Noizy', action=showAbout },
+         { item='Exit', action=function() mSys.SendMessage(MSGID_QUIT) end }
+      })
+   end)
+
+   -- LCD: play state, time and visualisation
+
+   insetBox(vp, 9, 17, 96, 42)
+
+   ui.indPlay = vp.new('VectorViewport', { x=u(13), y=u(21), width=u(8), height=u(8) })
+   newPoly(ui.indPlay, array<double> { 1, 0.5, 7.5, 4, 1, 7.5 }, { fill=COL.lcdText })
+   ui.indPause = vp.new('VectorViewport', { x=u(13), y=u(21), width=u(8), height=u(8) })
+   newRect(ui.indPause, 1, 0.5, 2.4, 7, COL.lcdText)
+   newRect(ui.indPause, 4.6, 0.5, 2.4, 7, COL.lcdText)
+   ui.indStop = vp.new('VectorViewport', { x=u(13), y=u(21), width=u(8), height=u(8) })
+   newRect(ui.indStop, 1, 1, 6, 6, COL.lcdText)
+
+   time_opts = { face='Source Code Pro', style='Bold', size=17, fill=COL.lcdDim }
+   ui.timeUnlit = newText(vp, 32, 37, '88:88', time_opts) -- Unlit LCD segments, shown only when the time is blank
+   time_opts.fill = COL.lcdText
+   ui.timeText  = newText(vp, 32, 37, '  :  ', time_opts)
+   ui.timeMinus = newText(vp, 24, 35, '-', { face='Source Code Pro', style='Bold', size=12, fill=COL.lcdText })
+
+   -- Clicking the time toggles between elapsed and remaining time
+
+   time_zone = vp.new('VectorViewport', { x=u(22), y=u(20), width=u(80), height=u(20) })
+   time_zone.mtSubscribeInput(JTYPE_BUTTON, function(Viewport:obj!, Msg)
+      repeat
+         if (Msg.type is JET_LMB) and (Msg.value is 0) then
+            glState.remaining = not glState.remaining
+            updateTimeDisplay()
+            redraw()
+         end
+         Msg = Msg.next
+      until not Msg
+   end)
+   forwardWheel(time_zone)
+
+   -- Visualisation: clicking cycles between spectrum, oscilloscope and off
+
+   ui.specVP = vp.new('VectorViewport', { name='vp_spectrum', x=u(24), y=u(43), width=u(76), height=u(14), overflow='hidden' })
+   ui.specBkgd = ui.specVP.new('VectorRectangle', { x=0, y=0, width='100%', height='100%', fill=COL.lcdBkgd })
+   ui.bars  = array<obj>
+   ui.peaks = array<obj>
+   for i in {0 to TOTAL_BARS} do
+      ui.bars.push(newRect(ui.specVP, i * 4, 14, 3, 0, 'url(#nzSpectrum)'))
+      ui.peaks.push(newRect(ui.specVP, i * 4, 13, 3, 0.8, '#b0b0c8'))
+   end
+   ui.scope = ui.specVP.new('VectorPolygon', {
+      points='0,0 1,1', closed=false, fill='none', stroke='#ffd040', strokeWidth=u(0.7), visibility='hidden'
+   })
+
+   ui.specVP.mtSubscribeInput(JTYPE_BUTTON, function(Viewport:obj!, Msg)
+      repeat
+         if (Msg.type is JET_LMB) and (Msg.value is 0) then
+            setVisMode((glState.vis + 1) % 3)
+         end
+         Msg = Msg.next
+      until not Msg
+   end)
+   forwardWheel(ui.specVP)
+
+   -- Scrolling track title
+
+   insetBox(vp, 111, 17, 155, 13)
+   ui.marqueeVP = vp.new('VectorViewport', { x=u(113), y=u(17), width=u(151), height=u(13), overflow='hidden' })
+   ui.marquee = newText(ui.marqueeVP, 0, 9.5, ' ', {
+      face='Source Code Pro', style='Bold', size=7.5, fill=COL.lcdText
+   })
+
+   -- Stream information
+
+   ui.kbps   = newText(vp, 111, 41, 'kbps', { size=6.5, style='Bold', fill=COL.textDim })
+   ui.khz    = newText(vp, 155, 41, 'khz', { size=6.5, style='Bold', fill=COL.textDim })
+
+   ui.mono   = newText(vp, 212, 41, 'mono', { size=6.5, style='Bold', fill=COL.textDim })
+   ui.stereo = newText(vp, 236, 41, 'stereo', { size=6.5, style='Bold', fill=COL.textDim })
+
+   -- Volume, balance and window toggles
+
+   ui.volume = hSlider(vp, 111, 47, 68, 9, {
+      value=glState.volume, levelFill='url(#nzVolume)', increment=0.05, onChange=setVolume
+   })
+
+   ui.balance = hSlider(vp, 183, 47, 38, 9, {
+      min=-1, max=1, value=glState.balance, snap=0.1, increment=0.1, centreMark=true, onChange=setBalance
+   })
+
+   -- The EQ button's LED shows whether the equaliser is on; clicking it shows or hides the equaliser window.
+
+   ui.btnEQ = skinButton(vp, 225, 47, 20, 9, {
+      label='EQ', toggle=true, active=glState.eqOn,
+      onClick=function(Button)
+         Button.setActive(glState.eqOn)
+         glState.showEQ = not glState.showEQ
+         updateWindows()
+      end
+   })
+
+   ui.btnPL = skinButton(vp, 246, 47, 20, 9, {
+      label='LIST', onClick=function() glState.showPL = not glState.showPL; updateWindows() end
+   })
+
+   -- Seek bar.  The seek is applied by tick() once the thumb has settled, so that dragging does not restart the audio
+   -- stream on every movement.  The wheel increment is maintained by tick() as five seconds of the current track.
+
+   ui.seek = hSlider(vp, 12, 63, 254, 9, {
+      thumbWidth=29,
+      onChange=function(Value)
+         if glState.playing and (#glPlaylist > 0) then
+            glState.seekHold = 0.3
+            duration = trackDuration(glPlaylist[glState.track])
+            glState.position = Value * duration
+            flashMessage(f'SEEK TO: {fmtTime(glState.position)}/{fmtTime(duration)}')
+            updateTimeDisplay()
+         end
+      end
+   })
+
+   -- Transport controls
+
+   skinButton(vp, 12, 81, 23, 16, { glyph=glyphPrev, onClick=function() prevTrack() end })
+   skinButton(vp, 35, 81, 23, 16, { glyph=glyphPlay, onClick=function() play() end })
+   skinButton(vp, 58, 81, 23, 16, { glyph=glyphPause, onClick=function() pause() end })
+   skinButton(vp, 81, 81, 23, 16, { glyph=glyphStop, onClick=function() stop() end })
+   skinButton(vp, 104, 81, 22, 16, { glyph=glyphNext, onClick=function() nextTrack() end })
+   skinButton(vp, 132, 81, 22, 16, { glyph=glyphEject, onClick=function() openFiles(true) end })
+
+   ui.btnShuffle = skinButton(vp, 196, 81, 18, 16, {
+      glyph=glyphShuffle, plain=true, toggle=true, active=glState.shuffle,
+      onClick=function(Button) setShuffle(Button.active) end
+   })
+
+   ui.btnRepeat = skinButton(vp, 224, 81, 18, 16, {
+      glyph=glyphRepeat, plain=true, toggle=true, active=glState.repeatMode,
+      onClick=function(Button) setRepeat(Button.active) end
+   })
+
+   -- Logo
+
+   logo = vp.new('VectorViewport', { x=u(251), y=u(81), width=u(16), height=u(16) })
+   logo.new('VectorEllipse', {
+      cx=u(8), cy=u(8), radius=u(7.5), fill='url(#nzTitle)', stroke=COL.titleStripe, strokeWidth=u(0.6)
+   })
+   newPoly(logo, array<double> { 4, 12, 4, 4, 12, 12, 12, 4 }, { stroke=COL.titleText, strokeWidth=1.6 })
+   logo.mtSubscribeInput(JTYPE_BUTTON, function(Viewport:obj!, Msg)
+      repeat
+         if (Msg.type is JET_LMB) and (Msg.value is 0) then showAbout() end
+         Msg = Msg.next
+      until not Msg
+   end)
+   forwardWheel(logo)
+
+   -- Resize grip.  The window is borderless, so resizing is managed here with the aspect ratio preserved.  The
+   -- client viewport's view box scales the interface to fit.  Horizontal and vertical cursor movement is averaged so
+   -- that the window follows the cursor diagonally.
+
+   grip = vp.new('VectorViewport', { x=u(265), y=u(98), width=u(9), height=u(9), cursor=PTC_SIZE_BOTTOM_RIGHT })
+   for i in {0 to 3} do
+      offset = 2 + (i * 2.2)
+      newPoly(grip, array<double> { offset, 8, 8, offset }, { stroke=COL.frameLight, strokeWidth=0.6 })
+   end
+
+   local sizing
+   grip.mtSubscribeInput(JTYPE_BUTTON | JTYPE_MOVEMENT, function(Viewport:obj!, Msg)
+      repeat
+         if Msg.type is JET_LMB then
+            sizing = nil
+            if Msg.value > 0 then
+               err, cursor_x, cursor_y = mGfx.GetCursorPos()
+               if err is ERR_Okay then
+                  surface = glWindows.main.surface
+                  sizing = { cursorX=cursor_x, cursorY=cursor_y, width=surface.width, height=surface.height }
+               end
+            end
+         elseif sizing and (Msg.type is JET_ABS_XY) then
+            err, cursor_x, cursor_y = mGfx.GetCursorPos()
+            if err is ERR_Okay then
+               width = ((sizing.width + cursor_x - sizing.cursorX) +
+                  ((sizing.height + cursor_y - sizing.cursorY) * WIDTH / MAIN_H)) * 0.5
+               width = math.round(math.clamp(width, WIDTH * MIN_SCALE, WIDTH * MAX_SCALE))
+               if width != glWindows.main.surface.width then
+                  glWindows.main.resizeClientArea(width, math.round(width * MAIN_H / WIDTH))
+               end
+            end
+         end
+         Msg = Msg.next
+      until not Msg
+   end)
+
+   return vp
+end
+
+----------------------------------------------------------------------------------------------------------------------
+-- Equaliser panel
+
+function buildEqualiserPanel(Parent:obj!):obj
+   vp = Parent.new('VectorViewport', { x=0, y=0, width=u(WIDTH), height=u(EQ_H), overflow='hidden' })
+   panelFrame(vp, EQ_H)
+   titleBar(vp, 'NOIZY EQUALIZER', function()
+      glState.showEQ = false
+      updateWindows()
+   end)
+
+   skinButton(vp, 12, 18, 26, 11, {
+      label='ON', toggle=true, active=glState.eqOn,
+      onClick=function(Button)
+         glState.eqOn = Button.active
+         ui.btnEQ.setActive(glState.eqOn)
+         redraw(ui.btnEQ.viewport)
+         updateEqGraph()
+         updateEqualiser()
+      end
+   })
+
+   skinButton(vp, 39, 18, 34, 11, {
+      label='AUTO', toggle=true, active=glState.eqAuto,
+      onClick=function(Button) glState.eqAuto = Button.active end
+   })
+
+   -- Response graph
+
+   insetBox(vp, 86, 17, 113, 19)
+   graph = vp.new('VectorViewport', { x=u(86), y=u(17), width=u(113), height=u(19), overflow='hidden' })
+   for i in {1 to 4} do
+      newRect(graph, 0, i * 3.8, 113, 0.3, '#10301a')
+   end
+   ui.eqPreampLine = newRect(graph, 0, 9.5, 113, 0.5, COL.eqPreamp)
+   ui.eqCurve = graph.new('VectorPath', {
+      sequence='M 0,0 L 1,1', fill='none', stroke=COL.eqCurve, strokeWidth=u(0.8)
+   })
+
+   skinButton(vp, 212, 18, 50, 11, {
+      label='PRESETS',
+      onClick=function(Button)
+         items = array<table>
+         for preset in values(glPresets) do
+            local p = preset
+            items.push({ item=p.name, action=function() applyPreset(p) end })
+         end
+         showMenu('presets', items)
+      end
+   })
+
+   -- Preamp and band sliders
+
+   ui.preamp = vSlider(vp, 18, 38, 11, 62, {
+      value=glState.preamp,
+      onChange=function(Value)
+         glState.preamp = Value
+         updateEqGraph()
+         updateEqualiser()
+         flashMessage(string.format('PREAMP: %+.1f DB', Value))
+      end
+   })
+   newText(vp, 23.5, 109, 'PREAMP', { size=5.5, style='Bold', fill=COL.label, align='middle' })
+
+   label_opts = { size=5, style='Bold', fill=COL.label }
+   newText(vp, 36, 43, '+12db', label_opts)
+   newText(vp, 36, 71, '+0db', label_opts)
+   newText(vp, 36, 100, '-12db', label_opts)
+
+   ui.bands = array<table>
+   for i in {0 to 10} do
+      local band = i
+      x = 78 + (i * 18)
+      ui.bands.push(vSlider(vp, x, 38, 11, 62, {
+         value=glState.bands[i],
+         onChange=function(Value)
+            glState.bands[band] = Value
+            updateEqGraph()
+            updateEqualiser()
+            flashMessage(string.format('EQ: %s HZ %+.1f DB', EQ_BANDS[band], Value))
+         end
+      }))
+      newText(vp, x + 5.5, 109, EQ_BANDS[i], { size=5.5, style='Bold', fill=COL.label, align='middle' })
+   end
+
+   return vp
+end
+
+----------------------------------------------------------------------------------------------------------------------
+-- Enhancer panel.  Each tab arranges its controls in two columns of captioned groups, listed here by the group names
+-- in noizy_enhancer.PARAMS.  The tabs are viewports rather than groups, because a group's visibility is not inherited
+-- by its children.
+
+FX_LAYOUT = {
+   colW   = 124, -- Column width, comprising the label, slider and readout
+   rowH   = 9,
+   groupH = 8,   -- Height of a group caption
+   columns = {
+      bass  = array<array> {
+         array<str> { 'INPUT', 'DYNAMICS' },
+         array<str> { 'STEREO / PHAT', 'OUTPUT FILTERS', 'OUTPUT' }
+      },
+      music = array<array> {
+         array<str> { 'INPUT', 'DYNAMICS', 'OUTPUT' },
+         array<str> { 'STEREO / TREBLE', 'REVERB' }
+      }
+   }
+}
+
+function buildEnhancerPanel(Parent:obj!):obj
+   local col_w = FX_LAYOUT.colW
+   local TIP_DELAY <const> = 0.6 -- Seconds that the pointer must rest on a label before its tip is shown
+   local TIP_WIDTH <const> = 440 -- Maximum width of a tip, in pixels
+   ui.fxRows = { } -- The slider and readout of each control, by key
+
+   -- Show Tip when the pointer rests on a control's label, which is highlighted while the pointer is over it.  The
+   -- tooltip closes when the pointer moves, and reappears if the pointer rests on the label again.
+
+   function labelTip(Viewport:obj!, Label:obj!, Tip:str!)
+      local vp_id = Viewport.id
+      local timer
+      local function cancel()
+         if timer then
+            mSys.UpdateTimer(timer, 0)
+            timer = nil
+         end
+      end
+
+      Viewport.mtSubscribeInput(JTYPE_CROSSING | JTYPE_MOVEMENT, function(Viewport:obj!, Msg)
+         repeat
+            if Msg.type is JET_CROSSED_OUT then
+               cancel()
+               Label.fill = COL.label
+            elseif (Msg.type is JET_CROSSED_IN) or (Msg.type is JET_ABS_XY) then
+               if Msg.type is JET_CROSSED_IN then Label.fill = COL.text end
+               cancel()
+               _, timer = mSys.SubscribeTimer(TIP_DELAY, function()
+                  timer = nil
+                  if obj.find(vp_id) then gui.tooltip({ target=Viewport, text=Tip, maxWidth=TIP_WIDTH }) end
+                  raise ERR_Terminate
+               end)
+            end
+            Msg = Msg.next
+         until not Msg
+         redraw(Viewport)
+      end)
+   end
+
+   -- Show the red dot of every control involved in a combination of settings that silences part of the enhancer,
+   -- e.g. a bass hi-pass set above the bass low-pass.  The dots remain until the settings are corrected.
+
+   function refreshConflicts()
+      local conflicts = noizy_enhancer.conflicts(glState.fx.values)
+      for key, row in pairs(ui.fxRows) do
+         local conflict = conflicts[key] ?? false
+         if row.conflict != conflict then
+            row.conflict = conflict
+            row.dot.visibility = conflict ? 'visible' : 'hidden'
+            redraw(row.dot)
+         end
+      end
+   end
+
+   -- A labelled slider with a value readout for the control described by P.  Changes are applied to the enhancer
+   -- immediately and reported in the marquee.
+
+   function row(Parent:obj!, X:num!, Y:num!, P:table!)
+      local key = P.key
+      local settings = glState.fx.values
+      local label_vp = Parent.new('VectorViewport', { x=u(X), y=u(Y), width=u(38), height=u(7) })
+      local label = newText(label_vp, 0, 5.5, P.label, { size=5, style='Bold', fill=COL.label })
+      if P.tip then labelTip(label_vp, label, P.tip) end
+      forwardWheel(label_vp)
+
+      -- The red dot in the readout is shown while the control is involved in a conflict; see refreshConflicts().
+
+      insetBox(Parent, X + col_w - 28, Y, 28, 7)
+      local dot = Parent.new('VectorEllipse', {
+         cx=u(X + col_w - 25), cy=u(Y + 3.5), radius=u(1.1), fill=COL.lcdAlert, visibility='hidden'
+      })
+      local readout = newText(Parent, X + col_w - 1.5, Y + 5.3, noizy_enhancer.format(P, settings[key]), {
+         face='Source Code Pro', size=4.5, style='Bold', fill=COL.lcdText, align='end'
+      })
+
+      local slider = hSlider(Parent, X + 39, Y, col_w - 70, 7, {
+         thumbWidth=8, value=noizy_enhancer.toPos(P, settings[key]),
+         offStep=P.off ? noizy_enhancer.OFF_STEP : nil,
+         onChange=function(Pos)
+            local value = noizy_enhancer.fromPos(P, Pos)
+            if value is settings[key] then return end
+            settings[key] = value
+            local text = noizy_enhancer.format(P, value)
+            readout.string = text
+            updateEnhancer(key)
+            refreshConflicts()
+            flashMessage(f'{(P.tab is "footer") ? "" : P.tab.upper() .. " "}{P.label}: {text}')
+         end
+      })
+      ui.fxRows[key] = { slider=slider, readout=readout, dot=dot, param=P }
+   end
+
+   -- Apply a preset to every control.  The master switch is not affected.
+
+   function applyFxPreset(Preset:table!)
+      for key, row in pairs(ui.fxRows) do
+         local value = Preset.values[key]
+         glState.fx.values[key] = value
+         row.slider.setValue(noizy_enhancer.toPos(row.param, value), true)
+         row.readout.string = noizy_enhancer.format(row.param, value)
+      end
+      updateEnhancer()
+      refreshConflicts()
+      flashMessage(f'ENHANCER PRESET: {Preset.name.upper()}')
+      redraw(glWindows.fx.root)
+   end
+
+   -- Build one tab's controls in a viewport that fills the content area.  Returns the viewport and its content
+   -- height.
+
+   function tab(Parent:obj!, Tab:str!, Y:num!):<obj, num>
+      local tab_vp = Parent.new('VectorViewport', { x=0, y=u(Y), width=u(WIDTH), height=u(FX_H - Y) })
+      local height = 0
+      for c, groups in FX_LAYOUT.columns[Tab] do
+         local x = 10 + (c * (col_w + 7))
+         local y = 0
+         for group in values(groups) do
+            caption = newText(tab_vp, x, y + 5, group, { size=5, style='Bold', fill=COL.titleStripe })
+            caption_end = x + (caption.textWidth / S) + 3
+            newRect(tab_vp, caption_end, y + 3, x + col_w - caption_end, 0.5, COL.frameLight)
+            y += FX_LAYOUT.groupH
+            for p in values(noizy_enhancer.PARAMS) do
+               if (p.tab is Tab) and (p.group is group) then
+                  row(tab_vp, x, y, p)
+                  y += FX_LAYOUT.rowH
+               end
+            end
+         end
+         height = math.max(height, y)
+      end
+      return tab_vp, height
+   end
+
+   vp = Parent.new('VectorViewport', { x=0, y=0, width=u(WIDTH), height=u(FX_H), overflow='hidden' })
+   panelFrame(vp, FX_H)
+   titleBar(vp, 'NOIZY ENHANCER', function()
+      glState.showFX = false
+      updateWindows()
+   end)
+
+   -- Tabs
+
+   local tabs = { }
+   ui.fxTabs = { }
+
+   function selectTab(Tab:str!)
+      glState.fx.tab = Tab
+      for name, content in pairs(tabs) do
+         content.visibility = (name is Tab) ? 'visible' : 'hidden'
+         ui.fxTabs[name].setActive(name is Tab)
+      end
+      redraw(vp)
+   end
+
+   ui.fxTabs.bass = skinButton(vp, 12, 18, 36, 11, {
+      label='BASS', toggle=true, onClick=function(Button) selectTab('bass') end
+   })
+   ui.fxTabs.music = skinButton(vp, 49, 18, 36, 11, {
+      label='MUSIC', toggle=true, onClick=function(Button) selectTab('music') end
+   })
+
+   -- Presets are read from noizy_enhancer.json, which is stored with this script.
+
+   ui.fxPresets = noizy_enhancer.loadPresets(obj.find('self').workingPath .. 'noizy_enhancer.json')
+
+   skinButton(vp, 87, 18, 50, 11, {
+      label='PRESETS',
+      onClick=function(Button)
+         if #ui.fxPresets is 0 then
+            flashMessage('NO ENHANCER PRESETS')
+            return
+         end
+         items = array<table>
+         for preset in values(ui.fxPresets) do
+            local p = preset
+            items.push({ item=p.name, action=function() applyFxPreset(p) end })
+         end
+         showMenu('fxPresets', items)
+      end
+   })
+
+   content_y = 34
+   bass_vp, bass_h = tab(vp, 'bass', content_y)
+   music_vp, music_h = tab(vp, 'music', content_y)
+   tabs.bass = bass_vp
+   tabs.music = music_vp
+   selectTab((glState.fx.tab is 'music') ? 'music' : 'bass')
+   ui.selectFxTab = selectTab
+
+   -- Footer: the master switch and the boost applied to the sum of both branches
+
+   footer_y = content_y + math.max(bass_h, music_h) + 3
+   newRect(vp, 10, footer_y, WIDTH - 20, 0.5, COL.frameLight)
+
+   skinButton(vp, 12, footer_y + 4, 26, 11, {
+      label='ON', toggle=true, active=glState.fx.enabled,
+      onClick=function(Button) setEnhancerEnabled(Button.active) end
+   })
+
+   row(vp, WIDTH - 10 - col_w, footer_y + 6, noizy_enhancer.PARAM_INDEX.boost)
+
+   -- A new slider is not drawn until its value is set again; the cause has not been identified.
+
+   for _, row in pairs(ui.fxRows) do row.slider.setValue(row.slider.value, true) end
+   refreshConflicts()
+
+   return vp
+end
+
+----------------------------------------------------------------------------------------------------------------------
+-- Playlist panel
+
+-- Arrange the playlist panel to fit its current size.  The decoration layer is redrawn, the list and scrollbar are
+-- stretched, and the bottom bar layers follow the lower corners.
+
+function layoutPlaylist()
+   w = glState.plW
+   h = glState.plH
+   list_h = h - PL_CHROME_H
+
+   ui.plPanel.width  = u(w)
+   ui.plPanel.height = u(h)
+
+   frame = ui.plFrame
+   frame.acClear()
+   frame.width  = u(w)
+   frame.height = u(h)
+   panelFrame(frame, h, w)
+   titleBar(frame, 'NOIZY PLAYLIST', function()
+      glState.showPL = false
+      updateWindows()
+   end, nil, w)
+   insetBox(frame, 10, 17, w - 31, list_h + 4)
+   insetBox(frame, w - 18, 17, 9, list_h + 4, COL.groove)
+
+   ui.plList.width   = u(w - 33)
+   ui.plList.height  = u(list_h)
+   ui.plTitles.width = u(w - 63)
+   for row in values(ui.plRows) do
+      row.bkgd.width = u(w - 33)
+      row.time.x     = u(w - 35)
+   end
+
+   ui.plScroll.x      = u(w - 17.5)
+   ui.plScroll.height = u(list_h)
+
+   ui.plBarLeft.y  = u(h - PL_H)
+   ui.plBarRight.x = u(w - WIDTH)
+   ui.plBarRight.y = u(h - PL_H)
+end
+
+-- Resize the playlist to W x H skin units at the given display scale.  The window's view box changes to match, so the
+-- interface keeps its scale and the list shows more or fewer rows.
+
+function resizePlaylist(W:num!, H:num!, Scale:num!)
+   if (W is glState.plW) and (H is glState.plH) then return end
+
+   glState.plW = W
+   glState.plH = H
+   win = glWindows.pl
+   win.unitW = W
+   win.unitH = H
+   layoutPlaylist()
+   win.root.viewWidth  = u(W)
+   win.root.viewHeight = u(H)
+   win.resizeClientArea(math.round(u(W) * Scale), math.round(u(H) * Scale))
+   refreshPlaylist()
+end
+
+function buildPlaylistPanel(Parent:obj!):obj
+   vp = Parent.new('VectorViewport', { x=0, y=0, width=u(WIDTH), height=u(PL_H), overflow='hidden' })
+   ui.plPanel = vp
+
+   -- The playlist is resizable, so its decoration is drawn by layoutPlaylist() in a layer beneath everything else.
+
+   ui.plFrame = vp.new('VectorViewport', { x=0, y=0, width=u(WIDTH), height=u(PL_H) })
+
+   ui.plList = vp.new('VectorViewport', { x=u(11), y=u(19), width=u(242), height=u(PL_LIST_H), overflow='hidden' })
+   list = ui.plList
+
+   -- A pool of row vectors is reused as the list scrolls, with enough rows for the largest playlist size.  Selection
+   -- highlights are created first so that they sit beneath the text.  Titles are clipped to leave room for the
+   -- durations.
+
+   ui.plRows = array<table>
+   for r in {0 to PL_MAX_ROWS} do
+      ui.plRows.push({ bkgd = newRect(list, 0, r * PL_ROW_H, 242, PL_ROW_H, COL.plSelect) })
+   end
+
+   ui.plTitles = list.new('VectorViewport', { x=0, y=0, width=u(212), height='100%', overflow='hidden' })
+   for r in {0 to PL_MAX_ROWS} do
+      row = ui.plRows[r]
+      row.title = newText(ui.plTitles, 2, (r * PL_ROW_H) + 7.5, ' ', { size=7, fill=COL.plText })
+      row.time  = newText(list, 240, (r * PL_ROW_H) + 7.5, ' ', { size=7, fill=COL.plText, align='end' })
+   end
+
+   -- Click to select, double-click to play, wheel to scroll
+
+   list.mtSubscribeInput(JTYPE_BUTTON | JTYPE_EXT_MOVEMENT, function(Viewport:obj!, Msg)
+      repeat
+         if Msg.type is JET_LMB then
+            index = glState.plTop + math.floor(Msg.y / u(PL_ROW_H))
+            if index < #glPlaylist then
+               if Msg.value > 0 then
+                  for item in values(glPlaylist) do item.selected = false end
+                  glPlaylist[index].selected = true
+                  refreshPlaylist()
+               elseif Msg.flags has JTYPE_DBL_CLICK then
+                  playTrack(index)
+               end
+            end
+         elseif Msg.type is JET_WHEEL then
+            scrollPlaylist((Msg.value > 0) ? 3 : -3)
+         end
+         Msg = Msg.next
+      until not Msg
+   end)
+
+   -- Scrollbar.  The groove is drawn in the decoration layer.
+
+   ui.plScroll = vp.new('VectorViewport', { x=u(257.5), y=u(19), width=u(8), height=u(PL_LIST_H) })
+   ui.plThumb = ui.plScroll.new('VectorViewport', { x=0, y=0, width=u(8), height=u(18) })
+   newRect(ui.plThumb, 0, 0, 8, 18, 'url(#nzButton)', { stroke=COL.buttonEdge, round=1 })
+   for i in {-1 into 1} do
+      newRect(ui.plThumb, 2, 9 + (i * 2) - 0.3, 4, 0.6, COL.glyph)
+   end
+
+   ui.plThumb.dragCallback = function(Viewport:obj!, DragX:num!, DragY:num!, OriginX:num!, OriginY:num!)
+      max_top = math.max(0, #glPlaylist - plRows())
+      y = OriginY + ((DragY - OriginY) / dragScale(Viewport))
+      fraction = math.clamp(y / u(plListH() - 18), 0, 1)
+      glState.plTop = math.round(fraction * max_top)
+      refreshPlaylist()
+   end
+
+   -- Bottom bar: list editing buttons on the left and the play time summary on the right.  Each side is placed in a
+   -- layer that uses the default panel coordinates, and layoutPlaylist() moves the layers to follow the panel's
+   -- bottom-left and bottom-right corners.
+
+   bar_left = vp.new('VectorViewport', { x=0, y=0, width=u(WIDTH), height=u(PL_H) })
+   bar_right = vp.new('VectorViewport', { x=0, y=0, width=u(WIDTH), height=u(PL_H) })
+   ui.plBarLeft = bar_left
+   ui.plBarRight = bar_right
+
+   bar_y = PL_H - 21
+   skinButton(bar_left, 10, bar_y, 25, 14, {
+      label='ADD', onClick=function(Button)
+         showMenu('add', array<table> {
+            { item='Add Files...', action=function() openFiles(false) end },
+            { item='Add Placeholder Track', action=function()
+               glPlaylist.push({ artist='Noizy', title=f'Placeholder {#glPlaylist + 1}', duration=200, kbps=128,
+                  khz=44, stereo=true })
+               refreshPlaylist()
+            end }
+         })
+      end
+   })
+
+   skinButton(bar_left, 37, bar_y, 25, 14, {
+      label='REM', onClick=function(Button)
+         showMenu('rem', array<table> {
+            { item='Remove Selected', action=function() removeSelected(false) end },
+            { item='Crop Selection', action=function() removeSelected(true) end },
+            { item='Clear Playlist', action=function() selectAll(true); removeSelected(false) end }
+         })
+      end
+   })
+
+   skinButton(bar_left, 64, bar_y, 25, 14, {
+      label='SEL', onClick=function(Button)
+         showMenu('sel', array<table> {
+            { item='Select All', action=function() selectAll(true) end },
+            { item='Select None', action=function() selectAll(false) end },
+            { item='Invert Selection', action=function()
+               for item in values(glPlaylist) do item.selected = not item.selected end
+               refreshPlaylist()
+            end }
+         })
+      end
+   })
+
+   skinButton(bar_left, 91, bar_y, 27, 14, {
+      label='MISC', onClick=function(Button)
+         -- Sorting reorders the list, so the current track is located again afterwards.
+         function reorder(Operation)
+            current = (#glPlaylist > 0) ? glPlaylist[glState.track] : nil
+            Operation()
+            for i in {0 to #glPlaylist} do
+               if glPlaylist[i] is current then glState.track = i end
+            end
+            refreshPlaylist()
+         end
+
+         showMenu('misc', array<table> {
+            { item='Sort by Title', action=function()
+               reorder(function() glPlaylist.sort(function(A, B):bool return A.title.lower() < B.title.lower() end) end)
+            end },
+            { item='Sort by Artist', action=function()
+               reorder(function() glPlaylist.sort(function(A, B):bool return A.artist.lower() < B.artist.lower() end) end)
+            end },
+            { item='Reverse List', action=function() reorder(function() glPlaylist.reverse() end) end },
+            { item='Randomise List', action=function()
+               reorder(function()
+                  for i in {#glPlaylist - 1 to 0 by -1} do
+                     j = math.floor(math.random() * (i + 1))
+                     tmp = glPlaylist[i]
+                     glPlaylist[i] = glPlaylist[j]
+                     glPlaylist[j] = tmp
+                  end
+               end)
+            end }
+         })
+      end
+   })
+
+   insetBox(bar_right, 124, bar_y + 1, 94, 12)
+   ui.plTotal = newText(bar_right, 171, bar_y + 9.5, '', {
+      face='Source Code Pro', size=7, fill=COL.lcdText, align='middle'
+   })
+
+   skinButton(bar_right, 226, bar_y, 28, 14, {
+      label='LIST', onClick=function(Button)
+         showMenu('list', array<table> {
+            { item='New List', action=function()
+               stop()
+               glPlaylist.clear()
+               setMarquee(currentTrackText())
+               refreshPlaylist()
+            end },
+            { item='Load List...', action=function() openFiles(true) end }
+         })
+      end
+   })
+
+
+   -- Resize grip.  Unlike the main window, resizing the playlist extends the list instead of scaling the interface.
+   -- The requested size is accepted as-is, within the playlist's size limits.
+
+   grip = bar_right.new('VectorViewport', {
+      x=u(265), y=u(PL_H - 10), width=u(9), height=u(9), cursor=PTC_SIZE_BOTTOM_RIGHT
+   })
+   for i in {0 to 3} do
+      offset = 2 + (i * 2.2)
+      newPoly(grip, array<double> { offset, 8, 8, offset }, { stroke=COL.frameLight, strokeWidth=0.6 })
+   end
+
+   local sizing
+   grip.mtSubscribeInput(JTYPE_BUTTON | JTYPE_MOVEMENT, function(Viewport:obj!, Msg)
+      repeat
+         if Msg.type is JET_LMB then
+            sizing = nil
+            if Msg.value > 0 then
+               err, cursor_x, cursor_y = mGfx.GetCursorPos()
+               if err is ERR_Okay then
+                  surface = glWindows.pl.surface
+                  sizing = {
+                     cursorX=cursor_x, cursorY=cursor_y, width=surface.width, height=surface.height,
+                     scale=dragScale(Viewport)
+                  }
+               end
+            end
+         elseif sizing and (Msg.type is JET_ABS_XY) then
+            err, cursor_x, cursor_y = mGfx.GetCursorPos()
+            if err is ERR_Okay then
+               unit = S * sizing.scale -- Pixels per skin unit
+               width = (sizing.width + cursor_x - sizing.cursorX) / unit
+               height = (sizing.height + cursor_y - sizing.cursorY) / unit
+               width = math.clamp(width, WIDTH, PL_MAX_W)
+               height = math.clamp(height, PL_CHROME_H + (PL_MIN_ROWS * PL_ROW_H),
+                  PL_CHROME_H + (PL_MAX_ROWS * PL_ROW_H))
+               resizePlaylist(width, height, sizing.scale)
+            end
+         end
+         Msg = Msg.next
+      until not Msg
+   end)
+
+   layoutPlaylist()
+
+   return vp
+end
+
+----------------------------------------------------------------------------------------------------------------------
+-- Animation.  The playback position is read from the sound, or advanced here for simulated tracks.  Visualisation data
+-- is measured from the audio output by glAnalyser, or synthesised for simulated tracks.
+
+function tick(Dt:num!)
+   glState.clock += Dt
+   active = glState.playing and not glState.paused
+
+   if active and (#glPlaylist > 0) and (glState.seekHold <= 0) then
+      if glSound then
+         glState.position = glSound.elapsed -- The end of the track is signalled by OnStop
+      else
+         glState.position += Dt
+         if glState.position >= trackDuration(glPlaylist[glState.track]) then
+            trackFinished()
+         end
+      end
+   end
+
+   if active and (glState.fade > 0) then
+      if glState.fade <= Dt then
+         stop() -- Cancels the fade, restoring the volume
+         active = false
+      else
+         glState.fade -= Dt
+         level = fadeLevel()
+         ui.volume.setValue(glState.volume * level, true) -- The slider follows the fade
+         if glSound then glSound.volume = soundVolume() * level * level end -- Squared to match the volume curve
+      end
+   end
+
+   if glState.playing and (#glPlaylist > 0) then
+      if glState.seekHold > 0 then
+         glState.seekHold -= Dt
+         if glState.seekHold <= 0 then seekTo(glState.position) end -- The seek bar has settled
+      else
+         duration = trackDuration(glPlaylist[glState.track])
+         ui.seek.increment = 5 / duration
+         ui.seek.setValue(glState.position / duration, true)
+      end
+   end
+
+   updateTimeDisplay()
+
+   -- Marquee: transient messages take precedence, otherwise scroll the title if it is too wide.
+
+   if glState.flashTime > 0 then
+      glState.flashTime -= Dt
+      if glState.flashTime <= 0 then setMarquee(ui.marqueeText ?? currentTrackText()) end
+   elseif ui.marqueeWidth > 0 then
+      x = ui.marquee.x - (u(24) * Dt)
+      if x <= -ui.marqueeWidth then x += ui.marqueeWidth end
+      ui.marquee.x = x
+   end
+
+   -- Spectrum and oscilloscope.  A track that is played through a Sound is measured from the audio output, which
+   -- falls silent by itself once playback stops or pauses.  The output includes the volume, which is compensated for
+   -- up to 40 dB so that the display follows the track and not the volume control.  Simulated tracks are given a
+   -- synthesised signal.
+
+   measured = (glSound != nil) and (glAnalyser != nil)
+   volume_db = -20 * math.log10(math.max(soundVolume(), 0.01))
+   spectrum = false -- True if glBandLevels holds a measurement for this frame
+   if measured and (glState.vis is 0) then
+      err = glAnalyser.mtGetSpectrum(glBandEdges, glBandLevels)
+      spectrum = err is ERR_Okay
+      if err is ERR_NotInitialised then glAnalyser = nil end -- Disconnected; replaced when the next track loads
+   end
+
+   t = glState.clock
+   beat = (math.sin(t * math.pi * 4) + 1) * 0.5
+   beat = beat * beat * beat * beat
+   gain = glState.volume * fadeLevel() * (1 + (glState.preamp / 24))
+   for i in {0 to TOTAL_BARS} do
+      target = 0
+      if spectrum then
+         target = math.clamp((glBandLevels[i] + volume_db - SPEC_FLOOR) / (SPEC_CEIL - SPEC_FLOOR), 0, 1)
+      elseif active and not measured then
+         band = math.floor(i * 10 / TOTAL_BARS)
+         eq = glState.eqOn ? (1 + (glState.bands[band] / 24)) : 1
+         bass = 1 - (i / TOTAL_BARS)
+         target = ((0.25 + (0.45 * bass)) + (beat * bass * 0.5) + (math.random() * 0.35)) * gain * eq
+         target = math.clamp(target, 0, 1)
+      end
+
+      level = math.max(target, glLevels[i] - (Dt * 2.5))
+      glLevels[i] = level
+      glPeaks[i] = math.max(level, glPeaks[i] - (Dt * 0.5))
+
+      h = level * 14
+      ui.bars[i].y = u(14 - h)
+      ui.bars[i].height = u(h)
+      ui.peaks[i].y = u(math.max(0, 13.2 - (glPeaks[i] * 14)))
+   end
+
+   if glState.vis is 1 then
+      pts = ''
+      if measured and glAnalyser and (glAnalyser.mtGetWaveform(glWaveform) is ERR_Okay) then
+         last = #glWaveform - 1
+         scale = 7 * SCOPE_GAIN * math.min(1 / math.max(soundVolume(), 0.01), 100)
+         for i in {0 into 76} do
+            y = 7 - (glWaveform[math.floor(i * last / 76)] * scale)
+            pts ..= f'{u(i)},{u(math.clamp(y, 0.5, 13.5))} '
+         end
+      else
+         for i in {0 into 38} do
+            x = i * 2
+            y = 7
+            if active and not measured then
+               y += (math.sin((t * 11) + (i * 0.55)) * 3.5 + math.sin((t * 23) + (i * 1.3)) * 1.5) * gain
+               y += (math.random() - 0.5) * 1.2
+            end
+            pts ..= f'{u(x)},{u(math.clamp(y, 0.5, 13.5))} '
+         end
+      end
+      ui.scope.points = pts
+   end
+
+   redraw()
+end
+
+----------------------------------------------------------------------------------------------------------------------
+-- Configuration.  The player state is written to an XML file on exit and restored on the next launch.  Window sizes
+-- are saved as a zoom factor in pixels per skin unit, which is independent of the scale used for the interface
+-- coordinates.  Missing or malformed values fall back to their defaults, so a partial file is always accepted.
+
+CONFIG_VERSION <const> = 1
+
+glLayout = { }   -- Window geometry and playback state read from the config file, applied once the windows exist
+glConfigSaved = false
+
+-- Returns the attributes of an XML tag as a table of name-value strings.
+
+function attribTable(Tag:table!):table
+   local result = { }
+   for i, at in ipairs(Tag.attribs) do
+      if i > 0 then result[at.name] = at.value end
+   end
+   return result
+end
+
+-- Attribute converters.  The '??' operator is avoided because it treats zero as empty.
+
+function attrNum(Attribs:table!, Name:str!, Default:num!, Min:num, Max:num):num
+   local value = tonumber(Attribs[Name])
+   if (value is nil) or (value != value) then return Default end
+   if Min then value = math.max(value, Min) end
+   if Max then value = math.min(value, Max) end
+   return value
+end
+
+function attrBool(Attribs:table!, Name:str!, Default:bool!):bool
+   local value = Attribs[Name]
+   if value is nil then return Default end
+   return (value is 'true') or (value is '1')
+end
+
+-- Load the config file into glState, glPlaylist and glLayout.  This must run before the windows are created.  Returns
+-- true if the file was loaded.
+
+function loadConfig(Path:str!):bool
+   if mSys.AnalysePath(Path) != ERR_Okay then return false end
+
+   local root
+   try
+      local xml = obj.new('xml', { path=Path })
+      for tag in values(xml.tags) do
+         if tag.attribs[0].name is 'noizy' then root = tag end
+      end
+   except ex
+      print(f'Ignoring config file {Path}: {ex.message}')
+      return false
+   end
+
+   if not root then
+      print(f'Ignoring config file {Path}: the <noizy> root element is missing.')
+      return false
+   end
+
+   local playback = { }
+   for tag in values(root.children) do
+      name = tag.attribs[0].name
+      at = attribTable(tag)
+      if name is 'player' then
+         glState.volume     = attrNum(at, 'volume', glState.volume, 0, 1)
+         glState.balance    = attrNum(at, 'balance', glState.balance, -1, 1)
+         glState.shuffle    = attrBool(at, 'shuffle', glState.shuffle)
+         glState.repeatMode = attrBool(at, 'repeat', glState.repeatMode)
+         glState.remaining  = attrBool(at, 'remaining', glState.remaining)
+         glState.vis        = math.floor(attrNum(at, 'vis', glState.vis, 0, 2))
+      elseif name is 'playback' then
+         playback = at
+      elseif name is 'equaliser' then
+         glState.eqOn   = attrBool(at, 'enabled', glState.eqOn)
+         glState.eqAuto = attrBool(at, 'auto', glState.eqAuto)
+         glState.preamp = attrNum(at, 'preamp', glState.preamp, -12, 12)
+         local band = 0
+         for child in values(tag.children) do
+            if (child.attribs[0].name is 'band') and (band < #glState.bands) then
+               glState.bands[band] = attrNum(attribTable(child), 'gain', 0, -12, 12)
+               band += 1
+            end
+         end
+      elseif name is 'enhancer' then
+         glState.fx.enabled = attrBool(at, 'enabled', glState.fx.enabled)
+         if (at.tab is 'bass') or (at.tab is 'music') then glState.fx.tab = at.tab end
+         for child in values(tag.children) do -- Unknown keys are ignored
+            local param = attribTable(child)
+            local desc = noizy_enhancer.PARAM_INDEX[param.key ?? '']
+            if (child.attribs[0].name is 'param') and desc then
+               glState.fx.values[desc.key] = noizy_enhancer.clamp(desc, tonumber(param.value))
+            end
+         end
+      elseif name is 'window' then
+         glLayout[at.name ?? ''] = {
+            x = attrNum(at, 'x', 0), y = attrNum(at, 'y', 0), zoom = attrNum(at, 'zoom', S, MIN_SCALE, MAX_SCALE)
+         }
+         if at.name is 'equaliser' then
+            glState.showEQ = attrBool(at, 'visible', glState.showEQ)
+         elseif at.name is 'enhancer' then
+            glState.showFX = attrBool(at, 'visible', glState.showFX)
+         elseif at.name is 'playlist' then
+            glState.showPL = attrBool(at, 'visible', glState.showPL)
+            glState.plW    = attrNum(at, 'width', glState.plW, WIDTH, PL_MAX_W)
+            glState.plH    = attrNum(at, 'height', glState.plH, PL_CHROME_H + (PL_MIN_ROWS * PL_ROW_H),
+               PL_CHROME_H + (PL_MAX_ROWS * PL_ROW_H))
+            glState.plTop  = math.floor(attrNum(at, 'scroll', 0, 0))
+         end
+      elseif name is 'playlist' then
+         glPlaylist.clear()
+         for child in values(tag.children) do
+            if child.attribs[0].name is 'track' then
+               t = attribTable(child)
+               glPlaylist.push({
+                  artist   = t.artist ?? 'Unknown Artist',
+                  title    = t.title ?? '',
+                  path     = t.path,
+                  duration = tonumber(t.duration),
+                  kbps     = attrNum(t, 'kbps', 128, 0),
+                  khz      = attrNum(t, 'khz', 44, 0),
+                  stereo   = attrBool(t, 'stereo', true),
+                  selected = attrBool(t, 'selected', false)
+               })
+            end
+         end
+      end
+   end
+
+   glState.track = math.floor(attrNum(playback, 'track', 0, 0, math.max(0, #glPlaylist - 1)))
+   glLayout.playback = {
+      playing  = attrBool(playback, 'playing', false),
+      paused   = attrBool(playback, 'paused', false),
+      position = attrNum(playback, 'position', 0, 0)
+   }
+   return true
+end
+
+-- Resume playback as it was when the config file was saved.  The playlist scroll position is saved separately from
+-- the current track, so it is reapplied after playTrack() scrolls the track into view.
+
+function restorePlayback()
+   saved = glLayout.playback
+   if (not saved) or (not saved.playing) or (#glPlaylist is 0) then return end
+   top = glState.plTop
+   playTrack(glState.track, saved.position, saved.paused)
+   glState.plTop = top
+   refreshPlaylist()
+end
+
+-- Move the windows to their saved positions, keeping each one on screen in case the display layout has changed.
+-- Returns false if the positions are incomplete, in which case the default arrangement should be used.
+
+function restorePositions():bool
+   windows = { main=glWindows.main, equaliser=glWindows.eq, playlist=glWindows.pl }
+   for name, _ in pairs(windows) do
+      if not glLayout[name] then return false end
+   end
+
+   screen_w, screen_h = glWindows.main.parentSize()
+   for name, win in pairs(windows) do
+      saved = glLayout[name]
+      surface = win.surface
+      x = math.clamp(saved.x, 0, math.max(0, screen_w - surface.width))
+      y = math.clamp(saved.y, 0, math.max(0, screen_h - surface.height))
+      surface.acMoveToPoint(x, y, 0, MTF_X|MTF_Y)
+   end
+
+   -- The enhancer was added after the other windows, so its position is optional.
+
+   saved = glLayout.enhancer
+   if saved then
+      surface = glWindows.fx.surface
+      x = math.clamp(saved.x, 0, math.max(0, screen_w - surface.width))
+      y = math.clamp(saved.y, 0, math.max(0, screen_h - surface.height))
+      surface.acMoveToPoint(x, y, 0, MTF_X|MTF_Y)
+      glWindows.fx.placed = true
+   end
+   return true
+end
+
+-- Write the player state to the config file.  The file is written to a temporary path first and then moved over the
+-- original, so that a failed write cannot leave a truncated config file behind.  Only the first call has any effect,
+-- because the state is saved once on exit.
+
+function saveConfig(Path:str!)
+   if glConfigSaved then return end
+   glConfigSaved = true
+   syncPosition() -- The position is only refreshed by tick(), which may be disabled
+
+   function a(Name:str!, Value:any):str
+      if Value is nil then return '' end
+      return ' ' .. Name .. '="' .. tostring(Value).escXML() .. '"'
+   end
+
+   -- Window geometry is omitted if the window's surface has already been destroyed.  The zoom is rounded because
+   -- window sizes are whole pixels, so the exact ratio is rarely a tidy number.
+
+   lines = array<str>
+   function windowTag(Name:str!, Win:table!, Extra:str)
+      surface = Win.surface
+      if not surface then return end
+      zoom = math.round(surface.width * 10000 / Win.unitW) / 10000
+      lines.push('  <window' .. a('name', Name) .. a('x', surface.x) .. a('y', surface.y) .. a('zoom', zoom) ..
+         (Extra ?? '') .. '/>')
+   end
+
+   lines.push('<?xml version="1.0" encoding="UTF-8"?>')
+   lines.push('<noizy' .. a('version', CONFIG_VERSION) .. '>')
+   lines.push('  <player' .. a('volume', glState.volume) .. a('balance', glState.balance) ..
+      a('shuffle', glState.shuffle) .. a('repeat', glState.repeatMode) .. a('remaining', glState.remaining) ..
+      a('vis', glState.vis) .. '/>')
+   lines.push('  <playback' .. a('track', glState.track) .. a('position', glState.position) ..
+      a('playing', glState.playing) .. a('paused', glState.paused) .. '/>')
+
+   lines.push('  <equaliser' .. a('enabled', glState.eqOn) .. a('auto', glState.eqAuto) ..
+      a('preamp', glState.preamp) .. '>')
+   for i in {0 to #glState.bands} do
+      lines.push('    <band' .. a('freq', EQ_BANDS[i]) .. a('gain', glState.bands[i]) .. '/>')
+   end
+   lines.push('  </equaliser>')
+
+   lines.push('  <enhancer' .. a('enabled', glState.fx.enabled) .. a('tab', glState.fx.tab) .. '>')
+   for p in values(noizy_enhancer.PARAMS) do
+      lines.push('    <param' .. a('key', p.key) .. a('value', glState.fx.values[p.key]) .. '/>')
+   end
+   lines.push('  </enhancer>')
+
+   windowTag('main', glWindows.main)
+   windowTag('equaliser', glWindows.eq, a('visible', glState.showEQ))
+   windowTag('enhancer', glWindows.fx, a('visible', glState.showFX))
+   windowTag('playlist', glWindows.pl, a('visible', glState.showPL) .. a('width', glState.plW) ..
+      a('height', glState.plH) .. a('scroll', glState.plTop))
+
+   lines.push('  <playlist>')
+   for track in values(glPlaylist) do
+      lines.push('    <track' .. a('artist', track.artist) .. a('title', track.title) ..
+         a('duration', track.duration) .. a('kbps', track.kbps) .. a('khz', track.khz) ..
+         a('stereo', track.stereo != false) .. a('selected', track.selected is true) .. a('path', track.path) .. '/>')
+   end
+   lines.push('  </playlist>')
+   lines.push('</noizy>')
+   lines.push('')
+
+   try
+      temp_path = Path .. '.tmp'
+      io.writeAll(temp_path, lines.concat('\n'))
+      check(mSys.MoveFile(temp_path, Path))
+   except ex
+      print(f'Failed to save config file {Path}: {ex.message}')
+   end
+end
+
+----------------------------------------------------------------------------------------------------------------------
+-- Snapshot mode renders each window to a PNG file, which is useful for reviewing layout changes.
+
+function saveSnapshot(Window:table!, Path:str!)
+   Window.surface.acDraw()
+   bmp = Window.root.buffer
+   bmp ?! raise ERR_Failed, 'The interface buffer is unavailable.'
+   pic = obj.new('image', {
+      width = bmp.width, height = bmp.height, bitsPerPixel = bmp.bitsPerPixel, flags = PCF_NEW
+   })
+   bmp.acCopyData(pic.bitmap)
+   pic.acSaveImage(obj.new('file', { flags=FL_NEW|FL_WRITE, path=Path }))
+   print(f'Saved {bmp.width} x {bmp.height} snapshot to {Path}')
+end
+
+----------------------------------------------------------------------------------------------------------------------
+
+   glSnapshot = glArgs.snapshot
+
+-- Create a Noizy window.  Every window accepts the full range of interface scales so that secondary windows can be
+-- sized to match the main window.  The optional minimum and maximum sizes are in skin units and default to the
+-- window's initial size.  The optional zoom sets the initial size in pixels per skin unit.  Each window has its own
+-- scene, so the gradient definitions are registered per window.
+
+function newWindow(Options:table!):table
+   unit_w = Options.width ?? WIDTH
+   unit_h = Options.height
+   zoom   = Options.zoom ?? S
+
+   win = gui.window({
+      title        = Options.title,
+      icon         = 'media/audio',
+      presence     = Options.presence,
+      popOver      = Options.popOver,
+      quit         = Options.quit,
+      aspectRatio  = Options.aspectRatio,
+      events       = Options.events,
+      insideWidth  = math.round(unit_w * zoom),
+      insideHeight = math.round(unit_h * zoom),
+      minWidth     = math.round((Options.minWidth ?? unit_w) * MIN_SCALE),
+      maxWidth     = math.round((Options.maxWidth ?? unit_w) * MAX_SCALE),
+      minHeight    = math.round((Options.minHeight ?? unit_h) * MIN_SCALE),
+      maxHeight    = math.round((Options.maxHeight ?? unit_h) * MAX_SCALE)
+   })
+
+   win.unitW = unit_w -- Size of the interface in skin units
+   win.unitH = unit_h
+   win.bkgd.fill = COL.frameDark
+   win.root = win.clientViewport({ -- The view box scales the interface when the window is resized
+      buffered = (glSnapshot != nil), viewWidth = u(unit_w), viewHeight = u(unit_h)
+   })
+   createGradients(win.scene)
+
+   win.root.mtSubscribeKeyboard(function(Viewport:obj!, Qualifiers:num!, Value:num!, Unicode)
+      if not (Qualifiers has KQ_PRESSED) then return end
+
+      if Qualifiers has KQ_ALT then
+         if Qualifiers has KQ_REPEAT then return end
+         if Value is KEY_G then
+            glState.showEQ = not glState.showEQ
+            updateWindows()
+         elseif Value is KEY_E then
+            glState.showPL = not glState.showPL
+            updateWindows()
+         elseif Value is KEY_N then
+            toggleEnhancer()
+         end
+         return
+      end
+
+      -- Keys that toggle a state ignore auto-repeat
+
+      toggle = not (Qualifiers has KQ_REPEAT)
+
+      if Value is KEY_Z then prevTrack()
+      elseif Value is KEY_X then play()
+      elseif Value is KEY_C then pause()
+      elseif Value is KEY_V then
+         if Qualifiers has KQ_SHIFT then fadeOut() else stop() end
+      elseif Value is KEY_B then nextTrack()
+      elseif toggle and (Value is KEY_SPACE) then
+         if glState.playing then pause() else play() end
+      elseif toggle and (Value is KEY_S) then setShuffle(not glState.shuffle)
+      elseif toggle and (Value is KEY_R) then setRepeat(not glState.repeatMode)
+      elseif Value is KEY_L then openFiles(true)
+      elseif Value is KEY_LEFT then seekTo(glState.position - 5)
+      elseif Value is KEY_RIGHT then seekTo(glState.position + 5)
+      elseif Value is KEY_UP then setVolume(glState.volume + 0.05)
+      elseif Value is KEY_DOWN then setVolume(glState.volume - 0.05)
+      end
+   end)
+
+   -- The windows are borderless, so they can be dragged from any area that is not occupied by a widget.  Input is
+   -- delivered only to the front-most subscriber under the cursor, so clicks reach the root viewport only when no
+   -- widget intercepts them.  The scene then holds a button lock on the root viewport, so movement events continue
+   -- to arrive here until the button is released.  Desktop cursor coordinates are used so that moving the window
+   -- does not feed back into the calculation.
+
+   win.onWheel = Options.onWheel -- Receives wheel events that are not claimed by a widget
+   forwardWheel(win.root)
+
+   local drag
+   win.root.mtSubscribeInput(JTYPE_BUTTON | JTYPE_MOVEMENT, function(Viewport:obj!, Msg)
+      repeat
+         if Msg.type is JET_LMB then
+            drag = nil
+            if Msg.value > 0 then
+               err, cursor_x, cursor_y = mGfx.GetCursorPos()
+               if err is ERR_Okay then
+                  drag = { cursorX=cursor_x, cursorY=cursor_y, x=win.surface.x, y=win.surface.y }
+               end
+            end
+         elseif drag and (Msg.type is JET_ABS_XY) then
+            err, cursor_x, cursor_y = mGfx.GetCursorPos()
+            if err is ERR_Okay then
+               win.surface.acMoveToPoint(drag.x + cursor_x - drag.cursorX, drag.y + cursor_y - drag.cursorY, 0,
+                  MTF_X|MTF_Y)
+            end
+         end
+         Msg = Msg.next
+      until not Msg
+   end)
+
+   return win
+end
+
+   -- The saved state is loaded before the windows are built, so that every widget is created with its saved value.
+
+   glRestored = (not glSnapshot) and loadConfig(glArgs.config)
+
+   if glSnapshot then -- Every window is shown with sample content so that the complete interface can be reviewed.
+      loadSampleTracks()
+      glState.showEQ = true
+      glState.showPL = true
+      glState.showFX = true
+   end
+
+   -- An explicit scale argument overrides the saved window sizes.  Secondary windows open at the main window's zoom
+   -- unless they were visible when the state was saved, in which case they keep their own.
+
+   main_zoom = glArgs.scale ?? glLayout.main?.zoom ?? S
+
+   function windowZoom(Name:str!, Visible:bool!):<num, bool>
+      saved = glLayout[Name]
+      if Visible and saved and (not glArgs.scale) then return saved.zoom, true end
+      return main_zoom, false
+   end
+
+   eq_zoom, eq_keep = windowZoom('equaliser', glState.showEQ)
+   pl_zoom, pl_keep = windowZoom('playlist', glState.showPL)
+   fx_zoom, fx_keep = windowZoom('enhancer', glState.showFX)
+
+   -- The main window can be closed by the desktop, which destroys its surface before the main loop exits, so the
+   -- state is saved while the window geometry is still available.  The animation is stopped because the timer would
+   -- otherwise continue to update the interface after it is destroyed.
+
+   function stopAnimation()
+      if glTimer then
+         mSys.UpdateTimer(glTimer, 0)
+         glTimer = nil
+      end
+   end
+
+   glWindows.main = newWindow({
+      title='Noizy', height=MAIN_H, presence=SPT_TASKBAR, aspectRatio=true, zoom=main_zoom,
+      onWheel=function(Value) setVolume(glState.volume + ((Value < 0) ? 0.05 : -0.05)) end,
+      events = {
+         close = function(Window)
+            stopAnimation()
+            if not glSnapshot then saveConfig(glArgs.config) end
+         end
+      }
+   })
+   glScene = glWindows.main.scene
+
+   -- The equaliser and playlist have no taskbar presence of their own, so they pop over the main window.  Closing
+   -- them hides the window rather than quitting the program.
+
+   glWindows.eq = newWindow({
+      title='Noizy Equaliser', height=EQ_H, aspectRatio=true, presence=SPT_NONE, zoom=eq_zoom,
+      popOver=glWindows.main.surface, quit=false,
+      events = {
+         close = function(Window)
+            glState.showEQ = false
+            updateWindows()
+            return true
+         end
+      }
+   })
+
+   glWindows.pl = newWindow({
+      title='Noizy Playlist', width=glState.plW, height=glState.plH, zoom=pl_zoom,
+      minWidth=WIDTH, minHeight=PL_CHROME_H + (PL_MIN_ROWS * PL_ROW_H),
+      maxWidth=PL_MAX_W, maxHeight=PL_CHROME_H + (PL_MAX_ROWS * PL_ROW_H),
+      presence=SPT_NONE, popOver=glWindows.main.surface, quit=false,
+      events = {
+         close = function(Window)
+            glState.showPL = false
+            updateWindows()
+            return true
+         end
+      }
+   })
+
+   glWindows.fx = newWindow({
+      title='Noizy Enhancer', height=FX_H, aspectRatio=true, presence=SPT_NONE, zoom=fx_zoom,
+      popOver=glWindows.main.surface, quit=false,
+      events = {
+         close = function(Window)
+            glState.showFX = false
+            updateWindows()
+            return true
+         end
+      }
+   })
+
+   glWindows.eq.keepSize = eq_keep
+   glWindows.pl.keepSize = pl_keep
+   glWindows.fx.keepSize = fx_keep
+
+   buildMainPanel(glWindows.main.root)
+   buildEqualiserPanel(glWindows.eq.root)
+   buildPlaylistPanel(glWindows.pl.root)
+   buildEnhancerPanel(glWindows.fx.root)
+
+   setMarquee(currentTrackText())
+   setVisMode(glState.vis)
+   updateEqGraph()
+   refreshPlaylist()
+   updateIndicators()
+
+   if glSnapshot then -- Simulate a moment of playback so that every display element is populated.
+      playTrack(2)
+      seekTo(83)
+      for i in {0 to 20} do tick(TICK_RATE) end
+   elseif glArgs.src then
+      folder, filename = io.splitPath(glArgs.src)
+      addFiles(folder ?? '', array<table> { { filename=filename } })
+      playTrack(#glPlaylist - 1)
+   elseif glRestored then
+      restorePlayback()
+   end
+
+   glWindows.main.show()
+   processing.sleep(0.01) -- Avoids a Gnome desktop bug
+   updateWindows()
+
+   -- Hosted windows must be visible before they can be positioned
+
+   if not (glRestored and restorePositions()) then
+      stackWindows()
+      if glState.showFX then placeEnhancer() end
+   end
+
+   if glSnapshot then
+      base = regex.new([[^(.*?)(\.[^.]*)?$]])
+      stem, ext = base.extract(glSnapshot)
+      ext ??= '.png'
+      saveSnapshot(glWindows.main, glSnapshot)
+      saveSnapshot(glWindows.eq, f'{stem}_eq{ext}')
+      saveSnapshot(glWindows.pl, f'{stem}_pl{ext}')
+      processing.sleep(0.1)
+      saveSnapshot(glWindows.fx, f'{stem}_fx{ext}')
+      ui.selectFxTab('music') -- A second snapshot shows the music tab
+      processing.sleep(0.1)
+      saveSnapshot(glWindows.fx, f'{stem}_fx_music{ext}')
+      return
+   end
+
+   if glArgs.animation then
+      err, glTimer = mSys.SubscribeTimer(TICK_RATE, function(Subscriber, Elapsed, CurrentTime)
+         local dt = TICK_RATE
+         if glLastTime then
+            dt = math.clamp((CurrentTime - glLastTime) / 1000000, 0, 0.25)
+         end
+         glLastTime = CurrentTime
+         tick(dt)
+      end)
+   end
+
+   processing.sleep()
+
+   stopAnimation()
+   saveConfig(glArgs.config)
+   releaseSound()

@@ -18,7 +18,7 @@ namespace {
 }
 
 ExprNodePtr make_builtin_call(ParserContext &Context, SourceSpan Span, FastFunc Callable,
-   ExprNodeList Arguments, TiriType ResultType)
+   ExprNodeList Arguments, TiriType ResultType, bool ForwardMultret = false)
 {
    std::string_view interface_name;
    std::string_view member_name;
@@ -39,7 +39,7 @@ ExprNodePtr make_builtin_call(ParserContext &Context, SourceSpan Span, FastFunc 
    interface_ref.identifier = Identifier::from_keepstr(Context.lex().keepstr(interface_name), Span);
    ExprNodePtr callable = make_member_expr(Span, make_identifier_expr(Span, interface_ref),
       Identifier::from_keepstr(Context.lex().keepstr(member_name), Span));
-   ExprNodePtr call = make_call_expr(Span, std::move(callable), std::move(Arguments), false,
+   ExprNodePtr call = make_call_expr(Span, std::move(callable), std::move(Arguments), ForwardMultret,
       CallArgumentSyntax::Synthetic);
    auto &payload = std::get<CallExprPayload>(call->data);
    payload.compiler_callable = builtin_callable_id(Callable);
@@ -901,8 +901,9 @@ ParserResult<ExprNodePtr> AstBuilder::parse_primary()
                args.push_back(std::move(val));
             }
 
+            const bool forward_multret = not args.back()->is_grouped;
             ExprNodePtr array_of_call = make_builtin_call(
-               this->ctx, span, FastFunc::array_of, std::move(args), TiriType::Array);
+               this->ctx, span, FastFunc::array_of, std::move(args), TiriType::Array, forward_multret);
 
             // If size was specified (literal or expression) and may be larger than values count, wrap in IIFE to resize
             // For literal sizes, we only wrap if size > values count
@@ -912,18 +913,11 @@ ParserResult<ExprNodePtr> AstBuilder::parse_primary()
                size_t(specified_size.literal) > init_values.size());
 
             if (needs_resize) {
-               // Generate: (function() local _arr = array.of(...); array.resize(_arr, size); return _arr end)()
+               // Evaluate the initialiser in the enclosing function so varargs retain their original scope.
+               // Generate: (function(_arr) array.resize(_arr, size); return _arr end)(array.of(...))
 
                // Create local variable name "_arr"
                Identifier arr_id = Identifier::from_keepstr(this->ctx.lex().keepstr("_arr"), span);
-
-               // Statement 1: local _arr = array.of('type', v1, v2, ...)
-
-               std::vector<Identifier> local_names;
-               local_names.push_back(arr_id);
-               ExprNodeList local_values;
-               local_values.push_back(std::move(array_of_call));
-               StmtNodePtr local_stmt = make_local_decl_stmt(span, std::move(local_names), std::move(local_values));
 
                // Build array.resize(_arr, size_expr_or_literal)
 
@@ -943,10 +937,10 @@ ParserResult<ExprNodePtr> AstBuilder::parse_primary()
                ExprNodePtr resize_call = make_builtin_call(
                   this->ctx, span, FastFunc::array_resize, std::move(resize_args), TiriType::Array);
 
-               // Statement 2: array.resize(_arr, size)
+               // Statement 1: array.resize(_arr, size)
                StmtNodePtr resize_stmt = make_expression_stmt(span, std::move(resize_call));
 
-               // Statement 3: return _arr
+               // Statement 2: return _arr
                ExprNodeList return_values;
                NameRef arr_ref2;
                arr_ref2.identifier = arr_id;
@@ -955,16 +949,22 @@ ParserResult<ExprNodePtr> AstBuilder::parse_primary()
 
                // Build function body block
                StmtNodeList body_stmts;
-               body_stmts.push_back(std::move(local_stmt));
                body_stmts.push_back(std::move(resize_stmt));
                body_stmts.push_back(std::move(return_stmt));
                auto body = make_block(span, std::move(body_stmts));
 
-               // Build anonymous function (no parameters)
-               ExprNodePtr anon_func = make_function_expr(span, {}, false, std::move(body));
+               // Pass the completed array into the resizing function.
+               std::vector<FunctionParameter> parameters;
+               FunctionParameter parameter;
+               parameter.name = arr_id;
+               parameter.type = TiriType::Array;
+               parameter.array_element = *element;
+               parameter.type_is_explicit = true;
+               parameters.push_back(std::move(parameter));
+               ExprNodePtr anon_func = make_function_expr(span, std::move(parameters), false, std::move(body));
 
-               // Build immediate call to function (no arguments)
                ExprNodeList call_args;
+               call_args.push_back(std::move(array_of_call));
                node = make_call_expr(span, std::move(anon_func), std::move(call_args), false);
             }
             else node = std::move(array_of_call);

@@ -1,0 +1,799 @@
+-- The Noizy sound enhancer, modelled on the JAMMIX Enhancer for Winamp.  The signal is divided by an AudioSplitter
+-- into a full-range music branch and a bass branch, which are summed and passed through a boosting AudioLimiter:
+--
+--   AudioSplitter ┬ branch 0 (music): EQ(hi-pass, treble shelf) → Gate(noise) → Loudness(AGC) → Stereo(wide)
+--                 │                   → Compressor → Gate(expansion) → Reverb
+--                 └ branch 1 (bass):  EQ(in LP/HP) → Loudness(AGC) → Stereo(separation) → Saturator(phat)
+--                                     → EQ(out LP/HP) → Compressor → Gate(expansion)
+--   → AudioLimiter (boost, ceiling -1 dB)
+--
+-- Controls are described by PARAMS.  Each control holds a value in its own units, e.g. hertz or percent, and names
+-- the effects that it influences.  An effect's settings are computed from the complete set of values by its builder
+-- in EFFECTS, because several controls can influence one effect, e.g. both resonance controls of the bass filters.
+-- An effect at its neutral setting is bypassed, so that it costs nothing.
+
+   import 'json'
+   include 'audio'
+   namespace noizy_enhancer { }
+
+OFF_STEP <const> = 0.05 -- Slider positions below this are the 'off' position of controls that have one
+BUDGET_MS <const> = 2   -- Splitter latency budget; it must accommodate the saturator's oversampling filters
+
+-- Display formats
+
+function fmt_hz(Value:num):str
+   return string.format('%d HZ', math.round(Value))
+end
+
+function fmt_above_hz(Value:num):str
+   return string.format('>%d HZ', math.round(Value))
+end
+
+function fmt_pct(Value:num):str
+   return string.format('%d%%', math.round(Value))
+end
+
+function fmt_ms(Value:num):str
+   return string.format('%d MS', math.round(Value))
+end
+
+----------------------------------------------------------------------------------------------------------------------
+-- Control descriptors, in display order.  'from' and 'to' are the values at the left and right ends of the slider,
+-- so that moving right always means more effect.  A control with 'off' set has an off position at its left end, where
+-- its value is zero.  'effects' lists the effects whose settings depend on the control.
+
+PARAMS = array<table> {
+   -- Bass tab
+
+   { key='bass_in_lp', label='LOW-PASS', tab='bass', group='INPUT', from=120, to=20, scale='log', default=80,
+     format=fmt_hz, effects=array<str> { 'b_in_eq' } },
+   { key='bass_in_hp', label='HI-PASS', tab='bass', group='INPUT', from=120, to=20, scale='log', default=25,
+     format=fmt_hz, effects=array<str> { 'b_in_eq' } },
+   { key='bass_in_res', label='RESONANCE', tab='bass', group='INPUT', from=0, to=100, default=20,
+     format=fmt_pct, effects=array<str> { 'b_in_eq' } },
+   { key='bass_agc', label='AGC DEPTH', tab='bass', group='DYNAMICS', from=0, to=400, default=0,
+     format=fmt_pct, effects=array<str> { 'b_agc' } },
+   { key='bass_comp', label='COMPRESS', tab='bass', group='DYNAMICS', from=30, to=130, default=100,
+     format=fmt_pct, effects=array<str> { 'b_comp', 'b_exp' } },
+   { key='bass_sep', label='SEPARATION', tab='bass', group='STEREO / PHAT', from=0, to=100, default=0,
+     format=fmt_pct, effects=array<str> { 'b_stereo' } },
+   { key='bass_phat', label='PHAT', tab='bass', group='STEREO / PHAT', from=0, to=512, default=0,
+     format=fmt_pct, effects=array<str> { 'b_phat' } },
+   { key='bass_out_lp', label='LOW-PASS', tab='bass', group='OUTPUT FILTERS', from=1500, to=20, scale='log',
+     off=true, default=0, format=fmt_hz, effects=array<str> { 'b_out_eq' } },
+   { key='bass_out_hp', label='HI-PASS', tab='bass', group='OUTPUT FILTERS', from=120, to=20, scale='log',
+     default=20, format=fmt_hz, effects=array<str> { 'b_out_eq' } },
+   { key='bass_out_res', label='RESONANCE', tab='bass', group='OUTPUT FILTERS', from=0, to=100, default=0,
+     format=fmt_pct, effects=array<str> { 'b_out_eq' } },
+   { key='bass_output', label='BASS OUT', tab='bass', group='OUTPUT', from=0, to=100, default=30,
+     format=fmt_pct, effects=array<str> { 'splitter' } },
+
+   -- Music tab
+
+   { key='music_hp', label='HI-PASS', tab='music', group='INPUT', from=210, to=10, scale='log', default=10,
+     format=fmt_above_hz, effects=array<str> { 'm_eq' } },
+   { key='music_noise', label='NOISE LIMIT', tab='music', group='INPUT', from=0, to=100, default=0,
+     format=fmt_pct, effects=array<str> { 'm_noise' } },
+   { key='music_agc', label='AGC DEPTH', tab='music', group='DYNAMICS', from=100, to=500, default=100,
+     format=fmt_pct, effects=array<str> { 'm_agc' } },
+   { key='music_comp', label='COMPRESS', tab='music', group='DYNAMICS', from=50, to=450, default=100,
+     format=fmt_pct, effects=array<str> { 'm_comp', 'm_exp' } },
+   { key='music_speed', label='SPEED', tab='music', group='DYNAMICS', from=410, to=10, default=100,
+     format=fmt_ms, effects=array<str> { 'm_comp', 'm_exp' } },
+   { key='music_wide', label='WIDE [3D]', tab='music', group='STEREO / TREBLE', from=100, to=200, default=100,
+     format=fmt_pct, effects=array<str> { 'm_wide' } },
+   { key='music_treble', label='TREBLE', tab='music', group='STEREO / TREBLE', from=0, to=1000, default=0,
+     format=fmt_pct, effects=array<str> { 'm_eq' } },
+   { key='music_treble_f', label='RANGE', tab='music', group='STEREO / TREBLE', from=20000, to=3000, scale='log',
+     default=8000, format=fmt_above_hz, effects=array<str> { 'm_eq' } },
+   { key='music_reverb', label='REVERB', tab='music', group='REVERB', from=0, to=100, default=0,
+     format=fmt_pct, effects=array<str> { 'm_reverb' } },
+   { key='music_room', label='ROOM SIZE', tab='music', group='REVERB', from=0, to=100, default=50,
+     format=fmt_pct, effects=array<str> { 'm_reverb' } },
+   { key='music_damp', label='DAMP', tab='music', group='REVERB', from=0, to=100, default=50,
+     format=fmt_pct, effects=array<str> { 'm_reverb' } },
+   { key='music_length', label='LENGTH', tab='music', group='REVERB', from=0, to=100, default=30,
+     format=fmt_pct, effects=array<str> { 'm_reverb' } },
+   { key='music_output', label='MUSIC OUT', tab='music', group='OUTPUT', from=0, to=100, default=100,
+     format=fmt_pct, effects=array<str> { 'splitter' } },
+
+   -- Shared footer
+
+   { key='boost', label='BOOST', tab='footer', group='', from=0, to=200, default=0,
+     format=fmt_pct, effects=array<str> { 'limiter' } }
+}
+
+----------------------------------------------------------------------------------------------------------------------
+-- Hover tips for the control labels, in plain English.  Line breaks within a paragraph are reflowed, and a blank line
+-- separates paragraphs.
+
+TIPS = {
+   bass_in_lp = [[
+      The highest frequency that the bass enhancer picks up from the music.  Only sound below this frequency is fed to
+      the other bass controls.  It works with HI-PASS to select a band of bass.
+
+      Far left (120 Hz): the whole bass range is used, including the punch of kick drums and bass guitar.
+
+      Far right (20 Hz): only the deepest sub-bass rumble is used, so the enhancer adds very little that you can
+      hear.
+
+      If this is set well below HI-PASS, the bass enhancer falls silent.  A high RESONANCE can keep a narrow peak
+      audible where the two overlap.]],
+
+   bass_in_hp = [[
+      The lowest frequency that the bass enhancer picks up from the music.  Sound below this frequency is ignored.  It
+      works with LOW-PASS to select a band of bass.
+
+      Far left (120 Hz): the deep bass is removed and only the upper bass is enhanced, which sounds tighter and suits
+      small speakers that cannot reproduce deep notes.  If this is set well above LOW-PASS, the bass enhancer falls
+      silent.
+
+      Far right (20 Hz): the full depth of the bass is used, down to the lowest audible notes.  This sounds deepest on
+      large speakers and headphones, but can make small speakers rattle or distort.]],
+
+   bass_in_res = [[
+      Adds a peak at the LOW-PASS and HI-PASS frequencies, so that the bass is emphasised at those two points rather
+      than evenly.
+
+      Far left (0%): smooth, gentle filters with no peak.  The bass sounds natural.
+
+      Far right (100%): sharp, ringing peaks that are much louder than the surrounding bass.  The bass gains a strong
+      focus or 'boom' at the chosen frequencies and can sound like a single droning note.]],
+
+   bass_agc = [[
+      Automatic gain control for the enhanced bass.  When the bass is quiet, it is gradually turned up towards a
+      consistent level.  It never turns the bass down.
+
+      Far left (0%): off.  The enhanced bass follows the level of the recording.
+
+      Far right (400%): the enhanced bass is raised by up to 12 dB.  Bass on its own rarely reaches the target
+      level, so in practice this often acts as a steady lift close to the full amount, and low rumble that was barely
+      audible can become noticeable.]],
+
+   bass_comp = [[
+      Changes the dynamics of the enhanced bass.  At 100% it has no effect.
+
+      Far left (30%): quiet bass is pushed down further, by up to 24 dB, while strong bass notes pass through.  The bass
+      becomes tight and punchy, and lingering bass is cut short.
+
+      Far right (130%): loud bass notes are gently reduced, which evens out the level of the bass.  The effect is
+      subtle.]],
+
+   bass_sep = [[
+      The stereo width of the enhanced bass.
+
+      Far left (0%): the bass is mono, centred between the speakers.  This sounds solid and focused, and is how most
+      music is mixed for speakers and subwoofers.
+
+      Far right (100%): the bass keeps the stereo spread of the recording.  It can sound wider, but also more diffuse
+      and weaker, especially on speakers that are far apart.]],
+
+   bass_phat = [[
+      Distorts the enhanced bass to add harmonics, which are higher overtones of each bass note.  Harmonics make the
+      bass easier to hear on small speakers and headphones that cannot reproduce the deepest notes, because the ear
+      fills in the missing fundamental.
+
+      Far left (0%): off.  The bass is clean.
+
+      Far right (512%): heavy saturation.  The bass becomes thick, growling and audibly distorted.  The OUTPUT FILTERS
+      can be used to smooth away the harsher harmonics.]],
+
+   bass_out_lp = [[
+      Removes frequencies above this point from the enhanced bass after PHAT has been applied.  It is mainly used to
+      soften the buzz that PHAT adds.
+
+      Far left (OFF): no filter.  All of the harmonics from PHAT are heard.
+
+      Far right (20 Hz): almost everything is removed, leaving only sub-bass, so the bass enhancer becomes very
+      quiet.  If this is set well below the output HI-PASS or the input HI-PASS, the bass enhancer falls silent.]],
+
+   bass_out_hp = [[
+      Removes frequencies below this point from the enhanced bass after PHAT has been applied.
+
+      Far left (120 Hz): the deepest notes are removed, leaving the upper bass and the harmonics from PHAT.  This suits
+      small speakers, which waste power and distort when given bass that they cannot reproduce.
+
+      Far right (20 Hz): the full depth of the bass is kept.
+
+      If this is set well above the output LOW-PASS, or well above the input LOW-PASS while PHAT is off, the bass
+      enhancer falls silent.]],
+
+   bass_out_res = [[
+      Adds a peak at the output LOW-PASS and HI-PASS frequencies, as RESONANCE does for the input filters.
+
+      Far left (0%): smooth, gentle filters with no peak.
+
+      Far right (100%): sharp, ringing peaks that strongly emphasise the bass at the chosen frequencies.]],
+
+   bass_output = [[
+      The volume of the enhanced bass, which is mixed back with the music.  The music already contains its own bass,
+      so this adds bass on top of it.
+
+      Far left (0%): muted.  None of the BASS controls have any audible effect.  If MUSIC OUT is also at 0%, the
+      enhancer is silent.
+
+      Far right (100%): the enhanced bass is as loud as the original bass, which can make the bass overwhelming.
+      Volume rises steeply near the right end; 50% is about a quarter of the full level.]],
+
+   music_hp = [[
+      Removes low frequencies from the music before it is mixed with the enhanced bass.
+
+      Far left (210 Hz): the music loses its own bass, so all of the bass that you hear comes from the BASS tab.  Use
+      this to replace the bass of the recording entirely.  The sound becomes thin if BASS OUT is low.
+
+      Far right (10 Hz): the music keeps all of its own bass, and the enhanced bass is added on top.]],
+
+   music_noise = [[
+      Reduces quiet background noise, such as hiss and hum, by turning down sound that falls below a threshold.
+
+      Far left (0%): off.
+
+      Far right (100%): anything quieter than about -40 dB is reduced by up to 24 dB.  Noisy recordings are cleaned up,
+      but quiet passages, fade-outs and the tails of notes can be cut off or sound choppy.]],
+
+   music_agc = [[
+      Automatic gain control.  Quiet recordings and quiet stretches of music are gradually turned up, so that
+      everything plays at a more consistent volume.  It never turns loud music down.
+
+      Far left (100%): off.  The music plays at its recorded level.
+
+      Far right (500%): quiet music is raised by up to 14 dB.  This helps when listening in noisy surroundings or at a
+      low volume, but the difference between quiet and loud sections is reduced and background noise in quiet
+      sections is raised.]],
+
+   music_comp = [[
+      Changes the dynamics of the music, which is the difference in level between its quiet and loud parts.  At 100%
+      it has no effect.  SPEED controls how quickly it reacts.
+
+      Far left (50%): expansion.  Quiet sounds are pushed down further, by up to 24 dB, which makes the music more
+      dynamic and punchy and can restore some life to a heavily compressed recording.
+
+      Far right (450%): strong compression.  Loud parts are held down, making the music denser and its level more even,
+      so it sounds louder but flatter.]],
+
+   music_speed = [[
+      How quickly COMPRESS reacts to changes in level and how quickly it recovers afterwards.  It has no effect when
+      COMPRESS is at 100%.
+
+      Far left (410 ms): slow and smooth.  Drum hits and other sharp sounds pass through before the compression takes
+      hold, so the music keeps its punch.
+
+      Far right (10 ms): very fast.  Every peak is caught, which is aggressive and can be heard as pumping or
+      fluttering, or as distortion of bass notes.]],
+
+   music_wide = [[
+      The stereo width of the music.  Sounds in the centre, such as lead vocals, are not changed.
+
+      Far left (100%): off.  The stereo image is unchanged.
+
+      Far right (200%): the difference between the left and right channels is doubled, so instruments spread further
+      apart and can seem to extend beyond the speakers.  The centre can sound hollow by comparison.  Mono recordings
+      are not affected.]],
+
+   music_treble = [[
+      Boosts the high frequencies, above the frequency set by RANGE.
+
+      Far left (0%): off.
+
+      Far right (1000%): a boost of 20 dB, which is extreme.  Small settings add clarity and 'air'.  Large settings
+      make the music harsh and bright, and exaggerate hiss and 's' sounds.]],
+
+   music_treble_f = [[
+      The frequency above which TREBLE boosts the sound.  It has no effect when TREBLE is at 0%.
+
+      Far left (above 20000 Hz): only the very top of the hearing range is boosted, which adds a subtle sense of air.
+
+      Far right (above 3000 Hz): the boost reaches down into the upper midrange, which brings vocals, guitars and
+      cymbals forward but can sound harsh.]],
+
+   music_reverb = [[
+      The amount of reverberation, which simulates the echoes of a room.
+
+      Far left (0%): off.  The music is dry.
+
+      Far right (100%): only the reverberation is heard and the original sound is removed, which sounds distant and
+      washed out.  Settings from 10% to 30% are typical.]],
+
+   music_room = [[
+      The size of the simulated room, and how long its echoes last.  It has no effect when REVERB is at 0%.
+
+      Far left (0%): a small room.  The echoes are dense and die away in less than half a second.
+
+      Far right (100%): a large hall, with echoes that take about four seconds to fade.]],
+
+   music_damp = [[
+      How much the simulated room absorbs high frequencies.  It has no effect when REVERB is at 0%.
+
+      Far left (0%): bright, hard surfaces.  The reverberation sounds metallic and ringing.
+
+      Far right (100%): soft, absorbent surfaces.  The high frequencies die away quickly, so the reverberation sounds
+      dark and warm.]],
+
+   music_length = [[
+      The time between the first and the last of the early echoes, which corresponds to the length of the simulated
+      room.  It has no effect when REVERB is at 0%.
+
+      Far left (0%): the early echoes arrive almost at once, as from nearby walls.
+
+      Far right (100%): the early echoes are spread over a tenth of a second, as from distant walls, and can be heard
+      as separate slaps.]],
+
+   music_output = [[
+      The volume of the music, before it is mixed with the enhanced bass.
+
+      Far left (0%): muted.  Only the enhanced bass is heard.  If BASS OUT is also at 0%, the enhancer is silent.
+
+      Far right (100%): full volume.  Volume rises steeply near the right end; 50% is about a quarter of the full
+      level.]],
+
+   boost = [[
+      Raises the volume of the enhanced sound, which is the music and the enhanced bass combined.  A limiter prevents
+      it from clipping.
+
+      Far left (0%): no extra volume.  The limiter only catches peaks that would clip.
+
+      Far right (200%): a boost of 6 dB.  Loud passages are squashed by the limiter, so the sound becomes louder but
+      flatter, and can pump or distort.  The BASS OUT and MUSIC OUT levels determine how hard the limiter works.]]
+}
+
+-- Reflow a tip: the lines of each paragraph are joined with single spaces.
+
+function reflow(Text:str!):str
+   local paras = array<str>
+   for para in values(Text.trim().split('\n\n')) do
+      local words = array<str>
+      for line in values(para.split('\n')) do words.push(line.trim()) end
+      paras.push(words.concat(' '))
+   end
+   return paras.concat('\n\n')
+end
+
+PARAM_INDEX = { }
+for p in values(PARAMS) do
+   p.min   = math.min(p.from, p.to)
+   p.max   = math.max(p.from, p.to)
+   p.scale ?= 'linear'
+   p.tip   = TIPS[p.key] ? reflow(TIPS[p.key]) : nil
+   PARAM_INDEX[p.key] = p
+end
+
+----------------------------------------------------------------------------------------------------------------------
+-- Conversion between slider positions (0 to 1) and control values.
+
+function lerp_value(P:table, Pos:num):num
+   if P.scale is 'log' then
+      return P.from * ((P.to / P.from) ** Pos)
+   end
+   return P.from + ((P.to - P.from) * Pos)
+end
+
+function from_pos(P:table!, Pos:num!):num
+   Pos = math.clamp(Pos, 0, 1)
+   if P.off then
+      if Pos < OFF_STEP then return 0 end
+      Pos = (Pos - OFF_STEP) / (1 - OFF_STEP)
+   end
+   return math.round(lerp_value(P, Pos))
+end
+
+function to_pos(P:table!, Value:num!):num
+   if P.off and (Value <= 0) then return 0 end
+   Value = math.clamp(Value, P.min, P.max)
+   local pos
+   if P.scale is 'log' then
+      pos = math.log(Value / P.from) / math.log(P.to / P.from)
+   else
+      pos = (Value - P.from) / (P.to - P.from)
+   end
+   if P.off then pos = OFF_STEP + (pos * (1 - OFF_STEP)) end
+   return math.clamp(pos, 0, 1)
+end
+
+-- Clamp a value to its control's range.  Controls with an off position also accept zero.
+
+function clamp_value(P:table!, Value:num):num
+   if (Value is nil) or (Value != Value) then return P.default end
+   if P.off and (Value <= 0) then return 0 end
+   return math.clamp(Value, P.min, P.max)
+end
+
+function format_value(P:table!, Value:num!):str
+   if P.off and (Value <= 0) then return 'OFF' end
+   return P.format(Value)
+end
+
+function default_values():table
+   local result = { }
+   for p in values(PARAMS) do result[p.key] = p.default end
+   return result
+end
+
+----------------------------------------------------------------------------------------------------------------------
+-- Mapping helpers
+
+-- Resonance from 0 to 100% maps to a Q of 0.5 to 8 on a logarithmic scale.
+
+function res_q(Pct:num):num
+   return 0.5 * (16 ** (Pct / 100))
+end
+
+-- Branch level from 0 to 100%, on a square law like the volume control.
+
+function branch_gain(Pct:num):<num, bool>
+   if Pct <= 0 then return -48, true end
+   return math.max(-48, 40 * math.log10(Pct / 100)), false
+end
+
+function band(Type:num, Freq:num, Gain:num, Q:num):any
+   return struct.new('AudioEQBand', { type=Type, frequency=Freq, gain=Gain, q=Q })
+end
+
+-- Pass filters are limited below 45% of the output rate, as for the main equaliser.
+
+function limit_freq(Freq:num, Rate:num):num
+   return math.min(Freq, Rate * 0.45)
+end
+
+-- Compression above 100% is a compressor ratio, and below 100% is downward expansion by a gate.  Speed is the
+-- release time in milliseconds.
+
+function compressor(Pct:num, Speed:num):table
+   local p = Pct / 100
+   local attack = math.clamp(Speed / 10, 0.1, 50)
+   if p <= 1 then
+      return { bypass=true, keys={ ratio=1 } }
+   end
+   return { bypass=false, keys={ ratio=math.min(p, 20), threshold=-24, knee=6, attack=attack, release=Speed } }
+end
+
+function expander(Pct:num, Speed:num):table
+   local p = Pct / 100
+   local attack = math.clamp(Speed / 10, 0.1, 100)
+   if p >= 1 then
+      return { bypass=true, keys={ range=0 } }
+   end
+   return { bypass=false, keys={
+      mode=0, ratio=math.min(1 / p, 20), threshold=-30, range=24, attack=attack, release=math.max(Speed, 5)
+   } }
+end
+
+----------------------------------------------------------------------------------------------------------------------
+-- Combinations of settings that silence part or all of the enhancer.  Filters are judged by their combined response,
+-- because resonant filters with overlapping cut-offs still pass a narrow peak, as in the 'Super low drum&bass'
+-- preset.  A filter chain counts as silent if its gain is below SILENT_DB at every frequency.
+
+SILENT_DB <const> = -24
+
+-- The magnitude of a second-order low-pass or high-pass filter at frequency F.  The equaliser's biquads match the
+-- analogue response closely at bass frequencies.
+
+function pass_gain(High:bool, Cutoff:num, Q:num, F:num):num
+   local x = F / Cutoff
+   local d = math.sqrt(((1 - (x * x)) ** 2) + ((x / Q) ** 2))
+   return High ? ((x * x) / d) : (1 / d)
+end
+
+-- The peak gain, in dB, of a chain of filters given as { high, cutoff, q } tables, swept from 5 Hz to 5 kHz.
+
+function chain_peak_db(Filters:array<table>):num
+   local peak = 0
+   for i in {0 into 120} do
+      local f = 5 * (1000 ** (i / 120))
+      local gain = 1
+      for flt in values(Filters) do gain *= pass_gain(flt.high, flt.cutoff, flt.q, f) end
+      peak = math.max(peak, gain)
+   end
+   return 20 * math.log10(math.max(peak, 1e-12))
+end
+
+function silent(A:table!, B:table!):bool
+   return chain_peak_db(array<table> { A, B }) < SILENT_DB
+end
+
+-- The bass filters, as described to chain_peak_db().  The output low-pass is ignored while it is off.
+
+function in_lp(V)  return { high=false, cutoff=V.bass_in_lp, q=res_q(V.bass_in_res) } end
+function in_hp(V)  return { high=true, cutoff=V.bass_in_hp, q=res_q(V.bass_in_res) } end
+function out_lp(V) return { high=false, cutoff=V.bass_out_lp, q=res_q(V.bass_out_res) } end
+function out_hp(V) return { high=true, cutoff=V.bass_out_hp, q=res_q(V.bass_out_res) } end
+
+-- Each conflict lists the controls that can resolve it, and a test of the control values V that is true while the
+-- conflict persists.
+
+CONFLICTS = array<table> {
+   -- The input band is empty.
+   { keys=array<str> { 'bass_in_lp', 'bass_in_hp' }, test=(V => silent(in_lp(V), in_hp(V))) },
+
+   -- The output band is empty.
+   { keys=array<str> { 'bass_out_lp', 'bass_out_hp' },
+     test=(V => (V.bass_out_lp > 0) and silent(out_lp(V), out_hp(V))) },
+
+   -- The output low-pass removes everything that the input hi-pass lets through.  Harmonics from the saturator are
+   -- higher still, so they do not help.
+   { keys=array<str> { 'bass_out_lp', 'bass_in_hp' },
+     test=(V => (V.bass_out_lp > 0) and silent(in_hp(V), out_lp(V))) },
+
+   -- The output hi-pass removes everything that the input low-pass lets through, unless the saturator adds harmonics
+   -- above it.
+   { keys=array<str> { 'bass_out_hp', 'bass_in_lp' },
+     test=(V => (V.bass_phat <= 0) and silent(in_lp(V), out_hp(V))) },
+
+   -- Both branches are muted, so the enhancer outputs nothing.
+   { keys=array<str> { 'bass_output', 'music_output' },
+     test=(V => (V.bass_output <= 0) and (V.music_output <= 0)) }
+}
+
+-- Returns a table of the controls involved in a conflict, as key = true.
+
+function find_conflicts(Values:table!):table
+   local result = { }
+   for c in values(CONFLICTS) do
+      if c.test(Values) then
+         for key in values(c.keys) do result[key] = true end
+      end
+   end
+   return result
+end
+
+----------------------------------------------------------------------------------------------------------------------
+-- Effect builders.  Each returns { bypass, keys, bands } for its effect, computed from the control values V at the
+-- output rate.  'keys' are schema key-paths, and 'bands' replaces an equaliser's band list.  The splitter and limiter
+-- do not set 'bypass', because they follow the master switch.
+
+EFFECTS = {
+   m_eq = { class='AudioEqualiser', branch=0, build=function(V:table, Rate:num):table
+      local bands = array<struct<AudioEQBand>>
+      bands.push(band(EQB_HIGH_PASS, limit_freq(V.music_hp, Rate), 0, 0.707))
+      if V.music_treble > 0 then
+         bands.push(band(EQB_HIGH_SHELF, limit_freq(V.music_treble_f, Rate), V.music_treble * 0.02, 0.707))
+      end
+      return { bypass=false, bands=bands }
+   end },
+
+   m_noise = { class='AudioGate', branch=0, build=function(V:table, Rate:num):table
+      local p = V.music_noise / 100
+      return { bypass=p <= 0, keys={ mode=0, ratio=2, threshold=-80 + (40 * p), range=24 * p } }
+   end },
+
+   m_agc = { class='AudioLoudness', branch=0, build=function(V:table, Rate:num):table
+      local p = (V.music_agc - 100) / 400
+      return { bypass=p <= 0, keys={ max_boost=14 * p, max_cut=0 } }
+   end },
+
+   m_wide = { class='AudioStereo', branch=0, build=function(V:table, Rate:num):table
+      return { bypass=V.music_wide <= 100, keys={ width=V.music_wide } }
+   end },
+
+   m_comp = { class='AudioCompressor', branch=0, build=function(V:table, Rate:num):table
+      return compressor(V.music_comp, V.music_speed)
+   end },
+
+   m_exp = { class='AudioGate', branch=0, build=function(V:table, Rate:num):table
+      return expander(V.music_comp, V.music_speed)
+   end },
+
+   m_reverb = { class='AudioReverb', branch=0, build=function(V:table, Rate:num):table
+      return { bypass=V.music_reverb <= 0, keys={
+         mix=V.music_reverb, size=V.music_room, decay=400 + (36 * V.music_room), damping=V.music_damp,
+         early_length=5 + (0.95 * V.music_length), early_level=30
+      } }
+   end },
+
+   b_in_eq = { class='AudioEqualiser', branch=1, build=function(V:table, Rate:num):table
+      local q = res_q(V.bass_in_res)
+      local bands = array<struct<AudioEQBand>>
+      bands.push(band(EQB_LOW_PASS, limit_freq(V.bass_in_lp, Rate), 0, q))
+      bands.push(band(EQB_HIGH_PASS, limit_freq(V.bass_in_hp, Rate), 0, q))
+      return { bypass=false, bands=bands }
+   end },
+
+   b_agc = { class='AudioLoudness', branch=1, build=function(V:table, Rate:num):table
+      local p = V.bass_agc / 400
+      return { bypass=p <= 0, keys={ max_boost=12 * p, max_cut=0 } }
+   end },
+
+   b_stereo = { class='AudioStereo', branch=1, build=function(V:table, Rate:num):table
+      return { bypass=V.bass_sep >= 100, keys={ width=V.bass_sep } }
+   end },
+
+   b_phat = { class='AudioSaturator', branch=1, build=function(V:table, Rate:num):table
+      local drive = 14 * V.bass_phat / 512
+      return { bypass=drive <= 0, keys={ drive=drive, gain=-drive * 0.5 } }
+   end },
+
+   b_out_eq = { class='AudioEqualiser', branch=1, build=function(V:table, Rate:num):table
+      local q = res_q(V.bass_out_res)
+      local bands = array<struct<AudioEQBand>>
+      if V.bass_out_lp > 0 then bands.push(band(EQB_LOW_PASS, limit_freq(V.bass_out_lp, Rate), 0, q)) end
+      bands.push(band(EQB_HIGH_PASS, limit_freq(V.bass_out_hp, Rate), 0, q))
+      return { bypass=false, bands=bands }
+   end },
+
+   b_comp = { class='AudioCompressor', branch=1, build=function(V:table, Rate:num):table
+      return compressor(V.bass_comp, 100)
+   end },
+
+   b_exp = { class='AudioGate', branch=1, build=function(V:table, Rate:num):table
+      return expander(V.bass_comp, 100)
+   end },
+
+   splitter = { build=function(V:table, Rate:num):table
+      local music_gain, music_mute = branch_gain(V.music_output)
+      local bass_gain, bass_mute = branch_gain(V.bass_output)
+      return { keys={
+         ['branches[0].gain']=music_gain, ['branches[0].mute']=music_mute ? 1 : 0,
+         ['branches[1].gain']=bass_gain, ['branches[1].mute']=bass_mute ? 1 : 0
+      } }
+   end },
+
+   limiter = { build=function(V:table, Rate:num):table
+      return { keys={ gain=20 * math.log10(1 + (V.boost / 200)), ceiling=-1 } }
+   end }
+}
+
+-- Processing order of the branch effects
+
+EFFECT_ORDER = array<str> {
+   'm_eq', 'm_noise', 'm_agc', 'm_wide', 'm_comp', 'm_exp', 'm_reverb',
+   'b_in_eq', 'b_agc', 'b_stereo', 'b_phat', 'b_out_eq', 'b_comp', 'b_exp'
+}
+
+----------------------------------------------------------------------------------------------------------------------
+
+function set_bypass(Effect:obj!, Bypass:bool!)
+   local flags = Effect.flags
+   if Bypass then
+      if not (flags has AEF_BYPASS) then Effect.flags = flags | AEF_BYPASS end
+   elseif flags has AEF_BYPASS then
+      Effect.flags = flags & ~AEF_BYPASS
+   end
+end
+
+function graph_rate(Graph:table!):num
+   local rate = Graph.splitter.outputRate
+   return (rate > 0) ? rate : 48000
+end
+
+-- Apply one effect's settings.  Raises an exception if a value is rejected.
+
+function apply_effect(Graph:table!, Name:str!, Values:table!)
+   local effect = Graph.effects[Name]
+   local spec = EFFECTS[Name].build(Values, graph_rate(Graph))
+
+   if spec.bands then effect.bands = spec.bands end
+
+   if spec.keys then
+      for key, value in pairs(spec.keys) do
+         local err = effect.acSetKey(key, string.format('%.17g', value))
+         if err != ERR_Okay then raise err, f'{Name}: unable to set {key} to {value}' end
+      end
+      local err = effect.acFlush()
+      if err != ERR_Okay then raise err, f'{Name}: the settings were rejected' end
+   end
+
+   if spec.bypass != nil then set_bypass(effect, spec.bypass) end
+end
+
+----------------------------------------------------------------------------------------------------------------------
+-- Push the settings of one control to the effects that it influences, or every control's settings if Key is nil.
+-- Failures are printed rather than raised.  Returns true on success.
+
+function apply(Graph:table!, Values:table!, Key:str):bool
+   local names
+   if Key then
+      names = PARAM_INDEX[Key].effects
+   else
+      names = EFFECT_ORDER.clone()
+      names.push('splitter')
+      names.push('limiter')
+   end
+
+   local ok = true
+   for name in values(names) do
+      try
+         apply_effect(Graph, name, Values)
+      except ex
+         print(f'Unable to update the enhancer: {ex.message}')
+         ok = false
+      end
+   end
+   return ok
+end
+
+-- The master switch bypasses the splitter, and with it every branch effect, and the limiter.
+
+function set_enabled(Graph:table!, Enabled:bool!)
+   Graph.enabled = Enabled
+   set_bypass(Graph.splitter, not Enabled)
+   set_bypass(Graph.limiter, not Enabled)
+end
+
+-- Build the enhancer on a channel set.  The splitter and limiter are placed at Order and Order + 1 in the channel
+-- set's chain.  The enhancer is created disabled, with every effect at its default settings.  Returns a graph handle.
+
+function create(Audio:obj!, Channel:num!, Order:num!):table
+   local graph = { effects = { }, enabled = false }
+   local splitter = obj.new('AudioSplitter', {
+      audio=Audio, channel=Channel, order=Order, latencyBudget=BUDGET_MS, flags=AEF_BYPASS
+   })
+   local ok = false
+   defer
+      if not ok then splitter.free() end
+   end
+
+   check splitter.mtInsertEntry('branches', 1)
+   check splitter.acSetKey('branches[1].mute', 0)
+   check splitter.acFlush()
+
+   for i, name in EFFECT_ORDER do
+      local def = EFFECTS[name]
+      graph.effects[name] = splitter.new(def.class, { branch=def.branch, order=i, flags=AEF_BYPASS })
+   end
+
+   graph.splitter = splitter
+   graph.limiter  = obj.new('AudioLimiter', { audio=Audio, channel=Channel, order=Order + 1, flags=AEF_BYPASS })
+   graph.effects.splitter = splitter
+   graph.effects.limiter  = graph.limiter
+   ok = true
+
+   apply(graph, default_values())
+   return graph
+end
+
+----------------------------------------------------------------------------------------------------------------------
+-- Load presets from a JSON file of the form { "presets": [ { "name": ..., "values": { key: value, ... } } ] }.  Values
+-- are clamped to their control's range, missing values take the control's default, and unknown keys and malformed
+-- entries are ignored.  Returns the presets as { name, values } tables in file order, or an empty array if the file
+-- cannot be read.
+
+function load_presets(Path:str!):array<table>
+   local presets = array<table>
+   local doc
+   try
+      doc = json.decode(io.readAll(Path))
+   except ex
+      print(f'Unable to load enhancer presets from {Path}: {ex.message}')
+      return presets
+   end
+
+   if not (doc is <table>) or not (doc.presets is <array>) then
+      print(f'Unable to load enhancer presets from {Path}: the presets array is missing.')
+      return presets
+   end
+
+   for entry in values(doc.presets) do
+      if (entry is <table>) and (entry.name is <str>) and (entry.values is <table>) then
+         local settings = default_values()
+         for key, value in pairs(entry.values) do
+            local p = PARAM_INDEX[key]
+            if p and (value is <num>) then settings[key] = clamp_value(p, value) end
+         end
+         presets.push({ name=entry.name, values=settings })
+      end
+   end
+   return presets
+end
+
+function free_graph(Graph:table!)
+   if Graph.limiter then Graph.limiter.free() end
+   if Graph.splitter then Graph.splitter.free() end
+   Graph.limiter  = nil
+   Graph.splitter = nil
+   Graph.effects  = { }
+end
+
+noizy_enhancer.PARAMS        = PARAMS
+noizy_enhancer.PARAM_INDEX   = PARAM_INDEX
+noizy_enhancer.EFFECTS       = EFFECTS
+noizy_enhancer.OFF_STEP      = OFF_STEP
+noizy_enhancer.fromPos       = from_pos
+noizy_enhancer.toPos         = to_pos
+noizy_enhancer.clamp         = clamp_value
+noizy_enhancer.format        = format_value
+noizy_enhancer.defaults      = default_values
+noizy_enhancer.conflicts     = find_conflicts
+noizy_enhancer.create        = create
+noizy_enhancer.apply         = apply
+noizy_enhancer.setEnabled    = set_enabled
+noizy_enhancer.free          = free_graph
+noizy_enhancer.loadPresets   = load_presets
