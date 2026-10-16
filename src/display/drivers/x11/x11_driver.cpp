@@ -645,11 +645,10 @@ static ERR create_window_record(X11Driver::State *State, extDisplay *DisplayObje
    attributes.win_gravity = CenterGravity;
    attributes.cursor = State->Cursors[0];
 
-   // Presence controls whether the window manager participates.
-   // override_redirect explicitly prevents the window manager from decorating or managing the window.
-   // Also see _MOTIF_WM_HINTS and _NET_WM_STATE_SKIP_TASKBAR
+   // Decorations and taskbar presence are controlled by _MOTIF_WM_HINTS and _NET_WM_STATE_SKIP_TASKBAR.
+   // Exception: temporary surfaces like menus and tooltips do not participate in the WM processes
 
-   attributes.override_redirect = not State->TaskBar;
+   attributes.override_redirect = State->StickToFront and not State->TaskBar;
    attributes.event_mask = ExposureMask|EnterWindowMask|LeaveWindowMask|PointerMotionMask|StructureNotifyMask|
       KeyPressMask|KeyReleaseMask|ButtonPressMask|ButtonReleaseMask|FocusChangeMask;
    int flags = CWEventMask|CWOverrideRedirect|CWCursor|CWBitGravity;
@@ -729,7 +728,7 @@ static ERR create_window_record(X11Driver::State *State, extDisplay *DisplayObje
    XSizeHints hints = { .flags = USPosition|USSize };
    XSetWMNormalHints(State->Connection, native, &hints);
    set_motif_hints(State, record);
-   if ((not attributes.override_redirect) and (not State->TaskBar)) hide_window_from_taskbar(State, native);
+   if (not State->TaskBar) hide_window_from_taskbar(State, native);
    Record = record;
    return ERR::Okay;
 }
