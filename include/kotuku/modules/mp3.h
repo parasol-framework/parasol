@@ -12,6 +12,47 @@
 
 class objMP3;
 
+// Controls the cost and detail of an MP3 metadata query.
+
+enum class MPF : uint32_t {
+   NIL = 0,
+   TAGS = 0x00000001,
+   ESTIMATE = 0x00000002,
+   SCAN = 0x00000004,
+};
+
+DEFINE_ENUM_FLAG_OPERATORS(MPF)
+
+#ifdef KOTUKU_STATIC
+#define JUMPTABLE_MP3 [[maybe_unused]] static struct MP3Base *MP3Base = nullptr;
+#else
+#define JUMPTABLE_MP3 struct MP3Base *MP3Base = nullptr;
+#endif
+
+struct MP3Base {
+#ifndef KOTUKU_STATIC
+   ERR (*_GetMetadata)(const std::string_view &Path, MPF Flags, std::string *XML);
+#endif // KOTUKU_STATIC
+};
+
+#if !defined(KOTUKU_STATIC) and !defined(PRV_MP3_MODULE)
+extern struct MP3Base *MP3Base;
+namespace mp3 {
+inline ERR GetMetadata(const std::string_view &Path, MPF Flags, std::string *XML) { return MP3Base->_GetMetadata(Path,Flags,XML); }
+} // namespace
+#else
+namespace mp3 {
+extern ERR GetMetadata(const std::string_view &Path, MPF Flags, std::string *XML);
+} // namespace
+#endif // KOTUKU_STATIC
+
+#ifndef PRV_MP3_MODULE
+namespace mp3 {
+inline ERR GetMetadata(const std::string_view &Path, MPF Flags, std::string &XML) {
+   return GetMetadata(Path, Flags, &XML);
+}
+}
+#endif
 // MP3 class definition
 
 #define VER_MP3 (1.000000)

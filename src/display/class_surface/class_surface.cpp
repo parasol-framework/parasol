@@ -2170,6 +2170,11 @@ static ERR SURFACE_Show(extSurface *Self)
 
    refresh_pointer();
 
+   // Headless windows have no window manager to assign focus when they are mapped.
+   // Use the normal focus action to honour focus restrictions and notify subscribers.
+
+   if (glHeadless and (not Self->ParentID)) acFocus(Self);
+
    return ERR::Okay;
 }
 
