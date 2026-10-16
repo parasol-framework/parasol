@@ -1009,6 +1009,7 @@ gui.themes = <table{ linkThemes({
       toolbar = {
          bkgd          = { fill = gui.palette.dark.bkgd },
          groupBorder   = { stroke = 'rgb(255 255 255 / .25)', strokeWidth = gui.pixel('1.5pt') },
+         highlight     = { fill = gui.palette.dark.contrast },
          iconSize      = gui.pixel('16pt'),
          icon          = 'pearl',
          iconHighlight = 'pearl'

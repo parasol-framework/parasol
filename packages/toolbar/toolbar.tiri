@@ -822,8 +822,6 @@ gui.toolbar = function(Options)
       Options.createItems(self)
 
       updateLayout()
-
-      processing.collect()
       return &&
    end
 end
