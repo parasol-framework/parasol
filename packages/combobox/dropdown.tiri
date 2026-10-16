@@ -128,7 +128,7 @@ gui.dropdown = function(Options)
          err, relative_pos = mGfx.GetSurfaceInfo(&relative.scene.surface)
          if err is ERR_Okay then
             rel = { absX = relative_pos.absX, absY = relative_pos.absY }
-            local target = { absX = 0, absY = 0, height = 4096 }
+            local target = { absX = 0, absY = 0, top = 0, height = 4096 }
 
             if parent_surface and parent_surface != 0 then
                local err, info = mGfx.GetSurfaceInfo(parent_surface)
@@ -138,9 +138,16 @@ gui.dropdown = function(Options)
                   target.height = info.height
                end
             else
-               err, display = mGfx.GetDisplayInfo(0)
+               -- Desktop-hosted menus are bound by the monitor that hosts the invoking surface, as per the tooltip.
+
+               err, display = mGfx.GetDisplayInfo(&relative.scene.surface.display ?? 0)
+               if (err != ERR_Okay) or ((display.monitorHeight ?? 0) <= 0) then
+                  err, display = mGfx.GetDisplayInfo(0)
+               end
                if err is ERR_Okay then
-                  target.height = display.height
+                  target.top = display.monitorY ?? 0
+                  mh = (display.monitorHeight ?? 0) > 0 ? display.monitorHeight : display.height
+                  target.height = target.top + mh
                end
             end
 
@@ -153,6 +160,7 @@ gui.dropdown = function(Options)
 
             if y + surface.height > target.height then
                y -= surface.height - (Options.y ?? 0)
+               if y < target.top then y = math.max(target.top, target.height - surface.height) end
             end
 
             surface.acRedimension(x, y, 0, surface.width, surface.height, 0)
