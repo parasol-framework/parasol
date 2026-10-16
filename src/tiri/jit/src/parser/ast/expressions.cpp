@@ -914,10 +914,13 @@ ParserResult<ExprNodePtr> AstBuilder::parse_primary()
 
             if (needs_resize) {
                // Evaluate the initialiser in the enclosing function so varargs retain their original scope.
-               // Generate: (function(_arr) array.resize(_arr, size); return _arr end)(array.of(...))
+               // Generate: (function(_arr, _size)
+               //    if #_arr < _size then array.resize(_arr, _size) end; return _arr
+               // end)(array.of(...), size)
 
                // Create local variable name "_arr"
                Identifier arr_id = Identifier::from_keepstr(this->ctx.lex().keepstr("_arr"), span);
+               Identifier size_id = Identifier::from_keepstr(this->ctx.lex().keepstr("_size"), span);
 
                // Build array.resize(_arr, size_expr_or_literal)
 
@@ -928,17 +931,25 @@ ParserResult<ExprNodePtr> AstBuilder::parse_primary()
                arr_ref.identifier = arr_id;
                resize_args.push_back(make_identifier_expr(span, arr_ref));
 
-               // Use size_expr if available, otherwise use literal
-
-               if (size_expr) resize_args.push_back(std::move(size_expr));
-               else resize_args.push_back(
-                  make_literal_expr(span, LiteralValue::number(double(specified_size.literal))));
+               NameRef size_ref;
+               size_ref.identifier = size_id;
+               resize_args.push_back(make_identifier_expr(span, size_ref));
 
                ExprNodePtr resize_call = make_builtin_call(
                   this->ctx, span, FastFunc::array_resize, std::move(resize_args), TiriType::Array);
 
-               // Statement 1: array.resize(_arr, size)
-               StmtNodePtr resize_stmt = make_expression_stmt(span, std::move(resize_call));
+               // Only pad short arrays: expanded initialisers take precedence over the requested size.
+               StmtNodeList resize_stmts;
+               resize_stmts.push_back(make_expression_stmt(span, std::move(resize_call)));
+               IfClause resize_clause;
+               resize_clause.condition = make_binary_expr(span, AstBinaryOperator::LessThan,
+                  make_unary_expr(span, AstUnaryOperator::Length, make_identifier_expr(span, arr_ref)),
+                  make_identifier_expr(span, size_ref));
+               resize_clause.block = make_block(span, std::move(resize_stmts));
+               std::vector<IfClause> resize_clauses;
+               resize_clauses.push_back(std::move(resize_clause));
+               auto resize_stmt = std::make_unique<StmtNode>(AstNodeKind::IfStmt, span);
+               resize_stmt->data = IfStmtPayload(std::move(resize_clauses));
 
                // Statement 2: return _arr
                ExprNodeList return_values;
@@ -953,7 +964,7 @@ ParserResult<ExprNodePtr> AstBuilder::parse_primary()
                body_stmts.push_back(std::move(return_stmt));
                auto body = make_block(span, std::move(body_stmts));
 
-               // Pass the completed array into the resizing function.
+               // Pass the completed array and evaluate the requested size once in the enclosing function.
                std::vector<FunctionParameter> parameters;
                FunctionParameter parameter;
                parameter.name = arr_id;
@@ -961,10 +972,18 @@ ParserResult<ExprNodePtr> AstBuilder::parse_primary()
                parameter.array_element = *element;
                parameter.type_is_explicit = true;
                parameters.push_back(std::move(parameter));
+               FunctionParameter size_parameter;
+               size_parameter.name = size_id;
+               size_parameter.type = TiriType::Num;
+               size_parameter.type_is_explicit = true;
+               parameters.push_back(std::move(size_parameter));
                ExprNodePtr anon_func = make_function_expr(span, std::move(parameters), false, std::move(body));
 
                ExprNodeList call_args;
                call_args.push_back(std::move(array_of_call));
+               if (size_expr) call_args.push_back(std::move(size_expr));
+               else call_args.push_back(
+                  make_literal_expr(span, LiteralValue::number(double(specified_size.literal))));
                node = make_call_expr(span, std::move(anon_func), std::move(call_args), false);
             }
             else node = std::move(array_of_call);

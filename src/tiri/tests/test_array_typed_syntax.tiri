@@ -146,6 +146,37 @@ end
    numeric = dynamic_size(5, 11, 22, 33)
    assert(#numeric is 5 and numeric[0] is 11 and numeric[2] is 33 and numeric[4] is 0,
       'Dynamic sizes should preserve expanded values and zero-initialise padding')
+
+   expanded = collect(11, 'text', false, nil, 55, 66, nil)
+   assert(#expanded is 7 and expanded[5] is 66 and expanded[6] is nil,
+      'Literal sizes must not truncate expanded varargs, including trailing nil')
+   exact = collect(11, 22, 33, 44, 55)
+   assert(#exact is 5 and exact[4] is 55, 'Varargs matching the requested size should remain intact')
+   larger = dynamic_size(2, 11, 22, 33)
+   assert(#larger is 3 and larger[2] is 33, 'Dynamic sizes must not truncate expanded varargs')
+end
+
+@Test function ArrayTypedSizedTrailingResults()
+   calls = 0
+   function results():<num, num, num>
+      calls++
+      return 11, 22, 33
+   end
+
+   arr = array<int, 3> { 7, results() }
+   assert(#arr is 4 and arr[0] is 7 and arr[3] is 33,
+      'Literal sizes must not truncate expanded function results after a prefix')
+   size_calls = 0
+   function requested_size():num
+      size_calls++
+      return 2
+   end
+   dynamic = array<int, requested_size()> { results() }
+   assert(#dynamic is 3 and dynamic[2] is 33, 'Dynamic sizes must not truncate expanded function results')
+   assert(size_calls is 1 and calls is 2, 'Size and initialiser expressions should each be evaluated once')
+   size = 1
+   fixed = array<int, size> { 11, 22, 33 }
+   assert(#fixed is 3 and fixed[2] is 33, 'Dynamic sizes must also preserve explicit initialiser values')
 end
 
 @Test function ArrayTypedWithValues()
