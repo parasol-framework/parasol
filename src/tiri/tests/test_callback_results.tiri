@@ -1,0 +1,72 @@
+-- Native callbacks interpret numeric returns as ERR unless an explicit payload sink is supplied.
+   module core as mCore
+
+function probe_timer(Callback:func, Terminates:bool)
+   hits = 0
+   err, timer = mCore.SubscribeTimer(0.005, function():any
+      hits++
+      return Callback()
+   end)
+   check err
+   defer
+      -- A terminating callback releases its subscription, so its handle must not be reused.
+      if not Terminates or hits != 1 then mCore.UpdateTimer(timer, 0) end
+   end
+   processing.sleep(0.06)
+   if Terminates then
+      assert(hits is 1, 'A terminating timer callback must unsubscribe after its first invocation')
+   else
+      assert(hits > 1, 'A successful timer callback must remain subscribed')
+   end
+end
+
+@Test function ReturnedTerminateUnsubscribesTimer()
+   probe_timer(function() return ERR_Terminate end, true)
+end
+
+@Test function RaisedTerminateUnsubscribesTimer()
+   probe_timer(function() raise ERR_Terminate end, true)
+end
+
+@Test function ReturnedOkayRetainsTimer()
+   probe_timer(function() return ERR_Okay end, false)
+end
+
+@Test function NoReturnRetainsTimer()
+   probe_timer(function() end, false)
+end
+
+@Test function OrdinaryScriptNumericResultsRemainPayloads()
+   script <close> = obj.new('tiri', { statement='return ERR_Terminate' })
+   check script.acActivate()
+   assert(script.error is ERR_Okay, 'An ordinary script return must not set Script.Error')
+   assert(script.results[0] is tostring(ERR_Terminate), 'An ordinary script must retain its return value')
+end
+
+@Test function CallbackReturnsExposeErrorCodes()
+   for code in values(array<int> { ERR_Okay, ERR_Terminate, ERR_Cancelled, ERR_InvalidValue }) do
+      script <close> = obj.new('tiri', { statement=f'global function callback() return {code} end' })
+      check script.acActivate()
+      check script.mtExec('callback', nil, 0)
+      assert(script.error is ERR_Okay, 'A named script procedure must retain numeric results as payloads')
+      err, procedure = script.mtGetProcedureID('callback')
+      check err
+      err, returned = script.mtCallback(procedure, nil, 0)
+      assert(err is ERR_Okay, 'A returned callback code must not become an activation failure')
+      assert(returned is code, 'Script.Callback() must report the returned ERR code')
+      assert(script.error is ERR_Okay, 'Script.Callback() must restore the surrounding script error')
+   end
+end
+
+@Test function InvalidNumericCallbackCodesAreRejected()
+   for value in values(array<str> { '-1', '1.5', '2147483648', 'math.huge', '0/0' }) do
+      script <close> = obj.new('tiri', { statement=f'global function callback() return {value} end' })
+      check script.acActivate()
+      err, procedure = script.mtGetProcedureID('callback')
+      check err
+      err, returned = script.mtCallback(procedure, nil, 0)
+      assert(err is ERR_Okay, 'An invalid callback code must not become an activation failure')
+      assert(returned is ERR_InvalidValue, 'Callback error codes must be finite non-negative integers in range')
+      assert(script.error is ERR_Okay, 'An invalid callback result must not leak into the surrounding script')
+   end
+end

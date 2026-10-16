@@ -308,7 +308,7 @@ private:
       const Identifier &, const ExprNodeList &, size_t Position);
 
    // Symbol resolution - looks up variables and functions in scope stack
-   [[nodiscard]] std::optional<InferredType> resolve_identifier(GCstr *) const;
+   [[nodiscard]] std::optional<InferredType> resolve_identifier(GCstr *, bool ForRead = true) const;
    [[nodiscard]] const FunctionExprPayload * resolve_call_target(const CallExprPayload &) const;
    [[nodiscard]] const FunctionExprPayload * resolve_function(GCstr *) const;
 
@@ -700,6 +700,7 @@ void TypeAnalyser::enter_function(const FunctionExprPayload &Function, GCstr *Na
    FunctionContext ctx;
    ctx.function = &Function;
    ctx.function_name = Name;
+   ctx.scope_base = this->scope_stack_.size() - 1;
 
    // If function has explicit return types, use them
    if (Function.return_types.is_explicit) {
@@ -1676,7 +1677,7 @@ void TypeAnalyser::analyse_assignment(const AssignmentStmtPayload &Payload)
          std::optional<InferredType> existing;
          bool is_const = false;
          if (is_lexical) {
-            existing = this->resolve_identifier(name);
+            existing = this->resolve_identifier(name, false);
             is_const = this->is_local_const(name);
             bool valid_binding = name_ref->binding_id and identifier.binding_id IS name_ref->binding_id and
                name_ref->binding_id.raw() < this->ctx_.descriptors().binding_count();
@@ -3377,11 +3378,21 @@ bool TypeAnalyser::is_variant_expression(const ExprNode &Expr, size_t Position) 
 //
 // Look up a variable's type by searching from innermost to outermost scope.
 
-std::optional<InferredType> TypeAnalyser::resolve_identifier(GCstr *Name) const
+std::optional<InferredType> TypeAnalyser::resolve_identifier(GCstr *Name, bool ForRead) const
 {
    for (auto it = this->scope_stack_.rbegin(); it != this->scope_stack_.rend(); ++it) {
       auto type = it->lookup_local_type(Name);
-      if (type) return type;
+      if (type) {
+         // Mutable captures may be assigned after the closure is compiled.
+         const size_t scope_index = size_t(it.base() - this->scope_stack_.begin() - 1);
+         if (ForRead and type->primary IS TiriType::Nil and not it->is_local_const(Name) and
+             not this->function_stack_.empty() and scope_index < this->function_stack_.back().scope_base) {
+            type->primary = TiriType::Any;
+            type->is_constant = false;
+            type->is_nullable = true;
+         }
+         return type;
+      }
 
       auto param = it->lookup_parameter_type(Name);
       if (param) return param;
@@ -3805,7 +3816,7 @@ bool TypeAnalyser::is_global_const(GCstr *Name) const
 //
 // It implements:
 // - Type mismatch detection between returned values and declared types
-// - Declared-position validation without constraining result count
+// - Declared-position validation and rejection of explicit surplus return expressions
 // - First-wins inference rule for functions without explicit return type declarations
 // - Nil remains valid for nullable slots and is rejected for required slots
 
@@ -3848,6 +3859,18 @@ void TypeAnalyser::validate_return_types(const ReturnStmtPayload &Return, Source
    };
 
    if (ctx->expected_returns.is_explicit) {
+      // A forwarded call may produce surplus results, but explicit surplus expressions are a mistake.
+      const bool expands_tail = Return.forwards_call or
+         (not Return.values.empty() and Return.values.back()->kind IS AstNodeKind::VarArgExpr);
+      const size_t explicit_count = Return.values.size() - (expands_tail ? 1 : 0);
+      if (not ctx->expected_returns.is_variadic and explicit_count > ctx->expected_returns.count) {
+         TypeDiagnostic diag;
+         diag.location = Location;
+         diag.code = ParserErrorCode::ReturnCountMismatch;
+         diag.message = std::format("too many return values: expected at most {}, got {}",
+            ctx->expected_returns.count, Return.values.size());
+         this->record_diagnostic(std::move(diag));
+      }
       // Explicit declaration: validate against declared types
 
       for (size_t i = return_count; i < ctx->expected_returns.count; ++i) {

@@ -202,21 +202,17 @@ extern "C" FFR CALL_FEEDBACK(FUNCTION *Callback, FileFeedback *Feedback)
    }
    else if (Callback->isScript()) {
       ERR error;
+      int returned = int(FFR::OKAY);
       if (sc::Call(*Callback, std::to_array<ScriptArg>({
          { "Size",       Feedback->Size },
          { "Position",   Feedback->Position },
          { "Path",       Feedback->Path },
          { "Dest",       Feedback->Dest },
-         { "FeedbackID", int(Feedback->FeedbackID) }
+         { "FeedbackID", int(Feedback->FeedbackID) },
+         { "Result",     &returned, FD_PTR|FD_RESULT|FD_INT }
       }), error) != ERR::Okay) error = ERR::Function;
 
-      if (!error) {
-         std::span<std::string> results;
-         if ((!((objScript *)Callback->Context)->getResults(results)) and (results.size() > 0)) {
-            return FFR(strtol((results)[0].c_str(), nullptr, 0));
-         }
-         else return FFR::OKAY;
-      }
+      if (error IS ERR::Okay) return FFR(returned);
       else return FFR::OKAY;
    }
    else return FFR::OKAY;

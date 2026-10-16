@@ -135,7 +135,7 @@ public:
       void draw(SceneRenderer &);
       void draw_viewport(SceneRenderer &);
       void draw_clips(SceneRenderer &, extVector *, agg::rasterizer_scanline_aa<> &,
-         agg::renderer_base<agg::pixfmt_gray8> &, const agg::trans_affine &);
+         agg::renderer_base<agg::pixfmt_gray8> &, const agg::trans_affine &, double = 1.0);
       void draw_bounding_box(SceneRenderer &);
       void draw_userspace(SceneRenderer &);
       bool use_cached_mask(const agg::trans_affine &, double, double);
@@ -748,7 +748,8 @@ void SceneRenderer::render_stroke(VectorState &State, extVector &Vector)
       if (Vector.Stroke.Pattern) {
          fill_pattern(State, Vector.Bounds, &Vector.BasePath, Vector.Scene->SampleMethod,
             build_fill_transform(Vector, Vector.Stroke.Pattern->Units IS VUNIT::USERSPACE, State),
-            view_width(), view_height(), *((extVectorPattern *)Vector.Stroke.Pattern), mRenderBase, raster, this);
+            view_width(), view_height(), *((extVectorPattern *)Vector.Stroke.Pattern), mRenderBase, raster,
+            State.mOpacity * Vector.StrokeOpacity, this);
          return;
       }
 

@@ -189,7 +189,7 @@ class objWebChannel : public Object {
    }
 
    inline ERR getBufferedAmount(int64_t &Value) noexcept {
-      auto field = &this->Class->Dictionary[13];
+      auto field = &this->Class->Dictionary[14];
       SetObjectContext(this, field, AC::NIL);
       auto error = field->GetValue(this, &Value);
       RestoreObjectContext();
@@ -245,7 +245,7 @@ class objWebChannel : public Object {
    // Customised field setting
 
    inline ERR setBufferedAmountLowThreshold(const int64_t Value) noexcept {
-      auto field = &this->Class->Dictionary[15];
+      auto field = &this->Class->Dictionary[16];
       return field->WriteValue(this, field, FD_INT64, &Value);
    }
 

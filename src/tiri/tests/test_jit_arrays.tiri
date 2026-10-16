@@ -252,8 +252,8 @@ end
    end
 
    assert(saw_error is true, "Unknown array method should still raise an error")
-   assert(message.find("call") != nil or message.find("index") != nil,
-      f"Unknown array method should raise a call/index error, got '{message}'")
+   assert(message.find("Unknown array member 'missingPhaseOneMethod'") != nil,
+      f"Unknown array method should identify the missing member, got '{message}'")
 end
 
 @Test(hotpath=80) function ArrayMethodMetatableOverrideKeepsBuiltinPriority()

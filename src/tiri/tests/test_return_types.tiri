@@ -334,14 +334,32 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 -- RETURN COUNT VALIDATION
 
-@Test function AdditionalReturnsAreTruncated()
-   function additional():<num, str>
-      return 1, "a", false
+@Test function ExplicitSurplusReturnsRejected()
+   for _, source in {
+      'function f():table return {1}, {2}, {3} end',
+      'function f():<num, str> return 1, "a", false end',
+      'function f():<> return 1 end'
+   } do
+      try
+         exec(source)
+      except e
+         assert(e.message.find('too many return values') != nil, e.message)
+      success
+         assert(false, 'Explicit surplus return values should be rejected')
+      end
    end
+end
+
+@Test function ForwardedAdditionalReturnsAreTruncated()
+   function source() return 1, 'a', false end
+   function additional():<num, str> return source() end
    local number, text, extra = additional()
-   assert(number is 1, "first declared result should be preserved")
-   assert(text is "a", "second declared result should be preserved")
-   assert(extra is nil, "additional undeclared results should be truncated")
+   assert(number is 1 and text is 'a' and extra is nil, 'Forwarded results should retain fixed arity')
+end
+
+@Test function VoidForwardsVarargs()
+   function discard(...):<> return ... end
+   assert(discard(1, 2) is nil, 'An explicit void function may discard forwarded varargs')
 end
 
 @Test function FewerReturnsAllowed()
@@ -442,8 +460,9 @@ end
 end
 
 @Test function TypedTailRecursionPreservesFixedArity()
+   function source() return 1, 2 end
    function fixed_tail(Count: num):num
-      if Count is 0 then return 1, 2 end
+      if Count is 0 then return source() end
       return fixed_tail(Count - 1)
    end
 

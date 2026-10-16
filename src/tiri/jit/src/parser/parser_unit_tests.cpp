@@ -3599,7 +3599,8 @@ static bool test_signature_void_and_bare_return(kt::Log &Log)
    }
    lua_pop(L, 2);
 
-   constexpr std::string_view void_source = "return function():<> return 17 end";
+   constexpr std::string_view void_source =
+      "local function source() return 17 end return function():<> return source() end";
    if (lua_load(L, void_source, "signature-void") or lua_pcall(L, 0, 1, 0)) {
       Log.error("failed to create the explicit-void function: %s", lua_tostring(L, -1));
       return false;
@@ -10150,7 +10151,7 @@ static bool test_type_guided_emission(kt::Log &Log)
    constexpr std::string_view fixed_return_elision =
       "local function literal():num return 1 end\n"
       "local function identifier():num local value = 1 return value end\n"
-      "local function pair():<num, str> return 1, 'two', false end\n"
+      "local function pair():<num, str> return 1, 'two' end\n"
       "return literal, identifier, pair\n";
    snapshot = compile_snapshot(L, fixed_return_elision, true, error);
    if (not snapshot or count_opcode_tree(*snapshot, BC_CONTRACT) != 0) {

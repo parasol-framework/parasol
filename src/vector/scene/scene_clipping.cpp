@@ -88,10 +88,11 @@ void SceneRenderer::ClipBuffer::store_cached_mask(const agg::trans_affine &Trans
 //********************************************************************************************************************
 
 void SceneRenderer::ClipBuffer::draw_clips(SceneRenderer &Render, extVector *Shape, agg::rasterizer_scanline_aa<> &Raster,
-   agg::renderer_base<agg::pixfmt_gray8> &Base, const agg::trans_affine &Transform)
+   agg::renderer_base<agg::pixfmt_gray8> &Base, const agg::trans_affine &Transform, double ParentOpacity)
 {
    agg::scanline32_p8 sl;
    for (auto node=Shape; node; node=(extVector *)node->Next) {
+      const double opacity = ParentOpacity * node->Opacity;
       if (node->Class->BaseClassID IS CLASSID::VECTOR) {
          if (node->Visibility != VIS::VISIBLE);
          else if (!node->BasePath.empty()) {
@@ -114,7 +115,7 @@ void SceneRenderer::ClipBuffer::draw_clips(SceneRenderer &Render, extVector *Sha
 
                   if ((node->Fill->Colour.Alpha > 0) and (!node->DisableFillColour)) {
                      double value = (node->Fill->Colour.Red * 0.2126) + (node->Fill->Colour.Green * 0.7152) + (node->Fill->Colour.Blue * 0.0722);
-                     value *= node->FillOpacity;
+                     value *= opacity * node->FillOpacity;
                      solid.color(agg::gray8(value * 0xff, 0xff));
 
                      agg::conv_transform<agg::path_storage, agg::trans_affine> final_path(node->BasePath, t);
@@ -129,6 +130,7 @@ void SceneRenderer::ClipBuffer::draw_clips(SceneRenderer &Render, extVector *Sha
                      // we cache the results.
 
                      VectorState state;
+                     state.mOpacity = opacity;
                      agg::pixfmt_psl pixf;
                      agg::renderer_base<agg::pixfmt_psl> rb(pixf);
                      ColourFormat cf; // Dummy, not required
@@ -162,12 +164,13 @@ void SceneRenderer::ClipBuffer::draw_clips(SceneRenderer &Render, extVector *Sha
                      if (node->Fill->Image) { // Bitmap image fill.  NB: The SVG class creates a standard VectorRectangle and associates an image with it in order to support <image> tags.
                         fill_image(state, node->Bounds, node->BasePath, node->Scene->SampleMethod, t,
                            Render.view_width(), Render.view_height(), *((extVectorImage *)node->Fill->Image), rb, Raster,
-                           node->FillOpacity);
+                           opacity * node->FillOpacity);
                      }
 
                      if (node->Fill->Pattern) {
                         fill_pattern(state, node->Bounds, &node->BasePath, node->Scene->SampleMethod, t,
-                           Render.view_width(), Render.view_height(), *((extVectorPattern *)node->Fill->Pattern), rb, Raster);
+                           Render.view_width(), Render.view_height(), *((extVectorPattern *)node->Fill->Pattern),
+                           rb, Raster, opacity * node->FillOpacity);
                      }
                   }
                }
@@ -177,7 +180,7 @@ void SceneRenderer::ClipBuffer::draw_clips(SceneRenderer &Render, extVector *Sha
                      double value = (std::clamp<float>(node->Stroke.Colour.Red, 0, 1) * 0.2126) +
                         (std::clamp<float>(node->Stroke.Colour.Green, 0, 1) * 0.7152) +
                         (std::clamp<float>(node->Stroke.Colour.Blue, 0, 1) * 0.0722);
-                     value *= node->StrokeOpacity;
+                     value *= opacity * node->StrokeOpacity;
                      solid.color(agg::gray8(value * 0xff, 0xff));
 
                      agg::conv_stroke<agg::path_storage> stroked_path(node->BasePath);
@@ -203,7 +206,7 @@ void SceneRenderer::ClipBuffer::draw_clips(SceneRenderer &Render, extVector *Sha
          }
       }
 
-      if (node->Child) draw_clips(Render, (extVector *)node->Child, Raster, Base, Transform);
+      if (node->Child) draw_clips(Render, (extVector *)node->Child, Raster, Base, Transform, opacity);
    }
 }
 

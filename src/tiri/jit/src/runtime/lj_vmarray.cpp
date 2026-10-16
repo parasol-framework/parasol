@@ -161,8 +161,8 @@ extern "C" cTValue * lj_arr_get(lua_State *L, cTValue *O, cTValue *K)
          cTValue *tv = lj_tab_get(L, mt, K);
          if (not tvisnil(tv)) return tv;  // Found method in metatable
       }
-      // String key not recognised as a method - raise error
-      lj_err_optype(L, O, ErrMsg::OPCALL);
+      // Identify the missing member rather than reporting that the receiver was called.
+      lj_err_msgv(L, ErrMsg::BADARRAYMEMBER, strdata(strV(K)));
       return nullptr;
    }
 
