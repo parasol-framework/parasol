@@ -840,7 +840,7 @@ Z: Close Path
       <const name="HAS_FOCUS">The vector holds the user's input focus.</const>
       <const name="ISOLATED">Enables isolation mode, which results in a bitmap buffer being allocated for the vector and its children while drawing.</const>
       <const name="JOIN_PATHS">When appending a new path, use a join operation to connect the tail end to the head.</const>
-      <const name="STICK_TO_BACK">The vector moves to the back of its branch on initialisation, and siblings cannot be pushed behind it with the <code>Push()</code> method or <code>MoveToBack()</code> action.  A vector initialised with this flag will not pass siblings that are already marked with STICK_TO_BACK.</const>
+      <const name="STICK_TO_BACK">Keeps the vector at the back of the Z-order.</const>
     </constants>
 
     <constants lookup="VFR" comment="Vector fill rules for the FillRule field in the Vector class.">
