@@ -76,6 +76,7 @@ function createMenu(Items:any)
    dd_theme = &dropdownTheme
    combo = &&
    &menu = gui.dropdown({
+      target    = 0, -- Open on the host desktop so the menu can extend beyond the combobox window
       relative  = relative,
       config    = Items ?? { },
       lineLimit = 8,
