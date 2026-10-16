@@ -230,7 +230,7 @@ end
 @Test global function Strokes()         hashTestSVG('paths/strokes.svg', 0xc35a546a) end
 @Test global function SuperShapes()     hashTestSVG('paths/supershapes.svg', 0x7850af16) end
 @Test global function SuperSpiral()     hashTestSVG('paths/superspiral.svg', 0xfcb030d7) end
-@Test global function Transitions()     hashTestSVG('paths/transitions.svg', 0x801a2fb0) end
+@Test global function Transitions()     hashTestSVG('paths/transitions.svg', 0x2f43e541) end
 @Test global function Wave()            hashTestSVG('paths/wave.svg', 0x2c07e1c2) end
 @Test global function W3Paths01()       hashTestSVG('paths/w3-paths-data-01-t.svg', 0x7fdb0e82) end
 @Test global function W3Paths02()       hashTestSVG('paths/w3-paths-data-02-t.svg', 0xb100cbc6) end
@@ -273,7 +273,7 @@ end
 @Test global function W3Coords05() hashTestSVG('coords/w3-coords-units-03-b.svg', 0xb462f91b) end
 @Test global function W3Coords06() hashTestSVG('coords/w3-coords-viewattr-01-b.svg', -1) end
 @Test global function W3Coords07() hashTestSVG('coords/w3-coords-viewattr-02-b.svg', -1) end
-@Test global function W3Coords08() hashTestSVG('coords/w3-coords-viewattr-03-b.svg', 0xf59f3551) end
+@Test global function W3Coords08() hashTestSVG('coords/w3-coords-viewattr-03-b.svg', 0xadb0de47) end
 
 @Test global function EasingGradients() hashTestSVG('gradients/easing.svg', 0xc45a0cf6) end
 @Test global function ContourGradient() pHashTestSVG('gradients/contour-gradient.svg', array<byte> { 114,159,176,141,201,163,124,2 }, 6, true) end
@@ -352,7 +352,7 @@ end
 @Test global function CoarsePaper()        hashTestSVG('filters/coarse_paper.svg', 0xedc2c5e4) end
 @Test global function Composite()          hashTestSVG('filters/composite.svg', 0x83f72f0e) end
 @Test global function CompositeClamp()     hashTestSVG('filters/composite_linear_clamp.svg', 0x137886b9) end
-@Test global function Convolve()           hashTestSVG('filters/convolve.svg', 0x0bd7d2d6) end
+@Test global function Convolve()           hashTestSVG('filters/convolve.svg', 0x36c15187) end
 @Test global function ConvolveUnit2()      hashTestSVG('filters/kernel_unit_length_2.svg', 0x87bad74f) end
 @Test global function ConvolveUnit05()     hashTestSVG('filters/kernel_unit_length_0_5.svg', 0xae9de7fa) end
 @Test global function RockyLighting()      hashTestSVG('filters/rocky_lighting.svg', 0x4e4b38f5) end

@@ -779,7 +779,7 @@ The handle is deterministic and permanent, remaining valid for the lifetime of t
 strview Family: The name of the font family to access.
 strview Style: The preferred style to choose from the family.  Use `Regular` or `NULL` for the default.
 int Weight: Equivalent to CSS font-weight; a value of 400 or 0 will equate to normal.
-int Size: The font-size, measured in pixels @ 72 DPI.
+int Size: The em size of the font in pixels, equivalent to the VectorText FontSize.  Use `pt * 96 / 72` to convert from points.
 &ptr Handle: The resulting font handle is returned here.
 
 -ERRORS-
@@ -818,7 +818,9 @@ ERR GetFontHandle(const std::string_view &Family, const std::string_view &Style,
 -FUNCTION-
 GetFontMetrics: Returns display metrics for a font handle.
 
-Call GetFontMetrics() to retrieve the font height, line spacing, ascent and descent values for a font handle.
+Call GetFontMetrics() to retrieve the font height, line spacing, ascent and descent values for a font handle.  The
+values are measured in the same pixel units as the `Size` given to ~GetFontHandle(), and do not account for the
+display density.
 
 -INPUT-
 ptr Handle: A font handle obtained from ~GetFontHandle().

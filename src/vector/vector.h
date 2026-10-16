@@ -65,7 +65,7 @@ using namespace kt;
 #include <inttypes.h>
 #include <float.h>
 
-static const double DISPLAY_DPI = 96.0;          // Freetype measurements are based on this DPI.
+static const double DISPLAY_DPI = 96.0;          // Fixed unit conversion DPI (CSS px); FreeType runs at 72
 static const double DEG2RAD     = 0.01745329251994329576923690768489;  // Multiple any angle by this value to convert to radians
 static const double RAD2DEG     = 57.295779513082320876798154814105;
 static const double SQRT2       = 1.414213562373095; // sqrt(2)

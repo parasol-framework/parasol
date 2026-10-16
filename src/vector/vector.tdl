@@ -470,7 +470,7 @@ module({ name='Vector', copyright='Paul Manias © 2010-2026', version=1.0, times
      "USE-TRANSFORM",
      "SVG-TRANSFORM")
 
-  structdef("FontMetrics", { comment="Font metrics, measured in pixels relative to the display" }, [[
+  structdef("FontMetrics", { comment="Font metrics, measured in the same pixel units as the font size" }, [[
     int Height       # Full font height equivalent to `Ascent (cap-height) + Descent (gutter)`.  Does NOT include accents.
     int LineSpacing  # Vertical advance from one line to the next.  Includes coverage for accents and additional whitespace.
     int Ascent       # Height from the baseline to the top (cap-height) of the font.  Does NOT include accents.
