@@ -33,7 +33,8 @@ gui.button = function(Options)
 
    calc_width = false -- True if the button width is computed from its content at initialisation
 
-   -- The hover tip is shown when the pointer rests on the button.  The tooltip removes itself when the pointer moves.
+   -- The hover tip is shown when the pointer rests on the button.  The tooltip removes itself when the pointer moves,
+   -- and is retained in _tooltip because it is freed when the returned object is garbage collected.
 
    function cancelTip()
       if self._tipTimer then
@@ -48,7 +49,7 @@ gui.button = function(Options)
       err, self._tipTimer = mSys.SubscribeTimer(TIP_DELAY, function()
          self._tipTimer = nil
          if self.tip and obj.find(self._viewportID) then
-            gui.tooltip({ target = self.viewport, text = self.tip })
+            self._tooltip = gui.tooltip({ target = self.viewport, text = self.tip })
          end
          raise ERR_Terminate
       end)

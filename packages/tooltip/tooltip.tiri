@@ -1,27 +1,67 @@
 @Package(name="gui/tooltip", version="1.0")
 
 --[[
+Creates a short-lived surface that disappears when the mouse is moved.
 Documentation is available in the Kotuku Wiki.
 --]]
 
    import 'gui'
+
    include 'display', 'vector'
+
+   module display as mGfx
+   module vector as mVec
 
    namespace gui
 
+DEFAULT_MAX_WIDTH <const> = 360 -- Text that would exceed this width (in pixels) is word-wrapped
+
+glLastTip = 0 -- Surface ID of the most recent tooltip.  Only one tooltip can be displayed at a time.
+
+-- Word-wrap Text to fit Width pixels when drawn with Font.  Line breaks in Text are preserved, so that a blank line
+-- can separate paragraphs.  If Font is nil then only the existing line breaks are applied.
+
+function wrapText(Font:any, Text:str!, Width:num!):array<str>
+   lines = array<str>
+   for para in values(Text.split('\n')) do
+      line:str
+      for word in values(para.split(' ')) do
+         if #word > 0 then
+            candidate = line ? (line .. ' ' .. word) : word
+            if line and Font and (mVec.StringWidth(Font, candidate, -1) > Width) then
+               lines.push(line)
+               line = word
+            else
+               line = candidate
+            end
+         end
+      end
+      lines.push(line ?? '')
+   end
+   return lines
+end
+
 gui.tooltip = function(Options)
-   local self = entity { } -- Public variables
+   -- New tooltips are refused until the previous tooltip's surface has been removed.
 
-   using self do
-      theme = Options.theme ?? gui.getTheme(Options.target).page
+   if (glLastTip != 0) and obj.find(glLastTip) then return nil end
 
-      &free = function()
+   local self = setmetatable(entity { }, -- Public interface
+   {
+      __gc = function()
          local surface = &surface
          &surface = nil
          surface?.free()
       end
+   })
 
-      local ptr = obj.find('systempointer')
+   using self do
+      theme = Options.theme ?? gui.getTheme(Options.target).tooltip
+
+      -- The system pointer does not exist until a display has been shown, and never exists in headless mode.
+
+      ptr = obj.find('systempointer')
+      ptr ?! return nil
 
       &surface = obj.new('surface', {
          name = 'rgnTip',
@@ -32,67 +72,94 @@ gui.tooltip = function(Options)
 
       &surface.detach()
 
+      glLastTip = &surface.id
+
       &scene = &surface.new('VectorScene', { flags=VPF_RESIZE, surface=&surface })
 
       &viewport = &scene.new('VectorViewport', { })
 
       &box = &viewport.new('VectorRectangle', table.merge({
-         x = 1, y = 1, height = '100%', width = '100%',
-         roundX = 4, roundY = 4,
-         resizeEvent = function(Viewport, Vector, X, Y, Width, Height)
-            Vector.width  = Width - (Vector.x * 2)
-            Vector.height = Height - (Vector.y * 2)
-         end
-      }, table.merge(theme.bkgd, theme.border)))
+         x = 1, y = 1, xOffset = 1, yOffset = 1,
+      }, theme.bkgd))
+
+      font = choose #Options.text from
+         < 50 -> gui.fonts.page
+         else -> gui.fonts.small
+      end
+
+      pad = font.size
 
       &text = &viewport.new('VectorText', table.merge({
-         x         = gui.fonts.button.size,
-         string    = Options.text,
-         face      = gui.fonts.button.face,
-         fontStyle = gui.fonts.button.style,
-         fontSize  = string.format('%.2fpt', gui.fonts.button.size),
+         x         = pad,
+         face      = font.face,
+         fontStyle = font.style,
+         fontSize  = string.format('%.2fpt', font.size),
          textFlags = VTXF_RASTER
       }, theme.text))
 
-      &surface.height = (gui.fonts.button.size*1.5) + tonumber(&text.fontSize)
+      -- Long text is word-wrapped to the maximum width, less the padding on either side.  The font is measured
+      -- after the theme has been applied, as the theme can override the face, style and size.
+
+      err, font = mVec.GetFontHandle(&text.face, &text.fontStyle ?? 'Regular', 0,
+         math.round(tonumber(&text.fontSize)))
+      lines = wrapText((err is ERR_Okay) ? font : nil, Options.text ?? '',
+         (Options.maxWidth ?? DEFAULT_MAX_WIDTH) - (pad * 2))
+      &text.string = lines.concat('\n')
+
+      -- The first line is centred within a single-line tooltip's height, and each further line adds the line
+      -- spacing.
+
+      line_height = (pad * 1.5) + tonumber(&text.fontSize)
+      &surface.height = line_height + ((#lines - 1) * &text.lineSpacing)
+      &surface.width  = (pad * 2) + &text.textWidth
       &surface.y = ptr.y - &surface.height
-      &text.y = math.floor((&viewport.height * 0.5) + (&text.displaySize * 0.5))
+      &text.y = math.floor((line_height * 0.5) + (&text.displaySize * 0.5))
 
       -- This code segment attaches to the surface so that it works independently of the client.  It
-      -- terminates the tooltip when the pointer is moved by the user.
+      -- terminates the tooltip when a button is pressed, or when the pointer has moved at least MOVE_LIMIT
+      -- pixels from where it was when the tooltip was created.  The small tolerance prevents hand tremor from
+      -- dismissing the tooltip.
 
-      local script = &surface.new('tiri', { name='tiriTip', statement=[[
+      script = &surface.new('tiri', { name='tiriTip', statement=[[
          include 'display'
-         surface_id = tonumber(arg('surface'))
-         surface = obj.find(surface_id)
+         MOVE_LIMIT <const> = 6
+         surface = obj.find(tonumber(arg('surface')))
+         start_x = tonumber(arg('x'))
+         start_y = tonumber(arg('y'))
          if surface then
-            input.subscribe(JTYPE_MOVEMENT | JTYPE_BUTTON, nil, 0, function(Input, Message)
+            input.subscribe(JTYPE_MOVEMENT | JTYPE_BUTTON, nil, 0, function(Input, Event)
+               surface ?! return
+               if Event.flags has JTYPE_MOVEMENT then
+                  local dx = Event.absX - start_x
+                  local dy = Event.absY - start_y
+                  if (dx * dx) + (dy * dy) < MOVE_LIMIT * MOVE_LIMIT then return end
+               end
                Input.unsubscribe()
                surface.free()
+               surface = nil
             end)
          end
       ]] })
 
       script.setKey('surface', &surface.id)
+      script.setKey('x', ptr.x)
+      script.setKey('y', ptr.y)
       script.acActivate()
 
-      -- Reduce the width of the tooltip if the text is short.
-
-      if (&surface.width > &text.textWidth + (gui.fonts.button.size * 2)) then
-         &surface.width = (gui.fonts.button.size * 2) + &text.textWidth
-      end
-
-      -- Adjust the position of the tool tip so that it fits on the screen.
-   --[[
-      if systemSurface != nil then
-         if &surface.right > systemSurface.width then
-            &surface.x = ptr.x - &surface.width
-         end
-      end
-   --]]
+      -- Adjust the position of the tooltip so that it fits on the screen.
 
       if &surface.y < 0 then
          &surface.y = ptr.y + 20
+      end
+
+      _, display = mGfx.GetDisplayInfo(0)
+      if display then
+         if &surface.x + &surface.width > display.width then
+            &surface.x = math.max(0, display.width - &surface.width)
+         end
+         if &surface.y + &surface.height > display.height then
+            &surface.y = math.max(0, display.height - &surface.height)
+         end
       end
 
       &surface.acShow()

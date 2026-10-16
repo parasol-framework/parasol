@@ -823,56 +823,57 @@ gui.palettes = {
    -- contrast is a suitable complement to prime and should be of a strongly contrasting hue
    -- neutral is a default background colour for undefined areas (e.g. window background), usually a light grey tone
    -- mid is used for separating an area from bkgd without drawing attention.  E.g. scrollbar and slider tracks
+   -- edge is the stroke colour for widgets
    -- text is the default colour for text drawn over 'bkgd'; often used for labels and sometimes stroked decorations
    -- altText is the default colour for text drawn over 'prime' when highlighted or selected.  Can be same as 'text'
    ocean = {
       light = { type = 'light', bkgd = 'oklch(0.952 0.004 214.329)', inverse = 'oklch(0.356 0.039 248.975)',
                 prime = 'oklch(0.653 0.135 242.687)', contrast = 'oklch(0.631 0.194 29.442)',
-                neutral = 'oklch(0.894 0 89.876)', mid='oklch(0.804 0 89.876)',
+                neutral = 'oklch(0.894 0 89.876)', mid='oklch(0.804 0 89.876)', edge = 'rgb(0 0 0 / .35)',
                 text='black', altText='white' },
       dark =  { type = 'dark', bkgd = 'oklch(0.406 0.026 246.349)', inverse = 'oklch(0.9135 0.0087 247.92)',
                 prime = 'oklch(0.653 0.135 242.687)', contrast = 'oklch(0.631 0.194 29.442)',
-                neutral = 'oklch(0.356 0.039 248.975)', mid='oklch(0.506 0.026 276.349)',
+                neutral = 'oklch(0.356 0.039 248.975)', mid='oklch(0.506 0.026 276.349)', edge = 'rgb(255 255 255 / .25)',
                 text='white', altText='white' },
    },
    orangeApples = {
       light = { type = 'light', bkgd = 'white', inverse = 'oklch(0.289 0.030 185.119)',
                 prime = 'oklch(0.652 0.166 127.067)', contrast = 'oklch(0.732 0.157 67.580)',
-                neutral = 'oklch(0.894 0 89.876)', mid='none',
+                neutral = 'oklch(0.894 0 89.876)', mid='none', edge = 'rgb(0 0 0 / .35)',
                 text='black', altText='white' },
       dark =  { type = 'dark', bkgd = 'oklch(0.289 0.030 185.119)', inverse = 'white',
                 prime = 'oklch(0.652 0.166 127.067)', contrast = 'oklch(0.732 0.157 67.580)',
-                neutral = 'oklch(0.277 0 89.876)', mid='none',
+                neutral = 'oklch(0.277 0 89.876)', mid='none', edge = 'rgb(255 255 255 / .25)',
                 text='white', altText='white' }
    },
    greenland = {
       light = { type = 'light', bkgd = 'oklch(0.994 0.008 157.097)', inverse = 'oklch(0.309 0.093 136.720)',
                 prime = 'oklch(0.584 0.162 46.883)', contrast = 'oklch(0.532 0.138 127.325)',
-                neutral = 'oklch(0.932 0.012 106.630)', mid='none',
+                neutral = 'oklch(0.932 0.012 106.630)', mid='none', edge = 'rgb(0 0 0 / .35)',
                 text='black', altText='white' },
       dark  = { type = 'dark', bkgd = 'oklch(0.309 0.093 136.720)', inverse = 'white',
                 prime = 'oklch(0.584 0.162 46.883)', contrast = 'oklch(0.532 0.138 127.325)',
-                neutral = 'oklch(0.402 0.015 107.041)', mid='none',
+                neutral = 'oklch(0.402 0.015 107.041)', mid='none', edge = 'rgb(255 255 255 / .25)',
                 text='white', altText='white' }
    },
    sunrise = {
       light = { type = 'light', bkgd = 'oklch(0.995 0.007 164.946)', inverse = 'oklch(0.560 0.019 196.622)',
                 prime = 'oklch(0.634 0.185 40.533)', contrast = 'oklch(0.740 0.161 69.169)',
-                neutral = 'oklch(0.894 0 89.876)', mid='none',
+                neutral = 'oklch(0.894 0 89.876)', mid='none', edge = 'rgb(0 0 0 / .35)',
                 text='black', altText='white' },
       dark =  { type = 'dark', bkgd = 'black', inverse = 'oklch(0.560 0.019 196.622)',
                 prime = 'oklch(0.634 0.185 40.533)', contrast = 'oklch(0.740 0.161 69.169)',
-                neutral = 'oklch(0.277 0 89.876)', mid='none',
+                neutral = 'oklch(0.277 0 89.876)', mid='none', edge = 'rgb(255 255 255 / .25)',
                 text='white', altText='white' }
    },
    candyfloss = {
       light = { type = 'light', bkgd = 'oklch(0.988 0.007 53.450)', inverse = 'oklch(0.443 0.041 204.992)',
                 prime = 'oklch(0.768 0.105 167.447)', contrast = 'oklch(0.690 0.130 15.681)',
-                neutral = 'oklch(0.894 0 89.876)',  mid='none',
+                neutral = 'oklch(0.894 0 89.876)',  mid='none', edge = 'rgb(0 0 0 / .35)',
                 text='black', altText='white' },
       dark  = { type = 'dark', bkgd = 'oklch(0.443 0.041 204.992)', inverse = 'white',
                 prime = 'oklch(0.768 0.105 167.447)', contrast = 'oklch(0.690 0.130 15.681)',
-                neutral = 'oklch(0.277 0 89.876)', mid='none',
+                neutral = 'oklch(0.277 0 89.876)', mid='none', edge = 'rgb(255 255 255 / .25)',
                 text='white', altText='white' }
    }
 }
@@ -945,7 +946,7 @@ gui.themes = <table{ linkThemes({
       widget = { -- Non-input widgets only (exc. checkbox, combobox, etc.)
          text        = { fill = gui.palette.dark.text, face = gui.fonts.widget.face, fontSize = string.format('%.2fpt', gui.fonts.widget.size), fontStyle = gui.fonts.widget.style },
          bkgd        = { fill = gui.palette.dark.prime, opacity = 1 },
-         stroke      = { stroke = 'rgb(255 255 255 / .25)' },
+         stroke      = { stroke = gui.palette.dark.edge },
          strokeFocus = { stroke = gui.palette.dark.contrast },
          disabled    = { opacity = 0.5 }
       },
@@ -953,7 +954,7 @@ gui.themes = <table{ linkThemes({
          text = { fill = gui.palette.dark.text, face = gui.fonts.icon.face, fontSize = string.format('%.2fpt', gui.fonts.icon.size), fontStyle = gui.fonts.icon.style },
       }
       input = { -- Used by checkbox, input, combobox
-         bkgd  = { fill = gui.palette.dark.bkgd, stroke = 'rgb(255 255 255 / .25)', strokeWidth = 2, roundX = 4, roundY = 4, opacity = 1 },
+         bkgd  = { fill = gui.palette.dark.bkgd, stroke = gui.palette.dark.edge, strokeWidth = 2, roundX = 4, roundY = 4, opacity = 1 },
          focus = { stroke = gui.palette.dark.contrast },
          text  = { fill = gui.palette.dark.text, face = gui.fonts.input.face, fontSize = string.format('%.2fpt', gui.fonts.input.size), fontStyle = gui.fonts.input.style },
          disabled = { opacity = 0.5 }
@@ -965,7 +966,7 @@ gui.themes = <table{ linkThemes({
          icon   = 'pearl'
       },
       button = {
-         bkgd      = { fill = gui.palette.dark.neutral, stroke = 'rgb(255 255 255 / .25)', strokeWidth = 2, roundX = 4, roundY = 4, opacity = 1 },
+         bkgd      = { fill = gui.palette.dark.neutral, stroke = gui.palette.dark.edge, strokeWidth = 2, roundX = 4, roundY = 4, opacity = 1 },
          highlight = { fill = gui.palette.dark.contrast },
          focus     = { stroke = gui.palette.dark.contrast },
          text      = { fill = gui.palette.dark.text, face = gui.fonts.button.face, fontSize = string.format('%.2fpt', gui.fonts.button.size), fontStyle = gui.fonts.button.style },
@@ -1008,11 +1009,15 @@ gui.themes = <table{ linkThemes({
       },
       toolbar = {
          bkgd          = { fill = gui.palette.dark.bkgd },
-         groupBorder   = { stroke = 'rgb(255 255 255 / .25)', strokeWidth = gui.pixel('1.5pt') },
+         groupBorder   = { stroke = gui.palette.dark.edge, strokeWidth = gui.pixel('1.5pt') },
          highlight     = { fill = gui.palette.dark.contrast },
          iconSize      = gui.pixel('16pt'),
          icon          = 'pearl',
          iconHighlight = 'pearl'
+      },
+      tooltip = {
+         bkgd = { fill = gui.palette.dark.bkgd, roundX = gui.pixel('4pt'), roundY = gui.pixel('4pt'), strokeWidth = 2, stroke = gui.palette.dark.edge },
+         text = { fill = gui.palette.dark.text }
       },
       desktop = {
          bkgd = 'rgb(160 160 160)'
@@ -1044,7 +1049,7 @@ gui.themes = <table{ linkThemes({
       widget = {
          text        = { fill = gui.palette.light.altText, face = gui.fonts.widget.face, fontSize = string.format('%.2fpt', gui.fonts.widget.size), fontStyle = gui.fonts.widget.style },
          bkgd        = { fill = gui.palette.light.prime, opacity = 1 },
-         stroke      = { stroke = 'rgb(0 0 0 / .35)' },
+         stroke      = { stroke = gui.palette.light.edge },
          strokeFocus = { stroke = gui.palette.light.contrast },
          disabled    = { opacity = 0.5 }
       },
@@ -1052,7 +1057,7 @@ gui.themes = <table{ linkThemes({
          text = { fill = gui.palette.light.altText, face = gui.fonts.icon.face, fontSize = string.format('%.2fpt', gui.fonts.icon.size), fontStyle = gui.fonts.icon.style },
       },
       input = {
-         bkgd  = { fill = gui.palette.light.bkgd, stroke = 'rgb(0 0 0 / .35)', strokeWidth = 2, roundX = 4, roundY = 4, opacity = 1 },
+         bkgd  = { fill = gui.palette.light.bkgd, stroke = gui.palette.light.edge, strokeWidth = 2, roundX = 4, roundY = 4, opacity = 1 },
          focus = { stroke = gui.palette.light.contrast },
          text  = { fill = gui.palette.light.text, face = gui.fonts.input.face, fontSize = string.format('%.2fpt', gui.fonts.input.size), fontStyle = gui.fonts.input.style },
          disabled = { opacity = 0.5 }
@@ -1064,7 +1069,7 @@ gui.themes = <table{ linkThemes({
          icon   = 'carbon'
       },
       button = {
-         bkgd      = { fill = gui.palette.light.inverse, stroke = 'rgb(0 0 0 / .35)', strokeWidth = 2, roundX = 4, roundY = 4, opacity = 1 },
+         bkgd      = { fill = gui.palette.light.inverse, stroke = gui.palette.light.edge, strokeWidth = 2, roundX = 4, roundY = 4, opacity = 1 },
          highlight = { fill = gui.palette.light.contrast },
          focus     = { stroke = gui.palette.light.contrast },
          text      = { fill = gui.palette.light.altText, face = gui.fonts.button.face, fontSize = string.format('%.2fpt', gui.fonts.button.size), fontStyle = gui.fonts.button.style, },
@@ -1108,10 +1113,14 @@ gui.themes = <table{ linkThemes({
       toolbar = {
          bkgd          = { fill = gui.palette.light.bkgd },
          groupBorder   = { stroke = gui.palette.light.inverse, strokeWidth = gui.pixel('1.5pt') },
-         highlight     = { fill = gui.palette.dark.contrast },
+         highlight     = { fill = gui.palette.light.contrast },
          iconSize      = gui.pixel('16pt'),
          icon          = 'carbon',
          iconHighlight = 'pearl'
+      },
+      tooltip = {
+         bkgd = { fill = gui.palette.light.bkgd, roundX = 4, roundY = 4, strokeWidth = 2, stroke = gui.palette.light.edge },
+         text = { fill = gui.palette.light.text }
       },
       desktop = {
          bkgd = 'rgb(160 160 160)'
