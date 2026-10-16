@@ -15,6 +15,7 @@ Documentation is available in the Kotuku Wiki.
    namespace gui
 
 DEFAULT_MAX_WIDTH <const> = 360 -- Text that would exceed this width (in pixels) is word-wrapped
+MOVE_LIMIT <const> = 6 -- Pointer movement (in pixels) that dismisses the tooltip
 
 glLastTip = 0 -- Surface ID of the most recent tooltip.  Only one tooltip can be displayed at a time.
 
@@ -115,36 +116,35 @@ gui.tooltip = function(Options)
       &surface.y = ptr.y - &surface.height
       &text.y = math.floor((line_height * 0.5) + (&text.displaySize * 0.5))
 
-      -- This code segment attaches to the surface so that it works independently of the client.  It
-      -- terminates the tooltip when a button is pressed, or when the pointer has moved at least MOVE_LIMIT
+      -- The tooltip is terminated when a button is pressed, or when the pointer has moved at least MOVE_LIMIT
       -- pixels from where it was when the tooltip was created.  The small tolerance prevents hand tremor from
-      -- dismissing the tooltip.
+      -- dismissing the tooltip.  The callbacks are @Ordinary and refer to the surface by ID so that the input
+      -- subscription does not retain the tooltip entity.  Freeing the surface by any means releases the
+      -- subscription.
 
-      script = &surface.new('tiri', { name='tiriTip', statement=[[
-         include 'display'
-         MOVE_LIMIT <const> = 6
-         surface = obj.find(tonumber(arg('surface')))
-         start_x = tonumber(arg('x'))
-         start_y = tonumber(arg('y'))
-         if surface then
-            input.subscribe(JTYPE_MOVEMENT | JTYPE_BUTTON, nil, 0, function(Input, Event)
-               surface ?! return
-               if Event.flags has JTYPE_MOVEMENT then
-                  local dx = Event.absX - start_x
-                  local dy = Event.absY - start_y
-                  if (dx * dx) + (dy * dy) < MOVE_LIMIT * MOVE_LIMIT then return end
-               end
-               Input.unsubscribe()
-               surface.free()
-               surface = nil
-            end)
+      surface_id = &surface.id
+      start_x = ptr.x
+      start_y = ptr.y
+
+      @Ordinary
+      local function dismissTip(Input, Event)
+         if Event.flags has JTYPE_MOVEMENT then
+            dx = Event.absX - start_x
+            dy = Event.absY - start_y
+            if (dx * dx) + (dy * dy) < MOVE_LIMIT * MOVE_LIMIT then return end
          end
-      ]] })
+         Input.unsubscribe()
+         obj.find(surface_id)?.free()
+      end
 
-      script.setKey('surface', &surface.id)
-      script.setKey('x', ptr.x)
-      script.setKey('y', ptr.y)
-      script.acActivate()
+      dismiss = input.subscribe(JTYPE_MOVEMENT | JTYPE_BUTTON, nil, 0, dismissTip)
+
+      @Ordinary
+      local function releaseDismiss()
+         dismiss.unsubscribe()
+      end
+
+      &surface.subscribe('free', releaseDismiss)
 
       -- Adjust the position of the tooltip so that it fits on the screen.
 
