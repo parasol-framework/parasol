@@ -30,6 +30,111 @@ function drawResizeScene(Scene, Bitmap)
    check Scene.acDraw()
 end
 
+@Test function UnsubscribeFeedbackByFunction()
+   local scene <close>, viewport, rect = newRectScene('callback_identity_rect')
+   local calls = 0
+   local callback = function() calls++ end
+
+   check rect.mtSubscribeFeedback(FM_PATH_CHANGED, callback)
+   firePathChanged(rect)
+   assert(calls > 0, 'The original feedback subscription should receive events')
+
+   check rect.mtSubscribeFeedback(0, callback)
+   local before = calls
+   firePathChanged(rect)
+   assert(calls is before, 'Passing the same function should remove its feedback subscription immediately')
+
+   check rect.mtSubscribeFeedback(FM_PATH_CHANGED, callback)
+   firePathChanged(rect)
+   assert(calls > before, 'A function should be usable again after its last subscription is removed')
+   check rect.mtSubscribeFeedback(0, callback)
+end
+
+@Test function SharedFeedbackFunctionRetainsOtherSubscriptions()
+   local scene <close>, viewport, rect = newRectScene('callback_identity_shared')
+   local other = viewport.new('VectorRectangle', { width=20, height=20 })
+   local calls = 0
+   local unrelated_calls = 0
+   local callback = function() calls++ end
+   local unrelated = function() unrelated_calls++ end
+
+   check rect.mtSubscribeFeedback(FM_PATH_CHANGED, callback)
+   check rect.mtSubscribeFeedback(FM_PATH_CHANGED, callback)
+   check other.mtSubscribeFeedback(FM_PATH_CHANGED, callback)
+   check rect.mtSubscribeFeedback(FM_PATH_CHANGED, unrelated)
+   firePathChanged(rect)
+   firePathChanged(other)
+   assert(calls > 0 and unrelated_calls > 0, 'Both callback functions should initially receive events')
+
+   check rect.mtSubscribeFeedback(0, callback)
+   local before = calls
+   local unrelated_before = unrelated_calls
+   firePathChanged(rect)
+   assert(calls is before, 'Unsubscribing should remove every matching registration on this vector')
+   assert(unrelated_calls > unrelated_before, 'Unsubscribing should preserve other callback functions')
+   firePathChanged(other)
+   assert(calls > before, 'Removing one vector subscription must preserve the function used by another vector')
+   check other.mtSubscribeFeedback(0, callback)
+   check rect.mtSubscribeFeedback(0, unrelated)
+end
+
+@Test function UnsubscribeFeedbackPreservesOtherContexts()
+   local scene <close>, viewport, rect = newRectScene('callback_identity_context')
+   local first = entity { calls=0 }
+   local second = entity { calls=0 }
+   local callback = function() &calls++ end
+
+   using first do
+      check rect.mtSubscribeFeedback(FM_PATH_CHANGED, callback)
+   end
+   using second do
+      check rect.mtSubscribeFeedback(FM_PATH_CHANGED, callback)
+   end
+   firePathChanged(rect)
+   assert(first.calls > 0 and second.calls > 0, 'Each registration should retain its own context')
+
+   using first do
+      check rect.mtSubscribeFeedback(0, callback)
+   end
+   local first_before = first.calls
+   local second_before = second.calls
+   firePathChanged(rect)
+   assert(first.calls is first_before, 'The same function and entity should match the original registration')
+   assert(second.calls > second_before, 'Unsubscribing one context must preserve the other context')
+   using second do
+      check rect.mtSubscribeFeedback(0, callback)
+   end
+end
+
+@Test function UnsubscribeFeedbackReleasesFunctionAndContext()
+   local scene <close>, viewport, rect = newRectScene('callback_identity_release')
+   local weak = setmetatable({}, { __mode='v' })
+
+   function register()
+      local owner = entity { calls=0 }
+      local callback = function() &calls++ end
+      weak.owner = owner
+      weak.callback = callback
+      using owner do
+         check rect.mtSubscribeFeedback(FM_PATH_CHANGED, callback)
+      end
+   end
+
+   function unregister()
+      using weak.owner do
+         check rect.mtSubscribeFeedback(0, weak.callback)
+      end
+   end
+
+   register()
+   processing.collect()
+   assert(weak.owner != nil and weak.callback != nil, 'A live subscription should retain its callback and context')
+   unregister()
+   processing.collect()
+   processing.collect()
+   assert(weak.owner is nil and weak.callback is nil, 'The last unsubscribe should release the function and context')
+end
+
 -- A script subscribes to vector feedback and is then freed.  Regenerating the path must not crash on the stale
 -- context; the first event pass removes the record lazily and the second confirms stability.
 

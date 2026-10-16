@@ -47,6 +47,31 @@
       <tags>mutates-object</tags>
     </method>
 
+    <method>
+      <name>SelectArea</name>
+      <comment>Selects an area of text.</comment>
+      <prototype>ERR vt::SelectArea(OBJECTPTR Object, INT Row, INT Column, INT EndRow, INT EndColumn)</prototype>
+      <tiriPrototype>err = SelectArea(Row:num, Column:num, EndRow:num, EndColumn:num)</tiriPrototype>
+      <input>
+        <param type="INT" name="Row">The line at which the selection starts.</param>
+        <param type="INT" name="Column">The character column at which the selection starts.</param>
+        <param type="INT" name="EndRow">The line at which the selection ends.  If negative, the last line is used.</param>
+        <param type="INT" name="EndColumn">The character column at which the selection ends.  If negative, the end of the line is used.</param>
+      </input>
+      <description>
+<p>SelectArea() marks a region of text as selected, starting at the position given by <code>Row</code> and <code>Column</code>.  The cursor is moved to the end of the region at <code>EndRow</code> and <code>EndColumn</code>, which may come before the start for a reversed selection. Columns are character positions, so UTF-8 sequences count as one column each.  A negative <code>EndRow</code> refers to the last line and a negative <code>EndColumn</code> refers to the end of its line, so <code>SelectArea(0, 0, -1, -1)</code> selects all of the text.  Positions beyond the text are clamped to its limits.</p>
+<p>While an area is selected the <code>AREA_SELECTED</code> bit is set in <fl>TextFlags</fl>.  The next character typed, or a press of Backspace, Delete, Clear or Enter, will replace or delete the selected text.  Moving the cursor deselects the area.</p>
+<p>The selected area is not highlighted when the text is drawn.</p>
+<p>If the start and end positions are identical, the cursor is moved and no area is selected.</p>
+      </description>
+      <result>
+        <error code="Okay">The area was selected.</error>
+        <error code="NoData">The object contains no text.</error>
+        <error code="NullArgs">No arguments were provided.</error>
+      </result>
+      <tags>mutates-object</tags>
+    </method>
+
   </methods>
 
   <fields>

@@ -58,7 +58,7 @@ end
 gui.divider = function(Options:table)
    self = entity {
       _pct          = 0.5,
-      _proportional = not Options.fixedSize,
+      _proportional = Options.proportional != false,
       _buttonHeld   = false,
       _minA = Options.minA ?? 5,
       _minB = Options.minB ?? 5,

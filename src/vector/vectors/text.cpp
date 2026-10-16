@@ -379,6 +379,65 @@ static ERR VECTORTEXT_DeleteLine(extVectorText *Self, struct vt::DeleteLine *Arg
    return ERR::Okay;
 }
 
+/*********************************************************************************************************************
+
+-METHOD-
+SelectArea: Selects an area of text.
+
+SelectArea() marks a region of text as selected, starting at the position given by `Row` and `Column`.  The cursor is
+moved to the end of the region at `EndRow` and `EndColumn`, which may come before the start for a reversed selection.
+Columns are character positions, so UTF-8 sequences count as one column each.  A negative `EndRow` refers to the
+last line and a negative `EndColumn` refers to the end of its line, so `SelectArea(0, 0, -1, -1)` selects all of the
+text.  Positions beyond the text are clamped to its limits.
+
+While an area is selected the `AREA_SELECTED` bit is set in #TextFlags.  The next character typed, or a press of
+Backspace, Delete, Clear or Enter, will replace or delete the selected text.  Moving the cursor deselects the area.
+
+The selected area is not highlighted when the text is drawn.
+
+If the start and end positions are identical, the cursor is moved and no area is selected.
+
+-INPUT-
+int Row: The line at which the selection starts.
+int Column: The character column at which the selection starts.
+int EndRow: The line at which the selection ends.  If negative, the last line is used.
+int EndColumn: The character column at which the selection ends.  If negative, the end of the line is used.
+
+-ERRORS-
+Okay: The area was selected.
+NullArgs: No arguments were provided.
+NoData: The object contains no text.
+
+-TAGS-
+mutates-object
+-END-
+
+*********************************************************************************************************************/
+
+static ERR VECTORTEXT_SelectArea(extVectorText *Self, struct vt::SelectArea *Args)
+{
+   if (not Args) return ERR::NullArgs;
+   if (Self->txLines.empty()) return ERR::NoData;
+
+   auto last_row = int(Self->txLines.size()) - 1;
+
+   auto row = std::clamp(Args->Row, 0, last_row);
+   auto column = std::clamp(Args->Column, 0, Self->txLines[row].utf8Length());
+
+   auto end_row = (Args->EndRow < 0) ? last_row : std::min(Args->EndRow, last_row);
+   auto end_length = Self->txLines[end_row].utf8Length();
+   auto end_column = (Args->EndColumn < 0) ? end_length : std::min(Args->EndColumn, end_length);
+
+   Self->txCursor.move(Self, end_row, end_column); // Clears AREA_SELECTED
+
+   Self->txCursor.selectRow    = row;
+   Self->txCursor.selectColumn = column;
+
+   if ((row != end_row) or (column != end_column)) Self->txFlags |= VTXF::AREA_SELECTED;
+
+   return ERR::Okay;
+}
+
 //********************************************************************************************************************
 
 static ERR VECTORTEXT_Init(extVectorText *Self)
@@ -1855,24 +1914,20 @@ static void delete_selection(extVectorText *Self)
 
    int row, column, end_row, end_column;
    Self->txCursor.selectedArea(Self, &row, &column, &end_row, &end_column);
-   column = Self->txLines[row].utf8CharOffset(column);
-   end_column = Self->txLines[end_row].utf8CharOffset(end_column);
+   auto start_offset = Self->txLines[row].utf8CharOffset(column);
+   auto end_offset = Self->txLines[end_row].utf8CharOffset(end_column);
 
    if (row IS end_row) { // Selection limited to one line
-      Self->txLines[row].replace(column, end_column - column, "");
-      Self->txCursor.move(Self, row, column);
+      Self->txLines[row].erase(start_offset, end_offset - start_offset);
    }
    else {
-      Self->txLines[row].resize(column); // Truncate to end of the first line
-      Self->txCursor.move(Self, row, column);
-
-      row++;
-      if (row < end_row) Self->txLines.erase(Self->txLines.begin() + row, Self->txLines.begin() + end_row);
-
-      if (end_column > 0) Self->txLines[row].replace(0, end_column, "");
+      Self->txLines[row].resize(start_offset);
+      Self->txLines[row].append(Self->txLines[end_row], end_offset, std::string::npos);
+      Self->txLines.erase(Self->txLines.begin() + row + 1, Self->txLines.begin() + end_row + 1);
    }
 
    mark_dirty(Self, RC::BASE_PATH);
+   Self->txCursor.move(Self, row, column);
 }
 
 //********************************************************************************************************************
