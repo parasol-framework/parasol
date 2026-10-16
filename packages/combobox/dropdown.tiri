@@ -396,12 +396,46 @@ gui.dropdown = function(Options)
             y += mi.height
 
             &items.insert(mi)
+         elseif item.group then -- Group headers are centred between rules once the menu width is known
+            mi = { y=y, config=item, lineBreak=true }
+            vText = &page.new('VectorText', table.merge(table.merge({ }, dropdown.text), {
+               align    = 'middle',
+               fontSize = string.format('%.2fpt', gui.fonts.input.size * 0.85),
+               opacity  = 0.7,
+               string   = item.group
+            }))
+
+            _, bx, by, bw, bh = vText.mtGetBoundary(0)
+
+            mi.text = vText
+            mi.textWidth = bw
+            mi.height = math.round(vText.lineSpacing * ITEM_SPACING)
+            vText.y = y + (mi.height - bh) * 0.5 - by
+            if bw > widestItem then widestItem = bw end
+            y += mi.height
+
+            &items.insert(mi)
          end
       end
 
       &width  = TEXT_X + widestItem + (HMARGIN * 3) + widestKey + HMARGIN
       &height = y + VMARGIN
       &page.height = &height
+
+      -- The content width excludes any scrollbar that is added below.
+
+      for item in values(&items) do
+         if item.lineBreak then
+            item.text.x = &width * 0.5
+            line_y   = math.floor(item.y + item.height * 0.5) + 0.5
+            line_end = (&width - item.textWidth) * 0.5 - HMARGIN
+            &page.new('VectorPath', {
+               stroke = dropdown.text.fill, strokeWidth = 1, opacity = 0.35,
+               sequence = string.format('M%f,%f H%f M%f,%f H%f',
+                  HMARGIN * 2, line_y, line_end, &width - line_end, line_y, &width - HMARGIN * 2)
+            })
+         end
+      end
 
       if &lineLimit and (&lineLimit > 0) and (#&items > &lineLimit) then
          &height = &items[&lineLimit].y + VMARGIN
