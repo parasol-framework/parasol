@@ -1,5 +1,7 @@
 -- MP3 metadata queries do not create or activate an Audio object.
 
+@if(exists='modules:audio')
+
    module mp3 as mMP3
    include 'xml'
 
@@ -163,3 +165,5 @@ end
    xml = metadata_query(path, MPF_TAGS)
    assert(xml.find('<title>With length</title>') != nil, 'Data-length indicators must not be decoded as text')
 end
+
+@end
