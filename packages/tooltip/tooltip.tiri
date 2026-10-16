@@ -42,6 +42,33 @@ function wrapText(Font:any, Text:str!, Width:num!):array<str>
    return lines
 end
 
+-- Returns the desktop area that a tooltip at the pointer position must remain within.  This is the monitor that
+-- hosts the target's display, or the primary monitor if the target's display cannot be resolved.  If the pointer is
+-- outside of that monitor (e.g. the window spans several monitors) then the complete virtual desktop is used.
+
+function screenBounds(Target:any, PointerX:num!, PointerY:num!):<num, num, num, num>
+   err, info = mGfx.GetDisplayInfo(Target?.scene?.surface?.display ?? 0)
+   if (err != ERR_Okay) or ((info.monitorWidth ?? 0) <= 0) then
+      err, info = mGfx.GetDisplayInfo(0)
+      if err != ERR_Okay then return 0, 0, math.huge, math.huge end
+   end
+
+   left = info.monitorX
+   top  = info.monitorY
+   right  = left + ((info.monitorWidth > 0) ? info.monitorWidth : info.width)
+   bottom = top + ((info.monitorHeight > 0) ? info.monitorHeight : info.height)
+
+   if ((PointerX < left) or (PointerX >= right) or (PointerY < top) or (PointerY >= bottom)) and
+         (info.virtualWidth > 0) then
+      left   = info.virtualX
+      top    = info.virtualY
+      right  = left + info.virtualWidth
+      bottom = top + info.virtualHeight
+   end
+
+   return left, top, right, bottom
+end
+
 gui.tooltip = function(Options)
    -- New tooltips are refused until the previous tooltip's surface has been removed.
 
@@ -148,18 +175,17 @@ gui.tooltip = function(Options)
 
       -- Adjust the position of the tooltip so that it fits on the screen.
 
-      if &surface.y < 0 then
+      left, top, right, bottom = screenBounds(Options.target, ptr.x, ptr.y)
+
+      if &surface.y < top then
          &surface.y = ptr.y + 20
       end
 
-      _, display = mGfx.GetDisplayInfo(0)
-      if display then
-         if &surface.x + &surface.width > display.width then
-            &surface.x = math.max(0, display.width - &surface.width)
-         end
-         if &surface.y + &surface.height > display.height then
-            &surface.y = math.max(0, display.height - &surface.height)
-         end
+      if &surface.x + &surface.width > right then
+         &surface.x = math.max(left, right - &surface.width)
+      end
+      if &surface.y + &surface.height > bottom then
+         &surface.y = math.max(top, bottom - &surface.height)
       end
 
       &surface.acShow()
