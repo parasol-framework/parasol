@@ -3,6 +3,52 @@
 import 'json'
 module core as mCore
 
+function run_hot_contextual_try(Nested:bool!)
+   jit.on()
+   jit.flush()
+   jit.opt.start('hotloop=56', 'hotexit=10')
+   local handled = 0
+   local cleaned = 0
+   local caller = &&
+   local view = entity {}
+
+   function fail(Item:table!)
+      defer cleaned++ end
+      if Item.fragile then raise 'failed' end
+   end
+
+   view.release = function(Item:table!)
+      try
+         if Nested then
+            fail(Item)
+         elseif Item.fragile then
+            raise 'failed'
+         end
+      except e
+         handled++
+         assert(&& is view, 'A handler must retain the entity receiver established before try entry')
+         assert(e.message.find('failed') != nil, 'The original exception must reach the handler')
+      end
+   end
+
+   local items = {}
+   for i in {0 to 4} do items.insert({ fragile = i is 1 }) end
+   for n in {0 to 300} do
+      for item in values(items) do view.release(item) end
+   end
+   assert(handled is 300, 'Every raising call must run its handler after JIT warm-up')
+   assert(cleaned is (Nested ? 1200 : 0), 'Nested defers must run once on both normal and raising paths')
+   assert(&& is caller, 'Repeated calls and handlers must restore the caller context')
+end
+
+@Test function HotEntityTryPreservesReceiver()
+   run_hot_contextual_try(false)
+end
+
+@Test function HotEntityTryUnwindsNestedDefers()
+   run_hot_contextual_try(true)
+end
+
 @Test function MissingMemberCallRestoresContextBeforeHandler()
    local caller = entity { name = 'caller' }
    local target = entity { name = 'target' }

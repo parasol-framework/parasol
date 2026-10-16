@@ -5483,6 +5483,9 @@ void lj_record_ins(jit_State *J)
 
    case BC_TRYENTER: {
       uint16_t try_index = (uint16_t)bc_d(ins);
+      // Try entry saves an absolute context depth. Include inherited virtual receivers before saving it so
+      // a later side exit cannot insert a surviving call context above the try block's saved boundary.
+      rec_context_materialise(J, ContextMaterialisationReason::UnsupportedBoundary);
       // Operand A is the first free register at try entry; handlers cannot see stack slots above it.
       rec_try_materialise_slots(J, true, bc_a(ins));
       lj_snap_add(J);
