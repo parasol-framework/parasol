@@ -82,7 +82,7 @@ gui.toolbar = function(Options)
          local err
          err, self._tipTimer = mSys.SubscribeTimer(lTipDelay, function(Elapsed, CurrentTime)
             if self._current and self._current.tip?? then
-               gui.tooltip({ target=self.viewport, text=self._current.tip })
+               self._tooltip = gui.tooltip({ target=self.viewport, text=self._current.tip })
             end
             self._tipTimer = nil
             raise ERR_Terminate
