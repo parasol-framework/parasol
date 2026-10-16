@@ -18,15 +18,34 @@ function reportActivate(State:str!, Force:bool!)
    end
 end
 
+-- Count UTF-8 characters rather than bytes.
+
+function charLength(Text:str):num
+   total = 0
+   for i in {0 to #Text} do
+      if (Text.byte(i) & 0xc0) != 0x80 then total++ end
+   end
+   return total
+end
+
+-- Test a string against the input mask.  Empty strings always pass so that the user can clear the box.
+
+function maskAccepts(Text:str!):bool
+   if &inputMask and (#Text > 0) then return &inputMask.test(Text) end
+   return true
+end
+
+-- Commit-time validation, used on Enter and focus loss.  A failure reverts to the last string that passed.
+
 function validateInput()
    if &inputMask then
       userInput = &text.string ?? ''
-      if #userInput > 0 then
-         if not &inputMask.test(userInput) then
-            &text.string = &_lastGoodInput
-            &viewport.acDraw()
-            return false
-         end
+      if not maskAccepts(userInput) then
+         &text.string = &_lastGoodInput
+         &_currentText = &_lastGoodInput
+         &events?.change({ text=&_lastGoodInput })
+         &viewport.acDraw()
+         return false
       end
       &_lastGoodInput = userInput
    end
@@ -41,10 +60,16 @@ gui.input = function(Options)
       label          = Options.label,
       parentViewport = Options.target,
       inputMask      = Options.inputMask ?? regex.new(Options.inputMask) : nil,
+      maskMode       = Options.maskMode ?? 'commit', -- 'commit' or 'keystroke'
+      maxLength      = Options.maxLength, -- Maximum number of characters (not bytes)
+      readOnly       = Options.readOnly ?? false,
       text           = nil, -- A VectorText that represents the string
       viewport       = nil, -- The input box's primary viewport
-      _lastGoodInput = ''
+      _lastGoodInput = Options.text ?? '',
+      _currentText   = Options.text ?? ''
    }
+
+   assert(self.maskMode is 'commit' or self.maskMode is 'keystroke', 'maskMode must be "commit" or "keystroke".')
 
    -- Change the active state of the input box to disabled or enabled
 
@@ -74,10 +99,60 @@ gui.input = function(Options)
       end
    end
 
+   -- Programmatic changes bypass inputMask, maxLength and events.change.
+
    self.setText = function(Text:str!)
       &text?.string = Text
+      &_currentText = Text
+      &_lastGoodInput = Text
       checkShadowLabel()
       &viewport.acDraw()
+   end
+
+   self.getText = function():str
+      return &text?.string ?? ''
+   end
+
+   self.setReadOnly = function(ReadOnly:bool!)
+      &readOnly = ReadOnly
+      if ReadOnly then
+         &text.textFlags = &text.textFlags & ~VTXF_EDITABLE
+      else
+         &text.textFlags = &text.textFlags | VTXF_EDITABLE
+      end
+   end
+
+   -- Called by VectorText after every user edit.  Rejected edits are reverted immediately, with the cursor returned
+   -- to the edit position.
+
+   function textChanged()
+      new_text = &text.string ?? ''
+      if new_text is &_currentText then return end
+
+      accept = true
+      if &readOnly then -- VectorText does not check VTXF_EDITABLE for deletion keys
+         accept = false
+      elseif &maxLength and (charLength(new_text) > &maxLength) then
+         accept = false
+      elseif (&maskMode is 'keystroke') and not maskAccepts(new_text) then
+         accept = false
+      elseif &events.change and (&events.change({ text=new_text }) is false) then
+         accept = false
+      end
+
+      if accept then
+         &_currentText = new_text
+         if &maskMode is 'keystroke' then &_lastGoodInput = new_text end
+      else
+         column = &text.cursorColumn
+         added = charLength(new_text) - charLength(&_currentText)
+         &text.string = &_currentText
+         if added > 0 then column -= added end
+         &text.cursorColumn = math.max(0, column)
+         &viewport.acDraw()
+      end
+
+      checkShadowLabel()
    end
 
    -- Main entry point --
@@ -172,19 +247,22 @@ gui.input = function(Options)
          name      = 'vt_input',
          x         = 4,
          y         = math.round(font_height + math.floor((box_height - font_height - (input_theme.bkgd.strokeWidth * 2)) * 0.5)),
-         face      = Options.textFace ?? gui.fonts.input.face,
+         face      = gui.fonts.input.face, -- Fallbacks; theme.text normally defines the font
          fontSize  = string.format('%.2fpt', gui.fonts.input.size),
-         fontStyle = Options.textStyle ?? gui.fonts.input.style,
+         fontStyle = gui.fonts.input.style,
          string    = Options.text,
          lineLimit = 1,
          textFlags = (function()
-            flags = VTXF_EDITABLE
+            flags = VTXF_EDITABLE -- Required at init for VectorText to support editing; readOnly is applied after
             if Options.secret then flags = flags | VTXF_SECRET end
             return flags
-         end)()
+         end)(),
+         onChange  = textChanged
       }, input_theme.text))
 
-      if Options.selected then &text.mtSelectArea(0, 20000) end
+      if &readOnly then self.setReadOnly(true) end
+
+      if Options.selected then &text.mtSelectArea(0, 0, -1, -1) end -- Select all of the text
 
       &viewport.mtSubscribeFeedback(FM_HAS_FOCUS | FM_CHILD_HAS_FOCUS | FM_LOST_FOCUS, function(Viewport:obj!, Event)
          if Event is FM_LOST_FOCUS then

@@ -46,7 +46,7 @@ gui.dialog.file = function(Options)
 
       if (#list <= 1) and self.filebox then
          -- The filebox has priority over single list selections
-         local file = self.filebox.text.string
+         local file = self.filebox.getText()
          if file?? then
             list = array<table> { { filename = file } }
          end
@@ -257,7 +257,7 @@ gui.dialog.file = function(Options)
       viewOptions   = { },
       pathChanged = function(FileView:table!, Path:str)
          self.currentPath = Path
-         self.pathbox.text.string = self.currentPath
+         self.pathbox.setText(self.currentPath)
       end
    })
 
