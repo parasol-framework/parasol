@@ -1537,15 +1537,14 @@ end
 end
 
 -----------------------------------------------------------------------------------------------------------------------
--- Test array.of() error cases
+-- Test empty array.of() calls and error cases
 
 @Test function ArrayOfNoValues()
+   arr = array.of('int')
+   assert(#arr is 0 and arr.type() is 'int', 'array.of() without values should create an empty typed array')
    local array_of:any = array.of
-   try
-      array_of('int')
-   success
-      assert(false, "array.of() with no values should fail")
-   end
+   dynamic_arr = array_of('any')
+   assert(#dynamic_arr is 0, 'An indirect array.of() call should also accept an empty value list')
 end
 
 @Test function ArrayOfInvalidType()
