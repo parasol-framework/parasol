@@ -20,7 +20,7 @@ end
 
 -- Returns the first selectable entry in a list of items, skipping group headers.
 
-function firstItem(Items:table):table
+function firstItem(Items:any):table
    for item in values(Items ?? { }) do
       if item.item then return item end
    end
@@ -66,7 +66,7 @@ end
 
 -- Creates the dropdown menu for Items, replacing any existing menu.
 
-function createMenu(Items:table)
+function createMenu(Items:any)
    if &menu then
       &menu.hide()
       &menu.surface?.free()
@@ -89,8 +89,8 @@ function createMenu(Items:table)
       theme = dd_theme
    })
 
-   if &unlockMenuWidth then -- Set combobox size to the width of the menu
-      &viewport.width = &menu.width + &labelSize
+   if &unlockMenuWidth then -- Set combobox size to the width of the menu, but never below the default
+      &viewport.width = math.max(&menu.width + &labelSize, gui.sizing.widget.width)
    end
 end
 
@@ -136,7 +136,7 @@ gui.combobox = function(Options)
    -- Replace the list of items in the menu.  If custom text is not allowed and the current text does not match an
    -- item, the text is reset to the first item.
 
-   self.setItems = function(Items:table!)
+   self.setItems = function(Items:any!)
       assert(&allowCustom or firstItem(Items), 'A list of items is required.')
       createMenu(Items)
 

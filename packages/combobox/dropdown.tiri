@@ -77,9 +77,37 @@ gui.dropdown = function(Options)
       &timeHide = mSys.PreciseTime()
    end
 
+   -- Positions the group headings and their rules for the current width, which may be changed by the client after
+   -- construction.  The content width excludes the scrollbar.
+
+   function layoutGroups()
+      content_width = &width - (&scrollbar ? SCROLL_WIDTH : 0)
+      if content_width is &groupWidth then return end
+      &groupWidth = content_width
+
+      for item in values(&items) do
+         if item.lineBreak then
+            item.text.x = content_width * 0.5
+            line_y   = math.floor(item.y + item.height * 0.5) + 0.5
+            line_end = (content_width - item.textWidth) * 0.5 - HMARGIN
+            sequence = string.format('M%f,%f H%f M%f,%f H%f',
+               HMARGIN * 2, line_y, line_end, content_width - line_end, line_y, content_width - HMARGIN * 2)
+            if item.rule then
+               item.rule.sequence = sequence
+            else
+               item.rule = &page.new('VectorPath', {
+                  stroke = dropdown.text.fill, strokeWidth = 1, opacity = 0.35, sequence = sequence
+               })
+            end
+         end
+      end
+   end
+
    self.show = function()
       surface = &surface
       if surface.flags has RNF_VISIBLE then return end
+
+      layoutGroups()
 
       -- The content is laid out at 1:1 and the view box scales it to fit the surface.
 
@@ -422,20 +450,7 @@ gui.dropdown = function(Options)
       &height = y + VMARGIN
       &page.height = &height
 
-      -- The content width excludes any scrollbar that is added below.
-
-      for item in values(&items) do
-         if item.lineBreak then
-            item.text.x = &width * 0.5
-            line_y   = math.floor(item.y + item.height * 0.5) + 0.5
-            line_end = (&width - item.textWidth) * 0.5 - HMARGIN
-            &page.new('VectorPath', {
-               stroke = dropdown.text.fill, strokeWidth = 1, opacity = 0.35,
-               sequence = string.format('M%f,%f H%f M%f,%f H%f',
-                  HMARGIN * 2, line_y, line_end, &width - line_end, line_y, &width - HMARGIN * 2)
-            })
-         end
-      end
+      layoutGroups()
 
       if &lineLimit and (&lineLimit > 0) and (#&items > &lineLimit) then
          &height = &items[&lineLimit].y + VMARGIN
