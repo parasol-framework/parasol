@@ -3,6 +3,48 @@
 import 'json'
 module core as mCore
 
+@Test function MissingMemberCallRestoresContextBeforeHandler()
+   local caller = entity { name = 'caller' }
+   local target = entity { name = 'target' }
+   local caught = false
+
+   using caller do
+      try
+         target.missing()
+      except e
+         caught = true
+         assert(&& is caller, 'A failed member call must restore the caller context before its handler')
+         assert(e.message.find('nil') != nil, 'A missing member should report the original nil call error')
+      end
+      assert(&& is caller, 'The enclosing using context must survive a failed member call')
+   end
+   assert(caught, 'A missing entity member must raise a catchable exception')
+end
+
+@Test function NonCallableMemberRestoresContextBeforeCleanup()
+   local caller = entity { name = 'caller' }
+   local block = entity { name = 'block' }
+   local target = entity { name = 'target', invalid = 42 }
+   local cleaned = false
+   local caught = false
+
+   using caller do
+      try
+         using block do
+            defer
+               assert(&& is block, 'Cleanup must run in its owning block after a call fails')
+               cleaned = true
+            end
+            target.invalid()
+         end
+      except e
+         caught = true
+         assert(&& is caller, 'The handler must restore the context saved at try entry')
+      end
+   end
+   assert(caught and cleaned, 'A non-callable entity member must unwind cleanup and reach its handler')
+end
+
 @Test function UnannotatedFactoryResultSurvivesCapturedNilAssignment()
    local factory = {
       create = function()

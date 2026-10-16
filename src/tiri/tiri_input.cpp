@@ -100,6 +100,10 @@ static void release_input_subscription(lua_State *Lua, struct finput *Input)
          }
          else process_error(Self, "Failed to process InputEvent struct");
 
+         // The remainder of the batch is discarded if the callback unsubscribed from the input feed.
+
+         if (not list->InputHandle) break;
+
          Events = Events->Next;
       }
 

@@ -63,7 +63,6 @@ gui.divider = function(Options:table)
       _minA = Options.minA ?? 5,
       _minB = Options.minB ?? 5,
       _maxA = Options.maxA ?? 8000,
-      _maxB = Options.maxB ?? 8000,
       _offsetA = Options.offsetA ?? 0,
       _offsetB = Options.offsetB ?? 0,
       _div  = { } -- Area of the 'strip' between the opposing regions.
