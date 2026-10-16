@@ -226,7 +226,7 @@ gui.toolbar = function(Options)
       -- the group, draw above it.
 
       self.kbIcon = self.vg.new('VectorRectangle', table.merge({
-         x = 0, y = 0, width = 1, height = 1, visibility = 'hidden'
+         x = 0, y = 0, width = 1, height = 1, visibility = 'hidden',
       }, tb_theme.highlight))
       if self._groupClip then self.kbIcon.mask = self._groupClip end
 
@@ -552,10 +552,8 @@ gui.toolbar = function(Options)
          })
       end
 
-      if item.sticker.content then
-         item.sticker.content.free()
-         item.sticker.content = nil
-      end
+      item.sticker.content?.free()
+      item.sticker.content = nil
 
       if Content then
          if Content is <num> then
