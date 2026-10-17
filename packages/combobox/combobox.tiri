@@ -72,22 +72,20 @@ function createMenu(Items:any)
       &menu.surface?.free()
    end
 
-   relative = &viewport -- Copied to locals as call arguments may be evaluated in another context
-   dd_theme = &dropdownTheme
-   combo = &&
+   combo = && -- The feedback callback runs in the dropdown's context
    &menu = gui.dropdown({
       target    = 0, -- Open on the host desktop so the menu can extend beyond the combobox window
-      relative  = relative,
+      relative  = &viewport,
       config    = Items ?? { },
       lineLimit = 8,
-      feedback = function(Menu:table!, Item:table!)
+      feedback = function(Item:table!)
          using combo do
             &text.string = Item.item
             reportFeedback()
             &viewport.acDraw()
          end
       end,
-      theme = dd_theme
+      theme = &dropdownTheme
    })
 
    if &unlockMenuWidth then -- Set combobox size to the width of the menu, but never below the default
@@ -310,7 +308,8 @@ gui.combobox = function(Options)
                &_menuNavigated = true
                &menu.moveToEnd(true)
                return
-            elseif Value is KEY_ESCAPE then &menu.hide() return
+            elseif Value is KEY_ESCAPE then
+               &menu.hide() return
             elseif (Value is KEY_ENTER) or (Value is KEY_NP_ENTER) or ((not &allowCustom) and (Value is KEY_SPACE)) then
                if (not &allowCustom) or &_menuNavigated then
                   if &menu.activate() then return end
