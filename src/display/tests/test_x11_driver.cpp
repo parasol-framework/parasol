@@ -7,6 +7,7 @@
 
 #include <algorithm>
 #include <atomic>
+#include <cstdarg>
 #include <chrono>
 #include <cstdlib>
 #include <fcntl.h>
@@ -39,6 +40,32 @@ static void clipboard_lost()
 static ERR register_fd(HOSTHANDLE, RFD, void (*)(HOSTHANDLE, APTR), APTR)
 {
    return ERR::Okay;
+}
+
+// The driver logs through Core, e.g. when it abandons a stalled clipboard transfer.
+
+static void vlogf(VLF, CSTRING, CSTRING, va_list) { }
+static void log_return() { }
+static int adjust_log_level(int) { return 0; }
+
+// Returns true if a selection request was made by the driver.  Requests from other clients are refused: desktop clients
+// routinely request TARGETS whenever the clipboard owner changes, and the tests must not mistake them for the driver's.
+
+static bool from_driver(DisplayDriver *Driver, Display *Connection, const XSelectionRequestEvent &Request)
+{
+   if (Request.requestor IS Window(display::x11_driver_clipboard_window(Driver))) return true;
+
+   XSelectionEvent reply = {};
+   reply.type = SelectionNotify;
+   reply.display = Connection;
+   reply.requestor = Request.requestor;
+   reply.selection = Request.selection;
+   reply.target = Request.target;
+   reply.property = None;
+   reply.time = Request.time;
+   XSendEvent(Connection, Request.requestor, False, NoEventMask, (XEvent *)&reply);
+   XFlush(Connection);
+   return false;
 }
 
 static ERR resolve_path(const std::string_view &Path, RSF, std::string *Result)
@@ -151,6 +178,7 @@ static bool receive_external_selection(DisplayDriver *Driver, Display *Connectio
          XNextEvent(Connection, &event);
          if ((event.type IS SelectionRequest) and (event.xselectionrequest.selection IS selection)) {
             auto &request = event.xselectionrequest;
+            if (not from_driver(Driver, Connection, request)) continue;
             auto reply_property = request.property IS None ? request.target : request.property;
             XSelectionEvent reply = {};
             reply.type = SelectionNotify;
@@ -247,8 +275,8 @@ static bool replace_unresponsive_owner(DisplayDriver *Driver, Display *Connectio
       while (XPending(Connection)) {
          XEvent event = {};
          XNextEvent(Connection, &event);
-         if ((event.type IS SelectionRequest) and (event.xselectionrequest.selection IS selection))
-            request_seen = true;
+         if ((event.type IS SelectionRequest) and (event.xselectionrequest.selection IS selection) and
+             from_driver(Driver, Connection, event.xselectionrequest)) request_seen = true;
       }
       usleep(1000);
    }
@@ -269,7 +297,8 @@ static bool next_selection_request(DisplayDriver *Driver, Display *Connection, A
       while (XPending(Connection)) {
          XEvent event = {};
          XNextEvent(Connection, &event);
-         if ((event.type IS SelectionRequest) and (event.xselectionrequest.selection IS Selection)) {
+         if ((event.type IS SelectionRequest) and (event.xselectionrequest.selection IS Selection) and
+             from_driver(Driver, Connection, event.xselectionrequest)) {
             Request = event.xselectionrequest;
             return true;
          }
@@ -356,6 +385,7 @@ static bool save_with_clipboard_manager(DisplayDriver *Driver, Display *Connecti
 
    std::string saved;
    std::atomic_bool complete = false;
+   auto driver_window = Window(display::x11_driver_clipboard_window(Driver)); // Read before close() releases it
    std::thread worker([&]() {
       XSelectionRequestEvent save_request = {};
       bool requested_data = false;
@@ -366,7 +396,8 @@ static bool save_with_clipboard_manager(DisplayDriver *Driver, Display *Connecti
             XNextEvent(Connection, &event);
             if ((event.type IS SelectionRequest) and
                 (event.xselectionrequest.selection IS manager_selection) and
-                (event.xselectionrequest.target IS save_targets)) {
+                (event.xselectionrequest.target IS save_targets) and
+                (event.xselectionrequest.requestor IS driver_window)) {
                save_request = event.xselectionrequest;
                XDeleteProperty(Connection, manager, data_property);
                XConvertSelection(Connection, Selection, UTF8, data_property, manager, CurrentTime);
@@ -508,6 +539,9 @@ int main()
    struct CoreBase core_table = {};
    core_table._RegisterFD = register_fd;
    core_table._ResolvePath = resolve_path;
+   core_table._VLogF = vlogf;
+   core_table._LogReturn = log_return;
+   core_table._AdjustLogLevel = adjust_log_level;
    auto core = &core_table;
 #ifdef KOTUKU_STATIC
    auto driver = display::create_x11_display_driver(DISPLAY_DRIVER_INTERFACE_VERSION, core);
