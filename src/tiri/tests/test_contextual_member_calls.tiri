@@ -276,6 +276,40 @@ end
       'A computed contextual call should compact table and multiple results into the expression destination')
 end
 
+-- A computed-key call retains an extra receiver copy, so its results land two slots below the callable.  Multiple
+-- assignment to existing targets must read them from the compacted result base rather than one slot below the callable.
+
+@Test function ComputedCallResultsReassignInOrder()
+   local target = entity { name = 'target' }
+
+   function target.read(Value:str):<str, str>
+      return Value, &name
+   end
+
+   local key = 'read'
+   local first:any, second:any, third:any
+   first, second = target[key]('x')
+   assert(first is 'x' and second is 'target',
+      f'A computed contextual call should reassign its results in order (got {first}, {second})')
+
+   first, second = target?[key]('y')
+   assert(first is 'y' and second is 'target',
+      f'A safe computed contextual call should reassign its results in order (got {first}, {second})')
+
+   local fields = {}
+   fields.first, fields.second = target[key]('z')
+   assert(fields.first is 'z' and fields.second is 'target',
+      'A computed contextual call should assign its results to table fields in order')
+
+   first, second, third = 1, target[key]('w')
+   assert(first is 1 and second is 'w' and third is 'target',
+      f'A computed contextual call should keep its results after a leading value (got {first}, {second}, {third})')
+
+   first, second = 'p' |> target[key]()
+   assert(first is 'p' and second is 'target',
+      f'A computed contextual pipe should reassign its results in order (got {first}, {second})')
+end
+
 @Test function DirectCallsInheritAndNestedTableCallsRestoreContext()
    local outer = entity { name = 'outer' }
    local inner = entity { name = 'inner' }
