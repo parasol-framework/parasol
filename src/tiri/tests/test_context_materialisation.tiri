@@ -154,24 +154,27 @@ end
 
 @Test function SideExitsReconstructEveryVirtualReceiver()
    if not reset_context_counters() then return end
+   -- The exit guard must execute inside the innermost call.  A guard in an argument expression would run before
+   -- any receiver is entered, because contextual arguments are evaluated in the caller.
+   local state = { iteration = 0 }
    local inner = entity {
       value = 1,
-      read = function(Exit:bool):num
-         if Exit then return &value + 10 end
+      read = function():num
+         if state.iteration is 93 then return &value + 10 end
          return &value
       end
    }
    local middle = entity {
       bias = 2,
-      read = function(Exit:bool):num
-         local value = inner.read(Exit)
+      read = function():num
+         local value = inner.read()
          return value + &bias
       end
    }
    local outer = entity {
       bias = 3,
-      read = function(Exit:bool):num
-         local value = middle.read(Exit)
+      read = function():num
+         local value = middle.read()
          return value + &bias
       end
    }
@@ -179,7 +182,8 @@ end
    function workload():num
       local checksum = 0
       for i in {0 to 300} do
-         checksum += outer.read(i is 93)
+         state.iteration = i
+         checksum += outer.read()
       end
       return checksum
    end

@@ -94,15 +94,12 @@ static const ExprNode *call_receiver(const CallExprPayload &Payload)
 
 //********************************************************************************************************************
 // Walk the AST for context reads that execute in the current emitter region.  Function bodies and using bodies are
-// separate regions: their child emitter or retained reference supplies their own context source.  Contextual call
-// arguments are likewise excluded when the runtime call will install a receiver before evaluating them.  Runtime
-// built-in dispatch is the exception because its ordinary built-in branch evaluates the same arguments without a
-// contextual activation.
+// separate regions: their child emitter or retained reference supplies their own context source.  Call arguments and
+// piped values belong to the enclosing region, including those of contextual calls, because CTXENTER is emitted only
+// after they have been evaluated.
 
 class ContextUseWalker {
 public:
-   explicit ContextUseWalker(const ParserContext &Context) : context(Context) { }
-
    [[nodiscard]] bool block_uses_context(const BlockStmt &Block)
    {
       for (const StmtNode &statement : Block.view()) {
@@ -111,14 +108,7 @@ public:
       return false;
    }
 
-   [[nodiscard]] bool expression_uses_context(const ExprNode &Expression)
-   {
-      return this->expression_uses_context_impl(Expression);
-   }
-
 private:
-   const ParserContext &context;
-
    [[nodiscard]] bool expressions_use_context(const ExprNodeList &Expressions)
    {
       for (const ExprNodePtr &expression : Expressions) {
@@ -280,25 +270,6 @@ private:
             return this->expression_uses_context_ptr(std::get<PresenceExprPayload>(Expression.data).value);
          case AstNodeKind::PipeExpr: {
             const auto &payload = std::get<PipeExprPayload>(Expression.data);
-            if (payload.rhs_call and
-                (payload.rhs_call->kind IS AstNodeKind::CallExpr or
-                 payload.rhs_call->kind IS AstNodeKind::SafeCallExpr)) {
-               const auto &call = std::get<CallExprPayload>(payload.rhs_call->data);
-               const ExprNode *receiver = call_receiver(call);
-               bool callable_uses_context = false;
-               if (const auto *direct = std::get_if<DirectCallTarget>(&call.target)) {
-                  callable_uses_context = direct->callable and this->expression_uses_context_impl(*direct->callable);
-               }
-               if (call.runtime_builtin_method) {
-                  return callable_uses_context or this->expression_uses_context_ptr(payload.lhs) or
-                     this->expressions_use_context(call.arguments);
-               }
-               if (receiver and receiver_uses_contextual_call(this->context, *receiver)) {
-                  // The contextual pipe path evaluates its piped value and written arguments after CTXENTER.  Only
-                  // the receiver, its key and the callable itself execute under the enclosing source.
-                  return callable_uses_context;
-               }
-            }
             return this->expression_uses_context_ptr(payload.lhs) or
                this->expression_uses_context_ptr(payload.rhs_call);
          }
@@ -309,15 +280,6 @@ private:
             if (const auto *direct = std::get_if<DirectCallTarget>(&payload.target)) {
                result = direct->callable and this->expression_uses_context_impl(*direct->callable);
             }
-
-            // Runtime built-in dispatch emits an ordinary built-in branch and a contextual fallback branch.  Its
-            // arguments therefore need the enclosing source even when the receiver is unresolved.
-            if (payload.runtime_builtin_method or not call_receiver(payload)) {
-               return result or this->expressions_use_context(payload.arguments);
-            }
-
-            const ExprNode *receiver = call_receiver(payload);
-            if (receiver_uses_contextual_call(this->context, *receiver)) return result;
             return result or this->expressions_use_context(payload.arguments);
          }
          case AstNodeKind::MemberExpr:
@@ -1158,14 +1120,8 @@ void IrEmitter::ContextSourceScope::release()
 
 bool IrEmitter::context_region_uses_context(const BlockStmt &Block) const
 {
-   ContextUseWalker walker(this->ctx);
+   ContextUseWalker walker;
    return walker.block_uses_context(Block);
-}
-
-bool IrEmitter::expression_uses_context(const ExprNode &Expression) const
-{
-   ContextUseWalker walker(this->ctx);
-   return walker.expression_uses_context(Expression);
 }
 
 std::optional<BCReg> IrEmitter::allocate_inherited_context_cache(const BlockStmt &Block)
@@ -3391,10 +3347,7 @@ ParserResult<ExpDesc> IrEmitter::emit_literal_expr(const LiteralValue& literal)
 
 ParserResult<ExpDesc> IrEmitter::emit_current_context_expr()
 {
-   // Argument context follows CTXENTER policy and may differ from the retained call receiver.  Materialise it
-   // into an expression temporary instead of overwriting that receiver, which CTXCALL and CTXCALLT still need.
-   if (not this->context_sources.empty() and
-       this->context_sources.back().kind != ContextSourceKind::DynamicArgument) {
+   if (not this->context_sources.empty()) {
       const ContextSource &source = this->context_sources.back();
       ExpDesc expr(ExpKind::NonReloc, source.slot.raw());
       expr.result_type = TiriType::Table;

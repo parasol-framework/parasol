@@ -6889,6 +6889,25 @@ static bool test_static_result_set_model(kt::Log &Log)
 static size_t count_opcode_tree(const BytecodeSnapshot &, BCOp);
 static size_t count_opcode(const BytecodeSnapshot &, BCOp);
 
+// Contextual call arguments are evaluated in the caller's context, so CTXENTER must be the instruction immediately
+// before its CTXCALL, CTXCALLM or CTXCALLT, on the same call base.
+
+static bool contextual_entries_precede_calls(const BytecodeSnapshot &Snapshot)
+{
+   const std::vector<BCIns> &code = Snapshot.instructions;
+   for (size_t i = 0; i < code.size(); ++i) {
+      if (bc_op(code[i]) != BC_CTXENTER) continue;
+      if (i + 1 >= code.size()) return false;
+      BCOp next = bc_op(code[i + 1]);
+      if (next != BC_CTXCALL and next != BC_CTXCALLM and next != BC_CTXCALLT) return false;
+      if (bc_a(code[i + 1]) != bc_a(code[i])) return false;
+   }
+   for (const auto &child : Snapshot.children) {
+      if (not contextual_entries_precede_calls(child)) return false;
+   }
+   return true;
+}
+
 static bool test_current_context_materialisation_bytecode(kt::Log &Log)
 {
    LuaStateHolder state;
@@ -6964,7 +6983,8 @@ static bool test_current_context_materialisation_bytecode(kt::Log &Log)
    if (not runtime_context_pipe or count_opcode_tree(*runtime_context_pipe, BC_CTXGET) != 1 or
        count_opcode_tree(*runtime_context_pipe, BC_CTXENTER) != 1 or
        count_opcode_tree(*runtime_context_pipe, BC_CTXCALL) != 1) {
-      Log.error("a runtime-dependent contextual pipe did not acquire its argument context: %s", error.c_str());
+      Log.error("a runtime-dependent contextual pipe did not read its piped operand through the inherited cache: %s",
+         error.c_str());
       return false;
    }
 
@@ -6974,10 +6994,37 @@ static bool test_current_context_materialisation_bytecode(kt::Log &Log)
       "   local inherited = &value\n"
       "   return &value |> Target.add()\n"
       "end\n", true, error);
-   if (not runtime_builtin_pipe or count_opcode_tree(*runtime_builtin_pipe, BC_CTXGET) != 2 or
+   if (not runtime_builtin_pipe or count_opcode_tree(*runtime_builtin_pipe, BC_CTXGET) != 1 or
        count_opcode_tree(*runtime_builtin_pipe, BC_BMETH) != 1 or
        count_opcode_tree(*runtime_builtin_pipe, BC_CTXENTER) != 1) {
-      Log.error("a runtime built-in pipe did not separate inherited and fallback contexts: %s", error.c_str());
+      Log.error("a runtime built-in pipe operand did not reuse the inherited context cache: %s", error.c_str());
+      return false;
+   }
+
+   // Arguments of contextual calls, written or piped, read the caller's context through its inherited cache.  The
+   // receiver body, invoke() and forward() each acquire one cache; no argument needs a separate dynamic read.
+
+   error.clear();
+   auto argument_context = compile_snapshot(L,
+      "local receiver = entity { value = 1 }\n"
+      "function receiver.add(Value:num):num return &value + Value end\n"
+      "function invoke():num\n"
+      "   local key = 'add'\n"
+      "   return receiver.add(&value) + receiver[key](&value) + (&value |> receiver.add()) + receiver?.add(&&.value)\n"
+      "end\n"
+      "function forward():<any, ...> return receiver.add(&value) end\n", true, error);
+   if (not argument_context or count_opcode_tree(*argument_context, BC_CTXGET) != 3 or
+       count_opcode_tree(*argument_context, BC_CTXENTER) != 5 or
+       count_opcode_tree(*argument_context, BC_CTXCALLT) != 1) {
+      Log.error("contextual call arguments did not read the caller's inherited cache: %s", error.c_str());
+      return false;
+   }
+
+   if (not contextual_entries_precede_calls(*argument_context) or
+       not contextual_entries_precede_calls(*contextual_pipe) or
+       not contextual_entries_precede_calls(*runtime_context_pipe) or
+       not contextual_entries_precede_calls(*runtime_builtin_pipe)) {
+      Log.error("CTXENTER was not emitted immediately before its contextual call");
       return false;
    }
 

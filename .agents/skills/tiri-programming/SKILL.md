@@ -117,6 +117,9 @@ search tools, and mixed editor environments.
   pass the receiver automatically; ordinary Tiri table functions do not receive it as an extra argument.
 - Use `entity { ... }` for a table whose methods need receiver context. Inside a contextual call, `&field` accesses
   the receiver's field and `&&` yields the receiver. Ordinary table calls inherit the caller's context.
+- A contextual call evaluates its arguments and piped value in the caller's context; only the callee body runs in the
+  receiver, so `&menu.highlight(&text)` reads `&text` from the caller. A closure passed as an argument reads context
+  when the callee invokes it, so it observes the receiver unless the callee is `@Ordinary`.
 - `using table_reference do ... end` temporarily activates a table context. It restores the previous context on
   all exit paths and does not make an ordinary table an entity. At top level the root context is `_G`.
 - Extracting `fn = entity.method` loses the receiver; closures also inherit context when called. Keep the member

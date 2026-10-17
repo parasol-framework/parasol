@@ -17,7 +17,8 @@ module core as mCore
       local argument:any, body:any = target.read(&&)
       assert(argument is caller and body is caller, 'Ordinary arguments and body must inherit the caller')
       local argument:any, body:any = target.contextual(&&)
-      assert(argument is target and body is target, 'Unannotated arguments and body must retain entity dispatch')
+      assert(argument is caller and body is target,
+         'Unannotated calls must read arguments in the caller and run the body in the entity')
       local key = 'read'
       local argument:any, body:any = target[key](&&)
       assert(argument is caller and body is caller, 'Computed calls must inherit the caller')
@@ -251,7 +252,7 @@ end
    assert(weak.owner is nil and weak.callback is nil, 'Compiler-only annotation must not root a captured owner')
 end
 
-@Test function JITCalleeReplacementBeforeArguments()
+@Test function JITCalleeReplacementChangesBodyContext()
    local caller = entity { name='caller' }
    local owner = entity { name='owner' }
    @Ordinary
@@ -266,8 +267,8 @@ end
             if i is 128 then owner.read = ordinary end
             local argument:any, body:any = owner.read(&&)
             local expected = (i >= 64 and i < 128) and owner or caller
-            assert(argument is expected and body is expected,
-               f'Hot replacements must change context before arguments (iteration {i})')
+            assert(argument is caller and body is expected,
+               f'Hot replacements must change the body context while arguments read the caller (iteration {i})')
             assert(&& is caller, 'Hot ordinary/contextual calls must restore their caller')
             sum += i
          end

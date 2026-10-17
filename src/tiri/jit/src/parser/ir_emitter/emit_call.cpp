@@ -152,6 +152,7 @@ ParserResult<ExpDesc> IrEmitter::emit_runtime_builtin_method_pipe(
             branch_base.raw(), 2, state->freereg - branch_base.raw() - 1);
       }
       this->lex_state.lastline = call_line;
+      if (not BuiltinBranch and contextual_field) bcemit_INS(state, BCINS_AD(BC_CTXENTER, branch_base.raw(), 0));
       return ParserResult<BCPos>::success(BCPos(bcemit_INS(state, instruction)));
    };
 
@@ -177,23 +178,6 @@ ParserResult<ExpDesc> IrEmitter::emit_runtime_builtin_method_pipe(
    if (contextual_field) {
       bcemit_AD(state, BC_MOV, field_call_base.raw(), call_base.raw());
       bcemit_AD(state, BC_MOV, call_base.raw(), receiver_slot);
-      bcemit_INS(state, BCINS_AD(BC_CTXENTER, field_call_base.raw(), 0));
-   }
-
-   ContextSourceScope argument_context_scope;
-   if (contextual_field) {
-      // CTXENTER resolves the function policy before argument context is read.
-      bool arguments_use_context = this->expression_uses_context(*Payload.lhs);
-      for (const ExprNodePtr &argument : Call.arguments) {
-         if (argument and this->expression_uses_context(*argument)) {
-            arguments_use_context = true;
-            break;
-         }
-      }
-      if (arguments_use_context) {
-         argument_context_scope.activate(this,
-            ContextSource{ .kind = ContextSourceKind::DynamicArgument });
-      }
    }
 
    auto field_result = emit_branch(false);
@@ -334,20 +318,7 @@ ParserResult<ExpDesc> IrEmitter::emit_pipe_expr(const PipeExprPayload &Payload)
          nil_jump = this->control_flow.make_unconditional(BCPos(bcemit_jmp(fs)));
       }
 
-      bcemit_INS(fs, BCINS_AD(BC_CTXENTER, base, 0));
-      ContextSourceScope context_scope;
-      // CTXENTER resolves the function policy before argument context is read.
-      bool arguments_use_context = this->expression_uses_context(*Payload.lhs);
-      for (const ExprNodePtr &argument : call_payload.arguments) {
-         if (argument and this->expression_uses_context(*argument)) {
-            arguments_use_context = true;
-            break;
-         }
-      }
-      if (arguments_use_context) {
-         context_scope.activate(this,
-            ContextSource{ .kind = ContextSourceKind::DynamicArgument });
-      }
+      // The piped value and written arguments are evaluated in the caller's context; CTXENTER follows them.
 
       auto finish_unreachable = [&]() -> ParserResult<ExpDesc> {
          if (not safe_callable) return ParserResult<ExpDesc>::success(ExpDesc(ExpKind::Unreachable));
@@ -393,6 +364,7 @@ ParserResult<ExpDesc> IrEmitter::emit_pipe_expr(const PipeExprPayload &Payload)
          instruction = BCINS_ABC(BC_CTXCALL, base, 2, fs->freereg - base - 1);
       }
       this->lex_state.lastline = call_line;
+      bcemit_INS(fs, BCINS_AD(BC_CTXENTER, base, 0));
       BCPos call_pc = BCPos(bcemit_INS(fs, instruction));
       bcemit_INS(fs, BCINS_AD(BC_CTXLEAVE, base, BCREG(base.raw() - context_result_base.raw())));
 
@@ -714,6 +686,7 @@ ParserResult<ExpDesc> IrEmitter::emit_runtime_builtin_method_call(const CallExpr
             branch_base.raw(), 2, state->freereg - branch_base.raw() - 1);
       }
       this->lex_state.lastline = call_line;
+      if (not BuiltinBranch and contextual_field) bcemit_INS(state, BCINS_AD(BC_CTXENTER, branch_base.raw(), 0));
       return ParserResult<BCPos>::success(BCPos(bcemit_INS(state, instruction)));
    };
 
@@ -742,23 +715,6 @@ ParserResult<ExpDesc> IrEmitter::emit_runtime_builtin_method_call(const CallExpr
    if (contextual_field) {
       bcemit_AD(state, BC_MOV, field_call_base.raw(), call_base.raw());
       bcemit_AD(state, BC_MOV, call_base.raw(), receiver_slot);
-      bcemit_INS(state, BCINS_AD(BC_CTXENTER, field_call_base.raw(), 0));
-   }
-
-   ContextSourceScope argument_context_scope;
-   if (contextual_field) {
-      // CTXENTER resolves the function policy before argument context is read.
-      bool arguments_use_context = false;
-      for (const ExprNodePtr &argument : Payload.arguments) {
-         if (argument and this->expression_uses_context(*argument)) {
-            arguments_use_context = true;
-            break;
-         }
-      }
-      if (arguments_use_context) {
-         argument_context_scope.activate(this,
-            ContextSource{ .kind = ContextSourceKind::DynamicArgument });
-      }
    }
 
    auto field_call_result = emit_branch_call(false);
@@ -1048,24 +1004,8 @@ ParserResult<ExpDesc> IrEmitter::emit_call_expr(const CallExprPayload &Payload)
       nil_jump = this->control_flow.make_unconditional(BCPos(bcemit_jmp(&this->func_state)));
    }
 
-   ContextSourceScope argument_context_scope;
-   if (is_contextual_call) {
-      bcemit_INS(&this->func_state, BCINS_AD(BC_CTXENTER, base, 0));
-      // CTXENTER resolves the function policy before argument context is read.
-      bool arguments_use_context = false;
-      for (const ExprNodePtr &argument : Payload.arguments) {
-         if (argument and this->expression_uses_context(*argument)) {
-            arguments_use_context = true;
-            break;
-         }
-      }
-      if (arguments_use_context) {
-         argument_context_scope.activate(this,
-            ContextSource{ .kind = ContextSourceKind::DynamicArgument });
-      }
-   }
-
-   // Evaluate arguments only after the nil check, so if callable is nil we skip argument evaluation
+   // Evaluate arguments only after the nil check, so if callable is nil we skip argument evaluation.  Arguments of a
+   // contextual call are evaluated in the caller's context; CTXENTER is emitted after them.
    auto arg_count = BCReg(0);
    ExpDesc args(ExpKind::Void);
    if (not Payload.arguments.empty()) {
@@ -1101,6 +1041,7 @@ ParserResult<ExpDesc> IrEmitter::emit_call_expr(const CallExprPayload &Payload)
 
    this->lex_state.lastline = call_line;
 
+   if (is_contextual_call) bcemit_INS(&this->func_state, BCINS_AD(BC_CTXENTER, base, 0));
    auto call_pc = BCPos(bcemit_INS(&this->func_state, ins));
    if (is_contextual_call) {
       bcemit_INS(&this->func_state,

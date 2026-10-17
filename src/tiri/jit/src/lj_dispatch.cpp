@@ -360,6 +360,8 @@ static BCREG cur_topslot(GCproto* pt, const BCIns* pc, uint32_t nres)
 {
    BCIns ins = pc[-1];
    if (bc_op(ins) == BC_UCLO) ins = pc[bc_j(ins)];
+   // CTXENTER sits between a multi-result argument and the CTXCALLM that consumes it.
+   else if (bc_op(ins) IS BC_CTXENTER and bc_op(*pc) IS BC_CTXCALLM) ins = *pc;
    switch (bc_op(ins)) {
       case BC_CALLM: case BC_CALLMT: case BC_CTXCALLM:
          return bc_a(ins) + bc_c(ins) + nres - 1 + 1 + LJ_FR2;

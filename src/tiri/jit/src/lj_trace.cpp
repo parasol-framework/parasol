@@ -1133,8 +1133,9 @@ int lj_trace_exit(jit_State *J, void *exptr)
    }
    // Return MULTRES or 0.
    ERRNO_RESTORE
-      // BC_CHECK can separate a multi-result call from BC_RETM; its interpreter handoff must retain that count.
-      if (bc_op(*pc) IS BC_JMP or bc_op(*pc) IS BC_CHECK) return int(snapshot_multres);
+      // BC_CHECK can separate a multi-result call from BC_RETM, and BC_CTXENTER separates a multi-result argument from
+      // BC_CTXCALLM.  Their interpreter handoff must retain that count.
+      if (bc_op(*pc) IS BC_JMP or bc_op(*pc) IS BC_CHECK or bc_op(*pc) IS BC_CTXENTER) return int(snapshot_multres);
       switch (bc_op(*pc)) {
       case BC_CALLM: case BC_CALLMT: case BC_CTXCALLM:
          return (int)((BCREG)(L->top - L->base) - bc_a(*pc) - bc_c(*pc) - LJ_FR2);

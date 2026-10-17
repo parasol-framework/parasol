@@ -817,7 +817,7 @@ The process-wide ownership, publication and lock contract is documented in
 | Opcode | Format | Description |
 |--------|--------|-------------|
 | `CTXGET` | A | Load the state-local current table context into R(A) |
-| `CTXENTER` | A | Enter the table receiver retained in R(A-1), if present, before argument evaluation |
+| `CTXENTER` | A | Enter the table receiver retained in R(A-1), if present, after argument evaluation and immediately before the contextual call |
 | `CTXCALL` | ABC | Invoke a contextual fixed-argument call with the ordinary `CALL` B/C layout |
 | `CTXCALLM` | ABC | Invoke a contextual multiple-argument call with the ordinary `CALLM` B/C layout |
 | `CTXLEAVE` | A | Restore the inherited context and normalise results after a contextual call |
@@ -827,8 +827,9 @@ The process-wide ownership, publication and lock contract is documented in
 the permanent root sentinel and resolves dynamically through `L->env`.  A function or chunk that directly uses its
 inherited context emits one `CTXGET` into a hidden blank local at region entry; repeated `&&`, `&name` and
 `&&.name` expressions then read that register through ordinary `TGET*` or `TSET*` operations.  A `using` body reads
-its retained reference register, while contextual-call arguments read the retained receiver or one runtime-selected
-scratch register.  Regions without a context use retain neither a cache local nor a `CTXGET`.
+its retained reference register.  Contextual-call arguments and piped values belong to the enclosing region and read
+its source like any other expression, because they are evaluated before `CTXENTER`.  Regions without a context use
+retain neither a cache local nor a `CTXGET`.
 
 Root-environment replacement is supported between Lua activations and is observed when the next region acquires its
 inherited source.  Replacing `L->env` during an active Lua activation is unsupported; mutating the root table remains
@@ -853,21 +854,31 @@ boundary.
 Current-context access uses the dedicated `CTXGET` opcode. Table member calls use appended contextual variants of the
 existing call family. Their register layout reserves the slot immediately before the ordinary call base for the
 original receiver; the callable and written arguments otherwise retain the `CALL`/`CALLM` layout. `CTXENTER` performs
-the runtime receiver/function gate after member lookup and before argument evaluation. An entity receiver activates
-context only when the resolved callable is not a Tiri function marked `@Ordinary`. `CTXCALL` repeats the gate idempotently at
+the runtime receiver/function gate after member lookup and argument evaluation, as the instruction immediately before
+`CTXCALL`, `CTXCALLM` or `CTXCALLT` on the same base.  Arguments, including a piped value, are therefore evaluated in
+the caller's context and only the callee runs in the receiver's context.  A nested contextual call in an argument
+enters and leaves before the outer `CTXENTER`, so the loader's pairing check sees properly nested activations. An entity
+receiver activates context only when the resolved callable is not a Tiri function marked `@Ordinary`. `CTXCALL` repeats the gate idempotently at
 the activation boundary, and `CTXLEAVE` restores the inherited context after a normal return. It shifts returned
 values down over the retained receiver slot so expression result allocation remains identical to an ordinary member
 call.
 
+Because a multiple-result argument call can now be separated from its `CTXCALLM` by `CTXENTER`, a trace exit that
+resumes at `CTXENTER` returns the snapshot's MULTRES (as for `BC_CHECK`), and instruction hooks size the stack top from
+the following `CTXCALLM`.
+
 The private dump format `0xaf` adds an immutable `ordinaryB` policy byte after `numuvB` and before `sourceB` in every
 prototype header. Values are 0 (default dispatch) or 1 (inherit caller context for entity member calls); all other
 values and truncated headers are rejected. The policy is preserved for nested prototypes and stripped dumps. Older
-format versions are rejected, allowing source caches to rebuild rather than silently losing the policy. Compiler-only
+format versions are rejected, allowing source caches to rebuild rather than silently losing the policy. Format `0xb0`
+keeps the `0xaf` layout but marks the move of `CTXENTER` after argument evaluation: the same source produces different
+bytecode, so caches built by the earlier emitter are rejected and rebuilt rather than keeping the old argument
+semantics. Compiler-only
 `@Ordinary` emits no runtime annotation registration. `CTXLEAVE` still compacts results for exempt calls, and an exempt
 `CTXCALLT` retains the outgoing activation's inherited context without requiring a prepared receiver activation.
 
 Named and computed lookup continue to use the appropriate existing `TGET*` operation while retaining the original
-receiver. Safe calls branch around lookup, entry and argument evaluation on their `nil` path. Statically proved
+receiver. Safe calls branch around lookup, argument evaluation and entry on their `nil` path. Statically proved
 strings, arrays, ranges, structures and objects retain their specialised receiver dispatch without emitting context
 operations. Dynamically typed receivers use the contextual variants, whose runtime gate leaves non-table values and
 their visible argument layout unchanged. `CTXCALLT` transfers a prepared receiver from the discarded activation to

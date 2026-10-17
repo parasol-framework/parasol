@@ -1497,7 +1497,7 @@ static bool rec_context_state_is_metamethod(uint8_t State)
 
 static TRef rec_context_current(jit_State *J)
 {
-   // CTXENTER may prepare an activation above the current base before argument evaluation.
+   // CTXENTER prepares an activation above the current base immediately before its contextual call.
    for (int32_t slot = std::max(int32_t(J->baseslot) - 1, J->context_virtual_slot); slot >= 0; slot--) {
       if (rec_context_state_is_virtual(J->context_call_state[slot])) return J->context_call_receiver[slot];
    }
@@ -1603,7 +1603,7 @@ static void rec_context_enter(jit_State *J, BCREG CallBase)
       return;
    }
 
-   // Prototype specialisation guards immutable policy before arguments can observe a context.
+   // Prototype specialisation guards immutable policy before the callee can observe a context.
    bool ordinary = tvisfunc(callable) and func_is_ordinary(funcV(callable));
    if (tvisfunc(callable)) {
       J->base[CallBase] = rec_call_specialise(J, funcV(callable), getslot(J, CallBase), true);

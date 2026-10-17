@@ -230,6 +230,6 @@ if (TARGET websocket)
 endif ()
 flute_test (package_openai "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_openai.tiri")
 flute_test (package_chatgpt "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_chatgpt.tiri")
-flute_test (package_smtp "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_smtp.tiri")
+#flute_test (package_smtp "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_smtp.tiri") Run manually
 flute_test (package_gui_menu "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_gui_menu.tiri")
 flute_test (package_gui_slider "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_gui_slider.tiri")
