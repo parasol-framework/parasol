@@ -74,7 +74,7 @@ static ERR make_web_channel(extPeerConnection *Parent, uint64_t Handle, extWebCh
    child->Handle = Handle;
    child->Label = record->options.label;
    child->Protocol = record->options.protocol;
-   child->ID = record->id;
+   child->StreamID = record->id;
    child->Negotiated = record->options.negotiated;
    child->Ordered = record->options.ordered;
    child->MaxRetransmits = int(record->options.reliability.max_retransmits.value_or(uint32_t(-1)));
@@ -252,7 +252,7 @@ static ERR WEBCHANNEL_Send(extWebChannel *Self, struct wch::Send *Args)
 /*********************************************************************************************************************
 
 -FIELD-
-ID: The channel's SCTP stream ID.
+StreamID: The channel's SCTP stream ID.
 
 The stream ID identifies the channel on the connection.  If the ID was not specified when the channel was created,
 it is -1 until it is assigned automatically after the DTLS handshake.
@@ -260,10 +260,10 @@ it is -1 until it is assigned automatically after the DTLS handshake.
 
 *********************************************************************************************************************/
 
-static ERR GET_ID(extWebChannel *Self, int &Value)
+static ERR GET_StreamID(extWebChannel *Self, int &Value)
 {
    auto record = Self->Parent ? Self->Parent->Connection->channel(Self->Handle) : nullptr;
-   Value = record ? record->id : Self->ID;
+   Value = record ? record->id : Self->StreamID;
    return ERR::Okay;
 }
 
@@ -560,8 +560,8 @@ conjunction with #MaxPacketLifeTime.
 -FIELD-
 Negotiated: True if the channel was negotiated by the client rather than announced in-band.
 
-A negotiated channel is created by both peers with the same #ID, and the remote peer is not notified of its creation.
-Channels that are announced in-band are delivered to the remote peer through @PeerConnection.OnWebChannel.
+A negotiated channel is created by both peers with the same #StreamID, and the remote peer is not notified of its
+creation.  Channels that are announced in-band are delivered to the remote peer through @PeerConnection.OnWebChannel.
 
 -FIELD-
 Ordered: True if messages are delivered in the order that they were sent.
@@ -589,7 +589,7 @@ static const FieldArray clWebChannelFields[] = {
    { "Label",                      FDF_CPPSTRING|FDF_R },
    { "Protocol",                   FDF_CPPSTRING|FDF_R },
    { "BufferedAmountLowThreshold", FDF_INT64|FDF_RW, nullptr, SET_BufferedAmountLowThreshold },
-   { "ID",                         FDF_VIRTUAL|FDF_INT|FDF_R, GET_ID },
+   { "StreamID",                   FDF_VIRTUAL|FDF_INT|FDF_R, GET_StreamID },
    { "Negotiated",                 FDF_INT|FDF_R },
    { "Ordered",                    FDF_INT|FDF_R },
    { "MaxRetransmits",             FDF_INT|FDF_R },

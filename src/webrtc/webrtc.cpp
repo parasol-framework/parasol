@@ -69,13 +69,13 @@ class extWebChannel : public objWebChannel {
 public:
    extPeerConnection *Parent = nullptr; // Cleared if the parent is destroyed first
    uint64_t Handle = 0;                 // Engine channel handle
-   int ID = -1;
+   int StreamID = -1;
    int64_t BufferedAmount = 0, MaxMessageSize = 0;
    FUNCTION OnOpen, OnMessage, OnClose, OnError, OnBufferedAmountLow;
    bool OpenReported = false, CloseReported = false, ErrorReported = false;
 
    extWebChannel(objMetaClass *ClassPtr, OBJECTID ObjectID) : objWebChannel(ClassPtr, ObjectID) {
-      ID = -1;
+      StreamID = -1;
       State = WCS::CONNECTING;
       Error = ERR::Okay;
       BufferedAmount = 0;

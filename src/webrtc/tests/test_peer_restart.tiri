@@ -23,7 +23,7 @@ end
    channel.onMessage = function(Child, Buffer, Type) messages.push(Buffer.getString()) end
    channelTest.connect(first, second)
    channelTest.waitFor(function() return channel.state is WCS_OPEN end)
-   local id = channel.id
+   local id = channel.streamID
    local fingerprint = first.certificateFingerprint
    local payload = string.rep('queued-data-', 16000)
    for _, initiator in array<obj> { first, second } do
@@ -35,7 +35,7 @@ end
       assert(messages[before] is payload, 'Reliable data changed across route replacement')
       processing.sleep(0.05)
       assert(#messages is before + 1, 'Reliable message delivered twice')
-      assert(channel.id is id and channel.state is WCS_OPEN, 'Restart replaced or closed a public channel')
+      assert(channel.streamID is id and channel.state is WCS_OPEN, 'Restart replaced or closed a public channel')
       assert(first.certificateFingerprint is fingerprint, 'Restart replaced the DTLS certificate')
       assert(first.restartRequired is 0 and second.restartRequired is 0, 'Spurious network-change request')
    end

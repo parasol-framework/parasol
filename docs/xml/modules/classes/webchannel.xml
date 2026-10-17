@@ -107,16 +107,6 @@
     </field>
 
     <field>
-      <name>ID</name>
-      <comment>The channel's SCTP stream ID.</comment>
-      <access read="G">Get</access>
-      <type>INT</type>
-      <description>
-<p>The stream ID identifies the channel on the connection.  If the ID was not specified when the channel was created, it is -1 until it is assigned automatically after the DTLS handshake.</p>
-      </description>
-    </field>
-
-    <field>
       <name>Label</name>
       <comment>The name of the channel.</comment>
       <access read="R">Read</access>
@@ -162,7 +152,7 @@
       <access read="R">Read</access>
       <type>INT</type>
       <description>
-<p>A negotiated channel is created by both peers with the same <fl>ID</fl>, and the remote peer is not notified of its creation. Channels that are announced in-band are delivered to the remote peer through <class name="PeerConnection" field="OnWebChannel">PeerConnection.OnWebChannel</class>.</p>
+<p>A negotiated channel is created by both peers with the same <fl>StreamID</fl>, and the remote peer is not notified of its creation.  Channels that are announced in-band are delivered to the remote peer through <class name="PeerConnection" field="OnWebChannel">PeerConnection.OnWebChannel</class>.</p>
       </description>
     </field>
 
@@ -256,6 +246,16 @@
       <description>
 <p>The channel starts in the <code>CONNECTING</code> state and changes to <code>OPEN</code> when <fl>OnOpen</fl> is called.  It changes to <code>CLOSING</code> when either peer starts to close it, and to <code>CLOSED</code> when the closure is complete or the channel fails.</p>
 <types lookup="WCS"/>
+      </description>
+    </field>
+
+    <field>
+      <name>StreamID</name>
+      <comment>The channel's SCTP stream ID.</comment>
+      <access read="G">Get</access>
+      <type>INT</type>
+      <description>
+<p>The stream ID identifies the channel on the connection.  If the ID was not specified when the channel was created, it is -1 until it is assigned automatically after the DTLS handshake.</p>
       </description>
     </field>
 
