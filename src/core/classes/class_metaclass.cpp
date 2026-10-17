@@ -1282,7 +1282,9 @@ static void add_field(extMetaClass *Class, std::vector<Field> &Fields, const Fie
 }
 
 //********************************************************************************************************************
-// Sort the field table by FID and compute the field indexes.
+// Sort the field table by FID and compute the field indexes.  Field IDs must be unique, because the order of equal IDs
+// is unspecified after sorting and lookups would then resolve to either field.  A class field that shares its name with
+// a system field such as ID is the typical cause.
 
 static void sort_class_fields(extMetaClass *Class, std::vector<Field> &Fields)
 {
@@ -1290,7 +1292,14 @@ static void sort_class_fields(extMetaClass *Class, std::vector<Field> &Fields)
       [](const Field &a, const Field &b ) { return a.FieldID < b.FieldID; }
    );
 
-   for (unsigned i=0; i < Fields.size(); i++) Fields[i].Index = i;
+   for (unsigned i=0; i < Fields.size(); i++) {
+      Fields[i].Index = i;
+      if ((i > 0) and (Fields[i].FieldID IS Fields[i-1].FieldID)) {
+         kt::Log log(__FUNCTION__);
+         log.warning("Class %s defines duplicate field ID $%.8x for fields %s and %s.", Class->ClassName.c_str(),
+            Fields[i].FieldID, Fields[i-1].Name, Fields[i].Name);
+      }
+   }
 }
 
 //********************************************************************************************************************

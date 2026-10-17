@@ -89,12 +89,21 @@
    return result;
 }
 
+// ResolveClassID() returns nullptr for class names that are not registered (the ID is only a hash of the name), so
+// fall back to the hexadecimal ID when formatting diagnostics.
+
+[[nodiscard]] static std::string class_display_name(CLASSID ClassID)
+{
+   if (auto name = ResolveClassID(ClassID)) return name;
+   return std::format("${:08x}", uint32_t(ClassID));
+}
+
 [[nodiscard]] static std::string global_contract_type_name(const InferredType &Type)
 {
    if (Type.primary IS TiriType::Array) return std::format("array<{}>", array_element_name(Type.array_element));
    if (Type.primary IS TiriType::Struct and Type.struct_def) return std::format("struct<{}>", Type.struct_def->Name);
    if (Type.primary IS TiriType::Object and Type.object_class_id != CLASSID::NIL) {
-      return std::format("obj<{}>", ResolveClassID(Type.object_class_id));
+      return std::format("obj<{}>", class_display_name(Type.object_class_id));
    }
    return std::string(type_name(Type.primary));
 }
@@ -1876,7 +1885,8 @@ void TypeAnalyser::analyse_assignment(const AssignmentStmtPayload &Payload)
                   diag.actual = TiriType::Object;
                   diag.code = ParserErrorCode::ObjectClassMismatch;
                   diag.message = std::format("object class mismatch: cannot assign object of different class to {} ({} vs {})",
-                     is_global ? "global" : "variable", ResolveClassID(value_type.object_class_id), ResolveClassID(existing->object_class_id));
+                     is_global ? "global" : "variable", class_display_name(value_type.object_class_id),
+                     class_display_name(existing->object_class_id));
                   this->record_diagnostic(std::move(diag));
                }
             }
