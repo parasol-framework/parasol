@@ -461,6 +461,13 @@ end
    name_list = {}
    longest_name = 0
    for k,v in pairs(anno) do
+      -- The annotation registry is process-wide, so imported packages (e.g. @Doc in options) must be filtered out.
+      local is_test = false
+      for a in values(v.annotations) do
+         if a.name is 'Test' then is_test = true; break end
+      end
+      if not is_test then continue end
+
       local func_name = tostring(k)
       name_list.insert({ name = func_name, func = k })
       if #func_name > longest_name then

@@ -423,7 +423,7 @@ end
    combobox = gui.combobox({
       target = viewport,
       label  = 'Combobox:',
-      string = 'Your text here',
+      text   = 'Your text here',
       x      = win.margins.left, y = y,
       allowCustom = true,
       items = {

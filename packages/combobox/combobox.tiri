@@ -15,7 +15,15 @@ DEFAULT_HEIGHT <const> = math.floor(FONT_MAX_HEIGHT * 1.35) + 1
 MARGIN     <const> = math.floor(FONT_HEIGHT * 0.5) + 1
 
 function iconTheme(Widget:table!):str
-   return Widget.theme.scheme is 'dark' ? 'pearl' : 'default'
+   return gui.rgbToIconTheme(Widget.input_theme.text?.fill ?? Widget.theme.window.text.fill)
+end
+
+-- Returns the first selectable entry in a list of items, skipping group headers.
+
+function firstItem(Items:any):table
+   for item in values(Items ?? { }) do
+      if item.item then return item end
+   end
 end
 
 function reportFeedback()
@@ -29,6 +37,10 @@ function reportFeedback()
 end
 
 function toggleMenu()
+   if &disabled then return end
+
+   if not &menu.visible and #&menu.items is 0 then return end -- Nothing to show for a combobox without presets
+
    -- The boundary is in display coordinates and includes any scaling applied by parent viewports, so the menu is
    -- scaled to match the input box.
 
@@ -52,6 +64,35 @@ function toggleMenu()
    &menu.toggle()
 end
 
+-- Creates the dropdown menu for Items, replacing any existing menu.
+
+function createMenu(Items:any)
+   if &menu then
+      &menu.hide()
+      &menu.surface?.free()
+   end
+
+   combo = && -- The feedback callback runs in the dropdown's context
+   &menu = gui.dropdown({
+      target    = 0, -- Open on the host desktop so the menu can extend beyond the combobox window
+      relative  = &viewport,
+      config    = Items ?? { },
+      lineLimit = 8,
+      feedback = function(Item:table!)
+         using combo do
+            &text.string = Item.item
+            reportFeedback()
+            &viewport.acDraw()
+         end
+      end,
+      theme = &dropdownTheme
+   })
+
+   if &unlockMenuWidth then -- Set combobox size to the width of the menu, but never below the default
+      &viewport.width = math.max(&menu.width + &labelSize, gui.sizing.widget.width)
+   end
+end
+
 gui.combobox = function(Options)
    self = entity { -- Public interface
       events         = Options.events ?? { },
@@ -68,6 +109,7 @@ gui.combobox = function(Options)
 
    self.disable = function()
       &disabled = true
+      &menu?.hide()
       &viewport.acDisable()
       gui.applyStyle(&bkgd, &input_theme.disabled)
       &events?.disable()
@@ -82,11 +124,38 @@ gui.combobox = function(Options)
       &viewport.acDraw()
    end
 
+   -- Replace the text without reporting an activate event.
+
+   self.setText = function(Text:str)
+      &text.string = Text ?? ''
+      &hash = Text ? string.hash(Text) : 0
+      &viewport.acDraw()
+   end
+
+   -- Replace the list of items in the menu.  If custom text is not allowed and the current text does not match an
+   -- item, the text is reset to the first item.
+
+   self.setItems = function(Items:any!)
+      assert(&allowCustom or firstItem(Items), 'A list of items is required.')
+      createMenu(Items)
+
+      if not &allowCustom then
+         current = &text.string
+         found = false
+         for item in values(Items) do
+            if item.item is current then found = true break end
+         end
+         if not found then &setText(firstItem(Items).item) end
+      end
+
+      &viewport.acDraw()
+   end
+
    -- Main entry point --
 
    using self do
       assert(Options.target, 'A target viewport is required.')
-      assert(Options.items and #Options.items > 0, 'A list of items is required.')
+      assert(Options.allowCustom or firstItem(Options.items), 'A list of items is required.')
 
       &theme = gui.getTheme(&parentViewport)
       &input_theme = table.merge(&theme.input, Options.theme, true, true)
@@ -170,7 +239,7 @@ gui.combobox = function(Options)
 
       defaultText = Options.text
       if not Options.allowCustom and not defaultText then
-         defaultText = Options.items[0].item
+         defaultText = firstItem(Options.items).item
       end
 
       &text = &_textClip.new('VectorText', table.merge({
@@ -187,7 +256,7 @@ gui.combobox = function(Options)
          end)()
       }, &input_theme.text))
 
-      if Options.selected then &text.mtSelectArea(0, 20000) end
+      if Options.selected then &text.mtSelectArea(0, 0, -1, -1) end -- Select all of the text
 
       &viewport.mtSubscribeFeedback(FM_HAS_FOCUS | FM_CHILD_HAS_FOCUS | FM_LOST_FOCUS, function(Viewport, Event)
          if Event is FM_LOST_FOCUS then
@@ -239,7 +308,8 @@ gui.combobox = function(Options)
                &_menuNavigated = true
                &menu.moveToEnd(true)
                return
-            elseif Value is KEY_ESCAPE then &menu.hide() return
+            elseif Value is KEY_ESCAPE then
+               &menu.hide() return
             elseif (Value is KEY_ENTER) or (Value is KEY_NP_ENTER) or ((not &allowCustom) and (Value is KEY_SPACE)) then
                if (not &allowCustom) or &_menuNavigated then
                   if &menu.activate() then return end
@@ -273,28 +343,12 @@ gui.combobox = function(Options)
 
       -- Apply the combobox text theme to the dropdown for consistency
 
-      dd_theme = table.clone(&theme.dropdown)
+      &dropdownTheme = table.clone(&theme.dropdown)
       if &input_theme.text then
-         dd_theme.text = table.merge(dd_theme.text, &input_theme.text, true)
+         &dropdownTheme.text = table.merge(&dropdownTheme.text, &input_theme.text, true)
       end
 
-      &menu = gui.dropdown({
-         relative  = &viewport,
-         config    = Options.items,
-         lineLimit = 8,
-         feedback = function(Menu:table!, Item:table!)
-            using self do
-               &text.string = Item.item
-               reportFeedback()
-               &viewport.acDraw()
-            end
-         end,
-         theme = dd_theme
-      })
-
-      if &unlockMenuWidth then -- Set combobox size to the width of the menu
-         &viewport.width = &menu.width + &labelSize
-      end
+      createMenu(Options.items)
 
       &events?.show()
 
