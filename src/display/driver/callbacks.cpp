@@ -147,10 +147,20 @@ void DriverWheelMovement(OBJECTID SurfaceID, float Wheel)
 }
 
 //********************************************************************************************************************
+// The host has already applied the focus change that it is reporting.  While it is processed, Focus and MoveToFront
+// requests for the same display are not sent back to the host, as doing so would generate new focus events.  Two
+// windows that receive the focus in quick succession would otherwise take it back from each other indefinitely.
 
 void DriverFocusState(OBJECTID SurfaceID, bool State)
 {
    //log.msg("Host focus state for surface #%d: %d", SurfaceID, State);
+
+   OBJECTID display_id = 0;
+   if (kt::ScopedObjectLock<extSurface> surface(SurfaceID); surface.granted()) display_id = surface->DisplayID;
+
+   const auto previous_display = glHostFocusDisplay;
+   glHostFocusDisplay = display_id;
+   auto restore = kt::Defer([previous_display]() { glHostFocusDisplay = previous_display; });
 
    if (State) {
       kt::ScopedObjectLock surface(SurfaceID);

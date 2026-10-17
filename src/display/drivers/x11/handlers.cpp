@@ -104,6 +104,25 @@ static std::string latin1_to_utf8(const unsigned char *Data, size_t Length)
 }
 
 //********************************************************************************************************************
+// Keyboard grabs, such as those held by the window manager while it cycles windows, generate focus events that do
+// not change the focus window.  Events with a virtual or inferior detail report focus moving within the window's own
+// hierarchy, and pointer-root events concern the root window.  NotifyPointer events report that keyboard input
+// follows the pointer into a window that has not been given the focus.  They are only honoured for adopted windows,
+// which receive keyboard input this way when the host application focusses one of their ancestors.
+
+static bool real_focus_change(const XFocusChangeEvent &Event)
+{
+   if ((Event.mode != NotifyNormal) and (Event.mode != NotifyWhileGrabbed)) return false;
+
+   switch (Event.detail) {
+      case NotifyAncestor:
+      case NotifyNonlinear: return true;
+      case NotifyPointer:   return adopted_window(Event.window);
+      default:              return false;
+   }
+}
+
+//********************************************************************************************************************
 
 static void update_server_timestamp(const XEvent &Event)
 {
@@ -678,7 +697,10 @@ void X11ManagerLoop(HOSTHANDLE FD, APTR Data)
 
          case FocusIn: {
             kt::Log log("X11Mgr");
-            if (auto surface_id = resolve_surface(xevent.xany.window)) {
+            if (not real_focus_change(xevent.xfocus)) {
+               log.trace("XFocusIn ignored, mode %d detail %d.", xevent.xfocus.mode, xevent.xfocus.detail);
+            }
+            else if (auto surface_id = resolve_surface(xevent.xany.window)) {
                log.traceBranch("XFocusIn surface #%d", surface_id);
                glDriverCallbacks.FocusState(surface_id, true);
             }
@@ -688,7 +710,10 @@ void X11ManagerLoop(HOSTHANDLE FD, APTR Data)
 
          case FocusOut: {
             kt::Log log("X11Mgr");
-            if (auto surface_id = resolve_surface(xevent.xany.window)) {
+            if (not real_focus_change(xevent.xfocus)) {
+               log.trace("XFocusOut ignored, mode %d detail %d.", xevent.xfocus.mode, xevent.xfocus.detail);
+            }
+            else if (auto surface_id = resolve_surface(xevent.xany.window)) {
                log.traceBranch("XFocusOut surface #%d", surface_id);
                glDriverCallbacks.FocusState(surface_id, false);
             }
@@ -890,7 +915,7 @@ void handle_button_release(XEvent *xevent)
    if ((XGetWindowAttributes(XDisplay, xevent->xany.window, &attributes)) and (attributes.override_redirect)) {
       auto surface_id = resolve_surface(xevent->xany.window);
       if ((not surface_id) or (glDriverCallbacks.AcceptsFocus(surface_id))) {
-         XSetInputFocus(XDisplay, xevent->xany.window, RevertToNone, CurrentTime);
+         XSetInputFocus(XDisplay, xevent->xany.window, RevertToNone, xevent->xbutton.time);
       }
    }
 }

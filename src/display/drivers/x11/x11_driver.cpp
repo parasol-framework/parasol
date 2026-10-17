@@ -737,6 +737,12 @@ static ERR create_window_record(X11Driver::State *State, extDisplay *DisplayObje
 
    XSizeHints hints = { .flags = USPosition|USSize };
    XSetWMNormalHints(State->Connection, native, &hints);
+
+   // Accepting input while advertising WM_TAKE_FOCUS follows the ICCCM 'locally active' focus model.
+
+   XWMHints wm_hints = { .flags = InputHint, .input = True };
+   XSetWMHints(State->Connection, native, &wm_hints);
+
    set_motif_hints(State, record);
    if (not State->TaskBar) hide_window_from_taskbar(State, native);
    Record = record;
@@ -908,7 +914,17 @@ ERR X11Driver::hideWindow(HOSTWINDOW WindowHandle)
 ERR X11Driver::focusWindow(HOSTWINDOW WindowHandle)
 {
    auto window = x11_window(Data, WindowHandle); if (not window) return ERR::NoSupport;
-   XSetInputFocus(Data->Connection, window->Native, RevertToNone, CurrentTime); return ERR::Okay;
+
+   // ICCCM requires the timestamp of the event that led to the request, so that the server discards the request if
+   // the focus has been changed since.  CurrentTime is only used if no timestamped event has been received yet.
+
+   Time timestamp;
+   {
+      const std::lock_guard lock(Data->NativeLock);
+      timestamp = Data->LastServerTimestamp;
+   }
+
+   XSetInputFocus(Data->Connection, window->Native, RevertToNone, timestamp); return ERR::Okay;
 }
 
 //********************************************************************************************************************
