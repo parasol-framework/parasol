@@ -915,16 +915,12 @@ ERR X11Driver::focusWindow(HOSTWINDOW WindowHandle)
 {
    auto window = x11_window(Data, WindowHandle); if (not window) return ERR::NoSupport;
 
-   // ICCCM requires the timestamp of the event that led to the request, so that the server discards the request if
-   // the focus has been changed since.  CurrentTime is only used if no timestamped event has been received yet.
+   // Programmatic requests have no causal event to take a timestamp from.  The last observed event time cannot be used
+   // in its place: FocusIn and FocusOut carry no timestamp, so after another client changes the focus that time can
+   // predate the server's last-focus-change time and the request would be silently discarded.  Event-driven requests
+   // (button release, WM_TAKE_FOCUS) pass the timestamp of the event that triggered them.
 
-   Time timestamp;
-   {
-      const std::lock_guard lock(Data->NativeLock);
-      timestamp = Data->LastServerTimestamp;
-   }
-
-   XSetInputFocus(Data->Connection, window->Native, RevertToNone, timestamp); return ERR::Okay;
+   XSetInputFocus(Data->Connection, window->Native, RevertToNone, CurrentTime); return ERR::Okay;
 }
 
 //********************************************************************************************************************
