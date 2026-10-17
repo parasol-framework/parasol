@@ -188,6 +188,10 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 
 gui.initView = function(Options:table!, BuildUI, NewItems)
+   local scroll_direction = Options.scrollDirection ?? 'all'
+   assert(scroll_direction is 'all' or scroll_direction is 'vertical' or scroll_direction is 'horizontal',
+      'scrollDirection must be all, vertical or horizontal')
+
    vw = entity {
       lookup     = { }, -- Lookup items by ID
       activeZone = nil,
@@ -213,8 +217,16 @@ gui.initView = function(Options:table!, BuildUI, NewItems)
       events          = Options.events ?? {},
       top             = { },
       totalTop        = 0,
+      scrollDirection = scroll_direction,
       _built          = false
    }
+
+   -- Render callbacks run with _dispatching set.  They may update their own vectors but must not change the structure
+   -- of the view.
+
+   function assertStructural()
+      assert(not vw._dispatching, 'Render callbacks must not modify the view structure; defer the change')
+   end
 
    -- Shift replaces the visible range; Ctrl+Shift adds it to the existing selection.
    function selectUserItem(Item:table!, Qualifiers:num!, Toggle:bool)
@@ -526,8 +538,7 @@ gui.initView = function(Options:table!, BuildUI, NewItems)
 
    -- Add visible matches in multiple mode, or replace with the first match in single mode.
 
-   @Ordinary -- Ensures callback runs in caller's context
-   vw.selectItems = function(Conditional:func)
+   vw.selectItems = function[](Conditional:func)
       local wanted = vw.multiSelect ? currentSelection(vw) : {}
       local lead:table = nil
 
@@ -662,7 +673,7 @@ gui.initView = function(Options:table!, BuildUI, NewItems)
       vw.top[ID] = { y=vw.totalTop, height=Height }
       vw.totalTop = vw.totalTop + Height
       vw.frame?.y = vw.totalTop
-      vw.scrollbar?.vbar.viewport.y = vw.totalTop
+      vw.scrollbar?.vbar?.viewport.y = vw.totalTop
    end
 
    -- Initialisation --
@@ -714,8 +725,8 @@ gui.initView = function(Options:table!, BuildUI, NewItems)
    })
 
    if not Options.borderless and vw.scrollbar then
-      vw.scrollbar.hbar.viewport.x = 1
-      vw.scrollbar.vbar.viewport.y = 1
+      vw.scrollbar.hbar?.viewport.x = 1
+      vw.scrollbar.vbar?.viewport.y = 1
    end
 
    vw.viewport.mtSubscribeFeedback((FM_HAS_FOCUS | FM_CHILD_HAS_FOCUS | FM_LOST_FOCUS), function(Viewport, Event)

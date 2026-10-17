@@ -71,18 +71,15 @@ function createMenu(Items:any)
       &menu.surface?.free()
    end
 
-   combo = && -- The feedback callback runs in the dropdown's context
    &menu = gui.dropdown({
       target    = 0, -- Open on the host desktop so the menu can extend beyond the combobox window
       relative  = &viewport,
       config    = Items ?? { },
       lineLimit = 8,
-      feedback = function(Item:table!)
-         using combo do
-            &text.string = Item.item
-            reportFeedback()
-            &viewport.acDraw()
-         end
+      feedback = function[<weak> &&](Item:table!)
+         &text.string = Item.item
+         reportFeedback()
+         &viewport.acDraw()
       end,
       theme = &dropdownTheme
    })

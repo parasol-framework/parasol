@@ -863,8 +863,8 @@ the runtime receiver/function gate after member lookup and argument evaluation, 
 `CTXCALL`, `CTXCALLM` or `CTXCALLT` on the same base.  Arguments, including a piped value, are therefore evaluated in
 the caller's context and only the callee runs in the receiver's context.  A nested contextual call in an argument
 enters and leaves before the outer `CTXENTER`, so the loader's pairing check sees properly nested activations. An entity
-receiver activates context only when the resolved callable is not a Tiri function marked `@Ordinary`. `CTXCALL` repeats the gate idempotently at
-the activation boundary, and `CTXLEAVE` restores the inherited context after a normal return. It shifts returned
+receiver activates context only when the resolved callable is not a Tiri function with the ordinary policy
+(`function[]`, `function[X]` or `function[<weak> X]`). `CTXCALL` repeats the gate idempotently at the activation boundary, and `CTXLEAVE` restores the inherited context after a normal return. It shifts returned
 values down over the retained receiver slot so expression result allocation remains identical to an ordinary member
 call.
 
@@ -878,9 +878,30 @@ values and truncated headers are rejected. The policy is preserved for nested pr
 format versions are rejected, allowing source caches to rebuild rather than silently losing the policy. Format `0xb0`
 keeps the `0xaf` layout but marks the move of `CTXENTER` after argument evaluation: the same source produces different
 bytecode, so caches built by the earlier emitter are rejected and rebuilt rather than keeping the old argument
-semantics. Compiler-only
-`@Ordinary` emits no runtime annotation registration. `CTXLEAVE` still compacts results for exempt calls, and an exempt
-`CTXCALLT` retains the outgoing activation's inherited context without requiring a prepared receiver activation.
+semantics. The policy is set by the compiler from the function's context binding and is not a runtime annotation.
+`CTXLEAVE` still compacts results for exempt calls, and an exempt `CTXCALLT` retains the outgoing activation's
+inherited context without requiring a prepared receiver activation.
+
+A bound function, `function[X]` or `function[<weak> X]`, uses no dedicated opcodes.  At closure creation the parent
+evaluates `X` into a temporary register above the closure's result register.  Unless `X` is statically proved to be a
+non-nil table, `MOV`, `TYPETEST`, `IST` and `JMP` guard a `RAISE` of `ERR_TypeMismatch` that names the reference.  A
+weak binding then replaces the register with a `{ [0]=X }` cell whose metatable has `__mode='v'`.  `FNEW` captures the
+register as an immutable upvalue, and `UCLO` closes it before the register is reused, so no parent local is declared:
+
+```text
+R(c+1) = X                -- weak: replaced by setmetatable({ [0]=X }, { __mode='v' })
+FNEW   R(c), <proto>      -- uv[0] captures R(c+1)
+UCLO   R(c+1), ->next
+```
+
+The child's prologue follows the parameter contracts.  It loads the upvalue into a hidden `(context)` local with
+`UGET`; a weak binding reads the cell with `TGETB` and, if the target has been collected, raises `ERR_Terminate` with
+the message `Resource collected` before any context is entered.  `CTXBEGIN` then makes the function's outermost scope
+a context block, so every return and error path runs the existing `CTXEND` cleanup.  Return emission never converts a
+call to `CALLT` or `CTXCALLT` in a bound body, because `CTXEND` would precede the tail call and the callee would run in
+the caller's context.  It emits `CALL` and `RETM` instead, so every callee observes `X`.  Closures nested inside a
+bound body are not bound themselves and keep normal tail calls.  The upvalue's capture-only `vstack` entry carries
+`VarInfoFlag::CaptureOnly`, which excludes it from the prototype's varinfo.
 
 Named and computed lookup continue to use the appropriate existing `TGET*` operation while retaining the original
 receiver. Safe calls branch around lookup, argument evaluation and entry on their `nil` path. Statically proved

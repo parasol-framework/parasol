@@ -77,6 +77,7 @@ static CSTRING error_code_name(ParserErrorCode Code)
       case ParserErrorCode::InvalidAssignment:         return "Invalid assignment";
       case ParserErrorCode::UnresolvedMethodReceiver:  return "Unresolved method receiver";
       case ParserErrorCode::TooManyExceptionFilters:   return "Too many exception filters";
+      case ParserErrorCode::InvalidContextBinding:     return "Invalid context binding";
       default: return "Unknown";
    }
 }

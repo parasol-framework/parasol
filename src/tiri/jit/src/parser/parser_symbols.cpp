@@ -665,6 +665,7 @@ static ParserSymbolMetadata make_function_symbol(const std::string &Name, const 
    symbol.span = Span;
    symbol.end_span = end_span_for(Function);
    symbol.signature = build_signature(Name, Function);
+   symbol.binding = context_binding_text(Function.context);
    symbol.annotations = collect_annotations(Function.annotations);
 
    std::string doc_text = find_doc_text(Function.annotations);

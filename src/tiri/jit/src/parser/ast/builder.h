@@ -267,7 +267,9 @@ private:
    ParserResult<ExprNodePtr> parse_suffixed(ExprNodePtr);
    ParserResult<Token> consume_ternary_separator();
    ParserResult<ExprNodePtr> parse_arrow_function(ExprNodeList parameters);
-   ParserResult<ExprNodePtr> parse_function_literal(const Token &, bool IsThunk = false, GCstr *FunctionName = nullptr);
+   ParserResult<FunctionContextBinding> parse_function_binding(bool IsThunk);
+   ParserResult<ExprNodePtr> parse_function_literal(const Token &, bool IsThunk = false, GCstr *FunctionName = nullptr,
+      FunctionContextBinding Binding = {});
    ParserResult<ExprNodePtr> parse_table_literal(bool AllowRange = true);
    ParserResult<ExprNodeList> parse_array_initialiser();
    ParserResult<ReturnStmtPayload> parse_return_payload(const Token &, bool same_line_only);

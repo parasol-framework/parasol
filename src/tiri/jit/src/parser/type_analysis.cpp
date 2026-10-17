@@ -918,6 +918,7 @@ void TypeAnalyser::lower_unanalysed_except_clause(ExceptClause &Clause)
 
 void TypeAnalyser::lower_unanalysed_function(const FunctionExprPayload &Function)
 {
+   if (Function.context.reference) this->lower_unanalysed_expression(*Function.context.reference);
    this->unanalysed_depth_++;
    this->push_scope();
    for (const FunctionParameter &param : Function.parameters) {
@@ -2419,6 +2420,9 @@ void TypeAnalyser::report_dynamic_destination_required(GCstr *Name, SourceSpan L
 
 void TypeAnalyser::analyse_function_payload(const FunctionExprPayload &Function, GCstr *Name)
 {
+   // The context binding is evaluated in the enclosing scope when the closure is created.
+   if (Function.context.reference) this->analyse_expression(*Function.context.reference);
+
    this->push_scope();
    this->enter_function(Function, Name);
 

@@ -3,6 +3,7 @@
 #include "lj_def.h"
 #include <kotuku/strings.hpp>
 
+#include <format>
 #include <unordered_map>
 
 TiriType parse_type_name(std::string_view Name)
@@ -1217,6 +1218,53 @@ size_t ast_statement_child_count(const StmtNode &Node)
 size_t ast_expression_child_count(const ExprNode &Node)
 {
    return std::visit(ExpressionChildCounter{}, Node.data);
+}
+
+//********************************************************************************************************************
+// Render a function context binding reference as written, e.g. 'self.owner' or '&viewport'.
+
+std::string context_binding_text(const ExprNode &Reference)
+{
+   switch (Reference.kind) {
+      case AstNodeKind::CurrentContextExpr: return "&&";
+
+      case AstNodeKind::IdentifierExpr: {
+         const auto &name = std::get<NameRef>(Reference.data);
+         if (name.identifier.symbol) return std::string(strdata(name.identifier.symbol), name.identifier.symbol->len);
+         return "?";
+      }
+
+      case AstNodeKind::MemberExpr: {
+         const auto &member = std::get<MemberExprPayload>(Reference.data);
+         std::string_view field = member.member.symbol ?
+            std::string_view(strdata(member.member.symbol), member.member.symbol->len) : std::string_view("?");
+         if (member.table and member.table->kind IS AstNodeKind::CurrentContextExpr) return std::format("&{}", field);
+         return std::format("{}.{}", member.table ? context_binding_text(*member.table) : "?", field);
+      }
+
+      case AstNodeKind::IndexExpr: {
+         const auto &index = std::get<IndexExprPayload>(Reference.data);
+         return std::format("{}[...]", index.table ? context_binding_text(*index.table) : "?");
+      }
+
+      default: return "?";
+   }
+}
+
+//********************************************************************************************************************
+// Render a complete function context binding, e.g. '[]', '[owner]' or '[<weak> &&]'.
+
+std::string context_binding_text(const FunctionContextBinding &Binding)
+{
+   switch (Binding.kind) {
+      case FunctionContextKind::None:     return {};
+      case FunctionContextKind::Ordinary: return "[]";
+      case FunctionContextKind::Strong:
+         return std::format("[{}]", Binding.reference ? context_binding_text(*Binding.reference) : "?");
+      case FunctionContextKind::Weak:
+         return std::format("[<weak> {}]", Binding.reference ? context_binding_text(*Binding.reference) : "?");
+   }
+   return {};
 }
 
 //********************************************************************************************************************

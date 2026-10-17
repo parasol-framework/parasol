@@ -19,6 +19,7 @@ rx_kw_struct   = <{ regex.new([[^\s*struct\s+[A-Za-z_][A-Za-z0-9_]*\b]]) }>
 
 -- Deferred regex patterns for token parsing
 rx_weak_attribute = <{ regex.new([[^<([ \t]*)(weak)[ \t]*>(?=[ \t]*(?::|\?\??=|=|,|;|--|\r|\n|$))]]) }>
+rx_binding_weak_attribute = <{ regex.new([[^<([ \t]*)(weak)[ \t]*>]]) }>
 rx_global_var   = <{ regex.new("^gl[A-Z]") }>
 rx_starts_upper = <{ regex.new("^[A-Z]") }>
 rx_all_upper    = <{ regex.new([[^[A-Z0-9_]+$]]) }>
@@ -278,6 +279,16 @@ global function tokenizeTiri(Source:str, ModulePrefixes:table):array<table>
          if c is ' ' or c is '\t' then Pos -= 1 else break end
       end
       return Pos
+   end
+
+   -- True when the '<' at Pos opens the attribute of a function context binding, as in `function[<weak> X]`.
+   function opensFunctionBindingAttribute(Pos:num):bool
+      bracket = previousNonWhitespace(Pos - 1)
+      if bracket < 0 or Source.sub(bracket, bracket + 1) != '[' then return false end
+      word_end = previousNonWhitespace(bracket - 1) + 1
+      word_start = word_end - 8
+      if word_start < 0 or Source.sub(word_start, word_end) != 'function' then return false end
+      return word_start is 0 or not isIdentChar(Source.sub(word_start - 1, word_start))
    end
 
    function nextNonWhitespace(Pos:num):num
@@ -1317,7 +1328,11 @@ global function tokenizeTiri(Source:str, ModulePrefixes:table):array<table>
          local attribute_stop:num
          local attribute:array<str>
          if Source.sub(attribute_pos, attribute_pos + 4) is 'weak' then
-            _, attribute_stop, attribute = rx_weak_attribute.findFirst(Source.sub(pos))
+            if opensFunctionBindingAttribute(pos) then
+               _, attribute_stop, attribute = rx_binding_weak_attribute.findFirst(Source.sub(pos))
+            else
+               _, attribute_stop, attribute = rx_weak_attribute.findFirst(Source.sub(pos))
+            end
          end
          if attribute_stop then
             addToken(line, col + 1 + #attribute[0], 4, 0, 0) -- declaration attribute

@@ -622,8 +622,7 @@ gui.toolbar = function(Options)
       found ?! raise ERR_Search
    end
 
-   @Ordinary
-   function inputFeedback(Viewport, Events) -- Internal input handler
+   function[] inputFeedback(Viewport, Events) -- Internal input handler
       using self do
          ev = Events
          while ev do
@@ -680,8 +679,7 @@ gui.toolbar = function(Options)
       end
    end
 
-   @Ordinary
-   function kbFeedback(Viewport, Qualifiers, Code, Unicode)
+   function[] kbFeedback(Viewport, Qualifiers, Code, Unicode)
       using self do
          if Qualifiers has KQ_PRESSED then
             if (Code is KEY_ENTER) or (Code is KEY_NP_ENTER) or (Code is KEY_SPACE) then

@@ -545,8 +545,7 @@ end
 
    function view.apply(Callback:func):any return Callback() end
 
-   @Ordinary
-   function view.applyOrdinary(Callback:func):any return Callback() end
+   function[] view.applyOrdinary(Callback:func):any return Callback() end
 
    using caller do
       assert(view.apply(function():str return &name end) is 'view',
@@ -578,8 +577,7 @@ end
    local caller = entity { value = 100 }
    local target = entity { value = 7 }
    function target.read(Value:num):num return Value + &value end
-   @Ordinary
-   function target.plain(Value:num):num return Value + &value end
+   function[] target.plain(Value:num):num return Value + &value end
 
    function workload():num
       local sum = 0
