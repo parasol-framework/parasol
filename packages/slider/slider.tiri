@@ -606,9 +606,7 @@ gui.slider = function(Options:table!)
       end
    })
 
-   -- Ordinary native callbacks acquire a strong slider reference only for the duration of each invocation.
-
-   weak_self <weak> = self
+   -- Weak bindings retain the widget only for the duration of each callback.
 
    using self do
       target = Options.target
@@ -730,11 +728,8 @@ gui.slider = function(Options:table!)
 
          local label_text = &labelText
 
-         @Ordinary
-         label_text.resizeEvent = function(Viewport, Vector, X, Y, Width, Height)
-            local slider = weak_self
-            if not slider then return end
-            using slider do &prvPlaceLabel(Width, Height) end
+         label_text.resizeEvent = function[<weak> self](Viewport, Vector, X, Y, Width, Height)
+            &prvPlaceLabel(Width, Height)
          end
       end
 
@@ -795,35 +790,23 @@ gui.slider = function(Options:table!)
       -- pointer movement is measured in display pixels, so it is converted to track units when an ancestor scales the
       -- slider, e.g. with a view box.
 
-      @Ordinary
-      self.thumbVP.dragCallback = function(Viewport:obj!, X:num!, Y:num!, OriginX:num!, OriginY:num!)
-         local slider = weak_self
-         if not slider then return end
-
-         using slider do
-            if &disabled then return end
-            local track_vp = &trackVP
-            _, _, _, display_w, display_h = track_vp.mtGetBoundary(0)
-            if &orientation is 'V' then
-               scale = ((display_h ?? 0) > 0) ? display_h / track_vp.height : 1
-               &setValue(&prvTrackValue(OriginY + ((Y - OriginY) / scale)))
-            else
-               scale = ((display_w ?? 0) > 0) ? display_w / track_vp.width : 1
-               &setValue(&prvTrackValue(OriginX + ((X - OriginX) / scale)))
-            end
+      self.thumbVP.dragCallback = function[<weak> self](Viewport:obj!, X:num!, Y:num!, OriginX:num!, OriginY:num!)
+         if &disabled then return end
+         local track_vp = &trackVP
+         _, _, _, display_w, display_h = track_vp.mtGetBoundary(0)
+         if &orientation is 'V' then
+            scale = ((display_h ?? 0) > 0) ? display_h / track_vp.height : 1
+            &setValue(&prvTrackValue(OriginY + ((Y - OriginY) / scale)))
+         else
+            scale = ((display_w ?? 0) > 0) ? display_w / track_vp.width : 1
+            &setValue(&prvTrackValue(OriginX + ((X - OriginX) / scale)))
          end
       end
 
       &prvPlaceSlider()
 
-      @Ordinary
-      self.thumbVP.resizeEvent = function(Viewport, Vector, X, Y, Width, Height)
-         local slider = weak_self
-         if not slider then return end
-
-         using slider do
-            &prvPlaceSlider(Width, Height)
-         end
+      self.thumbVP.resizeEvent = function[<weak> self](Viewport, Vector, X, Y, Width, Height)
+         &prvPlaceSlider(Width, Height)
       end
 
       GAP <const> = &prvTheme.slider.bkgd.strokeWidth
@@ -840,22 +823,16 @@ gui.slider = function(Options:table!)
          &prvPlaceValue(&trackVP.width, &trackVP.height)
       end
 
-      @Ordinary
-      function focusFeedback(Viewport, Event)
-         local slider = weak_self
-         if not slider then return ERR_Terminate end
+      function[<weak> self] focusFeedback(Viewport, Event)
+         &hasFocus = Event != FM_LOST_FOCUS
 
-         using slider do
-            &hasFocus = Event != FM_LOST_FOCUS
+         &prvApplyStyle()
+         Viewport.acDraw()
 
-            &prvApplyStyle()
-            Viewport.acDraw()
-
-            if Event is FM_LOST_FOCUS then
-               &events?.lostFocus()
-            elseif not &disabled then
-               &events?.focus()
-            end
+         if Event is FM_LOST_FOCUS then
+            &events?.lostFocus()
+         elseif not &disabled then
+            &events?.focus()
          end
       end
 
@@ -864,94 +841,70 @@ gui.slider = function(Options:table!)
       -- Keyboard registration makes the whole widget a single stop in the scene's tab order.  The arrow keys move one
       -- increment; Page Up/Down move to the next tick, or ten increments if the slider has no ticks.
 
-      @Ordinary
-      function keyboardInput(Viewport:obj!, Qualifiers:num!, Code:num!, Unicode)
-         local slider = weak_self
-         if not slider then return ERR_Terminate end
+      function[<weak> self] keyboardInput(Viewport:obj!, Qualifiers:num!, Code:num!, Unicode)
+         if &disabled or not (Qualifiers has KQ_PRESSED) then return end
 
-         using slider do
-            if &disabled or not (Qualifiers has KQ_PRESSED) then return end
-
-            increment = &prvIncrement()
-            if (Code is KEY_RIGHT) or (Code is KEY_UP) then
-               &prvAdjust(1)
-            elseif (Code is KEY_LEFT) or (Code is KEY_DOWN) then
-               &prvAdjust(-1)
-            elseif Code is KEY_PAGE_UP then
-               if #&prvTickStops > 0 then &prvTickStep(1) else &setValue(&value + (increment * 10)) end
-            elseif Code is KEY_PAGE_DOWN then
-               if #&prvTickStops > 0 then &prvTickStep(-1) else &setValue(&value - (increment * 10)) end
-            elseif Code is KEY_HOME then
-               &setValue(&min)
-            elseif Code is KEY_END then
-               &setValue(&max)
-            end
+         increment = &prvIncrement()
+         if (Code is KEY_RIGHT) or (Code is KEY_UP) then
+            &prvAdjust(1)
+         elseif (Code is KEY_LEFT) or (Code is KEY_DOWN) then
+            &prvAdjust(-1)
+         elseif Code is KEY_PAGE_UP then
+            if #&prvTickStops > 0 then &prvTickStep(1) else &setValue(&value + (increment * 10)) end
+         elseif Code is KEY_PAGE_DOWN then
+            if #&prvTickStops > 0 then &prvTickStep(-1) else &setValue(&value - (increment * 10)) end
+         elseif Code is KEY_HOME then
+            &setValue(&min)
+         elseif Code is KEY_END then
+            &setValue(&max)
          end
       end
 
       if Options.keyboard != false then &viewport.mtSubscribeKeyboard(keyboardInput) end
 
-      @Ordinary
-      function wheelInput(Viewport:obj!, Msg)
-         local slider = weak_self
-         if not slider then return ERR_Terminate end
+      function[<weak> self] wheelInput(Viewport:obj!, Msg)
+         if &disabled then return end
 
-         using slider do
-            if &disabled then return end
+         -- Upward rotation is reported as a negative value and increases the slider.  Display drivers scale the value
+         -- inconsistently (a notch can be 3 or 9 units), so each wheel event moves one increment regardless of size.
 
-            -- Upward rotation is reported as a negative value and increases the slider.  Display drivers scale the value
-            -- inconsistently (a notch can be 3 or 9 units), so each wheel event moves one increment regardless of size.
-
-            repeat
-               if (Msg.type is JET_WHEEL) and (Msg.value != 0) then
-                  &prvAdjust((Msg.value < 0) ? 1 : -1)
-               end
-               Msg = Msg.next
-            until not Msg
-         end
+         repeat
+            if (Msg.type is JET_WHEEL) and (Msg.value != 0) then
+               &prvAdjust((Msg.value < 0) ? 1 : -1)
+            end
+            Msg = Msg.next
+         until not Msg
       end
 
       &viewport.mtSubscribeInput(JTYPE_EXT_MOVEMENT, wheelInput)
 
-      @Ordinary
-      function crossingInput(Viewport, Msg)
-         local slider = weak_self
-         if not slider then return ERR_Terminate end
+      function[<weak> self] crossingInput(Viewport, Msg)
+         if &disabled then return end
 
-         using slider do
-            if &disabled then return end
+         repeat
+            if Msg.type is JET_CROSSED_IN then
+               &prvHover = true
+            elseif Msg.type is JET_CROSSED_OUT then
+               &prvHover = false
+            end
+            Msg = Msg.next
+         until not Msg
 
-            repeat
-               if Msg.type is JET_CROSSED_IN then
-                  &prvHover = true
-               elseif Msg.type is JET_CROSSED_OUT then
-                  &prvHover = false
-               end
-               Msg = Msg.next
-            until not Msg
-
-            &prvApplyStyle()
-            Viewport.acDraw()
-         end
+         &prvApplyStyle()
+         Viewport.acDraw()
       end
 
       &thumbVP.mtSubscribeInput(JTYPE_CROSSING, crossingInput)
 
-      @Ordinary
-      function trackInput(Viewport:obj!, Msg)
-         local slider = weak_self
-         if not slider then return ERR_Terminate end
-
-         using slider do
-            repeat
-               if (Msg.type is JET_LMB) and (Msg.value > 0) and (not &disabled) then
-                  -- Centre the slider on the click position.
-                  position = ((&orientation is 'V') ? Msg.y : Msg.x) - (&prvThumbLength * 0.5)
-                  &setValue(&prvTrackValue(position))
-               end
-               Msg = Msg.next
-            until Msg is nil
-         end
+      function[<weak> self] trackInput(Viewport:obj!, Msg)
+         repeat
+            if (Msg.type is JET_LMB) and (Msg.value > 0) and (not &disabled) then
+               -- Centre the slider on the click position.
+               position = ((&orientation is 'V') ? Msg.y : Msg.x) - (&prvThumbLength * 0.5)
+               &setValue(&prvTrackValue(position))
+            end
+            Msg = Msg.next
+         until Msg is nil
       end
 
       &trackVP.mtSubscribeInput(JTYPE_BUTTON, trackInput)

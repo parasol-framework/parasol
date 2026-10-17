@@ -612,6 +612,27 @@ struct TableExprPayload {
    ~TableExprPayload();
 };
 
+// Context binding declared by `function[...]`.  The reference is evaluated once, in the enclosing scope, when the
+// closure is created.  Every kind other than None carries the ordinary dispatch policy, so entity dispatch does not
+// push the receiver and native callback registration captures no context.
+
+enum class FunctionContextKind : uint8_t {
+   None,     // No binding; entity dispatch pushes the receiver
+   Ordinary, // function[]: inherits the caller's context and binds nothing
+   Strong,   // function[X]: always runs in X, which the closure retains
+   Weak      // function[<weak> X]: always runs in X, which the closure holds weakly
+};
+
+struct FunctionContextBinding {
+   FunctionContextKind kind = FunctionContextKind::None;
+   ExprNodePtr reference;              // X for Strong and Weak; null otherwise
+   mutable bool reported = false;      // A binding diagnostic was issued; suppresses repeats from later passes
+
+   [[nodiscard]] bool is_bound() const {
+      return kind IS FunctionContextKind::Strong or kind IS FunctionContextKind::Weak;
+   }
+};
+
 struct FunctionExprPayload {
    FunctionExprPayload() = default;
    FunctionExprPayload(const FunctionExprPayload&) = delete;
@@ -621,13 +642,24 @@ struct FunctionExprPayload {
    std::vector<FunctionParameter> parameters;
    bool is_vararg = false;
    bool is_thunk = false;              // Marks function as thunk
-   bool is_ordinary = false;           // Inherit caller context during entity member dispatch
+   FunctionContextBinding context;     // function[], function[X] or function[<weak> X]
    mutable FunctionReturnTypes return_types{}; // Declared, validated inferred or advisory result metadata
    mutable StaticCallableHandle callable{};
    std::unique_ptr<BlockStmt> body;
    std::vector<AnnotationEntry> annotations;  // Annotations attached to this function
+
+   // True if the function inherits the caller's context during entity member dispatch.
+   [[nodiscard]] bool is_ordinary() const { return context.kind != FunctionContextKind::None; }
+
    ~FunctionExprPayload();
 };
+
+// Render a function context binding for diagnostics and tooling.  The reference overload returns the reference as
+// written ('a.b', 'a[...]', '&field' or '&&'); the binding overload returns '[]', '[X]' or '[<weak> X]', or an empty
+// string when there is no binding.
+
+[[nodiscard]] std::string context_binding_text(const ExprNode &Reference);
+[[nodiscard]] std::string context_binding_text(const FunctionContextBinding &Binding);
 
 // Deferred expression payload: wraps an expression for lazy evaluation <{ expr }> or <type{ expr }>
 struct DeferredExprPayload {

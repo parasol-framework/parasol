@@ -192,7 +192,11 @@ glKeywords = {
    ['continue'] = { comment = 'Skips to the next loop iteration.' },
 
    -- Functions
-   ['function'] = { comment = 'Defines a function.' },
+   ['function'] = {
+      comment = 'Defines a function. A context binding after the keyword fixes the context of every call: ' ..
+         'function[X] runs in table X, function[<weak> X] holds X weakly, and function[] inherits the ' ..
+         "caller's context during entity dispatch."
+   },
    ['return'] = { comment = 'Returns values from a function.' },
 
    -- Variables

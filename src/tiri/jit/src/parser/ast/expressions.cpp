@@ -667,9 +667,12 @@ ParserResult<ExprNodePtr> AstBuilder::parse_primary()
       case TokenKind::Function: {
          Token function_token = this->ctx.tokens().current();
          this->ctx.tokens().advance();
-         auto fn = this->parse_function_literal(function_token, false);
-         if (not fn.ok()) return fn;
 
+         auto binding = this->parse_function_binding(false);
+         if (not binding.ok()) return ParserResult<ExprNodePtr>::failure(binding.error_ref());
+
+         auto fn = this->parse_function_literal(function_token, false, nullptr, std::move(binding.value_ref()));
+         if (not fn.ok()) return fn;
          node = std::move(fn.value_ref());
          break;
       }
@@ -678,6 +681,8 @@ ParserResult<ExprNodePtr> AstBuilder::parse_primary()
          // Anonymous thunk expression: thunk():type ... end
          Token thunk_token = this->ctx.tokens().current();
          this->ctx.tokens().advance();
+         auto binding = this->parse_function_binding(true);
+         if (not binding.ok()) return ParserResult<ExprNodePtr>::failure(binding.error_ref());
          auto fn = this->parse_function_literal(thunk_token, true);
          if (not fn.ok()) return fn;
 

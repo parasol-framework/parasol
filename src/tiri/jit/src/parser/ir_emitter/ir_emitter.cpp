@@ -40,7 +40,6 @@ inline const TiriConstant * lookup_constant(const GCstr *Name)
 }
 
 static bool is_named_external_global(GCstr *Name);
-static bool has_runtime_annotations(const std::vector<AnnotationEntry> &Annotations);
 
 // Canonical object methods are callable syntax, not object fields.  A bare lookup must therefore retain ordinary
 // table indexing, which lets the runtime return a real field when present or nil when it is absent.
@@ -122,6 +121,14 @@ private:
       return Block and this->block_uses_context(*Block);
    }
 
+   // A function body is a separate region, but its context binding is evaluated in this one at closure creation.
+
+   [[nodiscard]] bool binding_uses_context(const FunctionExprPayload *Function)
+   {
+      return Function and Function->context.reference and
+         this->expression_uses_context_impl(*Function->context.reference);
+   }
+
    [[nodiscard]] bool statement_uses_context(const StmtNode &Statement)
    {
       switch (Statement.kind) {
@@ -138,8 +145,9 @@ private:
             return this->expressions_use_context(payload.values);
          }
          case AstNodeKind::LocalFunctionStmt:
+            return this->binding_uses_context(std::get<LocalFunctionStmtPayload>(Statement.data).function.get());
          case AstNodeKind::FunctionStmt:
-            return false;
+            return this->binding_uses_context(std::get<FunctionStmtPayload>(Statement.data).function.get());
          case AstNodeKind::IfStmt: {
             const auto &payload = std::get<IfStmtPayload>(Statement.data);
             for (const IfClause &clause : payload.clauses) {
@@ -308,7 +316,7 @@ private:
             return false;
          }
          case AstNodeKind::FunctionExpr:
-            return false;
+            return this->binding_uses_context(&std::get<FunctionExprPayload>(Expression.data));
          case AstNodeKind::DeferredExpr:
             return this->expression_uses_context_ptr(std::get<DeferredExprPayload>(Expression.data).inner);
          case AstNodeKind::RangeExpr: {
@@ -1738,8 +1746,11 @@ ParserResult<IrEmitUnit> IrEmitter::emit_return_stmt(const ReturnStmtPayload &Pa
             this->ctx, this->current_callable, *Payload.values.back());
          bool direct_tail_call = call_op IS BC_CALL or call_op IS BC_CALLM;
          bool contextual_tail_call = not this->is_root_chunk and has_context_leave and call_op IS BC_CTXCALL;
+
+         // A bound body (function[X]) leaves its context block before CALLT, so a tail callee would run in the
+         // caller's context.  It keeps CALL + RETM instead, and every callee observes the bound context (D5).
          bool tail_call_eligible = this->func_state.runtime_scopes.empty() and not has_post_call_control_flow and
-            not has_user_cleanup and (direct_tail_call or contextual_tail_call) and
+            not this->context_bound and not has_user_cleanup and (direct_tail_call or contextual_tail_call) and
             tail_call_preserves_checkall_boundary(this->ctx, *Payload.values.back()) and
             (forwards_current_contract or (not truncate_return_results and not has_return_contract));
          if (tail_call_eligible) {
@@ -2107,25 +2118,7 @@ ParserResult<IrEmitUnit> IrEmitter::emit_local_decl_stmt(const LocalDeclStmtPayl
       if (not Payload.names[i.raw()].has_weak) continue;
       BCREG slot = base.raw() + i.raw();
       auto *fs = &this->func_state;
-      BCREG call = fs->freereg;
-      BCREG cell = call + 1 + LJ_FR2;
-      BCREG meta = cell + 1;
-      bcreg_reserve(fs, 3 + LJ_FR2);
-      (void)bcemit_builtin_callable(fs, builtin_callable_id(FastFunc::setmetatable), call);
-      bcemit_AD(fs, BC_TNEW, cell, 1);
-      GCtab *template_table = lj_tab_new(fs->L, 0, 1);
-      template_table->flags |= TAB_WEAK_BINDING;
-      BCREG constant = const_gc(fs, obj2gco(template_table), LJ_TTAB);
-      GCstr *mode = lj_str_newlit(fs->L, "__mode");
-      GCstr *weak = lj_str_newlit(fs->L, "v");
-      setstrV(fs->L, lj_tab_setstr(fs->L, template_table, mode), weak);
-      lj_gc_anybarriert(fs->L, template_table);
-      bcemit_AD(fs, BC_TDUP, meta, constant);
-      bcemit_ABC(fs, BC_CALL, call, 2, 3);
-      bcemit_ABC(fs, BC_TSETB, slot, call, 0);
-      bcemit_AD(fs, BC_MOV, slot, call);
-      // Call arguments can remain in unused frame slots.  Explicitly clear them rather than depending on the next call.
-      bcemit_AD(fs, BC_KNIL, call, meta);
+      bcemit_weak_cell(fs, slot);
       fs->var_get(slot).info |= VarInfoFlag::Weak;
       fs->reset_freereg();
    }
@@ -3278,7 +3271,7 @@ ParserResult<ExpDesc> IrEmitter::emit_expression(const ExprNode& expr)
       case AstNodeKind::FunctionExpr: {
          const auto &function = std::get<FunctionExprPayload>(expr.data);
          result = this->emit_function_expr(function);
-         if (result.ok() and has_runtime_annotations(function.annotations)) {
+         if (result.ok() and not function.annotations.empty()) {
             this->materialise_to_next_reg(result.value_ref(), "annotated function expression");
             auto registered = this->emit_annotation_registration(
                BCReg(result.value_ref().u.s.info), function.annotations, nullptr);

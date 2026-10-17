@@ -70,6 +70,26 @@ end
    assert(#result.diagnostics > 0, 'Diagnostics must reject unsupported global weak bindings')
 end
 
+@Test function FunctionBindingWeakAttributesReceiveKeywordHighlighting()
+   source = 'local owner = {}\nlocal f = function[<weak> owner]() end\n' ..
+      'local function[ <weak> owner] g() end\nh = function [< weak > &&]() end\n' ..
+      'local myfunction = { 1 }\nlocal text = "function[<weak> owner]"\n'
+   tokens = tokenizeTiri(source)
+   for entry in values(array<table> { { line=1, char=20 }, { line=2, char=17 }, { line=3, char=16 } }) do
+      token = findToken(tokens, entry.line, entry.char, 'weak')
+      assert(token and token.type is 0 and token.modifiers is 0,
+         'A weak function context binding attribute must receive keyword highlighting')
+   end
+   assertNoToken(tokens, 5, 23, 'weak', 'A weak attribute inside a string must not receive a keyword token')
+   result = computeDiagnostics(makeDoc(source))
+   for diagnostic in values(result.diagnostics) do
+      assert(diagnostic.severity != 1, 'Diagnostics must accept function context bindings: ' .. diagnostic.message)
+   end
+
+   tokens = tokenizeTiri('local items = myfunction[<weak> x]\n')
+   assertNoToken(tokens, 0, 26, 'weak', 'Only the function keyword can open a binding attribute')
+end
+
 @Test function UsingBlocksReceiveKeywordHighlightingAndDiagnostics()
    source = 'local context = {}\nusing context do\n   print(&name, &&)\nend\n' ..
       'local text = "using context do"\n-- using context do\nprint(text)\n'

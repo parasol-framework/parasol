@@ -3388,7 +3388,7 @@ static bool test_ordinary_function_policy(kt::Log &Log)
    LuaStateHolder state;
    lua_State *lua = state.get();
    constexpr std::string_view source =
-      "@Ordinary local function ordinary() return function() end end\nreturn ordinary";
+      "local function[] ordinary() return function() end end\nreturn ordinary";
    if (lua_load(lua, source, "ordinary-policy") or lua_pcall(lua, 0, 1, 0)) {
       Log.error("failed to compile an ordinary closure: %s", lua_tostring(lua, -1));
       return false;
@@ -3449,6 +3449,134 @@ static bool test_ordinary_function_policy(kt::Log &Log)
       return false;
    }
    lua_pop(lua, 1);
+   return true;
+}
+
+static bool test_function_context_binding_syntax(kt::Log &Log)
+{
+   constexpr std::string_view prefix =
+      "local owner = { child={} }\nlocal target = {}\nlocal key = 'child'\n";
+   constexpr std::string_view accepted[] = {
+      "local callback = function[]() end",
+      "local callback = function[owner]() end",
+      "local callback = function[<weak> owner]() end",
+      "local callback = function[owner.child]() end",
+      "local callback = function[owner[key]]() end",
+      "local callback = function[<weak> owner.child]() return owner end",
+      "local callback = function[owner.child[key]]() end",
+      "local callback = function[&&]() end",
+      "using owner do local callback = function[&child]() end end",
+      "function[] named() end",
+      "local function[] named() end",
+      "global function[] named() end",
+      "function[<weak> owner] named() end",
+      "local function[<weak> owner] named() end",
+      "global function[<weak> owner] named() end",
+      "global assigned = function[owner]() end",
+      "function[owner] named() end",
+      "local function[owner] named() end",
+      "global function[owner] named() end",
+      "function[owner] target.named() end",
+      "target[key] = function[owner]() end",
+      "local callbacks = { function[owner]() end, callback=function[<weak> owner]() end }",
+      "local function[owner] recur(Count:num):num if Count > 0 then return recur(Count-1) end return 0 end",
+      "local callback = function[owner](...):<table, ...> return &&, ... end",
+      "local function accept(Value:func) end",
+      "local function factory(Owner:table):func "
+      "return function[<weak> Owner](Owner:any):any return Owner end end",
+      "local callback = function[<weak> owner]() local owner = {} return owner end"
+   };
+   for (std::string_view source : accepted) {
+      LuaStateHolder state;
+      lua_State *lua = state.get();
+      luaL_openlibs(lua);
+      std::string program(prefix);
+      program.append(source);
+      if (lua_load(lua, program, "binding-syntax")) {
+         Log.error("valid binding failed: %.*s: %s", int(source.size()), source.data(), lua_tostring(lua, -1));
+         return false;
+      }
+   }
+
+   struct RejectedCase {
+      std::string_view source;
+      std::string_view diagnostic;
+   };
+   constexpr RejectedCase rejected[] = {
+      { "local callback = thunk[owner]() return 1 end", {} },
+      { "thunk[] named() return 1 end", {} },
+      { "local callback = function[owner()]() end", {} },
+      { "local callback = function[owner + target]() end", {} },
+      { "local callback = function[-owner]() end", {} },
+      { "local callback = function[owner?.child]() end", {} },
+      { "local callback = function[{}]() end", {} },
+      { "local callback = function[<const> owner]() end", {} },
+      { "local callback = function[<close> owner]() end", {} },
+      { "local callback = function[<weak>]() end", {} },
+      { "function named[owner]() end", {} },
+      { "local function named[owner]() end", {} },
+      { "local callback = function[<weak> owner]() return owner end", "retains it strongly" },
+      { "local callback = function[<weak> owner]() return function() return owner end end",
+         "retains it strongly" },
+      { "local callback = function[<weak> owner]() owner = {} end", "retains it strongly" },
+      { "local value = 42 local callback = function[value]() end", "requires a table" },
+      { "local value = 'text' local callback = function[<weak> value]() end", "requires a table" },
+      { "local value = false local callback = function[value]() end", "requires a table" }
+   };
+   for (const RejectedCase &test_case : rejected) {
+      LuaStateHolder state;
+      lua_State *lua = state.get();
+      luaL_openlibs(lua);
+      std::string program(prefix);
+      program.append(test_case.source);
+      if (lua_load(lua, program, "binding-rejected") IS 0) {
+         Log.error("invalid binding accepted: %.*s", int(test_case.source.size()), test_case.source.data());
+         return false;
+      }
+      const char *message = lua_tostring(lua, -1);
+      if (not message or std::string_view(message).find(test_case.diagnostic) IS std::string_view::npos) {
+         Log.error("binding diagnostic mismatch for %.*s: %s", int(test_case.source.size()),
+            test_case.source.data(), message ? message : "<none>");
+         return false;
+      }
+   }
+   return true;
+}
+
+static bool test_bound_function_policy_roundtrip(kt::Log &Log)
+{
+   constexpr std::string_view source =
+      "local owner = { value=42 }\n"
+      "local strong = function[owner]():num return &value end\n"
+      "local weak = function[<weak> owner]():num return &value end\n"
+      "return strong, weak, owner";
+   for (int strip : { 0, 1 }) {
+      LuaStateHolder state;
+      lua_State *lua = state.get();
+      luaL_openlibs(lua);
+      if (lua_load(lua, source, "bound-policy")) return false;
+      GCproto *prototype = funcproto(funcV(lua->top - 1));
+      std::string dump;
+      if (lj_bcwrite(lua, prototype, bytecode_writer, &dump, strip) != 0) return false;
+      lua_pop(lua, 1);
+      if (lua_load(lua, dump, "bound-policy-restored") or lua_pcall(lua, 0, 3, 0)) {
+         Log.error("bound closure bytecode failed: %s", lua_tostring(lua, -1));
+         return false;
+      }
+      for (int index : { -3, -2 }) {
+         GCfunc *function = funcV(lua->top + index);
+         if (not func_is_ordinary(function)) {
+            Log.error("bound closure lost its ordinary policy");
+            return false;
+         }
+         lua_pushvalue(lua, index);
+         if (lua_pcall(lua, 0, 1, 0) or lua_tointeger(lua, -1) != 42) {
+            Log.error("restored bound closure lost its context");
+            return false;
+         }
+         lua_pop(lua, 1);
+      }
+   }
    return true;
 }
 
@@ -12444,9 +12572,11 @@ static bool test_import_module_relocation_transaction(kt::Log &Log)
 
 extern void parser_unit_tests(int &Passed, int &Total)
 {
-   constexpr std::array<TestCase, 109> tests = { {
+   constexpr std::array<TestCase, 111> tests = { {
       { "nested_function_failure_after_bytecode_growth", test_nested_function_failure_after_bytecode_growth },
       { "ordinary_function_policy", test_ordinary_function_policy },
+      { "function_context_binding_syntax", test_function_context_binding_syntax },
+      { "bound_function_policy_roundtrip", test_bound_function_policy_roundtrip },
       { "package_annotation_metadata", test_package_annotation_metadata },
       { "versioned_import_syntax", test_versioned_import_syntax },
       { "bytecode_load_metadata_transaction", test_bytecode_load_metadata_transaction },

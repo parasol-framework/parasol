@@ -145,7 +145,7 @@ gui.tooltip = function(Options)
 
       -- The tooltip is terminated when a button is pressed, or when the pointer has moved at least MOVE_LIMIT
       -- pixels from where it was when the tooltip was created.  The small tolerance prevents hand tremor from
-      -- dismissing the tooltip.  The callbacks are @Ordinary and refer to the surface by ID so that the input
+      -- dismissing the tooltip.  The callbacks use function[] and refer to the surface by ID so that the input
       -- subscription does not retain the tooltip entity.  Freeing the surface by any means releases the
       -- subscription.
 
@@ -153,8 +153,7 @@ gui.tooltip = function(Options)
       start_x = ptr.x
       start_y = ptr.y
 
-      @Ordinary
-      local function dismissTip(Input, Event)
+      local function[] dismissTip(Input, Event)
          if Event.flags has JTYPE_MOVEMENT then
             dx = Event.absX - start_x
             dy = Event.absY - start_y
@@ -166,8 +165,7 @@ gui.tooltip = function(Options)
 
       dismiss = input.subscribe(JTYPE_MOVEMENT | JTYPE_BUTTON, nil, 0, dismissTip)
 
-      @Ordinary
-      local function releaseDismiss()
+      local function[] releaseDismiss()
          dismiss.unsubscribe()
       end
 

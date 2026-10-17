@@ -28,8 +28,8 @@
   "files": [
     {
       "path": "slider.tiri",
-      "size": 39864,
-      "sha256": "ae3b787d5dac2aceacac8cb4c1af58662e6035c82835191a8808735a7072d326",
+      "size": 38640,
+      "sha256": "01dcb9029d55d3a27db901e96322a83d45ff62992865cfdb83ff8ee4f62bcd7a",
       "mediaType": "application/vnd.kotuku.tiri"
     }
   ]

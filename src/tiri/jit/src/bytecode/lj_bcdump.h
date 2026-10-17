@@ -76,7 +76,7 @@ constexpr uint8_t BCDUMP_HEAD3 = 0x4a;
 // Version 0xab adds the canonical transitive runtime-compatibility manifest.
 // Version 0xad adds table.merge and shifts the generated fast-function ordering.
 // Version 0xae adds table.clone and shifts the generated fast-function ordering.
-// Version 0xaf persists the compiler-only @Ordinary function policy.
+// Version 0xaf persists the ordinary function policy (function[], function[X] and function[<weak> X]).
 constexpr uint8_t BCDUMP_VERSION = 0xb0;
 
 // Compatibility flags.

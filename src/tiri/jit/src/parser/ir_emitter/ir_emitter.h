@@ -193,7 +193,17 @@ private:
    ConstantEvaluator constant_evaluator;
    StaticCallableHandle current_callable{};
    bool is_root_chunk = true;
+   bool context_bound = false; // This function is function[X] or function[<weak> X]; tail calls are not converted
    std::vector<ContextSource> context_sources;
+
+   // A function[X] capture prepared by emit_bound_function() for the next emit_function_body().
+   struct PendingContextBinding {
+      VarIndex vidx;
+      bool weak;
+   };
+   std::optional<PendingContextBinding> pending_context_binding;
+
+   ParserResult<ExpDesc> emit_bound_function(const FunctionExprPayload& payload, GCstr* funcname);
 
    ParserResult<IrEmitUnit> emit_block(const BlockStmt& block, FuncScopeFlag flags = FuncScopeFlag::None);
    ParserResult<IrEmitUnit> emit_block_with_bindings(const BlockStmt& block, FuncScopeFlag flags, std::span<const BlockBinding> bindings);

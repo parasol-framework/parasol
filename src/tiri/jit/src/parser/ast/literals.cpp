@@ -14,12 +14,94 @@
 #include <unordered_map>
 
 //********************************************************************************************************************
+// Parses the optional context binding that immediately follows the function keyword: `[]`, `[X]` or `[<weak> X]`.
+// The current token must be the one after the keyword.  The reference grammar matches `using` (identifier, member
+// and index chains) plus `&&` and `&field`, so that X is a stable path that can be evaluated once at closure creation.
+// Calls, operators, literals and safe navigation are rejected.  A kind of None is returned if no binding is present.
+
+ParserResult<FunctionContextBinding> AstBuilder::parse_function_binding(bool IsThunk)
+{
+   FunctionContextBinding binding;
+   if (not this->ctx.check(TokenKind::LeftBracket)) {
+      return ParserResult<FunctionContextBinding>::success(std::move(binding));
+   }
+
+   Token open_token = this->ctx.tokens().current();
+   if (IsThunk) {
+      return this->fail<FunctionContextBinding>(ParserErrorCode::UnexpectedToken, open_token,
+         "context binding is not supported on thunks");
+   }
+
+   this->ctx.tokens().advance();
+
+   bool weak = false;
+   if (this->ctx.tokens().current().raw() IS '<') {
+      this->ctx.tokens().advance();
+      auto attribute = this->ctx.expect_identifier(ParserErrorCode::ExpectedIdentifier);
+      if (not attribute.ok()) return ParserResult<FunctionContextBinding>::failure(attribute.error_ref());
+
+      GCstr *name = attribute.value_ref().identifier();
+      if (not name or std::string_view(strdata(name), name->len) != "weak") {
+         return this->fail<FunctionContextBinding>(ParserErrorCode::UnexpectedToken, attribute.value_ref(),
+            "function context binding accepts only the <weak> attribute");
+      }
+
+      if (not this->ctx.lex_opt('>')) {
+         return this->fail<FunctionContextBinding>(ParserErrorCode::ExpectedToken, this->ctx.tokens().current(),
+            "expected '>' after attribute");
+      }
+      weak = true;
+   }
+
+   if (this->ctx.check(TokenKind::RightBracket)) {
+      if (weak) {
+         return this->fail<FunctionContextBinding>(ParserErrorCode::ExpectedIdentifier, this->ctx.tokens().current(),
+            "<weak> function context binding requires a reference");
+      }
+      binding.kind = FunctionContextKind::Ordinary;
+   }
+   else {
+      Token reference_token = this->ctx.tokens().current();
+      auto reference = this->parse_primary();
+      if (not reference.ok()) return ParserResult<FunctionContextBinding>::failure(reference.error_ref());
+
+      auto is_reference = [](const ExprNode *Node, const auto &Self) -> bool {
+         if (not Node) return false;
+         if (Node->kind IS AstNodeKind::IdentifierExpr) return true;
+         if (Node->kind IS AstNodeKind::CurrentContextExpr) return true;
+         if (Node->kind IS AstNodeKind::MemberExpr) {
+            const auto &payload = std::get<MemberExprPayload>(Node->data);
+            return Self(payload.table.get(), Self);
+         }
+         if (Node->kind IS AstNodeKind::IndexExpr) {
+            const auto &payload = std::get<IndexExprPayload>(Node->data);
+            return Self(payload.table.get(), Self);
+         }
+         return false;
+      };
+
+      if (not is_reference(reference.value_ref().get(), is_reference)) {
+         return this->fail<FunctionContextBinding>(ParserErrorCode::UnexpectedToken, reference_token,
+            "function context binding requires an identifier, member, index or context reference");
+      }
+
+      binding.kind = weak ? FunctionContextKind::Weak : FunctionContextKind::Strong;
+      binding.reference = std::move(reference.value_ref());
+   }
+
+   auto close = this->ctx.consume(TokenKind::RightBracket, ParserErrorCode::ExpectedToken);
+   if (not close.ok()) return ParserResult<FunctionContextBinding>::failure(close.error_ref());
+   return ParserResult<FunctionContextBinding>::success(std::move(binding));
+}
+
+//********************************************************************************************************************
 // Parses function literals (anonymous functions) with parameters and body.
 // Parses optional return type annotation after parameters for all functions.
-// If is_thunk is true, validates thunk-specific constraints.
+// If is_thunk is true, validates thunk-specific constraints.  Binding is the context binding parsed by
+// parse_function_binding(), if any.
 
 ParserResult<ExprNodePtr> AstBuilder::parse_function_literal(
-   const Token &FunctionToken, bool IsThunk, GCstr *FunctionName)
+   const Token &FunctionToken, bool IsThunk, GCstr *FunctionName, FunctionContextBinding Binding)
 {
    auto params = this->parse_parameter_list(false);
    if (not params.ok()) return ParserResult<ExprNodePtr>::failure(params.error_ref());
@@ -44,6 +126,7 @@ ParserResult<ExprNodePtr> AstBuilder::parse_function_literal(
    this->ctx.consume(TokenKind::EndToken, ParserErrorCode::ExpectedToken);
    ExprNodePtr node = make_function_expr(FunctionToken.span(), std::move(params.value_ref().parameters),
       params.value_ref().is_vararg, std::move(body.value_ref()), IsThunk, return_types);
+   std::get<FunctionExprPayload>(node->data).context = std::move(Binding);
    return ParserResult<ExprNodePtr>::success(std::move(node));
 }
 

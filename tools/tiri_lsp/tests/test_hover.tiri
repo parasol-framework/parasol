@@ -71,6 +71,35 @@ end
    assert(not hover or not hover.find('Declaration attribute'), 'Strings must not receive weak attribute hover')
 end
 
+@Test function FunctionBindingHover()
+   hover, token = hoverAt('local owner = {}\nlocal f = function[<we|ak> owner]() end\n')
+   assertContains(hover, 'Function context binding attribute', 'Binding attributes must have their own hover')
+   assertContains(hover, 'Resource collected', 'Binding attribute hover must describe the collected-target call')
+   hover, token = hoverAt('local owner = {}\nlocal function[ < we|ak > owner] refresh() end\n')
+   assertContains(hover, 'Function context binding attribute', 'Spaced binding attributes must retain hover')
+   hover, token = hoverAt('local target <we|ak>:table = {}\n')
+   assert(not hover.find('Function context binding'), 'Declaration attributes must keep their own hover')
+
+   hover, token = hoverAt([=[
+local owner = {}
+local function[<weak> owner] refresh(Value:num):num
+   return Value
+end
+
+result = refre|sh(1)
+]=])
+   assert(token and token.text is 'refresh', 'Hover should identify the bound function call.')
+   assertContains(hover, 'refresh(Value: num):num', 'Bound function hover should include the parser signature.')
+   assertContains(hover, 'Context binding: `function[<weak> owner]`', 'Bound function hover should show the binding.')
+
+   hover, token = hoverAt('local function plain():num\n   return 1\nend\n\nresult = pla|in()\n')
+   assertContains(hover, 'plain():num', 'Unbound function hover should include the parser signature.')
+   assert(not hover.find('Context binding'), 'Unbound functions must not report a binding.')
+
+   hover, token = hoverAt('local f = func|tion[]() end\n')
+   assertContains(hover, 'function[<weak> X]', 'Function keyword hover should describe context bindings.')
+end
+
 @Test function HandlerAdvertisesHover()
    server = {
       _handlers = {},
