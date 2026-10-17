@@ -331,5 +331,6 @@ private:
    };
 
    LoopStackGuard push_loop_context(BCPos continue_target);
+   [[nodiscard]] BCPos emit_loop_exit_jump(const LoopContext &Loop);
    std::vector<LoopContext> loop_stack;
 };

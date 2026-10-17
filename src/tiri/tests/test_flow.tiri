@@ -279,3 +279,128 @@ end
    -- Total = 5 + 90 = 95
    assert(sum is 95, 'Continue after nested break, sum=' .. sum)
 end
+
+----------------------------------------------------------------------------------------------------------------------
+-- Captured locals must be closed when break or continue leaves the loop body.  An unclosed upvalue keeps referencing
+-- its stack slot, so the closure observes the next iteration's value or whatever later code stores in that slot.
+
+local function closures_match(Fns:table, Expected:table):str
+   local mismatches = ''
+   for key, value in Expected do
+      local actual = Fns[key] ? Fns[key]() : 'missing'
+      if actual != value then mismatches ..= f'{key}->{actual} ' end
+   end
+   return mismatches
+end
+
+@Test function whileContinueClosesCaptures()
+   local fns = {}
+   local i = 0
+   while i < 6 do
+      local captured = i
+      fns[i] = (() => captured)
+      i++
+      if i % 2 is 0 then continue end
+   end
+   local mismatches = closures_match(fns, { [0]=0, [1]=1, [2]=2, [3]=3, [4]=4, [5]=5 })
+   assert(mismatches is '', f'While continue must close captured locals: {mismatches}')
+end
+
+@Test function continueClosesCapturesThroughPendingJumps()
+   -- The false branch of the if statement is still pending when continue is emitted and must land on the close.
+   local fns = {}
+   local skipped = 0
+   local i = 0
+   while i < 6 do
+      local captured = i
+      fns[i] = (() => captured)
+      i++
+      if captured % 3 is 0 then skipped++ end
+      continue
+   end
+   local mismatches = closures_match(fns, { [0]=0, [1]=1, [2]=2, [3]=3, [4]=4, [5]=5 })
+   assert(mismatches is '', f'Pending jumps into continue must close captured locals: {mismatches}')
+end
+
+@Test function forLoopsContinueCloseCaptures()
+   local range_fns = {}
+   local local_fns = {}
+   for i in {0 to 6} do
+      local scaled = i * 10
+      range_fns[i] = (() => i)
+      local_fns[i] = (() => scaled)
+      if i % 2 is 0 then continue end
+   end
+   local mismatches = closures_match(range_fns, { [0]=0, [1]=1, [2]=2, [3]=3, [4]=4, [5]=5 })
+   assert(mismatches is '', f'Range for continue must close the captured control variable: {mismatches}')
+   mismatches = closures_match(local_fns, { [0]=0, [1]=10, [2]=20, [3]=30, [4]=40, [5]=50 })
+   assert(mismatches is '', f'Range for continue must close captured body locals: {mismatches}')
+
+   local source = { [0]='a', [1]='b', [2]='c', [3]='d' }
+   local generic_fns = {}
+   for key, value in pairs(source) do
+      generic_fns[key] = function():any return value end
+      if key % 2 is 0 then continue end
+   end
+   mismatches = closures_match(generic_fns, source)
+   assert(mismatches is '', f'Generic for continue must close captured values: {mismatches}')
+
+   local array_fns = {}
+   for index, value in array<str> { 'a', 'b', 'c', 'd' } do
+      array_fns[index] = function():any return value end
+      if index % 2 is 0 then continue end
+   end
+   mismatches = closures_match(array_fns, source)
+   assert(mismatches is '', f'Array for continue must close captured values: {mismatches}')
+end
+
+@Test function repeatContinueClosesCaptures()
+   local fns = {}
+   local i = 0
+   repeat
+      local captured = i
+      fns[i] = (() => captured)
+      i++
+      if i % 2 is 0 then continue end
+   until i >= 6
+   local mismatches = closures_match(fns, { [0]=0, [1]=1, [2]=2, [3]=3, [4]=4, [5]=5 })
+   assert(mismatches is '', f'Repeat continue must close captured locals: {mismatches}')
+end
+
+@Test function breakClosesCapturesBeforeSlotReuse()
+   local fns = {}
+   while true do
+      local captured = 'while'
+      fns.while_loop = (() => captured)
+      break
+   end
+   local reuse_a = 'clobbered'
+   local reuse_b = 'clobbered'
+
+   for i in {0 to 5} do
+      local captured = 'range'
+      fns.range_loop = (() => captured)
+      if i is 0 then break end
+   end
+   local reuse_c = 'clobbered'
+   local reuse_d = 'clobbered'
+
+   assert(fns.while_loop() is 'while', f'While break must close captured locals, got {fns.while_loop()}')
+   assert(fns.range_loop() is 'range', f'Range for break must close captured locals, got {fns.range_loop()}')
+   assert(reuse_a .. reuse_b .. reuse_c .. reuse_d is 'clobberedclobberedclobberedclobbered',
+      'Locals declared after the loops reuse the loop body slots')
+end
+
+@Test function nestedLoopExitsKeepOuterCaptures()
+   local fns = {}
+   for i in {0 to 6} do
+      local captured = i
+      for j in {0 to 3} do
+         fns[i] = (() => captured)
+         if j is 1 then break end
+      end
+      if i % 2 is 0 then continue end
+   end
+   local mismatches = closures_match(fns, { [0]=0, [1]=1, [2]=2, [3]=3, [4]=4, [5]=5 })
+   assert(mismatches is '', f'Outer continue must close locals captured inside an inner loop: {mismatches}')
+end
