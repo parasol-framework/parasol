@@ -386,7 +386,7 @@ ParserResult<ExpDesc> IrEmitter::emit_pipe_expr(const PipeExprPayload &Payload)
          result.object_class_id = descriptor.object_class_id;
          result.struct_def = descriptor.struct_def;
       }
-      fs->freereg = base;
+      fs->freereg = context_result_base + 1; // Results start at context_result_base after CTXLEAVE
       return ParserResult<ExpDesc>::success(result);
    }
 
@@ -1071,7 +1071,9 @@ ParserResult<ExpDesc> IrEmitter::emit_call_expr(const CallExprPayload &Payload)
    result.object_class_id = callee_object_class_id;  // Propagate object class ID for Object types
    result.struct_def = callee_struct_def;
    result.static_results = Payload.results;
-   this->func_state.freereg = is_contextual_call ? base : base + 1;
+   // CTXLEAVE moves the results down to context_result_base, so the first result slot is the last reserved register.
+   // A computed-key call retains an extra receiver copy, so base is not always context_result_base + 1.
+   this->func_state.freereg = is_contextual_call ? context_result_base + 1 : base + 1;
    return ParserResult<ExpDesc>::success(result);
 }
 

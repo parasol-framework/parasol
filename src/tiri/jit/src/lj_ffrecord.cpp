@@ -633,6 +633,13 @@ static int recff_metacall(jit_State* J, RecordFFData* rd, MMS mm)
       int errcode;
       TValue argv0;
       bool table_receiver = tref_istab(ix.tab);
+      // A table receiver activates a context that only a recorded Lua return restores.  Leave native metamethods to
+      // the interpreter, which pairs the activation with the native frame; stitching would move that frame above the
+      // recorded owner and leak the activation.
+      if (table_receiver and not (tvisfunc(&ix.mobjv) and isluafunc(funcV(&ix.mobjv)))) {
+         recff_nyi(J, rd);
+         return 1;
+      }
       RecordMetamethodTailCall call { J, ix.tab, table_receiver ? 0 : 1 };
       // Temporarily insert metamethod below object.
       if (not table_receiver) J->base[1 + LJ_FR2] = J->base[0];

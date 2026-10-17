@@ -166,6 +166,11 @@ Operand suffixes: V=variable slot, S=string const, N=number const, P=primitive (
 | `BFUNC` | A D | R(A) = canonical built-in callable(D) |
 | `BMETH` | A J P | Runtime method dispatch for member string(P); ordinary field-call target J |
 
+`break` and `continue` always leave the loop body.  When a local declared in the body has been captured by that point,
+the jump is emitted as `UCLO` with A set to the loop's first body slot instead of `JMP`, so the next iteration or later
+code cannot write through a still-open upvalue.  The `UCLO` is a fresh instruction rather than one fused by
+`bcemit_jmp()`, so pending jumps to the same point land on it instead of bypassing the close.
+
 ##### Built-in Callable Loads (`BFUNC`)
 
 `BFUNC` loads a canonical native closure from the current Tiri state's built-in callable registry.  Operand `A` is

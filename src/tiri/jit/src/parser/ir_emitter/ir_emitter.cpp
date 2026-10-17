@@ -3061,7 +3061,7 @@ ParserResult<IrEmitUnit> IrEmitter::emit_break_stmt(const BreakStmtPayload&)
       bcemit_AD(&this->func_state, leave, scope.base, BCReg(0));
    }
 
-   loop.break_edge.append(BCPos(bcemit_jmp(&this->func_state)));
+   loop.break_edge.append(this->emit_loop_exit_jump(loop));
    return ParserResult<IrEmitUnit>::success(IrEmitUnit{});
 }
 
@@ -3087,8 +3087,28 @@ ParserResult<IrEmitUnit> IrEmitter::emit_continue_stmt(const ContinueStmtPayload
       bcemit_AD(&this->func_state, leave, scope.base, BCReg(0));
    }
 
-   loop.continue_edge.append(BCPos(bcemit_jmp(&this->func_state)));
+   loop.continue_edge.append(this->emit_loop_exit_jump(loop));
    return ParserResult<IrEmitUnit>::success(IrEmitUnit{});
+}
+
+//********************************************************************************************************************
+// Emit the jump for a break or continue.  Both targets lie outside the loop body, so every local at or above the loop's
+// entry level goes out of scope.  If one of those locals has been captured, the jump must close its upvalue or the
+// closure keeps referencing a stack slot that the next iteration (or later code) overwrites.
+//
+// The scope flags only reflect captures emitted before this point.  That is sufficient because a capture appearing
+// later in the body cannot have executed earlier in the same iteration, and earlier iterations closed their upvalues
+// at the end of the body or through one of these jumps.  A fresh UCLO is emitted rather than fused by bcemit_jmp() so
+// that pending jumps to this point are discharged onto the UCLO instead of bypassing it.
+
+BCPos IrEmitter::emit_loop_exit_jump(const LoopContext &Loop)
+{
+   FuncState *fs = &this->func_state;
+   BCREG level = Loop.defer_base.raw();
+   for (FuncScope *scope = fs->bl; scope and scope->nactvar >= level; scope = scope->prev) {
+      if (has_flag(scope->flags, FuncScopeFlag::Upvalue)) return BCPos(bcemit_AJ(fs, BC_UCLO, level, NO_JMP));
+   }
+   return BCPos(bcemit_jmp(fs));
 }
 
 //********************************************************************************************************************
