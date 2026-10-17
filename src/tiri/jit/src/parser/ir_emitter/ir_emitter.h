@@ -39,8 +39,7 @@ struct BlockBinding {
 enum class ContextSourceKind : uint8_t {
    Inherited,
    UsingReference,
-   MethodArgument,
-   DynamicArgument // Resolve at the point of use; slot is unused.
+   MethodArgument
 };
 
 struct ContextSource {
@@ -300,7 +299,6 @@ private:
 
    [[nodiscard]] std::optional<CompileTimeValue> resolve_compile_time_value(const NameRef &Reference) const;
    [[nodiscard]] bool context_region_uses_context(const BlockStmt &Block) const;
-   [[nodiscard]] bool expression_uses_context(const ExprNode &Expression) const;
    [[nodiscard]] std::optional<BCReg> allocate_inherited_context_cache(const BlockStmt &Block);
    void push_context_source(ContextSource Source);
    void pop_context_source();

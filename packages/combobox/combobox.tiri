@@ -57,8 +57,7 @@ function toggleMenu()
 
    if not &menu.visible then
       &_menuNavigated = false
-      current = &text.string -- Read before the call, as arguments are evaluated in the menu's context
-      &menu.highlightText(current)
+      &menu.highlightText(&text.string)
    end
 
    &menu.toggle()
@@ -296,7 +295,7 @@ gui.combobox = function(Options)
                &menu.step(1)
                return
             elseif (Value is KEY_PAGE_UP) or (Value is KEY_PAGE_DOWN) then
-               page = &menu.lineLimit ?? 8 -- Read before the call, as arguments are evaluated in the menu's context
+               page = &menu.lineLimit ?? 8
                &_menuNavigated = true
                &menu.step(Value is KEY_PAGE_UP ? -page : page)
                return

@@ -77,7 +77,7 @@ constexpr uint8_t BCDUMP_HEAD3 = 0x4a;
 // Version 0xad adds table.merge and shifts the generated fast-function ordering.
 // Version 0xae adds table.clone and shifts the generated fast-function ordering.
 // Version 0xaf persists the compiler-only @Ordinary function policy.
-constexpr uint8_t BCDUMP_VERSION = 0xaf;
+constexpr uint8_t BCDUMP_VERSION = 0xb0;
 
 // Compatibility flags.
 
