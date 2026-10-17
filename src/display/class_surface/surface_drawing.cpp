@@ -561,11 +561,15 @@ void move_layer(extSurface *Self, int X, int Y)
    if (!Self->ParentID) {
       if (ScopedObjectLock<objDisplay> display(Self->DisplayID, 2000); display.granted()) {
          // Subtract the host window's LeftMargin and TopMargin as MoveToPoint() is based on the coordinates of the window frame.
+         // The new position is recorded first so that synchronous display feedback (headless) sees no change and
+         // does not duplicate the caller's Redimension notification.
 
-         if (!acMoveToPoint(*display, X - display->LeftMargin, Y - display->TopMargin, 0, MTF::X|MTF::Y)) {
-            Self->setFixedPosition(X, Y);
+         const int old_x = Self->FixedX, old_y = Self->FixedY;
+         Self->setFixedPosition(X, Y);
+         if (acMoveToPoint(*display, X - display->LeftMargin, Y - display->TopMargin, 0, MTF::X|MTF::Y) IS ERR::Okay) {
             UpdateSurfaceRecord(Self);
          }
+         else Self->setFixedPosition(old_x, old_y);
       }
       else log.warning(ERR::AccessObject);
 

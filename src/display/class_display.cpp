@@ -582,11 +582,21 @@ static ERR DISPLAY_Move(extDisplay *Self, struct acMove *Args)
    //log.branch("Moving display by %dx%d", (LONG)Args->DeltaX, (LONG)Args->DeltaY);
 
    if (glDriver) {
-   if (auto error = glDriver->moveWindow(Self->WindowHandle,
-      Self->X + Self->LeftMargin + Args->DeltaX,
-      Self->Y + Self->TopMargin + Args->DeltaY); error != ERR::Okay) return error;
+      // Headless displays have no host window, so the position is tracked here and reported to the owning surface
+      // in place of a host move event.
+      if (glHeadless) {
+         Self->X += Args->DeltaX;
+         Self->Y += Args->DeltaY;
+         release_stale_resize_feedback(Self);
+         resize_feedback(&Self->ResizeFeedback, Self->UID, Self->X, Self->Y, Self->Width, Self->Height);
+         return ERR::Okay;
+      }
 
-   return ERR::Okay;
+      if (auto error = glDriver->moveWindow(Self->WindowHandle,
+         Self->X + Self->LeftMargin + Args->DeltaX,
+         Self->Y + Self->TopMargin + Args->DeltaY); error != ERR::Okay) return error;
+
+      return ERR::Okay;
    }
 #if   __snap__
 
@@ -665,6 +675,9 @@ unavailable.
 Wayland does not expose absolute top-level positions.  This action returns `ERR::NoSupport` there and leaves the
 display coordinates unchanged.
 
+Headless displays have no host window.  The coordinates are stored directly and the owning surface is notified through
+#ResizeFeedback.
+
 -ERRORS-
 Okay
 NullArgs
@@ -682,16 +695,24 @@ static ERR DISPLAY_MoveToPoint(extDisplay *Self, struct acMoveToPoint *Args)
    log.traceBranch("Moving display to %dx%d", int(Args->X), int(Args->Y));
 
    if (glDriver) {
-   if (auto error = glDriver->moveWindow(Self->WindowHandle,
-         ((Args->Flags & MTF::X) != MTF::NIL) ? Args->X : int(Self->X) + Self->LeftMargin,
-         ((Args->Flags & MTF::Y) != MTF::NIL) ? Args->Y : int(Self->Y) + Self->TopMargin);
-         error != ERR::Okay) {
-      return error;
-   }
+      if (not glHeadless) {
+         if (auto error = glDriver->moveWindow(Self->WindowHandle,
+               ((Args->Flags & MTF::X) != MTF::NIL) ? Args->X : int(Self->X) + Self->LeftMargin,
+               ((Args->Flags & MTF::Y) != MTF::NIL) ? Args->Y : int(Self->Y) + Self->TopMargin);
+               error != ERR::Okay) {
+            return error;
+         }
+      }
 
-   if ((Args->Flags & MTF::X) != MTF::NIL) Self->X = int(Args->X) + Self->LeftMargin;
-   if ((Args->Flags & MTF::Y) != MTF::NIL) Self->Y = int(Args->Y) + Self->TopMargin;
-   return ERR::Okay;
+      if ((Args->Flags & MTF::X) != MTF::NIL) Self->X = int(Args->X) + Self->LeftMargin;
+      if ((Args->Flags & MTF::Y) != MTF::NIL) Self->Y = int(Args->Y) + Self->TopMargin;
+
+      // Headless displays receive no host move event, so the owning surface is notified directly.
+      if (glHeadless) {
+         release_stale_resize_feedback(Self);
+         resize_feedback(&Self->ResizeFeedback, Self->UID, Self->X, Self->Y, Self->Width, Self->Height);
+      }
+      return ERR::Okay;
    }
 
    return ERR::NoSupport;
@@ -748,13 +769,18 @@ static ERR DISPLAY_Resize(extDisplay *Self, struct acResize *Args)
    if (not Self->initialised()) return log.warning(ERR::NotInitialised);
 
    if (glDriver) {
-      if (auto error = glDriver->resizeWindow(Self->WindowHandle, 0x7fffffff, 0x7fffffff,
-            Args->Width, Args->Height); error != ERR::Okay) return error;
+      // Headless displays only have a bitmap; there is no native window to resize.
+      if (not glHeadless) {
+         if (auto error = glDriver->resizeWindow(Self->WindowHandle, 0x7fffffff, 0x7fffffff,
+               Args->Width, Args->Height); error != ERR::Okay) return error;
+      }
 
       if (auto error = Action(AC::Resize, Self->Bitmap, Args); error != ERR::Okay) return error;
       Self->Width = Self->Bitmap->Width;
       Self->Height = Self->Bitmap->Height;
-      if (glDriver->displayType() IS DT::WAYLAND) {
+      // Wayland and headless displays receive no host resize event for this change, so the owning surface is
+      // notified directly.
+      if ((glHeadless) or (glDriver->displayType() IS DT::WAYLAND)) {
          release_stale_resize_feedback(Self);
          resize_feedback(&Self->ResizeFeedback, Self->UID, Self->X, Self->Y, Self->Width, Self->Height);
       }
@@ -982,23 +1008,33 @@ static ERR DISPLAY_SetDisplay(extDisplay *Self, gfx::SetDisplay *Args)
    if (not Args) return log.warning(ERR::NullArgs);
 
    if (glDriver) {
-   // NOTE: Dimensions are measured relative to the client area, not the window including its borders.
+      // NOTE: Dimensions are measured relative to the client area, not the window including its borders.
 
-   log.msg(VLF::BRANCH|VLF::DETAIL, "%dx%d, %dx%d", Args->X, Args->Y, Args->Width, Args->Height);
+      log.msg(VLF::BRANCH|VLF::DETAIL, "%dx%d, %dx%d", Args->X, Args->Y, Args->Width, Args->Height);
 
-   const int x = (glDriver->displayType() IS DT::WAYLAND) and (Args->X IS Self->X) ? 0x7fffffff : Args->X;
-   const int y = (glDriver->displayType() IS DT::WAYLAND) and (Args->Y IS Self->Y) ? 0x7fffffff : Args->Y;
-   const int width = (glDriver->displayType() IS DT::WAYLAND) and (not Args->Width) ? Self->Width : Args->Width;
-   const int height = (glDriver->displayType() IS DT::WAYLAND) and (not Args->Height) ? Self->Height : Args->Height;
-   if (auto error = glDriver->resizeWindow(Self->WindowHandle, x, y,
-         width, height); error != ERR::Okay) return log.warning(error);
+      const bool wayland = glDriver->displayType() IS DT::WAYLAND;
+      const int width = (glHeadless or wayland) and (not Args->Width) ? Self->Width : Args->Width;
+      const int height = (glHeadless or wayland) and (not Args->Height) ? Self->Height : Args->Height;
 
-   log.trace("Resizing the video bitmap.");
+      // Headless displays only have a bitmap; there is no native window to resize and no host event will report the
+      // new position, so the coordinates are recorded directly.
+      if (glHeadless) {
+         Self->X = Args->X;
+         Self->Y = Args->Y;
+      }
+      else {
+         const int x = wayland and (Args->X IS Self->X) ? 0x7fffffff : Args->X;
+         const int y = wayland and (Args->Y IS Self->Y) ? 0x7fffffff : Args->Y;
+         if (auto error = glDriver->resizeWindow(Self->WindowHandle, x, y, width, height);
+               error != ERR::Okay) return log.warning(error);
+      }
 
-   if (auto error = acResize(Self->Bitmap, width, height, 0); error != ERR::Okay) return error;
-   Self->Width = Self->Bitmap->Width;
-   Self->Height = Self->Bitmap->Height;
-   return ERR::Okay;
+      log.trace("Resizing the video bitmap.");
+
+      if (auto error = acResize(Self->Bitmap, width, height, 0); error != ERR::Okay) return error;
+      Self->Width = Self->Bitmap->Width;
+      Self->Height = Self->Bitmap->Height;
+      return ERR::Okay;
    }
 #if   __snap__
 

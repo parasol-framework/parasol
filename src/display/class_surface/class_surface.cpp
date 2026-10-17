@@ -1329,13 +1329,15 @@ static ERR SURFACE_Init(extSurface *Self)
          if (glDriver) glDriver->setWindowSurface(((extDisplay *)display)->WindowHandle, Self->UID);
 
          // Subscribe to Redimension notifications if the display is hosted.  Also subscribe to Draw because this
-         // can be used by the host to notify of window exposures.
+         // can be used by the host to notify of window exposures.  Headless displays report resizes and moves
+         // directly through the feedback callback.
 
          if (Self->DisplayWindow) {
             display->setResizeFeedback(C_FUNCTION(display_resized));
 
             SubscribeAction(display, AC::Draw, C_FUNCTION(notify_draw_display));
          }
+         else if (glHeadless) display->setResizeFeedback(C_FUNCTION(display_resized));
 
          Self->DisplayID = display->UID;
          error = ERR::Okay;
