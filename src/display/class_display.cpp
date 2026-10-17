@@ -970,6 +970,9 @@ delay.
 On Wayland, X and Y must match the current display coordinates.  A size change takes effect when the client commits
 new content.  Compositor-initiated size changes arrive through configure events.
 
+Headless displays have no host window.  The new geometry is applied to the display bitmap and reported immediately
+through #ResizeFeedback.
+
 To keep any of the display settings at their current value, set the appropriate parameters to zero to leave them
 unchanged.  Only the parameters that you set will be used.
 
@@ -1034,6 +1037,11 @@ static ERR DISPLAY_SetDisplay(extDisplay *Self, gfx::SetDisplay *Args)
       if (auto error = acResize(Self->Bitmap, width, height, 0); error != ERR::Okay) return error;
       Self->Width = Self->Bitmap->Width;
       Self->Height = Self->Bitmap->Height;
+
+      if (glHeadless) {
+         release_stale_resize_feedback(Self);
+         resize_feedback(&Self->ResizeFeedback, Self->UID, Self->X, Self->Y, Self->Width, Self->Height);
+      }
       return ERR::Okay;
    }
 #if   __snap__
