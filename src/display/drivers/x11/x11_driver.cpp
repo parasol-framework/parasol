@@ -314,6 +314,16 @@ extern "C" DISPLAY_DRIVER_EXPORT void x11_process_driver_events(DisplayDriver *D
 }
 
 void X11Driver::processEvents() { x11_process_events(Data); }
+
+// Returns the window that the driver uses to own and request selections, so that tests sharing a display with other
+// clients can distinguish the driver's selection traffic from theirs.
+
+extern "C" DISPLAY_DRIVER_EXPORT unsigned long x11_driver_clipboard_window(DisplayDriver *Driver)
+{
+   return Driver ? ((X11Driver *)Driver)->clipboardWindow() : 0;
+}
+
+unsigned long X11Driver::clipboardWindow() const { return Data->ClipboardWindow; }
 #endif
 
 //********************************************************************************************************************
