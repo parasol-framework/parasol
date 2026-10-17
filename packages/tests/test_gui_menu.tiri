@@ -126,7 +126,7 @@ end
    local dropdown = gui.dropdown({
       relative = target, x = 20, y = 20,
       config = array<table> { { item='First' }, { item='Second' } },
-      feedback = function(Menu, Item)
+      feedback = function(Item)
          if Item.item is 'Second' then hits++ end
       end
    })
