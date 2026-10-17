@@ -257,6 +257,12 @@ static ERR DISPLAY_Focus(extDisplay *Self)
    kt::Log log;
 
    log.traceBranch();
+
+   if (Self->UID IS glHostFocusDisplay) { // The host already gave this window the focus; see DriverFocusState()
+      log.trace("Focus already set by the host.");
+      return ERR::Okay;
+   }
+
    if (glDriver) return glDriver->focusWindow(Self->WindowHandle);
    return ERR::Okay;
 }
@@ -632,6 +638,12 @@ static ERR DISPLAY_MoveToFront(extDisplay *Self)
 {
    kt::Log log;
    log.branch("%s", Self->Name);
+
+   // The window manager decides whether a window that it focusses is also raised, so a focus change reported by the
+   // host does not raise the window.  See DriverFocusState().
+
+   if (Self->UID IS glHostFocusDisplay) return ERR::Okay;
+
    if (glDriver) return glDriver->raiseWindow(Self->WindowHandle);
    return ERR::Okay;
 }
