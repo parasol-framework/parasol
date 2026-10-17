@@ -744,6 +744,11 @@ ERR resize_layer(extSurface *Self, int X, int Y, int Width, int Height, int Insi
       else return log.warning(ERR::AccessObject);
    }
 
+   auto oldx = Self->FixedX;
+   auto oldy = Self->FixedY;
+   auto oldw = Self->FixedWidth;
+   auto oldh = Self->FixedHeight;
+
    if (not Self->ParentID) {
       if ((Self->MaxWidth > 0) and (Width > Self->MaxWidth)) Width = Self->MaxWidth;
       if ((Self->MaxHeight > 0) and (Height > Self->MaxHeight)) Height = Self->MaxHeight;
@@ -751,7 +756,12 @@ ERR resize_layer(extSurface *Self, int X, int Y, int Width, int Height, int Insi
       if (InsideHeight < Height) InsideHeight = Height;
 
       if (ScopedObjectLock<objDisplay> display(Self->DisplayID, 5000); display.granted()) { // NB: SetDisplay() always processes coordinates relative to the client area in order to resolve issues when in hosted mode.
+         // The new area is recorded first so that synchronous display feedback (headless) sees no change and does
+         // not duplicate the Redimension notification sent below.
+
+         Self->setFixedArea(X, Y, Width, Height);
          if (display->setDisplay(X, Y, Width, Height, InsideWidth, InsideHeight, BPP, RefreshRate, DeviceFlags) != ERR::Okay) {
+            Self->setFixedArea(oldx, oldy, oldw, oldh);
             return log.warning(ERR::Redimension);
          }
 
@@ -760,11 +770,6 @@ ERR resize_layer(extSurface *Self, int X, int Y, int Width, int Height, int Insi
       }
       else return log.warning(ERR::AccessObject);
    }
-
-   auto oldx = Self->FixedX;
-   auto oldy = Self->FixedY;
-   auto oldw = Self->FixedWidth;
-   auto oldh = Self->FixedHeight;
 
    Self->setFixedArea(X, Y, Width, Height);
    UpdateSurfaceRecord(Self);

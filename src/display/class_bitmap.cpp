@@ -1110,10 +1110,11 @@ static ERR BITMAP_Resize(extBitmap *Self, struct acResize *Args)
    if (Self->Type IS BMP::PLANAR) size = linewidth * height * bpp;
    else size = linewidth * height;
 
-   if ((Self->Owner) and (Self->Owner->classID() IS CLASSID::DISPLAY)) {
+   if ((not glHeadless) and (Self->Owner) and (Self->Owner->classID() IS CLASSID::DISPLAY)) {
       // A display's bitmap is backed by a host surface, so the driver is given the opportunity to resize its own
       // storage (e.g. the X11 background pixmap).  Drivers that do not support the operation are ignored because
-      // the field values below are recalculated regardless.
+      // the field values below are recalculated regardless.  Headless display bitmaps own their pixel data and are
+      // reallocated like any other bitmap.
 
       if ((glDriver) and (Self->prvAFlags & (BF_WINVIDEO|BF_DRIVER_DATA))) {
          glDriver->resizeBitmap(Self, width, height);
