@@ -307,6 +307,30 @@ end
    end
 end
 
+@Test function CompiledNativeMetamethodsRestoreTheCallerContext()
+   -- A native __clear handler leaves the trace for the interpreter.  The activation for its table receiver must be
+   -- released when the handler returns, otherwise the caller stays in the receiver context and a later try handler
+   -- finds the context stack below its saved depth.
+   local caller = { name = 'caller' }
+   local clear_target = setmetatable({ name = 'target', retained = true }, { __clear = mSys.PreciseTime })
+   local wrong_context = 0
+   local caught = 0
+   using caller do
+      for _ in {0 to 120} do
+         clear_target.clear()
+         if &name != 'caller' then wrong_context++ end
+         try
+            raise 'expected failure'
+         except
+            caught++
+         end
+      end
+   end
+   assert(wrong_context is 0, f'A native __clear handler left its receiver active {wrong_context} times')
+   assert(caught is 120, 'Every raised error should be caught after a native __clear handler')
+   assert(clear_target.retained, 'A native __clear handler should replace the raw clear operation')
+end
+
 @Test function TableFinaliserUsesDispatchContext()
    local finalised = false
    local target = setmetatable({}, {
