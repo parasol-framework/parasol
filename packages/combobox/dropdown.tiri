@@ -22,7 +22,8 @@ SCROLL_WIDTH <const> = 12
 gui.dropdown = function(Options)
    local theme_name = gui.getThemeName(Options.relative?.scene) -- Adopt the theme of the window that opens the dropdown
    local dropdown = table.merge(gui.themes[theme_name].dropdown, Options.theme, true, true)
-   local parent_surface = Options.target ?? Options.relative?.scene.surface
+   local parent_surface = Options.target
+   if parent_surface is nil then parent_surface = Options.relative?.scene.surface end
 
    self = entity { -- Public variables
       surface  = nil,
@@ -77,9 +78,37 @@ gui.dropdown = function(Options)
       &timeHide = mSys.PreciseTime()
    end
 
+   -- Positions the group headings and their rules for the current width, which may be changed by the client after
+   -- construction.  The content width excludes the scrollbar.
+
+   function layoutGroups()
+      content_width = &width - (&scrollbar ? SCROLL_WIDTH : 0)
+      if content_width is &groupWidth then return end
+      &groupWidth = content_width
+
+      for item in values(&items) do
+         if item.lineBreak then
+            item.text.x = content_width * 0.5
+            line_y   = math.floor(item.y + item.height * 0.5) + 0.5
+            line_end = (content_width - item.textWidth) * 0.5 - HMARGIN
+            sequence = string.format('M%f,%f H%f M%f,%f H%f',
+               HMARGIN * 2, line_y, line_end, content_width - line_end, line_y, content_width - HMARGIN * 2)
+            if item.rule then
+               item.rule.sequence = sequence
+            else
+               item.rule = &page.new('VectorPath', {
+                  stroke = dropdown.text.fill, strokeWidth = 1, opacity = 0.35, sequence = sequence
+               })
+            end
+         end
+      end
+   end
+
    self.show = function()
       surface = &surface
       if surface.flags has RNF_VISIBLE then return end
+
+      layoutGroups()
 
       -- The content is laid out at 1:1 and the view box scales it to fit the surface.
 
@@ -99,9 +128,9 @@ gui.dropdown = function(Options)
          err, relative_pos = mGfx.GetSurfaceInfo(&relative.scene.surface)
          if err is ERR_Okay then
             rel = { absX = relative_pos.absX, absY = relative_pos.absY }
-            local target = { absX = 0, absY = 0, height = 4096 }
+            local target = { absX = 0, absY = 0, top = 0, height = 4096 }
 
-            if parent_surface then
+            if parent_surface and parent_surface != 0 then
                local err, info = mGfx.GetSurfaceInfo(parent_surface)
                if err is ERR_Okay then
                   target.absX   = info.absX
@@ -109,9 +138,16 @@ gui.dropdown = function(Options)
                   target.height = info.height
                end
             else
-               err, display = mGfx.GetDisplayInfo(0)
+               -- Desktop-hosted menus are bound by the monitor that hosts the invoking surface, as per the tooltip.
+
+               err, display = mGfx.GetDisplayInfo(&relative.scene.surface.display ?? 0)
+               if (err != ERR_Okay) or ((display.monitorHeight ?? 0) <= 0) then
+                  err, display = mGfx.GetDisplayInfo(0)
+               end
                if err is ERR_Okay then
-                  target.height = display.height
+                  target.top = display.monitorY ?? 0
+                  mh = (display.monitorHeight ?? 0) > 0 ? display.monitorHeight : display.height
+                  target.height = target.top + mh
                end
             end
 
@@ -124,9 +160,10 @@ gui.dropdown = function(Options)
 
             if y + surface.height > target.height then
                y -= surface.height - (Options.y ?? 0)
+               if y < target.top then y = math.max(target.top, target.height - surface.height) end
             end
 
-            surface.acMoveToPoint(x, y, 0, MTF_X|MTF_Y)
+            surface.acRedimension(x, y, 0, surface.width, surface.height, 0)
          end
       end
 
@@ -235,8 +272,8 @@ gui.dropdown = function(Options)
    self.activate = function():bool
       item = &hItem
       if (not item) or (not selectable(item)) then return false end
-      item.config?.feedback(self, item.config)
-      self?.feedback(self, item.config)
+      item.config?.feedback(item.config)
+      self?.feedback(item.config)
       &hide()
       return true
    end
@@ -249,7 +286,8 @@ gui.dropdown = function(Options)
       &surface = obj.new('surface')
       &surface.name     = 'menu'
       &surface.width    = Options.width ?? 400
-      &surface.parent   = parent_surface
+      &surface.parent   = parent_surface ?? 0 -- Zero explicitly selects the host desktop
+      if not parent_surface or parent_surface is 0 then &surface.popOver = Options.relative?.scene.surface end
       &surface.flags    = RNF_STICK_TO_FRONT|RNF_COMPOSITE|RNF_NO_FOCUS -- Key presses are forwarded by the owner
       &surface.x        = -10000
       &surface.y        = -10000
@@ -396,12 +434,33 @@ gui.dropdown = function(Options)
             y += mi.height
 
             &items.insert(mi)
+         elseif item.group then -- Group headers are centred between rules once the menu width is known
+            mi = { y=y, config=item, lineBreak=true }
+            vText = &page.new('VectorText', table.merge(table.merge({ }, dropdown.text), {
+               align    = 'middle',
+               fontSize = string.format('%.2fpt', gui.fonts.input.size * 0.85),
+               opacity  = 0.7,
+               string   = item.group
+            }))
+
+            _, bx, by, bw, bh = vText.mtGetBoundary(0)
+
+            mi.text = vText
+            mi.textWidth = bw
+            mi.height = math.round(vText.lineSpacing * ITEM_SPACING)
+            vText.y = y + (mi.height - bh) * 0.5 - by
+            if bw > widestItem then widestItem = bw end
+            y += mi.height
+
+            &items.insert(mi)
          end
       end
 
       &width  = TEXT_X + widestItem + (HMARGIN * 3) + widestKey + HMARGIN
       &height = y + VMARGIN
       &page.height = &height
+
+      layoutGroups()
 
       if &lineLimit and (&lineLimit > 0) and (#&items > &lineLimit) then
          &height = &items[&lineLimit].y + VMARGIN
