@@ -48,13 +48,10 @@ static void vlogf(VLF, CSTRING, CSTRING, va_list) { }
 static void log_return() { }
 static int adjust_log_level(int) { return 0; }
 
-// Returns true if a selection request was made by the driver.  Requests from other clients are refused: desktop clients
-// routinely request TARGETS whenever the clipboard owner changes, and the tests must not mistake them for the driver's.
+// Refuse a selection request so that its requestor does not wait for a reply until it times out.
 
-static bool from_driver(DisplayDriver *Driver, Display *Connection, const XSelectionRequestEvent &Request)
+static void refuse_request(Display *Connection, const XSelectionRequestEvent &Request)
 {
-   if (Request.requestor IS Window(display::x11_driver_clipboard_window(Driver))) return true;
-
    XSelectionEvent reply = {};
    reply.type = SelectionNotify;
    reply.display = Connection;
@@ -65,6 +62,15 @@ static bool from_driver(DisplayDriver *Driver, Display *Connection, const XSelec
    reply.time = Request.time;
    XSendEvent(Connection, Request.requestor, False, NoEventMask, (XEvent *)&reply);
    XFlush(Connection);
+}
+
+// Returns true if a selection request was made by the driver.  Requests from other clients are refused: desktop clients
+// routinely request TARGETS whenever the clipboard owner changes, and the tests must not mistake them for the driver's.
+
+static bool from_driver(DisplayDriver *Driver, Display *Connection, const XSelectionRequestEvent &Request)
+{
+   if (Request.requestor IS Window(display::x11_driver_clipboard_window(Driver))) return true;
+   refuse_request(Connection, Request);
    return false;
 }
 
@@ -429,6 +435,9 @@ static bool save_with_clipboard_manager(DisplayDriver *Driver, Display *Connecti
                XFlush(Connection);
                complete = true;
             }
+            // Refuse other clients' requests for the manager or the clipboard it takes over.  from_driver() is not
+            // used because it reads the driver, which close() is releasing on the main thread.
+            else if (event.type IS SelectionRequest) refuse_request(Connection, event.xselectionrequest);
          }
          usleep(1000);
       }
