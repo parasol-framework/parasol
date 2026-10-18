@@ -992,8 +992,15 @@ static void set_call_result_count(FuncState *State, const ExpDesc &Expression, B
       setbc_b(&State->bcbase[Expression.alternate_call].ins, EncodedCount);
    }
    auto widen_nil_init = [&](BCPOS Position) {
-      if (Position IS NO_JMP or EncodedCount <= BCREG(CallResultMode::NoResults)) return;
+      if (Position IS NO_JMP) return;
       BCIns *nil_init = &State->bcbase[Position].ins;
+      // The skipped path of an optional call is itself a nil-producing call (see emit_optional_call_skip()), so it
+      // takes the present call's result count, including the all-results and no-results modes.
+      if (bc_op(*nil_init) IS BC_CALL) {
+         setbc_b(nil_init, EncodedCount);
+         return;
+      }
+      if (EncodedCount <= BCREG(CallResultMode::NoResults)) return;
       BCREG first = bc_a(*nil_init);
       lj_assertX(bc_op(*nil_init) IS BC_KPRI or bc_op(*nil_init) IS BC_KNIL,
          "safe-call nil path does not start with a nil initialiser");
@@ -1684,6 +1691,16 @@ static bool tail_call_preserves_checkall_boundary(const ParserContext &Context, 
    return Context.descriptors().callable(call.callable).source != StaticCallableSource::NativePrototype;
 }
 
+static bool is_optional_call_expression(const ExprNode &Expression)
+{
+   if (Expression.kind IS AstNodeKind::PipeExpr) {
+      const auto &pipe = std::get<PipeExprPayload>(Expression.data);
+      return pipe.rhs_call and is_optional_call_expression(*pipe.rhs_call);
+   }
+   if (Expression.kind != AstNodeKind::CallExpr) return false;
+   return std::get<CallExprPayload>(Expression.data).dispatch IS CallDispatch::OptionalMemberNamed;
+}
+
 static bool is_safe_call_expression(const ExprNode &Expression)
 {
    // Parsed safe calls currently retain CallExpr and identify the nil short-circuit through their dispatch mode.
@@ -1742,6 +1759,7 @@ ParserResult<IrEmitUnit> IrEmitter::emit_return_stmt(const ReturnStmtPayload &Pa
          bool has_post_call_control_flow = expected_end != this->func_state.pc;
          bool has_user_cleanup = cleanup_temp_regs > 0;
          bool safe_call = is_safe_call_expression(*Payload.values.back());
+         bool optional_call = is_optional_call_expression(*Payload.values.back());
          bool forwards_current_contract = tail_call_forwards_current_contract(
             this->ctx, this->current_callable, *Payload.values.back());
          bool direct_tail_call = call_op IS BC_CALL or call_op IS BC_CALLM;
@@ -1750,7 +1768,8 @@ ParserResult<IrEmitUnit> IrEmitter::emit_return_stmt(const ReturnStmtPayload &Pa
          // A bound body (function[X]) leaves its context block before CALLT, so a tail callee would run in the
          // caller's context.  It keeps CALL + RETM instead, and every callee observes the bound context (D5).
          bool tail_call_eligible = this->func_state.runtime_scopes.empty() and not has_post_call_control_flow and
-            not this->context_bound and not has_user_cleanup and (direct_tail_call or contextual_tail_call) and
+            not this->context_bound and not has_user_cleanup and not optional_call and
+            (direct_tail_call or contextual_tail_call) and
             tail_call_preserves_checkall_boundary(this->ctx, *Payload.values.back()) and
             (forwards_current_contract or (not truncate_return_results and not has_return_contract));
          if (tail_call_eligible) {
@@ -1782,6 +1801,12 @@ ParserResult<IrEmitUnit> IrEmitter::emit_return_stmt(const ReturnStmtPayload &Pa
             ins = result_count > 0 ?
                BCINS_AD(BC_RET, last.u.s.aux, result_count + 1) :
                BCINS_AD(BC_RET0, 0, 1);
+         }
+         else if (optional_call) {
+            // Both paths of an optional call set MULTRES, so every result of a present callee is returned.  The
+            // skipped branch prevents tail-call conversion.
+            set_call_result_count(&this->func_state, last, CallResultMode::AllResults);
+            ins = BCINS_AD(BC_RETM, return_base, last.u.s.aux - return_base);
          }
          else if (safe_call) {
             // An unconstrained nil short-circuit has no dynamic MULTRES value, so consolidate it to one result.

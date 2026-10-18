@@ -11,6 +11,21 @@
 
 namespace {
 
+// Clears the ternary true-branch depth for a nested delimiter and restores it on every exit path.  A ':' inside the
+// delimiter cannot close a ternary opened outside it.
+
+class TernaryBranchReset {
+public:
+   explicit TernaryBranchReset(int &Depth) : depth(Depth), saved(std::exchange(Depth, 0)) {}
+   ~TernaryBranchReset() { this->depth = this->saved; }
+   TernaryBranchReset(const TernaryBranchReset &) = delete;
+   TernaryBranchReset & operator=(const TernaryBranchReset &) = delete;
+
+private:
+   int &depth;
+   int saved;
+};
+
 [[nodiscard]] inline bool is_ordering_operator(AstBinaryOperator Operator)
 {
    return Operator IS AstBinaryOperator::LessThan or Operator IS AstBinaryOperator::LessEqual or
@@ -277,8 +292,11 @@ ParserResult<ExprNodePtr> AstBuilder::parse_expression(uint8_t precedence)
          // complete first (e.g., x > 0 ? ... should parse as (x > 0) ? ...)
 
          if (1 <= precedence) break;
+         if (auto message = this->unsupported_optional_call(*left.value_ref(), next)) {
+            return this->fail<ExprNodePtr>(ParserErrorCode::InvalidOptionalCall, next, std::move(*message));
+         }
          this->ctx.tokens().advance();
-         auto true_branch = this->parse_expression();
+         auto true_branch = this->parse_ternary_true_branch();
          if (not true_branch.ok()) return true_branch;
          auto separator = this->consume_ternary_separator();
          if (not separator.ok()) return ParserResult<ExprNodePtr>::failure(separator.error_ref());
@@ -298,7 +316,7 @@ ParserResult<ExprNodePtr> AstBuilder::parse_expression(uint8_t precedence)
           this->is_extended_ternary_ahead()) {
          if (1 <= precedence) break;
          this->ctx.tokens().advance();
-         auto true_branch = this->parse_expression();
+         auto true_branch = this->parse_ternary_true_branch();
          if (not true_branch.ok()) return true_branch;
          auto separator = this->consume_ternary_separator();
          if (not separator.ok()) return ParserResult<ExprNodePtr>::failure(separator.error_ref());
@@ -765,6 +783,7 @@ ParserResult<ExprNodePtr> AstBuilder::parse_primary()
          this->ctx.tokens().advance();
          ExprNodeList expressions;
          bool parsed_empty = false;
+         TernaryBranchReset ternary_reset(this->ternary_branch_depth);
 
          if (this->ctx.check(TokenKind::RightParen)) {
             parsed_empty = true;
@@ -1266,6 +1285,15 @@ ParserResult<ExprNodePtr> AstBuilder::parse_suffixed(ExprNodePtr base)
          continue;
       }
 
+      // `member?(` is an optional table call when `?` touches both the member name and the opening parenthesis.
+      // Whitespace or a comment on either side leaves `?` to the ternary operator.
+      if (token.kind() IS TokenKind::Question and this->is_optional_call_marker(*base, token)) {
+         auto call = this->parse_optional_member_call(std::move(base), token);
+         if (not call.ok()) return call;
+         base = std::move(call.value_ref());
+         continue;
+      }
+
       if (token.kind() IS TokenKind::Colon or token.kind() IS TokenKind::TernarySep) break;
 
       if (token.kind() IS TokenKind::LeftParen or token.kind() IS TokenKind::LeftBrace or
@@ -1377,6 +1405,95 @@ ParserResult<ExprNodePtr> AstBuilder::parse_suffixed(ExprNodePtr base)
       break;
    }
    return ParserResult<ExprNodePtr>::success(std::move(base));
+}
+
+//********************************************************************************************************************
+// Recognises the adjacent `?(` marker of an optional table call.  Only an ungrouped named member qualifies, and the
+// member name, `?` and `(` must be contiguous in the source.  Token offsets are exact for f-string expressions too.
+
+bool AstBuilder::is_optional_call_marker(const ExprNode &Base, const Token &Question) const
+{
+   if (Base.kind != AstNodeKind::MemberExpr or Base.is_grouped) return false;
+   const auto &member = std::get<MemberExprPayload>(Base.data);
+   if (not member.member.symbol) return false;
+
+   size_t member_end = member.member.span.offset + member.member.symbol->len;
+   if (Question.span().offset != member_end) return false;
+   Token open_paren = this->ctx.tokens().peek(1);
+   return open_paren.kind() IS TokenKind::LeftParen and open_paren.span().offset IS Question.span().offset + 1;
+}
+
+//********************************************************************************************************************
+// Explains an optional-call spelling outside the supported `receiver.member?(...)` form.  The spelling remains a
+// ternary when a separator follows on the same line, because `value?(a) : b` was valid before optional calls existed.
+// Without a separator it can only have been intended as an optional call, and the targeted message replaces a
+// misleading missing-separator error.
+
+std::optional<std::string> AstBuilder::unsupported_optional_call(const ExprNode &Base, const Token &Question) const
+{
+   size_t offset = Question.span().offset;
+   bool named_member = Base.kind IS AstNodeKind::MemberExpr and not Base.is_grouped;
+   bool adjacent;
+   if (named_member) {
+      const auto &member = std::get<MemberExprPayload>(Base.data);
+      adjacent = member.member.symbol and offset IS member.member.span.offset + member.member.symbol->len;
+   }
+   else {
+      std::string_view source = this->ctx.lex().source;
+      adjacent = offset > 0 and offset <= source.size() and not std::isspace(uint8_t(source[offset - 1]));
+   }
+   if (not adjacent) return std::nullopt;
+
+   Token next = this->ctx.tokens().peek(1);
+   bool open_paren = next.kind() IS TokenKind::LeftParen and next.span().offset IS offset + 1;
+   bool shorthand = named_member and (next.kind() IS TokenKind::LeftBrace or next.kind() IS TokenKind::String);
+   if (not open_paren and not shorthand) return std::nullopt;
+   if (this->is_extended_ternary_ahead()) return std::nullopt;
+
+   if (shorthand) {
+      return std::string("optional calls require parenthesised arguments, e.g. 'receiver.member?({ ... })'");
+   }
+   return std::string("optional calls are supported only for named table members, e.g. 'receiver.member?(...)'; "
+      "use 'receiver?.member(...)' or a nil test for other callables");
+}
+
+//********************************************************************************************************************
+// Parses `receiver.member?(arguments)` after is_optional_call_marker() has accepted the adjacent `?(` spelling.
+
+ParserResult<ExprNodePtr> AstBuilder::parse_optional_member_call(ExprNodePtr Base, const Token &Question)
+{
+   this->ctx.tokens().advance(); // Consume '?'
+   Token open_paren = this->ctx.tokens().current();
+   bool forwards = false;
+   auto args = this->parse_call_arguments(&forwards);
+   if (not args.ok()) return ParserResult<ExprNodePtr>::failure(args.error_ref());
+
+   // `member?(...) : value` was previously an adjacent ternary.  Outside a ternary true branch the separator cannot
+   // belong to an enclosing expression, so direct the author to the spaced ternary spelling.
+
+   Token next = this->ctx.tokens().current();
+   if ((next.kind() IS TokenKind::Colon or next.kind() IS TokenKind::TernarySep) and
+       this->ternary_branch_depth IS 0) {
+      return this->fail<ExprNodePtr>(ParserErrorCode::InvalidOptionalCall, Question,
+         "'member?(...)' is an optional call; insert whitespace before '?' to write a ternary condition, "
+         "e.g. 'value.member ? (a) : b'");
+   }
+
+   SourceSpan span = combine_spans(Base->span, open_paren.span());
+   return ParserResult<ExprNodePtr>::success(make_optional_member_call_expr(span, std::move(Base),
+      std::move(args.value_ref()), forwards));
+}
+
+//********************************************************************************************************************
+// Parses a ternary true branch.  A ':' that follows an optional call inside the branch closes this ternary rather than
+// indicating the ambiguous `member?(...) : value` spelling.
+
+ParserResult<ExprNodePtr> AstBuilder::parse_ternary_true_branch()
+{
+   this->ternary_branch_depth++;
+   auto branch = this->parse_expression();
+   this->ternary_branch_depth--;
+   return branch;
 }
 
 //********************************************************************************************************************
@@ -1624,8 +1741,8 @@ bool AstBuilder::is_choose_relational_pattern(size_t StartPos) const
 }
 
 //********************************************************************************************************************
-// Checks whether the current `??` token starts an extended ternary expression by scanning ahead for a top-level
-// separator.
+// Checks whether the current `??` or `?` token starts a ternary expression by scanning ahead for a top-level separator
+// on the same line.
 
 bool AstBuilder::is_extended_ternary_ahead() const
 {

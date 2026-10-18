@@ -241,8 +241,18 @@ enum class CallDispatch : uint8_t {
    MemberComputed,
    SafeMemberNamed,
    SafeMemberComputed,
+   // receiver.member?(...): the receiver must be a table and only a nil member skips the call.
+   OptionalMemberNamed,
    LegacyMethod,
    LegacySafeMethod
+};
+
+// Receiver handling for a statically selected built-in dot method.
+
+enum class MethodReceiverGuard : uint8_t {
+   None,         // receiver.method(...)
+   NilSafe,      // receiver?.method(...): a nil receiver skips the call
+   RequireTable  // receiver.method?(...): a non-table receiver raises before the call
 };
 
 enum class CallArgumentSyntax : uint8_t {
@@ -484,7 +494,7 @@ struct CallExprPayload {
       const fprototype *prototype = nullptr;
       BuiltinCallableID callable = BuiltinCallableID::Invalid;
       TiriType receiver_type = TiriType::Unknown;
-      bool safe = false;
+      MethodReceiverGuard guard = MethodReceiverGuard::None;
       bool arguments_validated = false;
    };
    mutable std::optional<BuiltinMethodCall> builtin_method;
@@ -502,6 +512,7 @@ struct CallExprPayload {
    // leaves this Unknown unless the target was already contextual.
    mutable StaticContextuality contextual_designation_result = StaticContextuality::Unknown;
    mutable bool unresolved_method_reported = false;
+   mutable bool optional_receiver_reported = false;
    mutable TiriType result_type = TiriType::Unknown;  // Inferred return type (e.g., Object for obj.new())
    mutable CLASSID object_class_id = CLASSID::NIL; // CLASSID if result is Object
    mutable struct_record *struct_def = nullptr; // Resolved layout if result is Struct, or callable struct definition
@@ -1326,6 +1337,8 @@ ExprNodePtr make_presence_expr(SourceSpan span, ExprNodePtr value);
 ExprNodePtr make_pipe_expr(SourceSpan span, ExprNodePtr lhs, ExprNodePtr rhs_call, uint32_t limit);
 ExprNodePtr make_call_expr(SourceSpan span, ExprNodePtr callee, ExprNodeList arguments, bool forwards_multret,
    CallArgumentSyntax argument_syntax = CallArgumentSyntax::Synthetic);
+ExprNodePtr make_optional_member_call_expr(SourceSpan span, ExprNodePtr callee, ExprNodeList arguments,
+   bool forwards_multret);
 ExprNodePtr make_member_expr(SourceSpan span, ExprNodePtr table, Identifier member);
 ExprNodePtr make_module_function_expr(SourceSpan span, Identifier binding, Identifier function,
    StaticModuleHandle module, GCstr *namespace_name);

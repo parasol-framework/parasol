@@ -63,6 +63,7 @@ private:
    int function_depth = 0;            // Tracks nesting depth inside function bodies
    int block_depth = 0;               // Tracks nested statement blocks below chunk scope
    const ExprNode *field_block_base = nullptr; // Suffix chain that stopped at `.{` in the current expression statement
+   int ternary_branch_depth = 0;      // Ternary true branches being parsed, where a following ':' is expected
    bool enum_constants_committed = false;
    bool source_namespace_declared = false;
    bool module_initialiser = false;
@@ -267,6 +268,11 @@ private:
    ParserResult<ExprNodePtr> parse_unary();
    ParserResult<ExprNodePtr> parse_primary();
    ParserResult<ExprNodePtr> parse_suffixed(ExprNodePtr);
+   [[nodiscard]] bool is_optional_call_marker(const ExprNode &Base, const Token &Question) const;
+   [[nodiscard]] std::optional<std::string> unsupported_optional_call(const ExprNode &Base,
+      const Token &Question) const;
+   ParserResult<ExprNodePtr> parse_optional_member_call(ExprNodePtr Base, const Token &Question);
+   ParserResult<ExprNodePtr> parse_ternary_true_branch();
    ParserResult<Token> consume_ternary_separator();
    ParserResult<ExprNodePtr> parse_arrow_function(ExprNodeList parameters);
    ParserResult<FunctionContextBinding> parse_function_binding(bool IsThunk);

@@ -986,3 +986,228 @@ end
 
    assert(false, 'function obj?.method() ... end should remain unsupported')
 end
+
+----------------------------------------------------------------------------------------------------------------------
+-- Optional table calls: receiver.member?(...) requires a table receiver and skips only a nil member.
+
+local function optional_three():<num, num, num>
+   return 1, 2, 3
+end
+
+local function optional_second(First:any, Second:any):any
+   return Second
+end
+
+@Test function testOptionalCallPresentAndMissing()
+   local calls = 0
+   local function argument():num
+      calls++
+      return 21
+   end
+   local thing = { double = function(Value:num):num return Value * 2 end }
+   assert(thing.double?(argument()) is 42 and calls is 1, 'A present member should be called with its arguments')
+   assert(thing.missing?(argument(), argument()) is nil and calls is 1,
+      'A missing member should yield nil without evaluating any argument')
+
+   local holder = { child = thing }
+   assert(holder.child.double?(4) is 8 and holder.child.missing?(4) is nil,
+      'A nested receiver should be retained as the complete receiver expression')
+   assert(thing.double?(thing.double?(1)) is 4, 'Optional calls should nest as arguments')
+end
+
+----------------------------------------------------------------------------------------------------------------------
+
+@Test function testOptionalCallEvaluatesReceiverOnce()
+   local thing = { inc = function(Value:num):num return Value + 1 end }
+   local evaluations = 0
+   local function receiver():table
+      evaluations++
+      return thing
+   end
+   assert(receiver().inc?(1) is 2 and evaluations is 1, 'A present call should evaluate its receiver once')
+   assert(receiver().missing?(1) is nil and evaluations is 2, 'A missing call should evaluate its receiver once')
+end
+
+----------------------------------------------------------------------------------------------------------------------
+
+@Test function testOptionalCallRequiresTableReceiver()
+   local calls = 0
+   local function argument():num
+      calls++
+      return 1
+   end
+   local function rejects(Receiver:any):bool
+      try
+         Receiver.member?(argument())
+      except e when ERR_TypeMismatch
+         return e.message.find('requires a table receiver') != nil
+      end
+      return false
+   end
+
+   assert(rejects(nil), 'A nil receiver should raise rather than yield nil')
+   assert(rejects('text') and rejects(5) and rejects(true) and rejects(rejects),
+      'Scalar and function receivers should raise ERR_TypeMismatch')
+   assert(rejects(array<int> { 1 }) and rejects({0 to 2}), 'Array and range receivers should raise ERR_TypeMismatch')
+   assert(calls is 0, 'A non-table receiver should raise before argument evaluation')
+end
+
+----------------------------------------------------------------------------------------------------------------------
+
+@Test function testOptionalCallNonCallableMember()
+   local thing = { flag = false, zero = 0, text = 'text', empty = '', nested = {} }
+   local function raises(Callback:func):bool
+      try
+         Callback()
+      except e
+         return true
+      end
+      return false
+   end
+   assert(raises(function() thing.flag?() end), 'false is not an absent member')
+   assert(raises(function() thing.zero?() end), 'Zero is not an absent member')
+   assert(raises(function() thing.text?() end), 'A string is not an absent member')
+   assert(thing.empty?() is thing.empty() and thing.empty?() != nil,
+      'An empty string member should follow the ordinary call path')
+   assert(raises(function() thing.nested?() end), 'A table without __call is not an absent member')
+end
+
+----------------------------------------------------------------------------------------------------------------------
+
+@Test function testOptionalCallMetatableLookup()
+   local meta = {}
+   meta['__index'] = function(Key)
+      if Key is 'dynamic' then return function(Value) return Value * 3 end end
+   end
+   local proxy = setmetatable({}, meta)
+   assert(proxy.dynamic?(2) is 6, 'A callable supplied by __index should be called')
+   assert(proxy.absent?(2) is nil, 'A nil __index result should skip the call')
+end
+
+----------------------------------------------------------------------------------------------------------------------
+
+@Test function testOptionalCallFixedResults()
+   local thing = { three = optional_three }
+   local one:any = thing.three?()
+   local first:any, second:any = thing.three?()
+   local a:any, b:any, c:any = thing.three?()
+   assert(one is 1 and first is 1 and second is 2 and a is 1 and b is 2 and c is 3,
+      'A present call should supply each requested result')
+
+   one, first, second, a, b, c = 9, 9, 9, 9, 9, 9
+   one = thing.none?()
+   first, second = thing.none?()
+   a, b, c = thing.none?()
+   assert(one is nil and first is nil and second is nil and a is nil and b is nil and c is nil,
+      'A skipped call should supply nil for every requested result')
+end
+
+----------------------------------------------------------------------------------------------------------------------
+-- A stale MULTRES on the skipped path would expose the results of the preceding three-result call.
+
+@Test function testOptionalCallVariableResults()
+   local thing = { three = optional_three }
+   local function forward():<any, ...> return thing.three?() end
+   local function skip():<any, ...> return thing.none?() end
+
+   assert(table.size({ thing.three?() }) is 3, 'A table constructor should receive every present result')
+   local primed = { optional_three() }
+   assert(table.size({ thing.none?() }) is 0, 'A table constructor should receive only nil from a skipped call')
+   assert(table.size({ forward() }) is 3, 'return should forward every present result')
+   primed = { optional_three() }
+   assert(table.size({ skip() }) is 0, 'return should forward only nil from a skipped call')
+   assert(optional_second(0, thing.three?()) is 1, 'A trailing argument should forward every present result')
+   primed = { optional_three() }
+   assert(optional_second(0, thing.none?()) is nil, 'A trailing argument should forward only nil when skipped')
+
+   local x:any, y:any = [_*]thing.three?()
+   assert(x is 2 and y is 3, 'A result filter should observe every present result')
+   x, y = 5, 5
+   x, y = [_*]thing.none?()
+   assert(x is nil and y is nil, 'A result filter should observe nil from a skipped call')
+end
+
+----------------------------------------------------------------------------------------------------------------------
+
+@Test function testOptionalPipeReturnResults()
+   local thing = { three = function(Value:num):<num, num, num> return Value, 2, 3 end }
+   local function forward():<any, ...> return 1 |> thing.three?() end
+   local function skip():<any, ...> return 1 |> thing.none?() end
+   local function dynamic(Receiver:any):<any, ...> return 1 |> Receiver.three?() end
+
+   local a:any, b:any, c:any = forward()
+   assert(a is 1 and b is 2 and c is 3, 'Returning an optional pipe should forward every present result')
+   a, b, c = skip()
+   assert(a is nil and b is nil and c is nil, 'Returning a skipped optional pipe should yield nil')
+
+   local contextual = entity { three = thing.three }
+   a, b, c = dynamic(contextual)
+   assert(a is 1 and b is 2 and c is 3, 'Returning a contextual optional pipe should forward every result')
+   a, b, c = dynamic({})
+   assert(a is nil and b is nil and c is nil, 'Returning a skipped dynamic optional pipe should yield nil')
+end
+
+----------------------------------------------------------------------------------------------------------------------
+
+@Test function testOptionalCallExpressionContexts()
+   local thing = { inc = function(Value:num):num return Value + 1 end }
+   local declared = thing.inc?(1)
+   local assigned:any = nil
+   assigned = thing.inc?(2)
+   local function returned():any return thing.inc?(3) end
+   assert(declared is 2 and assigned is 3 and returned() is 4, 'Optional calls should work in declarations, ' ..
+      'assignments and returns')
+   assert(f"{thing.inc?(4)}" is '5', 'Optional calls should work inside f-string expressions')
+
+   local calls = 0
+   local function operand():num
+      calls++
+      return 6
+   end
+   assert((operand() |> thing.inc?()) is 7 and calls is 1, 'A present pipe destination should receive the operand')
+   assert((operand() |> thing.none?()) is nil and calls is 1, 'A missing pipe destination should skip the operand')
+end
+
+----------------------------------------------------------------------------------------------------------------------
+
+@Test function testOptionalCallCheck()
+   local thing = {
+      ok = function():num return ERR_Okay end,
+      fails = function():num return ERR_Failed end
+   }
+   check thing.ok?()
+   check thing.none?()
+   local raised = false
+   try
+      check thing.fails?()
+   except e when ERR_Failed
+      raised = true
+   end
+   assert(raised, 'check should process the result of a present optional call')
+end
+
+----------------------------------------------------------------------------------------------------------------------
+
+@Test function testOptionalCallTernarySpacing()
+   local thing = { flag = true }
+   local spaced = thing.flag ? (1) : 2
+   assert(spaced is 1, 'A spaced ? after a member should remain a ternary condition')
+   local condition = true
+   local nested = condition ? thing.missing?(1) : 2
+   assert(nested is nil, 'An optional call may form a ternary true branch')
+end
+
+----------------------------------------------------------------------------------------------------------------------
+
+@Test function testOptionalCallHotLoop()
+   local present = { value = function(Value:num):num return Value end }
+   local absent = {}
+   local total = 0
+   local misses = 0
+   for i in {0 to 500} do
+      local target = (i % 2 is 0) ? present : absent
+      local result = target.value?(i)
+      if result is nil then misses++ else total += result end
+   end
+   assert(misses is 250 and total is 62250, 'Optional calls should behave identically once traces compile')
+end
