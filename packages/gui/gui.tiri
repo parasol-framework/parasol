@@ -378,9 +378,7 @@ gui.getFontHeight = function(Font:table, Cache:bool):<num,num,num>
          check mVec.GetFontMetrics(handle, metrics)
 
          if Cache then
-            Font.height  = metrics.height
-            Font.spacing = metrics.lineSpacing
-            Font.ascent  = metrics.ascent
+            Font.{ height = metrics.height, spacing = metrics.lineSpacing, ascent = metrics.ascent }
          else
             return metrics.lineSpacing, metrics.height, metrics.ascent
          end
@@ -490,10 +488,7 @@ gui.simpleGradient = function(Scene:obj!, Name:str!, Colours:any!, X1:num!, Y1:n
    for col in values(colours) do
       vc = struct<GradientStop>
       vc.offset    = col.offset ? col.offset : (i / (#colours - 1))
-      vc.rgb.red   = col.r
-      vc.rgb.green = col.g
-      vc.rgb.blue  = col.b
-      vc.rgb.alpha = col.a ? col.a : 1.0
+      vc.rgb.{ red = col.r, green = col.g, blue = col.b, alpha = col.a ? col.a : 1.0 }
       stops.insert(vc)
       i++
    end
@@ -600,9 +595,7 @@ gui.separator = function(Viewport:obj!, Orientation:str!, Pos:any!, MarginA:any,
    options = { fill = stroke.stroke }
 
    if o is 'h' or o is 'H' then
-      options.x       = MarginA ?? 0
-      options.xOffset = MarginB ?? 0
-      options.height  = stroke.strokeWidth
+      options.{ x = MarginA ?? 0, xOffset = MarginB ?? 0, height = stroke.strokeWidth }
 
       if Pos is <num> and (Pos < 0 or (Pos is 0 and (1/Pos) < 0)) then -- Include negative zero
          options.yOffset = -Pos
@@ -613,9 +606,7 @@ gui.separator = function(Viewport:obj!, Orientation:str!, Pos:any!, MarginA:any,
          Viewport.new('VectorRectangle', options)
       end
    else
-      options.y       = MarginA ?? 0
-      options.yOffset = MarginB ?? 0
-      options.width   = stroke.strokeWidth
+      options.{ y = MarginA ?? 0, yOffset = MarginB ?? 0, width = stroke.strokeWidth }
       if Pos is <num> and (Pos < 0 or (Pos is 0 and (1/Pos) < 0)) then
          options.xOffset = -Pos
          subvp = Viewport.new('VectorViewport', options)
