@@ -323,6 +323,14 @@ inline std::string identifier_to_string(const Identifier &Identifier)
    return gcstr_to_string(Identifier.symbol);
 }
 
+// Compiler-generated bindings, such as the hidden base of a field assignment block, start with a byte that the lexer
+// cannot produce.  They and the member paths built on them must not surface as user symbols.
+
+inline bool is_hidden_binding_name(std::string_view Name)
+{
+   return not Name.empty() and Name.front() IS '\x1f';
+}
+
 static std::string function_name_to_string(const FunctionNamePath &Path)
 {
    std::string name;
@@ -705,11 +713,65 @@ static void collect_assignment_functions(ParserSymbolCollection &Collection, con
       if (not function) continue;
 
       std::string name = expression_name_to_string(*target);
-      if (not name.empty()) {
+      if (not name.empty() and not is_hidden_binding_name(name)) {
          Collection.symbols.push_back(make_function_symbol(name, *function, expression_name_span(*target)));
       }
       collect_nested_function_body(Collection, *function);
    }
+}
+
+// Field assignment blocks lower to `do local <hidden> = base; [if <hidden> != nil then] <hidden>.key = value ... end`.
+// Function entries are published as `base.key`, matching the equivalent `base.key = value` statements.  Entries of a
+// base without a plain dotted name are not published, but their function bodies are still walked.  Returns false if
+// the block is not a lowered field assignment block.
+
+static bool collect_field_block_functions(ParserSymbolCollection &Collection, const BlockStmt &Block)
+{
+   const StmtNodeList &statements = Block.statements;
+   if (statements.empty() or not statements[0] or statements[0]->kind != AstNodeKind::LocalDeclStmt) return false;
+
+   const auto &decl = std::get<LocalDeclStmtPayload>(statements[0]->data);
+   if (decl.names.size() != 1 or decl.values.size() != 1 or not decl.values[0]) return false;
+   if (identifier_to_string(decl.names[0]) != FIELD_BLOCK_BINDING_NAME) return false;
+
+   std::string base_name = expression_name_to_string(*decl.values[0]);
+
+   auto collect_entries = [&](const StmtNodeList &Entries, size_t Start) {
+      for (size_t i = Start; i < Entries.size(); ++i) {
+         const StmtNodePtr &entry = Entries[i];
+         if (not entry or entry->kind != AstNodeKind::AssignmentStmt) continue;
+
+         const auto &assignment = std::get<AssignmentStmtPayload>(entry->data);
+         if (assignment.targets.size() != 1 or assignment.values.size() != 1) continue;
+
+         const ExprNodePtr &target = assignment.targets[0];
+         const ExprNodePtr &value = assignment.values[0];
+         if (not target or not value or value->kind != AstNodeKind::FunctionExpr) continue;
+
+         const auto *function = std::get_if<FunctionExprPayload>(&value->data);
+         if (not function) continue;
+
+         const auto *member = target->kind IS AstNodeKind::MemberExpr ?
+            std::get_if<MemberExprPayload>(&target->data) : nullptr;
+         if (member and not base_name.empty()) {
+            std::string name = base_name + "." + identifier_to_string(member->member);
+            Collection.symbols.push_back(make_function_symbol(name, *function, member->member.span));
+         }
+         collect_nested_function_body(Collection, *function);
+      }
+   };
+
+   // The safe form wraps every entry in a single nil-guarded conditional.
+   if (statements.size() IS 2 and statements[1] and statements[1]->kind IS AstNodeKind::IfStmt) {
+      const auto &guard = std::get<IfStmtPayload>(statements[1]->data);
+      if (guard.clauses.size() IS 1 and guard.clauses[0].block) {
+         collect_entries(guard.clauses[0].block->statements, 0);
+         return true;
+      }
+   }
+
+   collect_entries(statements, 1);
+   return true;
 }
 
 template <typename DeclPayload>
@@ -724,8 +786,10 @@ static void collect_decl_functions(ParserSymbolCollection &Collection, const Dec
       const auto *function = std::get_if<FunctionExprPayload>(&value->data);
       if (not function) continue;
 
-      Collection.symbols.push_back(make_function_symbol(identifier_to_string(Payload.names[i]), *function,
-         Payload.names[i].span));
+      std::string name = identifier_to_string(Payload.names[i]);
+      if (not is_hidden_binding_name(name)) {
+         Collection.symbols.push_back(make_function_symbol(name, *function, Payload.names[i].span));
+      }
       collect_nested_function_body(Collection, *function);
    }
 }
@@ -796,7 +860,9 @@ static void collect_from_statement(ParserSymbolCollection &Collection, const Stm
       }
       case AstNodeKind::DoStmt: {
          const auto &payload = std::get<DoStmtPayload>(Statement.data);
-         if (payload.block) collect_from_block(Collection, *payload.block);
+         if (payload.block and not collect_field_block_functions(Collection, *payload.block)) {
+            collect_from_block(Collection, *payload.block);
+         }
          break;
       }
       case AstNodeKind::ContextStmt: {

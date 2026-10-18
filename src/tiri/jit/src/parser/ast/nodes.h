@@ -61,6 +61,11 @@ using StmtNodePtr = std::unique_ptr<StmtNode>;
 using ExprNodeList = std::vector<ExprNodePtr>;
 using StmtNodeList = std::vector<StmtNodePtr>;
 
+// Hidden local that holds the base of a lowered field assignment block.  The leading byte cannot be produced by the
+// lexer, so user code can never name it.
+
+inline constexpr std::string_view FIELD_BLOCK_BINDING_NAME = "\x1f" "fieldblock";
+
 // Function return type declaration for static analysis
 struct FunctionReturnTypes {
    std::array<TiriType, MAX_RETURN_TYPES> types{};  // Return types (Unknown = unused slot)
