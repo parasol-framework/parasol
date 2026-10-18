@@ -103,6 +103,7 @@ static ARF parse_aspect_ratio(std::string_view Value)
    else if (startswith("slice", Value)) { flags |= ARF::SLICE; }
 
    if (flags IS ARF::NIL) return ARF::X_MID|ARF::Y_MID|ARF::MEET;
+   if ((flags & (ARF::MEET|ARF::SLICE)) IS ARF::NIL) flags |= ARF::MEET; // Alignment without a fit mode implies 'meet'
    return flags;
 }
 
@@ -1732,144 +1733,169 @@ void svgState::proc_filter(XTag &Tag) noexcept
 }
 
 //********************************************************************************************************************
-// NB: In bounding-box mode, the default view-box is 0 0 1 1, where 1 is equivalent to 100% of the target space.
-// If the client sets a custom view-box then the dimensions are fixed, and no scaling will apply.
+// Pattern attributes are resolved through the href chain before they are applied.  The nearest explicit definition of
+// each attribute wins, regardless of its position relative to the href attribute, and defaults apply once the chain
+// has been exhausted.  Content is taken from the nearest pattern in the chain that has child elements.
+//
+// The viewBox and preserveAspectRatio attributes are resolved independently.  A viewBox makes patternContentUnits
+// ineffective; the vector renderer enforces that precedence, so no synthetic viewbox is required for bounding-box
+// content.
 
 void svgState::proc_pattern(XTag &Tag) noexcept
 {
    kt::Log log(__FUNCTION__);
    objVectorPattern *pattern;
+
+   if (NewObject(CLASSID::VECTORPATTERN, &pattern) != ERR::Okay) return;
+
+   SetOwner(pattern, Self->Scene);
+
+   pattern->setName("SVGPattern");
+   pattern->setSpreadMethod(VSPREAD::REPEAT);
+   pattern->Scene->setHostScene(Self->Scene);
+
+   objVectorViewport *viewport;
+   pattern->getViewport(viewport);
+
    std::string id;
+   std::optional<VUNIT> units, content_units;
+   std::optional<VOF> overflow;
+   std::optional<ARF> aspect_ratio;
+   std::optional<std::array<double, 4>> view_box;
+   std::optional<double> opacity;
+   std::optional<std::string> transform;
+   Unit x, y, width, height;
+   XTag *content = nullptr;
+   ankerl::unordered_dense::set<XTag *> visited;
 
-   auto invalid_value = [&](std::string_view Name) {
-      log.warning("Invalid value for attribute '%.*s' @ line %d", int(Name.size()), Name.data(), Tag.LineNo);
-   };
+   for (auto tag = &Tag; tag; ) {
+      visited.insert(tag);
 
-   if (!NewObject(CLASSID::VECTORPATTERN, &pattern)) {
-      SetOwner(pattern, Self->Scene);
-
-      // NOTE: In SVG 1.0 the default pattern units value is 'userSpaceOnUse'; from 1.1 it changed to 'objectBoundingBox'.
-
-      pattern->setName("SVGPattern");
-      pattern->setUnits(VUNIT::BOUNDING_BOX);
-      pattern->setSpreadMethod(VSPREAD::REPEAT);
-      pattern->Scene->setHostScene(Self->Scene);
-
-      objVectorViewport *viewport;
-      pattern->getViewport(viewport);
-
-      bool rel_coords = true; // True because the default is 'objectBoundingBox'
-      Unit x, y, width, height;
-      std::vector<XTag *> children; // Multiple retrieval points for children is possible due to the href attrib
-      std::string dummy;
-
-      const auto parse_pattern = [&](const auto &parse_self, XTag &Tags, std::string &ID) -> void {
-         for (int a=1; a < std::ssize(Tags.Attribs); a++) {
-            auto &val = Tags.Attribs[a].Value;
-            if (val.empty()) continue;
-
-            switch(strhash(Tags.Attribs[a].Name)) {
-               case SVF_patternContentUnits:
-                  // SVG: "This attribute has no effect if viewbox is specified"
-                  //
-                  // userSpaceOnUse: Default. Coordinate values are fixed.
-                  // objectBoundingBox: Coordinate values are relative (0 - 1.0) to the bounding box of the requesting element.
-                  //   Implementing this means allocating a 1x1 viewbox for the content, then stretching it to fit the parent element.
-
-                  if (iequals("userSpaceOnUse", val)) pattern->setContentUnits(VUNIT::USERSPACE);
-                  else if (iequals("objectBoundingBox", val)) {
-                     pattern->setContentUnits(VUNIT::BOUNDING_BOX);
-                     viewport->setViewX(0);
-                     viewport->setViewY(0);
-                     viewport->setViewWidth(1.0);
-                     viewport->setViewHeight(1.0);
-                  }
-                  else invalid_value(Tags.Attribs[a].Name);
-                  break;
-
-               case SVF_patternUnits:
-                  // 'userSpace' is a deprecated option from SVG 1.0 - perhaps due to the introduction of patternContentUnits.
-                  if (iequals("userSpaceOnUse", val)) { rel_coords = false; pattern->setUnits(VUNIT::USERSPACE); }
-                  else if (iequals("objectBoundingBox", val)) { rel_coords = true; pattern->setUnits(VUNIT::BOUNDING_BOX); }
-                  else if (iequals("userSpace", val)) { rel_coords = false; pattern->setUnits(VUNIT::USERSPACE); }
-                  else invalid_value(Tags.Attribs[a].Name);
-                  break;
-
-               case SVF_patternTransform: pattern->setTransform(val); break;
-
-               case SVF_id: ID = val; break;
-
-               case SVF_overflow:
-                  switch(strhash(val)) {
-                     case SVF_visible: viewport->setOverflow(VOF::VISIBLE); break;
-                     case SVF_hidden:  viewport->setOverflow(VOF::HIDDEN); break;
-                     case SVF_scroll:  viewport->setOverflow(VOF::SCROLL); break;
-                     case SVF_inherit: viewport->setOverflow(VOF::INHERIT); break;
-                     default: invalid_value(Tags.Attribs[a].Name);
-                  }
-                  break;
-
-               case SVF_opacity: pattern->setOpacity(svtonum<double>(val)); break;
-               case SVF_x:       x      = SVGUnit(val); break;
-               case SVF_y:       y      = SVGUnit(val); break;
-               case SVF_width:   width  = SVGUnit(val); break;
-               case SVF_height:  height = SVGUnit(val); break;
-
-               case SVF_viewBox: {
-                  double vx=0, vy=0, vwidth=1, vheight=1; // Default view-box for bounding-box mode
-                  pattern->ContentUnits = VUNIT::USERSPACE;
-                  read_numseq(val, { &vx, &vy, &vwidth, &vheight });
-                  viewport->setViewX(vx);
-                  viewport->setViewY(vy);
-                  viewport->setViewWidth(vwidth);
-                  viewport->setViewHeight(vheight);
-                  break;
-               }
-
-               case SVF_href:
-               case SVF_xlink_href:
-                  if (auto other = find_href_tag(Self, val)) {
-                     parse_self(parse_self, *other, dummy);
-                  }
-                  break;
-
-               default:
-                  log.warning("%s attribute '%s' unrecognised @ line %d", Tags.name(), Tags.Attribs[a].Name.c_str(), Tags.LineNo);
-                  break;
-            }
-         }
-
-         if (Tags.hasChildTags()) children.push_back(&Tags);
+      const auto invalid_value = [&](std::string_view Name) {
+         log.warning("Invalid value for attribute '%.*s' @ line %d", int(Name.size()), Name.data(), tag->LineNo);
       };
 
-      parse_pattern(parse_pattern, Tag, id);
+      XTag *next = nullptr;
+      for (int a=1; a < std::ssize(tag->Attribs); a++) {
+         auto &name = tag->Attribs[a].Name;
+         auto &val = tag->Attribs[a].Value;
+         if (val.empty()) continue;
 
-      if (x.defined())      pattern->setX(Unit(x, rel_coords ? FD_SCALED : 0));
-      if (y.defined())      pattern->setY(Unit(y, rel_coords ? FD_SCALED : 0));
-      if (width.defined())  pattern->setWidth(Unit(width, rel_coords ? FD_SCALED : 0));
-      if (height.defined()) pattern->setHeight(Unit(height, rel_coords ? FD_SCALED : 0));
+         switch(strhash(name)) {
+            case SVF_patternContentUnits:
+               if (content_units) break;
+               if (iequals("userSpaceOnUse", val)) content_units = VUNIT::USERSPACE;
+               else if (iequals("objectBoundingBox", val)) content_units = VUNIT::BOUNDING_BOX;
+               else invalid_value(name);
+               break;
 
-      if (id.empty()) {
-         FreeResource(pattern);
-         log.trace("Failed to create a valid definition.");
+            case SVF_patternUnits:
+               // 'userSpace' is a deprecated option from SVG 1.0 - perhaps due to the introduction of
+               // patternContentUnits.
+               if (units) break;
+               if (iequals("userSpaceOnUse", val) or iequals("userSpace", val)) units = VUNIT::USERSPACE;
+               else if (iequals("objectBoundingBox", val)) units = VUNIT::BOUNDING_BOX;
+               else invalid_value(name);
+               break;
+
+            case SVF_patternTransform: if (not transform) transform = val; break;
+
+            case SVF_id: if (tag IS &Tag) id = val; break;
+
+            case SVF_overflow:
+               if (overflow) break;
+               switch(strhash(val)) {
+                  case SVF_visible: overflow = VOF::VISIBLE; break;
+                  case SVF_hidden:  overflow = VOF::HIDDEN; break;
+                  case SVF_scroll:  overflow = VOF::SCROLL; break;
+                  case SVF_inherit: overflow = VOF::INHERIT; break;
+                  default: invalid_value(name);
+               }
+               break;
+
+            case SVF_opacity: if (not opacity) opacity = svtonum<double>(val); break;
+            case SVF_x:       if (not x.defined()) x = SVGUnit(val); break;
+            case SVF_y:       if (not y.defined()) y = SVGUnit(val); break;
+            case SVF_width:   if (not width.defined()) width = SVGUnit(val); break;
+            case SVF_height:  if (not height.defined()) height = SVGUnit(val); break;
+
+            case SVF_preserveAspectRatio: if (not aspect_ratio) aspect_ratio = parse_aspect_ratio(val); break;
+
+            case SVF_viewBox: {
+               if (view_box) break;
+               std::array<double, 4> box = { 0, 0, 0, 0 };
+               read_numseq(val, { &box[0], &box[1], &box[2], &box[3] });
+               if ((box[2] > 0) and (box[3] > 0)) view_box = box;
+               else invalid_value(name);
+               break;
+            }
+
+            case SVF_href:
+            case SVF_xlink_href:
+               if (auto other = find_href_tag(Self, val)) {
+                  if (not svg_tag_is(*other, SVF_pattern)) {
+                     log.warning("Pattern reference '%s' @ line %d is not a pattern.", val.c_str(), tag->LineNo);
+                  }
+                  else if (visited.contains(other)) {
+                     log.warning("Circular pattern reference '%s' @ line %d.", val.c_str(), tag->LineNo);
+                  }
+                  else next = other;
+               }
+               break;
+
+            default:
+               log.warning("%s attribute '%s' unrecognised @ line %d", tag->name(), name.c_str(), tag->LineNo);
+               break;
+         }
       }
 
-      if (!InitObject(pattern)) {
-         // Child vectors for the pattern need to be instantiated and belong to the pattern's Viewport.
+      if ((not content) and (tag->hasChildTags())) content = tag;
+      tag = next;
+   }
+
+   if (id.empty()) {
+      log.trace("Failed to create a valid definition.");
+      FreeResource(pattern);
+      return;
+   }
+
+   // NOTE: In SVG 1.0 the default pattern units value is 'userSpaceOnUse'; from 1.1 it changed to 'objectBoundingBox'.
+
+   const bool rel_coords = units.value_or(VUNIT::BOUNDING_BOX) IS VUNIT::BOUNDING_BOX;
+   pattern->setUnits(units.value_or(VUNIT::BOUNDING_BOX));
+   pattern->setContentUnits(content_units.value_or(VUNIT::USERSPACE));
+
+   if (x.defined())      pattern->setX(Unit(x, rel_coords ? FD_SCALED : 0));
+   if (y.defined())      pattern->setY(Unit(y, rel_coords ? FD_SCALED : 0));
+   if (width.defined())  pattern->setWidth(Unit(width, rel_coords ? FD_SCALED : 0));
+   if (height.defined()) pattern->setHeight(Unit(height, rel_coords ? FD_SCALED : 0));
+   if (opacity)          pattern->setOpacity(*opacity);
+   if (transform)        pattern->setTransform(*transform);
+   if (overflow)         viewport->setOverflow(*overflow);
+   if (aspect_ratio)     pattern->setAspectRatio(*aspect_ratio);
+
+   if (view_box) {
+      viewport->setViewX((*view_box)[0]);
+      viewport->setViewY((*view_box)[1]);
+      viewport->setViewWidth((*view_box)[2]);
+      viewport->setViewHeight((*view_box)[3]);
+   }
+
+   if (!InitObject(pattern)) {
+      // Child vectors for the pattern need to be instantiated and belong to the pattern's Viewport.
+      if (content) {
          svgState state(Self);
-         for (auto tag : children) {
-            state.process_children(*tag, viewport);
-         }
+         state.process_children(*content, viewport);
+      }
 
-         if (!Self->Cloning) {
-            Self->Scene->addDef(id, pattern);
-            track_object(Self, pattern);
-         }
+      if (!Self->Cloning) {
+         Self->Scene->addDef(id, pattern);
+         track_object(Self, pattern);
       }
-      else {
-         FreeResource(pattern);
-         log.trace("Pattern initialisation failed.");
-      }
+   }
+   else {
+      FreeResource(pattern);
+      log.trace("Pattern initialisation failed.");
    }
 }
 

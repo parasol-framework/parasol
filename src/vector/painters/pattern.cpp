@@ -26,9 +26,43 @@ contains the pattern content.
 
 *********************************************************************************************************************/
 
-static ERR VECTORPATTERN_Draw(extVectorPattern *Self, struct acDraw *Args)
+// Prepare the pattern's viewport for rendering against a consumer.  BoxWidth and BoxHeight are the dimensions of the
+// consumer's bounding box, to which bounding-box content units are relative.  Scale is the resolution scaling that
+// is applied to the pattern's target area, e.g. when the tile bitmap is rendered at display scale.
+//
+// A configured viewbox is fitted to the target area with the viewport's aspect ratio, so no preparation is needed.
+// Without a viewbox, a content scale is derived so that user-space content retains its coordinate scale and
+// bounding-box content is stretched independently on each axis.  The aspect ratio has no effect in that case.  The
+// viewport is only marked dirty if the derived mapping has changed.
+
+void prepare_pattern(extVectorPattern *Self, double BoxWidth, double BoxHeight, double Scale)
 {
-   kt::Log log;
+   auto view = (extVectorViewport *)Self->Viewport;
+   std::optional<std::array<double, 2>> derived;
+
+   if ((view->vpViewWidth <= 0) or (view->vpViewHeight <= 0)) {
+      std::array<double, 2> scale = { Scale, Scale };
+      if (Self->ContentUnits IS VUNIT::BOUNDING_BOX) {
+         scale[0] *= BoxWidth;
+         scale[1] *= BoxHeight;
+      }
+
+      if ((scale[0] > 0) and (scale[1] > 0)) derived = scale;
+   }
+
+   if (derived != view->vpDerivedScale) {
+      view->vpDerivedScale = derived;
+      mark_dirty(view, RC::DIRTY);
+   }
+}
+
+//********************************************************************************************************************
+// Render the pattern's scene to its tile bitmap.  The scene's page dimensions must have been defined and the
+// viewport prepared with prepare_pattern().
+
+ERR render_pattern(extVectorPattern *Self)
+{
+   kt::Log log(__FUNCTION__);
 
    if (not Self->Scene->PageWidth) return log.warning(ERR::FieldNotSet);
    if (not Self->Scene->PageHeight) return log.warning(ERR::FieldNotSet);
@@ -46,10 +80,17 @@ static ERR VECTORPATTERN_Draw(extVectorPattern *Self, struct acDraw *Args)
 
    clearmem(Self->Bitmap->Data, Self->Bitmap->LineWidth * Self->Bitmap->Height);
    Self->Scene->Bitmap = Self->Bitmap;
-   auto error = acDraw(Self->Scene);
-   if (error != ERR::Okay) return error;
+   return acDraw(Self->Scene);
+}
 
-   return ERR::Okay;
+//********************************************************************************************************************
+// Drawing the pattern directly renders a single tile to the internal bitmap at the dimensions of the pattern's
+// Scene.  In the absence of a consumer, the tile serves as the bounding box for bounding-box content units.
+
+static ERR VECTORPATTERN_Draw(extVectorPattern *Self, struct acDraw *Args)
+{
+   prepare_pattern(Self, Self->Scene->PageWidth, Self->Scene->PageHeight, 1.0);
+   return render_pattern(Self);
 }
 
 //********************************************************************************************************************
@@ -80,10 +121,53 @@ static ERR VECTORPATTERN_Init(extVectorPattern *Self)
 /*********************************************************************************************************************
 
 -FIELD-
-ContentUnits: Not yet implemented.
+AspectRatio: Controls how the viewport's viewbox is fitted to the pattern tile.
+Lookup: ARF
 
-In compliance with SVG requirements, the application of ContentUnits is only effective if the Viewport's X, Y, Width
-and Height fields have been defined.  The default setting is `USERSPACE`.
+The AspectRatio determines how the source area defined by the #Viewport's `ViewX`, `ViewY`, `ViewWidth` and
+`ViewHeight` fields is scaled and aligned within each pattern tile.  It is equivalent to the `preserveAspectRatio`
+attribute of SVG patterns.  The default value is `MEET|X_MID|Y_MID`, which scales the content uniformly so that it
+fits within the tile and centres it.  Use `SLICE` to fill the tile while clipping the overflowing content, or `NONE`
+to stretch the content independently on each axis.
+
+The AspectRatio is only effective if a viewbox has been defined for the #Viewport.  It controls the fitting of
+content within a tile and has no effect on the tile's dimensions or position, which are determined by #X, #Y, #Width,
+#Height and #Units.
+
+This field is a convenient alias for the `AspectRatio` of the pattern's #Viewport, and the two always report the
+same value.
+
+*********************************************************************************************************************/
+
+static ERR VECTORPATTERN_GET_AspectRatio(extVectorPattern *Self, ARF &Value)
+{
+   Value = ((extVectorViewport *)Self->Viewport)->vpAspectRatio;
+   return ERR::Okay;
+}
+
+static ERR VECTORPATTERN_SET_AspectRatio(extVectorPattern *Self, ARF Value)
+{
+   if (((extVectorViewport *)Self->Viewport)->vpAspectRatio IS Value) return ERR::Okay;
+
+   if (auto error = Self->Viewport->setAspectRatio(Value); error != ERR::Okay) return error;
+   Self->modified();
+   return ERR::Okay;
+}
+
+/*********************************************************************************************************************
+
+-FIELD-
+ContentUnits: Defines the coordinate system for the content of the pattern.
+
+ContentUnits declares the coordinate system of the vectors in the pattern's #Viewport.  The default setting is
+`USERSPACE`, in which content coordinates are expressed in the same units as the pattern tile.  If set to
+`BOUNDING_BOX`, content coordinates are expressed as fractions of the bounding box of the vector that is consuming
+the pattern, e.g. a coordinate of `(0.5,0.5)` refers to the centre of that bounding box.  In this case the
+content is stretched independently on each axis and the #AspectRatio has no effect.  The mapping is always relative
+to the consumer's bounding box, regardless of the #Units setting.
+
+In compliance with SVG, ContentUnits has no effect if a viewbox has been defined in the #Viewport.  The viewbox
+determines the content's coordinate system in that case.
 
 -FIELD-
 Height: Height of the pattern tile.
@@ -236,6 +320,10 @@ Viewport: Refers to the viewport that contains the pattern.
 The Viewport refers to a @VectorViewport object that is created to host the vectors for the rendered pattern.  If the
 Viewport does not contain at least one vector that renders an image, the pattern will be ineffective.
 
+The renderer manages the transform and size of the Viewport so that it matches each pattern tile.  Defining the
+Viewport's `ViewX`, `ViewY`, `ViewWidth` and `ViewHeight` fields establishes a viewbox for the pattern content, which
+is fitted to the tile according to the #AspectRatio.
+
 -FIELD-
 Width: Width of the pattern tile.
 
@@ -309,8 +397,8 @@ static const FieldArray clVectorPatternFields[] = {
    { "SpreadMethod", FDF_INT|FDF_LOOKUP|FDF_RW, nullptr, VECTORPATTERN_SET_SpreadMethod, &clVectorPatternSpreadMethod },
    { "Units",        FDF_INT|FDF_LOOKUP|FDF_RW, nullptr, nullptr, &clVectorPatternUnits },
    { "ContentUnits", FDF_INT|FDF_LOOKUP|FDF_RW, nullptr, nullptr, &clVectorPatternContentUnits },
-   //{ "AspectRatio", FDF_VIRTUAL|FDF_INTFLAGS|FDF_RW, VECTORPATTERN_GET_AspectRatio, VECTORPATTERN_SET_AspectRatio, &clAspectRatio },
    // Virtual fields
+   { "AspectRatio",  FDF_VIRTUAL|FDF_INTFLAGS|FDF_RW, VECTORPATTERN_GET_AspectRatio, VECTORPATTERN_SET_AspectRatio, &clAspectRatio },
    { "Transform",    FDF_VIRTUAL|FDF_CPPSTRING|FDF_W, nullptr, VECTORPATTERN_SET_Transform },
    END_FIELD
 };

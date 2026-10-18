@@ -1767,7 +1767,8 @@ static void fill_pattern(VectorState &State, const TClipRectangle<double> &Bound
    const double elem_height = (Pattern.Units IS VUNIT::USERSPACE) ? ViewHeight : Bounds.height();
    const double x_offset = (Pattern.Units IS VUNIT::USERSPACE) ? 0 : Bounds.left;
    const double y_offset = (Pattern.Units IS VUNIT::USERSPACE) ? 0 : Bounds.top;
-   double dx, dy;
+   double dx, dy, content_scale;
+   int page_width, page_height;
 
    auto t_scale = Transform.scale();
    Path->approximation_scale(t_scale);
@@ -1790,8 +1791,9 @@ static void fill_pattern(VectorState &State, const TClipRectangle<double> &Bound
       else if (Pattern.Y.defined()) dy = y_offset + Pattern.Y;
       else dy = y_offset;
 
-      auto page_width = int(target_width);
-      auto page_height = int(target_height);
+      page_width = int(target_width);
+      page_height = int(target_height);
+      content_scale = 1.0;
 
       if ((page_width != Pattern.Scene->PageWidth) or (page_height != Pattern.Scene->PageHeight)) {
          Pattern.Scene->PageWidth  = page_width;
@@ -1800,18 +1802,10 @@ static void fill_pattern(VectorState &State, const TClipRectangle<double> &Bound
       }
    }
    else {
-      // BOUNDING_BOX.  The tile size is 1.0x1.0 and member coordinates should range from 0.0 - 1.0.
-      // The tile will be stretched to fit the target Bounds area.  The Pattern Viewport must have
-      // its ViewX/Y/W/H values set to 0/0/1.0/1.0.
+      // BOUNDING_BOX.  Tile coordinates are relative to the target Bounds area.  The tile's content is fitted by
+      // prepare_pattern(), independently of the tile units.
 
       double target_width, target_height;
-
-      ((extVectorViewport *)Pattern.Viewport)->vpAspectRatio = ARF::X_MAX|ARF::Y_MAX; // Stretch the 1x1 viewport to match the PageW/H
-
-      if (Pattern.ContentUnits IS VUNIT::BOUNDING_BOX) {
-         Pattern.Viewport->setViewWidth(double(Pattern.Width));
-         Pattern.Viewport->setViewHeight(double(Pattern.Height));
-      }
 
       if (Pattern.Width.scaled()) target_width = Pattern.Width * elem_width;
       else target_width = Pattern.Width;
@@ -1825,8 +1819,9 @@ static void fill_pattern(VectorState &State, const TClipRectangle<double> &Bound
       // Scale the bitmap so that it matches the final scale on the display.  This requires a matching inverse
       // adjustment when computing the final transform.
 
-      auto page_width = int(target_width * (SCALE_BITMAP ? t_scale : 1.0));
-      auto page_height = int(target_height * (SCALE_BITMAP ? t_scale : 1.0));
+      content_scale = SCALE_BITMAP ? t_scale : 1.0;
+      page_width = int(target_width * content_scale);
+      page_height = int(target_height * content_scale);
 
       // Mark the bitmap for recomputation if needed.
 
@@ -1845,13 +1840,17 @@ static void fill_pattern(VectorState &State, const TClipRectangle<double> &Bound
       }
    }
 
-   // The pattern's scene may carry a lingering transform if it was also consumed as a viewport fill
-   // (see draw_vectors()), so restore the identity transform before checking for a redraw.
+   // The pattern's viewport may carry a lingering transform and size if it was also consumed as a viewport fill
+   // (see draw_vectors()), so restore the identity transform and tile size before checking for a redraw.
    set_render_transform(Pattern.Scene->Viewport, agg::trans_affine());
+   set_viewport_fixed_size(Pattern.Viewport, page_width, page_height);
+
+   // Bounding-box content units are always relative to the consumer, independently of the tile units.
+   prepare_pattern(&Pattern, Bounds.width(), Bounds.height(), content_scale);
 
    // Redraw the pattern source if any part of the definition has been marked dirty.
    if ((((extVectorScene *)Pattern.Scene)->SubtreeDirty) or (!Pattern.Bitmap)) {
-      if (acDraw(&Pattern) != ERR::Okay) return;
+      if (render_pattern(&Pattern) != ERR::Okay) return;
    }
 
    agg::trans_affine transform;

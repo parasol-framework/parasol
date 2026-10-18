@@ -147,13 +147,11 @@ private:
    std::stack<ClipBuffer> mClipStack;
 
    double view_width() {
-      if (mView->vpViewWidth > 0) return mView->vpViewWidth;
-      else return viewport_coordinate_width(mView);
+      return viewport_coordinate_width(mView);
    }
 
    double view_height() {
-      if (mView->vpViewHeight > 0) return mView->vpViewHeight;
-      else return viewport_coordinate_height(mView);
+      return viewport_coordinate_height(mView);
    }
 
    void render_fill(VectorState &, extVector &, agg::rasterizer_scanline_aa<> &, extPainter &);
@@ -999,12 +997,16 @@ void SceneRenderer::draw_vectors(extVector *CurrentVector, VectorState &ParentSt
             auto save_clip = state.mClip;
             auto clip = state.mClip;
 
-            if ((state.mOverflowX IS VOF::HIDDEN) or (state.mOverflowX IS VOF::SCROLL) or ((view->vpAspectRatio & ARF::SLICE) != ARF::NIL)) {
+            auto source = viewport_source(view);
+
+            if ((state.mOverflowX IS VOF::HIDDEN) or (state.mOverflowX IS VOF::SCROLL) or
+                ((source.AspectRatio & ARF::SLICE) != ARF::NIL)) {
                if (view->vpBounds.left > state.mClip.left) state.mClip.left = view->vpBounds.left;
                if (view->vpBounds.right < state.mClip.right) state.mClip.right = view->vpBounds.right;
             }
 
-            if ((state.mOverflowY IS VOF::HIDDEN) or (state.mOverflowY IS VOF::SCROLL) or ((view->vpAspectRatio & ARF::SLICE) != ARF::NIL)) {
+            if ((state.mOverflowY IS VOF::HIDDEN) or (state.mOverflowY IS VOF::SCROLL) or
+                ((source.AspectRatio & ARF::SLICE) != ARF::NIL)) {
                if (view->vpBounds.top > state.mClip.top) state.mClip.top = view->vpBounds.top;
                if (view->vpBounds.bottom < state.mClip.bottom) state.mClip.bottom = view->vpBounds.bottom;
             }
@@ -1032,7 +1034,7 @@ void SceneRenderer::draw_vectors(extVector *CurrentVector, VectorState &ParentSt
                if (state.mClip.bottom < save_rb_clip.y2) mRenderBase.m_clip_box.y2 = state.mClip.bottom;
 
                log.trace("ViewBox (%g %g %g %g) Scale (%g %g) Fix (%g %g %g %g)",
-                  view->vpViewX, view->vpViewY, view->vpViewWidth, view->vpViewHeight,
+                  source.X, source.Y, source.Width, source.Height,
                   view->vpXScale, view->vpYScale,
                   view->FinalX, view->FinalY, view->vpFixedWidth, view->vpFixedHeight);
 
@@ -1065,34 +1067,26 @@ void SceneRenderer::draw_vectors(extVector *CurrentVector, VectorState &ParentSt
                   // the current viewport.  NB: There is a performance penalty in that transforms will be
                   // applied in realtime.
 
-                  // Use transforms for the purpose of placing the pattern correctly
+                  // Use transforms for the purpose of placing the pattern correctly.  Bounding-box content units
+                  // are relative to this viewport.
 
-                  auto &t = view->Transform;
-                  if (set_render_transform(view->Fill[0].Pattern->Scene->Viewport, t)) {
+                  auto draw_pattern = [&](extVectorPattern *Pattern) {
+                     if (not set_render_transform(Pattern->Scene->Viewport, view->Transform)) return;
 
-                     if (view->Fill[0].Pattern->Units IS VUNIT::BOUNDING_BOX) {
-                        view->Fill[0].Pattern->Scene->setPageWidth(view->Scene->PageWidth);
-                        view->Fill[0].Pattern->Scene->setPageHeight(view->Scene->PageHeight);
-                        set_viewport_fixed_size(view->Fill[0].Pattern->Scene->Viewport, view->vpFixedWidth,
-                           view->vpFixedHeight);
+                     if (Pattern->Units IS VUNIT::BOUNDING_BOX) {
+                        Pattern->Scene->setPageWidth(view->Scene->PageWidth);
+                        Pattern->Scene->setPageHeight(view->Scene->PageHeight);
+                        set_viewport_fixed_size(Pattern->Scene->Viewport, view->vpFixedWidth, view->vpFixedHeight);
                      }
 
-                     draw_vectors((extVectorViewport *)((extVectorPattern *)view->Fill[0].Pattern)->Viewport, state);
-                  }
+                     prepare_pattern(Pattern, view->vpFixedWidth, view->vpFixedHeight, 1.0);
+                     draw_vectors((extVectorViewport *)Pattern->Viewport, state);
+                  };
 
-                  if ((view->FGFill) and (view->Fill[1].Pattern)) {
-                     // Support for foreground fill patterns
-                     if (set_render_transform(view->Fill[1].Pattern->Scene->Viewport, t)) {
+                  draw_pattern((extVectorPattern *)view->Fill[0].Pattern);
 
-                        if (view->Fill[1].Pattern->Units IS VUNIT::BOUNDING_BOX) {
-                           view->Fill[1].Pattern->Scene->setPageWidth(view->Scene->PageWidth);
-                           view->Fill[1].Pattern->Scene->setPageHeight(view->Scene->PageHeight);
-                           set_viewport_fixed_size(view->Fill[1].Pattern->Scene->Viewport, view->vpFixedWidth,
-                              view->vpFixedHeight);
-                        }
-
-                        draw_vectors((extVectorViewport *)((extVectorPattern *)view->Fill[1].Pattern)->Viewport, state);
-                     }
+                  if ((view->FGFill) and (view->Fill[1].Pattern)) { // Support for foreground fill patterns
+                     draw_pattern((extVectorPattern *)view->Fill[1].Pattern);
                   }
                }
 
