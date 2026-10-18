@@ -262,13 +262,15 @@ end
 @Test global function Snake()        hashTestSVG('patterns/snake.svg', 0xaee1a465) end
 @Test global function VStripes()     hashTestSVG('patterns/vstripes.svg', 0x2f85dc21) end
 @Test global function PatTransform() hashTestSVG('patterns/pattern-transform.svg', 0xaf74c37c) end
+@Test global function PatTransformOrigin() hashTestSVG('patterns/pattern-transform-origin.svg', 0x57413a54) end
+@Test global function PatBBoxScaled() hashTestSVG('patterns/pattern-bbox-scaled.svg', 0xa68c847c) end
 @Test global function W3Patterns01() hashTestSVG('patterns/w3-pservers-grad-03-b.svg', 0x339a1838) end
 @Test global function W3Patterns02() hashTestSVG('patterns/w3-pservers-pattern-01-b.svg', 0x3eab192f) end
-@Test global function W3Patterns03() hashTestSVG('patterns/w3-pservers-pattern-02-f.svg', 0x9cbdf7d1) end
+@Test global function W3Patterns03() hashTestSVG('patterns/w3-pservers-pattern-02-f.svg', 0x288844a3) end
 
 @Test global function W3Coords01() hashTestSVG('coords/w3-coords-coord-01-t.svg', 0x8a49c228) end
 @Test global function W3Coords02() hashTestSVG('coords/w3-coords-coord-02-t.svg', 0x8a49c228) end
-@Test global function W3Coords03() hashTestSVG('coords/w3-coords-units-01-b.svg', 0x6d584b07) end
+@Test global function W3Coords03() hashTestSVG('coords/w3-coords-units-01-b.svg', 0xc0bc7cb8) end
 @Test global function W3Coords04() hashTestSVG('coords/w3-coords-units-02-b.svg', 0x36cbbc1f) end
 @Test global function W3Coords05() hashTestSVG('coords/w3-coords-units-03-b.svg', 0xb462f91b) end
 @Test global function W3Coords06() hashTestSVG('coords/w3-coords-viewattr-01-b.svg', -1) end

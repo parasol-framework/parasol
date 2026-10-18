@@ -1767,14 +1767,13 @@ static void fill_pattern(VectorState &State, const TClipRectangle<double> &Bound
    const double elem_height = (Pattern.Units IS VUNIT::USERSPACE) ? ViewHeight : Bounds.height();
    const double x_offset = (Pattern.Units IS VUNIT::USERSPACE) ? 0 : Bounds.left;
    const double y_offset = (Pattern.Units IS VUNIT::USERSPACE) ? 0 : Bounds.top;
-   double dx, dy, content_scale;
+   double dx, dy, content_scale, target_width, target_height;
    int page_width, page_height;
 
    auto t_scale = Transform.scale();
    Path->approximation_scale(t_scale);
 
    if (Pattern.Units IS VUNIT::USERSPACE) { // Use fixed coords in the pattern; equiv. to 'userSpaceOnUse' in SVG
-      double target_width, target_height;
       if (Pattern.Width.scaled()) target_width = elem_width * Pattern.Width;
       else if (Pattern.Width.defined()) target_width = Pattern.Width;
       else target_width = 1;
@@ -1805,16 +1804,14 @@ static void fill_pattern(VectorState &State, const TClipRectangle<double> &Bound
       // BOUNDING_BOX.  Tile coordinates are relative to the target Bounds area.  The tile's content is fitted by
       // prepare_pattern(), independently of the tile units.
 
-      double target_width, target_height;
-
       if (Pattern.Width.scaled()) target_width = Pattern.Width * elem_width;
       else target_width = Pattern.Width;
 
       if (Pattern.Height.scaled()) target_height = Pattern.Height * elem_height;
       else target_height = Pattern.Height;
 
-      dx = x_offset + ((elem_width * Pattern.X) * (SCALE_BITMAP ? t_scale : 1.0));
-      dy = y_offset + ((elem_height * Pattern.Y) * (SCALE_BITMAP ? t_scale : 1.0));
+      dx = x_offset + (elem_width * Pattern.X);
+      dy = y_offset + (elem_height * Pattern.Y);
 
       // Scale the bitmap so that it matches the final scale on the display.  This requires a matching inverse
       // adjustment when computing the final transform.
@@ -1840,10 +1837,21 @@ static void fill_pattern(VectorState &State, const TClipRectangle<double> &Bound
       }
    }
 
-   // The pattern's viewport may carry a lingering transform and size if it was also consumed as a viewport fill
-   // (see draw_vectors()), so restore the identity transform and tile size before checking for a redraw.
-   set_render_transform(Pattern.Scene->Viewport, agg::trans_affine());
-   set_viewport_fixed_size(Pattern.Viewport, page_width, page_height);
+   // The content is laid out over the exact tile area at content_scale, then squeezed on each axis to fit the
+   // truncated page size.  The final transform reverses the squeeze, so content keeps its dimensions while the tile
+   // pitch stays exact.  This also replaces any lingering transform and size from consumption as a viewport fill
+   // (see draw_vectors()) before checking for a redraw.
+
+   const double layout_width  = target_width * content_scale;
+   const double layout_height = target_height * content_scale;
+   agg::trans_affine page_fit;
+
+   if ((page_width > 0) and (page_height > 0) and (layout_width > 0) and (layout_height > 0)) {
+      page_fit.scale(page_width / layout_width, page_height / layout_height);
+   }
+
+   set_render_transform(Pattern.Scene->Viewport, page_fit);
+   set_viewport_fixed_size(Pattern.Viewport, layout_width, layout_height);
 
    // Bounding-box content units are always relative to the consumer, independently of the tile units.
    prepare_pattern(&Pattern, Bounds.width(), Bounds.height(), content_scale);
@@ -1853,17 +1861,22 @@ static void fill_pattern(VectorState &State, const TClipRectangle<double> &Bound
       if (render_pattern(&Pattern) != ERR::Okay) return;
    }
 
+   // Map bitmap pixels to the target's user space, in order: bitmap pixels to tile units (inverting the bitmap
+   // scale and any truncation of the page size), tile units to the pattern coordinate system by offsetting with the
+   // tile origin, then the pattern system to user space with patternTransform.  The tile origin must be transformed
+   // with the tile, per SVG.
+
    agg::trans_affine transform;
+
+   if ((page_width > 0) and (page_height > 0)) {
+      transform.scale(target_width / page_width, target_height / page_height);
+   }
+
+   transform.translate(dx, dy);
 
    if (not Pattern.Matrices.empty()) { // Client used the 'patternTransform' SVG attribute
       auto &m = Pattern.Matrices[0];
-      transform.load_all(m.ScaleX, m.ShearY, m.ShearX, m.ScaleY, m.TranslateX + dx, m.TranslateY + dy);
-   }
-   else transform.translate(dx, dy);
-
-   if ((SCALE_BITMAP) and (Pattern.Units != VUNIT::USERSPACE)) {
-      // Invert any prior bitmap scaling
-      transform.scale(1.0 / t_scale, 1.0 / t_scale);
+      transform *= agg::trans_affine(m.ScaleX, m.ShearY, m.ShearX, m.ScaleY, m.TranslateX, m.TranslateY);
    }
 
    // NB: If the Transform multiplication isn't performed, the pattern tile effectively becomes detached
