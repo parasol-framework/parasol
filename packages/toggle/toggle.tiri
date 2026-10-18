@@ -1,7 +1,7 @@
-@Package(name="gui/checkbox", version="1.0")
+@Package(name="gui/toggle", version="1.0")
 
 --[[
-The gui.checkbox API creates and manages checkboxes in the user interface.
+The gui.toggle API creates and manages toggles in the user interface.
 
 Documentation is available in the Kotuku Wiki.
 --]]
@@ -25,16 +25,16 @@ function toggleState()
    &events?.activate()
 end
 
-gui.checkbox = function(Options)
+gui.toggle = function(Options)
    self = entity { -- Public interface
       events         = Options.events ?? { },
       parentViewport = Options.target,
       state          = Options.state ?? 0,
       text           = nil, -- A VectorText that represents the string
-      viewport       = nil, -- The checkbox's primary viewport
+      viewport       = nil, -- The toggle's primary viewport
    }
 
-   -- Change the active state of the checkbox to disabled or enabled
+   -- Change the active state of the toggle to disabled or enabled
 
    self.disable = function()
       &disabled = true
@@ -60,7 +60,7 @@ gui.checkbox = function(Options)
       theme = gui.getTheme(&parentViewport)
       &theme = theme.input
 
-      -- The checkbox is a square of the widget height, and the icon and label spacing scale with it
+      -- The toggle is a square of the widget height, and the icon and label spacing scale with it
 
       HEIGHT    <const> = Options.height ?? DEFAULT_HEIGHT
       ICON_SIZE <const> = HEIGHT * 0.56
@@ -152,10 +152,8 @@ gui.checkbox = function(Options)
 
       &viewport.mtSubscribeInput(JTYPE_BUTTON, function(Viewport, Msg)
          repeat
-            if Msg.type is JET_LMB then
-               if Msg.value > 0 then
-                  toggleState()
-               end
+            if Msg.type is JET_LMB and Msg.value > 0 then
+               toggleState()
             end
             Msg = Msg.next
          until not Msg

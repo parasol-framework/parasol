@@ -1,9 +1,9 @@
 {
   "schemaVersion": 1,
-  "name": "gui/checkbox",
+  "name": "gui/toggle",
   "version": "1.0",
-  "description": "Checkbox widget for Tiri graphical interfaces.",
-  "entry": "checkbox.tiri",
+  "description": "Toggle widget for Tiri graphical interfaces.",
+  "entry": "toggle.tiri",
   "authors": [
     {
       "name": "Paul Manias",
@@ -15,6 +15,7 @@
   "homepage": "https://github.com/kotuku-group/kotuku/wiki/Tiri-GUI-API",
   "repository": "https://github.com/kotuku-group/kotuku.git",
   "keywords": [
+    "toggle",
     "checkbox",
     "gui",
     "widget"
@@ -27,9 +28,9 @@
   },
   "files": [
     {
-      "path": "checkbox.tiri",
-      "size": 4886,
-      "sha256": "69393367e5daf03e964cefc9475ad004232a3a4424633a4ae0fcc1078918ca95",
+      "path": "toggle.tiri",
+      "size": 4871,
+      "sha256": "67c7ba5bd08cf1371ff16f3173e0c1cc6431cec0e1faa8fe4fe190fcb7845a0b",
       "mediaType": "application/vnd.kotuku.tiri"
     }
   ]
