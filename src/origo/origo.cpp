@@ -71,7 +71,7 @@ The following options are available:
  --jit-options   Development options that control the behaviour of the compiler.
  --version       Prints the version, git branch and commit, and build type on separate lines.
  --cache         Enables automatic caching of script results.
- --clear-cache   Removes temp:tiri/cache/ before running a script.
+ --clear-cache   Removes the Tiri cache folder before running a script.
 
 Logging options; messages are printed to stderr:
 
@@ -165,10 +165,17 @@ static ERR process_args(void)
             glCache = true;
          }
          else if (hash IS ARG_CLEAR_CACHE) {
-            auto error = AnalysePath("temp:tiri/cache/", nullptr);
-            if (error IS ERR::Okay) error = DeleteFile("temp:tiri/cache/", nullptr);
-            if (error != ERR::Okay and error != ERR::FileNotFound) {
-               log.warning("Failed to clear temp:tiri/cache/: %s", GetErrorMsg(error));
+            // Tiri selects home:.cache/tiri/ on Linux when home:.cache/ exists; clear every candidate location.
+#ifdef __linux__
+            for (auto path : { "temp:tiri/cache/", "home:.cache/tiri/" }) {
+#else
+            for (auto path : { "temp:tiri/cache/" }) {
+#endif
+               auto error = AnalysePath(path, nullptr);
+               if (error IS ERR::Okay) error = DeleteFile(path, nullptr);
+               if (error != ERR::Okay and error != ERR::FileNotFound) {
+                  log.warning("Failed to clear %s: %s", path, GetErrorMsg(error));
+               }
             }
          }
          else if (hash IS ARG_BACKSTAGE) {

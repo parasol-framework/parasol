@@ -158,6 +158,7 @@
 <p>In a hosted environment, the supplied coordinates describe the host window position.  The <fl>LeftMargin</fl> and <fl>TopMargin</fl> fields can be used when translating between host window coordinates and client-area coordinates.</p>
 <p>For full-screen displays, MoveToPoint can alter the screen position for the hardware device managing the display output.  This is a rare feature that requires hardware support.  <code>ERR::NoSupport</code> is returned if this feature is unavailable.</p>
 <p>Wayland does not expose absolute top-level positions.  This action returns <code>ERR::NoSupport</code> there and leaves the display coordinates unchanged.</p>
+<p>Headless displays have no host window.  The coordinates are stored directly and the owning surface is notified through <fl>ResizeFeedback</fl>.</p>
       </description>
       <result>
         <error code="Okay">Operation successful.</error>
@@ -311,6 +312,7 @@
       <description>
 <p>SetDisplay() changes the active display mode or hosted display size, depending on the platform.  It can alter display position, viewport dimensions, bit depth and refresh rate when the active display driver supports those features.  The new settings are applied immediately, although the graphics card, monitor or host window manager may introduce a short delay.</p>
 <p>On Wayland, X and Y must match the current display coordinates.  A size change takes effect when the client commits new content.  Compositor-initiated size changes arrive through configure events.</p>
+<p>Headless displays have no host window.  The new geometry is applied to the display bitmap and reported immediately through <fl>ResizeFeedback</fl>.</p>
 <p>To keep any of the display settings at their current value, set the appropriate parameters to zero to leave them unchanged.  Only the parameters that you set will be used.</p>
 <p>If a requested full-screen mode is not available, the driver may choose the closest supported mode.</p>
 <p>Only the original owner of the display object is allowed to change the display settings.</p>

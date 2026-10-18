@@ -3,6 +3,7 @@
 include 'core'
 
 local glRoot
+local glCacheFolder
 local glSerial = 0
 
 @BeforeAll function setup()
@@ -10,6 +11,16 @@ local glSerial = 0
    check err
    glRoot = temp .. f'/automatic_cache.tests_{processing.task().id}_{mSys.PreciseTime()}/'
    local folder <close> = obj.new('file', { path=glRoot, flags=FL_NEW|FL_FOLDER })
+
+   -- Linux prefers home:.cache/tiri/ when home:.cache/ exists.  Children prepend glRoot to home:, so a local .cache/
+   -- folder takes priority over the user's real one and keeps every child cache under glRoot.
+
+   if mSys.GetSystemState().platform is 'Linux' then
+      local cache <close> = obj.new('file', { path=glRoot .. '.cache/', flags=FL_NEW|FL_FOLDER })
+      glCacheFolder = glRoot .. '.cache/tiri/'
+   else
+      glCacheFolder = glRoot .. 'tiri/cache/'
+   end
 end
 
 @AfterAll function cleanup()
@@ -48,7 +59,7 @@ end
 function run(Runner:str, Source:str, Mode:str, Cache:str, Jit:str):<num, str>
    local arguments = array<str> {
       Runner, 'source=' .. Source, 'mode=' .. Mode, 'cache=' .. Cache, '--log-trace', '--gfx-driver=headless',
-      '--set-volume', 'temp=' .. glRoot
+      '--set-volume', 'temp=' .. glRoot, '--set-volume', 'home=' .. glRoot
    }
    if Jit != '' then
       arguments.push('--jit-options')
@@ -65,7 +76,7 @@ end
 function package_import(Packages:str, Statement:str):<num, str>
    return child(array<str> {
       '--statement', Statement, '--log-trace', '--gfx-driver=headless',
-      '--set-volume', 'packages=' .. Packages, '--set-volume', 'temp=' .. glRoot
+      '--set-volume', 'packages=' .. Packages, '--set-volume', 'temp=' .. glRoot, '--set-volume', 'home=' .. glRoot
    })
 end
 
@@ -209,7 +220,7 @@ end
    local arguments = array<str> {
       '--statement', "import 'declared-package'; print('PACKAGE_CACHE_VALUE:' .. declared_package.value)",
       '--log-trace', '--gfx-driver=headless', '--set-volume', 'packages=' .. packages,
-      '--set-volume', 'temp=' .. glRoot
+      '--set-volume', 'temp=' .. glRoot, '--set-volume', 'home=' .. glRoot
    }
 
    for version in {1 into 2} do
@@ -257,7 +268,7 @@ end
    assert(code is 0 and output.find('Cache hit') is nil, output)
    assert_run(output, 42)
 
-   check mSys.DeleteFile(glRoot .. 'tiri/cache/')
+   check mSys.DeleteFile(glCacheFolder)
    code, output = run(runner, source, 'automatic', '', '')
    assert(code is 0 and output.find('Cache hit') is nil, output)
    assert_run(output, 42)

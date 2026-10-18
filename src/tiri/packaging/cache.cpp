@@ -3,12 +3,13 @@
 // The automatic cache directory is created lazily with user-private permissions.  Entries are published from uniquely
 // owned sibling files through the Core filesystem's move operation after the file is flushed and closed.  Publication
 // is best-effort; unsupported destinations may decline it.  Failed publication does not prevent source execution.
-// Cache files for deleted sources, obsolete configurations and older builds may accumulate; users may clear
-// `temp:tiri/cache/` at any time.  Size limits and crash-orphan cleanup are not currently provided, and cache
-// publication is not crash-durable.
+// The directory is `temp:tiri/cache/`, or `home:.cache/tiri/` on Linux when `home:.cache/` exists (see
+// `tiri::cache::cache_directory()`).  Cache files for deleted sources, obsolete configurations and older builds may
+// accumulate; users may clear the cache directory at any time.  Size limits and crash-orphan cleanup are not currently
+// provided, and cache publication is not crash-durable.
 //
 // Non-local Tiri libraries selected through the package index use a separate imported-module cache under the same
-// `temp:tiri/cache/` directory.  This cache is always enabled and does not set or require `SCF::AUTO_CACHE`; the flag
+// cache directory.  This cache is always enabled and does not set or require `SCF::AUTO_CACHE`; the flag
 // continues to control only complete root scripts.  Each non-local library executes through the same private module
 // initialiser boundary on cold and warm paths, and each resolved module initialises at most once per Lua state.  Imports
 // beginning with `./` or `../` remain inline dependencies of their owner and do not create independent entries.
@@ -18,8 +19,8 @@
 // malformed entries rebuild from source; one root-compilation validation session reuses immutable source snapshots and
 // completed candidate results across shared dependency paths.  Publication failures retain the valid in-memory
 // compilation.  Complete root byte-code embeds its imported-module graph, so direct dumps, `SaveToObject` output and
-// whole-script cache hits do not depend on the disposable module entries.  Applications may clear `temp:tiri/cache/` at
-// any time; entries are recreated on demand.
+// whole-script cache hits do not depend on the disposable module entries.  Applications may clear the cache directory
+// at any time; entries are recreated on demand.
 
 static std::atomic_uint64_t glCacheTemporarySequence = 0;
 
@@ -368,7 +369,7 @@ static void select_cache_destination(extTiri *Self, ERR SourceError)
       identity.Options = cache_compilation_options(Self);
       auto key = tiri::cache::file_key(identity);
       if (key.empty()) return;
-      Self->EffectiveCacheFile = std::format("temp:tiri/cache/{}.tbc", key);
+      Self->EffectiveCacheFile = tiri::cache::cache_directory() + key + ".tbc";
       Self->CacheOrigin = CacheDestinationOrigin::AUTOMATIC;
    }
    else return;
@@ -430,7 +431,7 @@ static ERR publish_cache(extTiri *Self)
    if ((not Self->CompilationManifest) or Self->EffectiveCacheFile.empty()) return ERR::InvalidData;
 
    if (Self->CacheOrigin IS CacheDestinationOrigin::AUTOMATIC) {
-      auto error = CreateFolder("temp:tiri/cache/", PERMIT::USER);
+      auto error = CreateFolder(tiri::cache::cache_directory(), PERMIT::USER);
       if ((error != ERR::Okay) and (error != ERR::FileExists)) return error;
    }
 

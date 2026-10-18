@@ -213,7 +213,7 @@ void attach_loaded_compilation_sources(lua_State *L, GCproto *Root,
          else if (registered.filename != source.display_filename or registered.first_line != source.first_line or
                   registered.total_lines != source.total_lines or
                   registered.declared_namespace != source.declared_namespace) {
-            log.warning("BC metadata for '%s' conflicts with the active registration.  Clear 'temp:tiri/cache/' if the bytecode came from the automatic cache.",
+            log.warning("BC metadata for '%s' conflicts with the active registration.  Clear the Tiri cache folder if the bytecode came from the automatic cache.",
                source.canonical_path.c_str());
          }
       }
