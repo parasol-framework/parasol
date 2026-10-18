@@ -1060,6 +1060,7 @@ static CSTRING diagnostic_code_name(ParserErrorCode Code)
       case ParserErrorCode::UnresolvedMethodReceiver: return "UnresolvedMethodReceiver";
       case ParserErrorCode::TooManyExceptionFilters: return "TooManyExceptionFilters";
       case ParserErrorCode::InvalidContextBinding: return "InvalidContextBinding";
+      case ParserErrorCode::InvalidOptionalCall: return "InvalidOptionalCall";
       default: return "Unknown";
    }
 }

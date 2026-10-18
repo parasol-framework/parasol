@@ -973,6 +973,19 @@ ExprNodePtr make_call_expr(SourceSpan Span, ExprNodePtr callee, ExprNodeList arg
    return node;
 }
 
+// Build `receiver.member?(...)`.  The callee remains an ordinary MemberExpr because only the selected member is
+// optional; the receiver itself must be a table.
+
+ExprNodePtr make_optional_member_call_expr(SourceSpan Span, ExprNodePtr callee, ExprNodeList arguments,
+   bool forwards_multret)
+{
+   assert_node(callee and callee->kind IS AstNodeKind::MemberExpr, "optional call requires a named member callee");
+   ExprNodePtr node = make_call_expr(Span, std::move(callee), std::move(arguments), forwards_multret,
+      CallArgumentSyntax::Parenthesised);
+   std::get<CallExprPayload>(node->data).dispatch = CallDispatch::OptionalMemberNamed;
+   return node;
+}
+
 ExprNodePtr make_member_expr(SourceSpan Span, ExprNodePtr Table, Identifier member)
 {
    assert_node(ensure_operand(Table), "member expression requires table value");

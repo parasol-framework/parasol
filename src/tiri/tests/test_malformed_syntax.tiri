@@ -823,3 +823,34 @@ end
       }
    })
 end
+
+----------------------------------------------------------------------------------------------------------------------
+-- Optional table calls
+
+@Test function ValidateUnsupportedOptionalCallForms()
+   assertInvalidCode('local t = {} local x = t.f?(1) : 2', 'InvalidOptionalCall',
+      'adjacent optional call followed by a ternary separator')
+   assertInvalidCode('local function cb() end cb?(1)', 'InvalidOptionalCall', 'optional direct call')
+   assertInvalidCode("local t = {} local k = 'f' t[k]?(1)", 'InvalidOptionalCall', 'optional computed call')
+   assertInvalidCode('local t = {} local y = (t.f)?(1)', 'InvalidOptionalCall', 'optional grouped call')
+   assertInvalidCode('local t = {} t.f? {}', 'InvalidOptionalCall', 'optional table-constructor shorthand')
+   assertInvalidCode("local t = {} t.f?'x'", 'InvalidOptionalCall', 'optional string shorthand')
+   assertInvalidCode("local s = 'abc' s.len?()", 'InvalidOptionalCall', 'proved non-table receiver')
+end
+
+@Test function ValidateIncompleteOptionalCalls()
+   assertInvalid('local t = {} t.f?(', 'unterminated optional call')
+   assertInvalid('local t = {} t.f?(1', 'missing optional call close')
+   assertInvalid('local t = {} t.f?\n(1)', 'line break between ? and the argument list')
+   assertInvalid('local t = {} t.f--[[gap]]?(1)', 'comment between the member and ?')
+end
+
+@Test function ValidateOptionalCallTernaryDisambiguation()
+   assert(debug.validate('local t = {} t.f?(1)').success, 'An adjacent optional call should validate')
+   assert(debug.validate('local t = {} local n = t.f ? (1) : 2').success,
+      'A spaced ternary after a member should validate')
+   assert(debug.validate('local function cb():num return 1 end local x = cb?(1) : 2').success,
+      'An adjacent ternary after a direct callable should remain valid')
+   assert(debug.validate('local t = {} local c = true local x = c ? t.f?(1) : 2').success,
+      'An optional call inside a ternary true branch should validate')
+end

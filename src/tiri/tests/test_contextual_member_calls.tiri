@@ -1944,3 +1944,40 @@ end
       f'(aborted={aborted}, reason={last_reason})')
    assert(&name is nil, 'A blacklisted contextual callee should restore the root context')
 end
+
+@Test function OptionalCallsEstablishEntityContext()
+   local caller = entity { name = 'caller' }
+   local target = entity { name = 'target' }
+   local evaluated = 0
+
+   function target.read(Value:any):<any, str> return Value, &name end
+
+   function optional_name():str
+      evaluated++
+      return &name
+   end
+
+   local plain = { read = function():any return &name end }
+
+   using caller do
+      local value:any, body:any = target.read?(optional_name())
+      assert(value is 'caller' and body is 'target' and evaluated is 1,
+         'An optional entity call must read its arguments in the caller and run its body in the receiver')
+      assert(target.missing?(optional_name()) is nil and evaluated is 1,
+         'A missing optional entity member must skip argument evaluation')
+
+      local dynamic:any = target
+      value, body = dynamic.read?(optional_name())
+      assert(value is 'caller' and body is 'target' and evaluated is 2,
+         'An unproved optional receiver must establish entity context at runtime')
+      assert(dynamic.missing?(optional_name()) is nil and evaluated is 2,
+         'An unproved missing member must skip argument evaluation')
+
+      value, body = optional_name() |> target.read?()
+      assert(value is 'caller' and body is 'target' and evaluated is 3,
+         'An optional pipe destination must read its operand in the caller')
+
+      assert(plain.read?() is 'caller', 'An ordinary table member must inherit the caller context')
+      assert(&& is caller, 'Optional calls must restore the caller context on called and skipped paths')
+   end
+end

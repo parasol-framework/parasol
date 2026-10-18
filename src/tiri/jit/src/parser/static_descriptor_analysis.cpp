@@ -1310,6 +1310,10 @@ private:
             Call.builtin_method.reset();
             return;
          }
+         if (Call.dispatch IS CallDispatch::OptionalMemberNamed) {
+            this->resolve_optional_table_method(Call, *receiver, member);
+            return;
+         }
          if (reference.binding_id and this->catalogue_.binding(reference.binding_id).is_variant) {
             Call.builtin_method.reset();
             Call.runtime_builtin_method = CallExprPayload::RuntimeBuiltinMethodCall{ member, safe };
@@ -1317,6 +1321,11 @@ private:
             return;
          }
       }
+      if (Call.dispatch IS CallDispatch::OptionalMemberNamed) {
+         this->resolve_optional_table_method(Call, *receiver, member);
+         return;
+      }
+
       const StaticValueDescriptor descriptor = this->descriptor_of(*receiver);
       TiriType receiver_type = descriptor.primary;
       if (Call.argument_syntax IS CallArgumentSyntax::Synthetic and receiver->kind IS AstNodeKind::CallExpr) {
@@ -1355,7 +1364,45 @@ private:
          .prototype = prototype,
          .callable = prototype->builtin_callable_id,
          .receiver_type = receiver_type,
-         .safe = safe,
+         .guard = safe ? MethodReceiverGuard::NilSafe : MethodReceiverGuard::None,
+         .arguments_validated = already_validated
+      };
+      this->validate_builtin_method_arguments(Call);
+   }
+
+   // An optional table call checks that its receiver is a table before member lookup, so the table interface is the
+   // only built-in interface it can select, even for variant or unresolved receivers.  A registered table method
+   // always exists and takes the canonical callable path; any other name is an ordinary field call.
+
+   void resolve_optional_table_method(CallExprPayload &Call, const ExprNode &Receiver, GCstr *Member)
+   {
+      const StaticValueDescriptor descriptor = this->descriptor_of(Receiver);
+      if (descriptor.proved() and not descriptor.nullable and descriptor.primary != TiriType::Table and
+          descriptor.primary != TiriType::Any and descriptor.primary != TiriType::Unknown and
+          not Call.optional_receiver_reported) {
+         Call.optional_receiver_reported = true;
+         ParserDiagnostic diagnostic;
+         diagnostic.severity = ParserDiagnosticSeverity::Error;
+         diagnostic.code = ParserErrorCode::InvalidOptionalCall;
+         diagnostic.message = std::format("optional call '{}?()' requires a table receiver, got {}",
+            std::string_view(strdata(Member), Member->len), type_name(descriptor.primary));
+         diagnostic.token = Token::from_span(Receiver.span, TokenKind::Identifier);
+         this->report_diagnostic(diagnostic);
+      }
+
+      const fprototype *prototype = get_method_prototype_by_hash(TiriType::Table, Member->hash);
+      if (not prototype) {
+         Call.builtin_method.reset();
+         return;
+      }
+
+      bool already_validated = Call.builtin_method and Call.builtin_method->prototype IS prototype and
+         Call.builtin_method->arguments_validated;
+      Call.builtin_method = CallExprPayload::BuiltinMethodCall{
+         .prototype = prototype,
+         .callable = prototype->builtin_callable_id,
+         .receiver_type = TiriType::Table,
+         .guard = MethodReceiverGuard::RequireTable,
          .arguments_validated = already_validated
       };
       this->validate_builtin_method_arguments(Call);
@@ -1476,7 +1523,7 @@ private:
       if (Call.builtin_method) {
          Call.results = this->catalogue_.add_results(
             describe_native_prototype_results(Call.builtin_method->prototype));
-         Safe = Safe or Call.builtin_method->safe;
+         Safe = Safe or Call.builtin_method->guard IS MethodReceiverGuard::NilSafe;
       }
       else if (this->native_calls_only_) {
          if (not Call.results) Call.results = this->native_call_results(Call);
@@ -2123,7 +2170,8 @@ private:
          case AstNodeKind::SafeCallExpr: {
             auto &call = std::get<CallExprPayload>(Expression.data);
             if (Expression.kind IS AstNodeKind::CallExpr) this->analyse_contextual_designation(call);
-            value = this->call_descriptor(call, Expression.kind IS AstNodeKind::SafeCallExpr);
+            value = this->call_descriptor(call, Expression.kind IS AstNodeKind::SafeCallExpr or
+               call.dispatch IS CallDispatch::OptionalMemberNamed);
             StaticValueDescriptor mapped = this->mapped_array_descriptor(call);
             if (mapped.primary != TiriType::Unknown) {
                this->update_call_result_descriptor(call, mapped);

@@ -931,3 +931,22 @@ local query = 'fn:error()'
    keyword = findToken(tokens, 2, 0, 'raise')
    assert(keyword and keyword.type is 0, 'Bare raise must retain keyword highlighting.')
 end
+
+@Test function OptionalTableCallsHighlightTheMemberAndOperator()
+   tokens = tokenizeTiri('thing.call?(1)\nlocal value = thing.flag ? (1) : 2\nlocal other = flag?(1) : 2\nthing.call?(')
+   call = findToken(tokens, 0, 6, 'call')
+   assert(call and call.type is 3, 'The member of an optional table call should be highlighted as a function.')
+   assertOperatorToken(tokens, 0, 10, '?', 'The optional-call marker should be an operator token.')
+   assertNoToken(tokens, 0, 11, '(', 'The opening parenthesis should not be consumed by the optional-call marker.')
+
+   flag = findToken(tokens, 1, 20, 'flag')
+   assert(not flag or flag.type != 3, 'A member before a spaced ternary ? must not be highlighted as a call.')
+   assertOperatorToken(tokens, 1, 25, '?', 'A spaced ternary ? should remain an operator token.')
+
+   condition = findToken(tokens, 2, 14, 'flag')
+   assert(not condition or condition.type != 3,
+      'An identifier before an adjacent ternary ? must not be highlighted as an optional call.')
+
+   pending = findToken(tokens, 3, 6, 'call')
+   assert(pending and pending.type is 3, 'An incomplete optional call should still be tokenised while typing.')
+end

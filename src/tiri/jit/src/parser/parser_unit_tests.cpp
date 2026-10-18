@@ -8113,7 +8113,7 @@ static bool test_builtin_method_static_classification(kt::Log &Log)
       Log.error("proved dot calls did not resolve the representative built-in methods");
       return false;
    }
-   if (not safe_call->builtin_method or not safe_call->builtin_method->safe or
+   if (not safe_call->builtin_method or safe_call->builtin_method->guard != MethodReceiverGuard::NilSafe or
        safe_call->builtin_method->receiver_type != TiriType::Table) {
       Log.error("nullable safe receiver did not resolve table.insert");
       return false;
@@ -11291,6 +11291,268 @@ static bool test_contextual_metatable_designation(kt::Log &Log)
 }
 
 //********************************************************************************************************************
+// `receiver.member?(...)` records optional dispatch on an ordinary MemberExpr callee.  A spaced `?` remains a ternary,
+// a separator inside an enclosing ternary closes that ternary, and unsupported spellings report InvalidOptionalCall.
+
+static const CallExprPayload * optional_call_statement(const BlockStmt &Block, size_t Index)
+{
+   if (Index >= Block.statements.size()) return nullptr;
+   const auto *statement = std::get_if<ExpressionStmtPayload>(&Block.statements[Index]->data);
+   if (not statement or not statement->expression) return nullptr;
+   return std::get_if<CallExprPayload>(&statement->expression->data);
+}
+
+static bool test_optional_table_call_ast(kt::Log &Log)
+{
+   constexpr std::string_view source =
+      "local thing = {}\n"
+      "thing.call?(1)\n"
+      "thing.child.call?()\n"
+      "local spaced = thing.call ? (1) : 2\n"
+      "local flag = true\n"
+      "local nested = flag ? thing.call?(1) : 2\n"
+      "thing.call(3)\n"
+      "thing?.call(4)\n";
+
+   auto result = build_ast_from_source(source, false, false);
+   if (not result.chunk.ok() or result.chunk.value_ref()->statements.size() != 8 or
+       not result.diagnostics.empty()) {
+      Log.error("optional table call fixture did not parse cleanly");
+      log_diagnostics(result.diagnostics, Log);
+      return false;
+   }
+
+   const BlockStmt &block = *result.chunk.value_ref();
+   const CallExprPayload *simple = optional_call_statement(block, 1);
+   const auto *simple_target = simple ? std::get_if<DirectCallTarget>(&simple->target) : nullptr;
+   const auto *simple_member = simple_target and simple_target->callable ?
+      std::get_if<MemberExprPayload>(&simple_target->callable->data) : nullptr;
+   if (not simple or simple->dispatch != CallDispatch::OptionalMemberNamed or simple->arguments.size() != 1 or
+       simple->argument_syntax != CallArgumentSyntax::Parenthesised or not simple_member or
+       not simple_member->is_call_target or not simple_member->table or
+       simple_member->table->kind != AstNodeKind::IdentifierExpr) {
+      Log.error("optional call did not retain an ordinary named-member callee with optional dispatch");
+      return false;
+   }
+
+   const CallExprPayload *chained = optional_call_statement(block, 2);
+   const auto *chained_target = chained ? std::get_if<DirectCallTarget>(&chained->target) : nullptr;
+   const auto *chained_member = chained_target and chained_target->callable ?
+      std::get_if<MemberExprPayload>(&chained_target->callable->data) : nullptr;
+   if (not chained or chained->dispatch != CallDispatch::OptionalMemberNamed or not chained->arguments.empty() or
+       not chained_member or not chained_member->table or
+       chained_member->table->kind != AstNodeKind::MemberExpr) {
+      Log.error("optional call on a nested receiver lost the complete receiver expression");
+      return false;
+   }
+
+   const auto &spaced = std::get<LocalDeclStmtPayload>(block.statements[3]->data);
+   if (spaced.values.empty() or spaced.values[0]->kind != AstNodeKind::TernaryExpr) {
+      Log.error("a spaced '?' after a member did not remain a ternary condition");
+      return false;
+   }
+
+   const auto &nested = std::get<LocalDeclStmtPayload>(block.statements[5]->data);
+   const auto *ternary = nested.values.empty() ? nullptr : std::get_if<TernaryExprPayload>(&nested.values[0]->data);
+   const auto *branch = ternary and ternary->if_true ? std::get_if<CallExprPayload>(&ternary->if_true->data) : nullptr;
+   if (not branch or branch->dispatch != CallDispatch::OptionalMemberNamed) {
+      Log.error("an optional call inside a ternary true branch did not yield the separator to the ternary");
+      return false;
+   }
+
+   const CallExprPayload *ordinary = optional_call_statement(block, 6);
+   const CallExprPayload *safe = optional_call_statement(block, 7);
+   if (not ordinary or ordinary->dispatch != CallDispatch::MemberNamed or not safe or
+       safe->dispatch != CallDispatch::SafeMemberNamed) {
+      Log.error("ordinary and safe member calls did not retain their dispatch modes");
+      return false;
+   }
+
+   struct InvalidCase {
+      std::string_view source;
+      std::string_view label;
+   };
+   constexpr std::array<InvalidCase, 9> invalid_cases = { {
+      { "local thing = {}\nlocal value = thing.call?(1) : 2\n", "adjacent ternary migration" },
+      { "local function callback() end\ncallback?(1)\n", "direct callable" },
+      { "local thing = {}\nlocal key = 'call'\nthing[key]?(1)\n", "computed member" },
+      { "local thing = {}\nlocal value = (thing.call)?(1)\n", "grouped member" },
+      { "local thing = {}\nthing.call? {}\n", "table constructor shorthand" },
+      { "local thing = {}\nthing.call?'text'\n", "string shorthand" },
+      { "local thing = {}\nthing.call?(\n", "incomplete argument list" },
+      { "local thing = {}\nthing.call?\n(1)\n", "line break before the argument list" },
+      { "local thing = {}\nthing.call--[[gap]]?(1)\n", "comment before the marker" }
+   } };
+
+   for (const InvalidCase &invalid : invalid_cases) {
+      auto parsed = build_ast_from_source(invalid.source, true, false);
+      if (parsed.diagnostics.empty()) {
+         Log.error("unsupported optional-call spelling was accepted: %.*s", int(invalid.label.size()),
+            invalid.label.data());
+         return false;
+      }
+   }
+
+   constexpr std::array<size_t, 6> focused = { 0, 1, 2, 3, 4, 5 };
+   for (size_t index : focused) {
+      auto parsed = build_ast_from_source(invalid_cases[index].source, true, false);
+      bool found = false;
+      for (const ParserDiagnostic &diagnostic : parsed.diagnostics) {
+         if (diagnostic.code IS ParserErrorCode::InvalidOptionalCall) found = true;
+      }
+      if (not found) {
+         Log.error("optional-call spelling '%.*s' did not report InvalidOptionalCall",
+            int(invalid_cases[index].label.size()), invalid_cases[index].label.data());
+         log_diagnostics(parsed.diagnostics, Log);
+         return false;
+      }
+   }
+
+   auto legacy_ternary = build_ast_from_source(
+      "local function callback():num return 1 end\nlocal value = callback?(1) : 2\n", false, false);
+   if (not legacy_ternary.chunk.ok() or not legacy_ternary.diagnostics.empty()) {
+      Log.error("an adjacent ternary on a direct callable was rejected");
+      log_diagnostics(legacy_ternary.diagnostics, Log);
+      return false;
+   }
+
+   LuaStateHolder state;
+   lua_State *L = state.get();
+   luaL_openlibs(L);
+   if (lua_load(L, std::string_view("local text = 'abc'\ntext.len?()\n"), "parser-unit") IS 0) {
+      L->top--;
+      Log.error("an optional call on a proved string receiver compiled");
+      return false;
+   }
+   const char *message = lua_tostring(L, -1);
+   bool expected_message = message and std::string_view(message).find("requires a table receiver") !=
+      std::string_view::npos;
+   lua_pop(L, 1);
+   if (not expected_message) {
+      Log.error("proved non-table receiver diagnostic was not reported: %s", message ? message : "(none)");
+      return false;
+   }
+   return true;
+}
+
+//********************************************************************************************************************
+// Optional table calls lower to a receiver table check, an ordinary lookup, a nil guard ahead of the arguments and a
+// skipped path whose nil-producing CALL tracks the requested result count.
+
+static std::optional<size_t> opcode_position(const BytecodeSnapshot &Snapshot, BCOp Opcode, size_t Start = 0)
+{
+   for (size_t i = Start; i < Snapshot.instructions.size(); ++i) {
+      if (bc_op(Snapshot.instructions[i]) IS Opcode) return i;
+   }
+   return std::nullopt;
+}
+
+// Locate the skipped-path CALL: the call that immediately follows the canonical tonumber load and nil argument.
+
+static const BCIns * optional_skip_call(const BytecodeSnapshot &Snapshot)
+{
+   auto skip_load = opcode_position(Snapshot, BC_BFUNC);
+   if (not skip_load or *skip_load + 2 >= Snapshot.instructions.size()) return nullptr;
+   const BCIns &load = Snapshot.instructions[*skip_load];
+   if (bc_d(load) != builtin_callable_index(builtin_callable_id(FastFunc::tonumber))) return nullptr;
+   const BCIns &call = Snapshot.instructions[*skip_load + 2];
+   return bc_op(call) IS BC_CALL and bc_a(call) IS bc_a(load) ? &call : nullptr;
+}
+
+static bool test_optional_table_call_bytecode(kt::Log &Log)
+{
+   LuaStateHolder state;
+   lua_State *L = state.get();
+   luaL_openlibs(L);
+   std::string error;
+
+   auto proved = compile_snapshot(L, "local thing = {}\nthing.call?(7)\n", true, error);
+   auto guard = proved ? opcode_position(*proved, BC_ISEQP) : std::nullopt;
+   auto argument = proved ? opcode_position(*proved, BC_KSHORT) : std::nullopt;
+   if (not proved or count_opcode(*proved, BC_TYPETEST) != 0 or count_opcode(*proved, BC_RAISE) != 0 or
+       count_opcode(*proved, BC_TGETS) != 1 or count_opcode(*proved, BC_ISEQP) != 1 or
+       count_opcode(*proved, BC_CALL) != 2 or not guard or not argument or *guard > *argument or
+       not optional_skip_call(*proved)) {
+      Log.error("proved table optional call did not emit lookup, nil guard and skipped call: %s", error.c_str());
+      return false;
+   }
+
+   error.clear();
+   auto dynamic = compile_snapshot(L, "local function use(Receiver:any)\nReceiver.call?(1)\nend\n", true, error);
+   const BytecodeSnapshot *body = dynamic and not dynamic->children.empty() ? &dynamic->children[0] : nullptr;
+   auto type_test = body ? opcode_position(*body, BC_TYPETEST) : std::nullopt;
+   auto lookup = body ? opcode_position(*body, BC_TGETS) : std::nullopt;
+   auto nil_test = body ? opcode_position(*body, BC_ISEQP) : std::nullopt;
+   auto entry = body ? opcode_position(*body, BC_CTXENTER) : std::nullopt;
+   auto leave = body ? opcode_position(*body, BC_CTXLEAVE) : std::nullopt;
+   auto skip_load = body ? opcode_position(*body, BC_BFUNC) : std::nullopt;
+   if (not body or count_opcode(*body, BC_RAISE) != 1 or count_opcode(*body, BC_BMETH) != 0 or not type_test or
+       not lookup or not nil_test or not entry or not leave or not skip_load or
+       count_opcode(*body, BC_CTXENTER) != 1 or count_opcode(*body, BC_CTXLEAVE) != 1 or
+       count_opcode(*body, BC_CTXCALL) != 1 or not (*type_test < *lookup and *lookup < *nil_test and
+       *nil_test < *entry and *entry < *leave and *leave < *skip_load) or not optional_skip_call(*body)) {
+      Log.error("unproved optional call did not check the table before a balanced contextual call: %s",
+         error.c_str());
+      return false;
+   }
+
+   error.clear();
+   auto fixed = compile_snapshot(L, "local thing = {}\nlocal a, b, c = thing.call?()\nreturn a, b, c\n", true, error);
+   const BCIns *fixed_skip = fixed ? optional_skip_call(*fixed) : nullptr;
+   auto fixed_call = fixed ? opcode_position(*fixed, BC_CALL) : std::nullopt;
+   if (not fixed or not fixed_skip or not fixed_call or bc_b(*fixed_skip) != 4 or
+       bc_b(fixed->instructions[*fixed_call]) != 4) {
+      Log.error("fixed multi-result request did not widen both optional-call paths: %s", error.c_str());
+      return false;
+   }
+
+   error.clear();
+   auto forwarded = compile_snapshot(L, "local thing = {}\nreturn thing.call?()\n", true, error);
+   const BCIns *forwarded_skip = forwarded ? optional_skip_call(*forwarded) : nullptr;
+   if (not forwarded or not forwarded_skip or bc_b(*forwarded_skip) != 0 or count_opcode(*forwarded, BC_CALLT) != 0 or
+       count_opcode(*forwarded, BC_RETM) != 1) {
+      Log.error("returned optional call was tail-called or did not forward every result: %s", error.c_str());
+      return false;
+   }
+
+   error.clear();
+   auto method = compile_snapshot(L, "local values = {}\nvalues.insert?(1)\nreturn values\n", true, error);
+   const BCIns *method_load = method ? find_opcode(*method, BC_BFUNC) : nullptr;
+   if (not method or not method_load or count_opcode(*method, BC_BFUNC) != 1 or
+       bc_d(*method_load) != builtin_callable_index(builtin_callable_id(FastFunc::table_insert)) or
+       count_opcode(*method, BC_ISEQP) != 0 or count_opcode(*method, BC_TGETS) != 0 or
+       count_opcode(*method, BC_TYPETEST) != 0) {
+      Log.error("registered table method lost canonical optional-call lowering: %s", error.c_str());
+      return false;
+   }
+
+   error.clear();
+   auto dynamic_method = compile_snapshot(L,
+      "local function use(Receiver:any):<any, ...>\nreturn Receiver.insert?(1)\nend\n", true, error);
+   const BytecodeSnapshot *method_body = dynamic_method and not dynamic_method->children.empty() ?
+      &dynamic_method->children[0] : nullptr;
+   if (not method_body or count_opcode(*method_body, BC_TYPETEST) != 1 or count_opcode(*method_body, BC_BMETH) != 0 or
+       count_opcode(*method_body, BC_BFUNC) != 1 or count_opcode(*method_body, BC_ISEQP) != 0 or
+       count_opcode(*method_body, BC_CALLT) != 0) {
+      Log.error("unproved optional table method did not constrain dispatch to the table interface: %s",
+         error.c_str());
+      return false;
+   }
+
+   error.clear();
+   auto piped = compile_snapshot(L,
+      "local thing = {}\nlocal function operand():num return 1 end\nreturn operand() |> thing.call?()\n", true, error);
+   auto pipe_guard = piped ? opcode_position(*piped, BC_ISEQP) : std::nullopt;
+   auto operand_call = piped ? opcode_position(*piped, BC_CALL) : std::nullopt;
+   if (not piped or not pipe_guard or not operand_call or *operand_call < *pipe_guard or
+       not optional_skip_call(*piped)) {
+      Log.error("piped optional call did not guard the callable before its operand: %s", error.c_str());
+      return false;
+   }
+   return true;
+}
+
+//********************************************************************************************************************
 // Phase 3 temporary context block syntax, lowering and dump reconstruction.
 
 static bool test_temporary_context_blocks(kt::Log &Log)
@@ -12680,7 +12942,7 @@ static bool test_import_module_relocation_transaction(kt::Log &Log)
 
 extern void parser_unit_tests(int &Passed, int &Total)
 {
-   constexpr std::array<TestCase, 112> tests = { {
+   constexpr std::array<TestCase, 114> tests = { {
       { "nested_function_failure_after_bytecode_growth", test_nested_function_failure_after_bytecode_growth },
       { "ordinary_function_policy", test_ordinary_function_policy },
       { "function_context_binding_syntax", test_function_context_binding_syntax },
@@ -12792,7 +13054,9 @@ extern void parser_unit_tests(int &Passed, int &Total)
       { "contextual_runtime_semantics", test_contextual_runtime_semantics },
       { "contextual_designation_syntax", test_contextual_designation_syntax },
       { "contextual_metatable_designation", test_contextual_metatable_designation },
-      { "temporary_context_blocks", test_temporary_context_blocks }
+      { "temporary_context_blocks", test_temporary_context_blocks },
+      { "optional_table_call_ast", test_optional_table_call_ast },
+      { "optional_table_call_bytecode", test_optional_table_call_bytecode }
    } };
 
    // A dummy object is required to manage state.

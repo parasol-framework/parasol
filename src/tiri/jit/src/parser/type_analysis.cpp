@@ -2932,6 +2932,8 @@ InferredType TypeAnalyser::infer_expression_type(const ExprNode& Expr)
                   return result;
                }
             }
+            // An optional table call keeps its callee's result type but yields nil when the member is absent.
+            result.is_nullable = payload->dispatch IS CallDispatch::OptionalMemberNamed;
             const FunctionExprPayload* target = this->resolve_call_target(*payload);
             if (target and (target->return_types.is_explicit or target->return_types.is_inferred) and
                 target->return_types.count > 0) {
@@ -3360,6 +3362,7 @@ bool TypeAnalyser::is_variant_expression(const ExprNode &Expr, size_t Position) 
 
    auto *payload = std::get_if<CallExprPayload>(&Expr.data);
    if (not payload) return result;
+   result.is_nullable = payload->dispatch IS CallDispatch::OptionalMemberNamed;
 
    const FunctionExprPayload* target = this->resolve_call_target(*payload);
    if (not target) return result;
@@ -3378,7 +3381,7 @@ bool TypeAnalyser::is_variant_expression(const ExprNode &Expr, size_t Position) 
       const size_t type_position = Position < target->return_types.count ?
          Position : size_t(target->return_types.count - 1);
       result.primary = type;
-      result.is_nullable = not target->return_types.required_at(Position);
+      result.is_nullable = result.is_nullable or not target->return_types.required_at(Position);
       result.object_class_id = target->return_types.object_class_ids[type_position];
       result.struct_def = target->return_types.struct_defs[type_position];
       result.array_element = target->return_types.array_elements[type_position];

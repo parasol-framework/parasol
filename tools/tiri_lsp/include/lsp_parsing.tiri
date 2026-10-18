@@ -1368,6 +1368,11 @@ global function tokenizeTiri(Source:str, ModulePrefixes:table):array<table>
             skipWhitespace()
             if pos < len and Source.sub(pos, pos + 1) is '(' then
                addToken(save_line, ident_start, ident_len, 3, 0)  -- function
+            elseif start_pos > 0 and Source.sub(start_pos - 1, start_pos) is '.' and
+                  Source.sub(save_pos, save_pos + 2) is '?(' then
+               -- `member?(` is an optional table call when `?` touches both the member and '('.  The '?' itself
+               -- remains a separate operator token.
+               addToken(save_line, ident_start, ident_len, 3, 0)  -- function
             end
             -- Restore position (we don't consume the paren)
             pos = save_pos

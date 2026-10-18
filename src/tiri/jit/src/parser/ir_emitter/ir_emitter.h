@@ -267,6 +267,8 @@ private:
    ParserResult<ExpDesc> emit_safe_member_expr(const SafeMemberExprPayload& payload);
    ParserResult<ExpDesc> emit_safe_index_expr(const SafeIndexExprPayload& payload);
    ParserResult<ExpDesc> emit_call_expr(const CallExprPayload& payload);
+   ParserResult<BCReg> emit_optional_receiver_check(BCReg Receiver, const ExprNode& ReceiverNode, GCstr* Member);
+   ParserResult<ExpDesc> emit_optional_member_callee(const MemberExprPayload& Member);
    ParserResult<ExpDesc> emit_builtin_method_call(const CallExprPayload& payload);
    ParserResult<ExpDesc> emit_runtime_builtin_method_call(const CallExprPayload& payload);
    ParserResult<ExpDesc> emit_runtime_builtin_method_pipe(

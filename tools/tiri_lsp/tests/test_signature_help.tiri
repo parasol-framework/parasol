@@ -282,3 +282,29 @@ end
    assert(response.result and response.result.signatures[0].label is 'assert(condition, [message])',
       'Handler should return resolver signature help.')
 end
+
+@Test function OptionalTableCallSignature()
+   help = signatureAt([=[
+handlers = {}
+function handlers.save(Item: str, Count: num)
+end
+
+handlers.save?('a', |)
+]=])
+
+   signature = firstSignature(help)
+   assertContains(signature.label, 'save(Item: str, Count: num)',
+      'An optional table call should resolve the signature of its member.')
+   assert(help.activeParameter is 1, 'The second argument of an optional call should be active.')
+
+   help = signatureAt("mSys.ResolvePath?('test:', |)\n")
+   signature = firstSignature(help)
+   assertContains(signature.label, 'ResolvePath', 'An optional call should resolve a namespace member signature.')
+   assert(help.activeParameter is 1, 'Optional calls should count arguments like ordinary calls.')
+end
+
+@Test function IncompleteOptionalTableCallsAreTolerated()
+   assert(not signatureAt('thing.call?|\n'), 'A pending optional-call marker is not yet inside a call.')
+   help = signatureAt('assert?(|')
+   assert(not help or help.signatures, 'An unterminated optional call should not fail signature help.')
+end
