@@ -217,84 +217,19 @@ public:
 //********************************************************************************************************************
 
 namespace agg {
-class span_reflect_y
+// Span source that tiles a bitmap with independent wrap modes for each axis.
+
+template <class WrapX, class WrapY> class span_wrap
 {
 private:
-   span_reflect_y();
+   span_wrap();
 public:
    typedef typename agg::rgba8::value_type value_type;
    typedef agg::rgba8 color_type;
 
-   span_reflect_y(agg::pixfmt_psl & pixf, int offset_x, int offset_y) :
-       m_src(&pixf),
-       m_wrap_x(pixf.mWidth),
-       m_wrap_y(pixf.mHeight),
-       m_offset_x(offset_x),
-       m_offset_y(offset_y)
-   {
-      m_bk_buf[0] = m_bk_buf[1] = m_bk_buf[2] = m_bk_buf[3] = 0;
-   }
-
-   void prepare() {}
-
-   void generate(agg::rgba8 *s, int x, int y, unsigned len) {
-      x += m_offset_x;
-      y += m_offset_y;
-      const value_type* p = (const value_type*)span(x, y, len);
-      do {
-         s->r = p[m_src->mPixelOrder.Red];
-         s->g = p[m_src->mPixelOrder.Green];
-         s->b = p[m_src->mPixelOrder.Blue];
-         s->a = p[m_src->mPixelOrder.Alpha];
-         p = (const value_type*)next_x();
-         ++s;
-      } while(--len);
-   }
-
-   uint8_t * span(int x, int y, unsigned) {
-       m_x = x;
-       m_row_ptr = m_src->row_ptr(m_wrap_y(y));
-       return m_row_ptr + m_wrap_x(x) * 4;
-   }
-
-   uint8_t * next_x() {
-       int x = ++m_wrap_x;
-       return m_row_ptr + x * 4;
-   }
-
-   uint8_t * next_y() {
-       m_row_ptr = m_src->row_ptr(++m_wrap_y);
-       return m_row_ptr + m_wrap_x(m_x) * 4;
-   }
-
-   agg::pixfmt_psl *m_src;
-
-private:
-   wrap_mode_repeat_auto_pow2 m_wrap_x;
-   wrap_mode_reflect_auto_pow2 m_wrap_y;
-   uint8_t *m_row_ptr;
-   int m_offset_x;
-   int m_offset_y;
-   uint8_t m_bk_buf[4];
-   int m_x;
-};
-
-//********************************************************************************************************************
-
-class span_reflect_x
-{
-private:
-   span_reflect_x();
-public:
-   typedef typename agg::rgba8::value_type value_type;
-   typedef agg::rgba8 color_type;
-
-   span_reflect_x(agg::pixfmt_psl & pixf, int offset_x, int offset_y) :
+   span_wrap(agg::pixfmt_psl & pixf, int offset_x, int offset_y) :
        m_src(&pixf), m_wrap_x(pixf.mWidth), m_wrap_y(pixf.mHeight),
-       m_offset_x(offset_x), m_offset_y(offset_y)
-   {
-      m_bk_buf[0] = m_bk_buf[1] = m_bk_buf[2] = m_bk_buf[3] = 0;
-   }
+       m_offset_x(offset_x), m_offset_y(offset_y) { }
 
    void prepare() {}
 
@@ -331,72 +266,17 @@ public:
    agg::pixfmt_psl *m_src;
 
 private:
-   wrap_mode_reflect_auto_pow2 m_wrap_x;
-   wrap_mode_repeat_auto_pow2 m_wrap_y;
-   uint8_t *m_row_ptr;
-   int m_offset_x;
-   int m_offset_y;
-   uint8_t m_bk_buf[4];
-   int m_x;
-};
-
-//********************************************************************************************************************
-
-class span_repeat_pf
-{
-private:
-   span_repeat_pf();
-public:
-   typedef typename agg::rgba8::value_type value_type;
-   typedef agg::rgba8 color_type;
-
-   span_repeat_pf(agg::pixfmt_psl & pixf, int offset_x, int offset_y) :
-       m_src(&pixf), m_wrap_x(pixf.mWidth), m_wrap_y(pixf.mHeight),
-       m_offset_x(offset_x), m_offset_y(offset_y) {
-      m_bk_buf[0] = m_bk_buf[1] = m_bk_buf[2] = m_bk_buf[3] = 0;
-   }
-
-   void prepare() {}
-
-   void generate(agg::rgba8 *s, int x, int y, unsigned len) {
-      x += m_offset_x;
-      y += m_offset_y;
-      const value_type* p = (const value_type*)span(x, y, len);
-      do {
-         s->r = p[m_src->mPixelOrder.Red];
-         s->g = p[m_src->mPixelOrder.Green];
-         s->b = p[m_src->mPixelOrder.Blue];
-         s->a = p[m_src->mPixelOrder.Alpha];
-         p = (const value_type*)next_x();
-         ++s;
-      } while(--len);
-   }
-
-   uint8_t * span(int x, int y, unsigned) {
-      m_x = x;
-      m_row_ptr = m_src->row_ptr(m_wrap_y(y));
-      return m_row_ptr + m_wrap_x(x) * 4;
-   }
-
-   uint8_t * next_x() {
-      int x = ++m_wrap_x;
-      return m_row_ptr + x * 4;
-   }
-
-   uint8_t * next_y() {
-      m_row_ptr = m_src->row_ptr(++m_wrap_y);
-      return m_row_ptr + m_wrap_x(m_x) * 4;
-   }
-
-   agg::pixfmt_psl *m_src;
-
-private:
-   wrap_mode_repeat_auto_pow2 m_wrap_x, m_wrap_y;
+   WrapX m_wrap_x;
+   WrapY m_wrap_y;
    uint8_t *m_row_ptr;
    int m_offset_x, m_offset_y;
-   uint8_t m_bk_buf[4];
    int m_x;
 };
+
+using span_repeat_pf  = span_wrap<wrap_mode_repeat_auto_pow2, wrap_mode_repeat_auto_pow2>;
+using span_reflect_x  = span_wrap<wrap_mode_reflect_auto_pow2, wrap_mode_repeat_auto_pow2>;
+using span_reflect_y  = span_wrap<wrap_mode_repeat_auto_pow2, wrap_mode_reflect_auto_pow2>;
+using span_reflect_xy = span_wrap<wrap_mode_reflect_auto_pow2, wrap_mode_reflect_auto_pow2>;
 } // namespace
 
 // Return the correct transformation matrix for a fill operation.  Requires that the vector's path has been generated.
@@ -485,7 +365,11 @@ template <class T> void drawBitmap(T &Scanline, VSM SampleMethod, agg::renderer_
          }
       };
 
-      if (SpreadMethod IS VSPREAD::REFLECT_X) {
+      if (SpreadMethod IS VSPREAD::REFLECT) {
+         agg::span_reflect_xy source(pixels, XOffset, YOffset);
+         render_source(source);
+      }
+      else if (SpreadMethod IS VSPREAD::REFLECT_X) {
          agg::span_reflect_x source(pixels, XOffset, YOffset);
          render_source(source);
       }
@@ -513,7 +397,11 @@ template <class T> void drawBitmap(T &Scanline, VSM SampleMethod, agg::renderer_
       const int x_offset = int(XOffset);
       const int y_offset = int(YOffset);
 
-      if (SpreadMethod IS VSPREAD::REFLECT_X) {
+      if (SpreadMethod IS VSPREAD::REFLECT) {
+         agg::span_reflect_xy source(pixels, x_offset, y_offset);
+         drawBitmapRender(Scanline, RenderBase, Raster, source, Opacity);
+      }
+      else if (SpreadMethod IS VSPREAD::REFLECT_X) {
          agg::span_reflect_x source(pixels, x_offset, y_offset);
          drawBitmapRender(Scanline, RenderBase, Raster, source, Opacity);
       }
