@@ -364,8 +364,7 @@ gui.window = function(Options:table!)
 
    if self.events.close then
       function[<weak> self] closeFeedback()
-         result = &events?.close()
-         if result then
+         if &events?.close() then
             msg('Client requested that the window stay open.')
             raise ERR_Cancelled
          end
@@ -393,12 +392,11 @@ gui.window = function(Options:table!)
    end
 
    function[] surfaceFree(Surface, Args)
-      local window = weak_self
       if quit_on_free then
          mSys.SendMessage(MSGID_QUIT)
       end
 
-      window?.clear()
+      weak_self?.clear()
    end
 
    self.surface.subscribe('free', surfaceFree)

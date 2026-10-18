@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "name": "gui/checkbox",
   "version": "1.0",
-  "description": "Checkbox widget for Tiri graphical interfaces.",
+  "description": "Deprecated checkbox widget alias that forwards to gui/toggle.",
   "entry": "checkbox.tiri",
   "authors": [
     {
@@ -23,13 +23,14 @@
     "tiri": "1.0"
   },
   "dependencies": {
-    "gui": "1.0"
+    "gui": "1.0",
+    "gui/toggle": "1.0"
   },
   "files": [
     {
       "path": "checkbox.tiri",
-      "size": 4886,
-      "sha256": "69393367e5daf03e964cefc9475ad004232a3a4424633a4ae0fcc1078918ca95",
+      "size": 368,
+      "sha256": "3b4bcb9deb60b229fabf9401f6090c34c08f76e3b9d8fd212dd424ff48c6b81c",
       "mediaType": "application/vnd.kotuku.tiri"
     }
   ]
