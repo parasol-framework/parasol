@@ -63,6 +63,19 @@ static void set_viewport_fixed_size(objVectorViewport *Viewport, double Width, d
    }
 }
 
+//********************************************************************************************************************
+// Returns true if a pattern applied as a viewport fill describes a single untransformed tile that covers the viewport.
+// This is the default configuration for a VectorPattern.
+
+static bool pattern_covers_viewport(const extVectorPattern &Pattern)
+{
+   return (Pattern.Units IS VUNIT::BOUNDING_BOX) and
+      (double(Pattern.X) IS 0) and (double(Pattern.Y) IS 0) and
+      Pattern.Width.scaled() and (double(Pattern.Width) IS 1.0) and
+      Pattern.Height.scaled() and (double(Pattern.Height) IS 1.0) and
+      Pattern.Matrices.empty();
+}
+
 static bool viewport_has_fixed_bounds(const objVectorViewport *Viewport, double X, double Y, double Width,
    double Height)
 {
@@ -957,8 +970,23 @@ void SceneRenderer::draw_vectors(extVector *CurrentVector, VectorState &ParentSt
 
                   // Use transforms for the purpose of placing the pattern correctly.  Bounding-box content units
                   // are relative to this viewport.
+                  //
+                  // Live rendering is limited to a single untransformed tile that covers the viewport, which is
+                  // the configuration used for icons.  Any other tile layout is delegated to the bitmap tiler so
+                  // that the tile position, size, patternTransform and spread method are honoured as they are for
+                  // vector fills.  The viewport serves as both the bounding box and the user space of the fill.
 
                   auto draw_pattern = [&](extVectorPattern *Pattern) {
+                     if (not pattern_covers_viewport(*Pattern)) {
+                        const TClipRectangle<double> bounds(0, 0, view->vpFixedWidth, view->vpFixedHeight);
+                        agg::rasterizer_scanline_aa<> raster;
+                        raster.add_path(view->BasePath);
+                        fill_pattern(state, bounds, &view->BasePath, view->Scene->SampleMethod, view->Transform,
+                           view->vpFixedWidth, view->vpFixedHeight, *Pattern, mRenderBase, raster,
+                           state.mOpacity * view->FillOpacity, this);
+                        return;
+                     }
+
                      if (not set_render_transform(Pattern->Scene->Viewport, view->Transform)) return;
 
                      if (Pattern->Units IS VUNIT::BOUNDING_BOX) {
