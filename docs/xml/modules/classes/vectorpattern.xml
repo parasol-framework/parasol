@@ -15,7 +15,8 @@
     <description>
 <p>The VectorPattern class is used by Vector painting algorithms to fill and stroke vectors with pre-rendered patterns. It is the most efficient way of rendering a common set of graphics multiple times.</p>
 <p>The VectorPattern must be registered with a <class name="VectorScene">VectorScene</class> via the <class name="VectorScene" method="AddDef">VectorScene.AddDef()</class> method. Any vector within the target scene will be able to utilise the pattern for filling or stroking by referencing its name through the <class name="Vector" field="Fill">Vector.Fill</class> and <class name="Vector" field="Stroke">Vector.Stroke</class> fields.  For instance <code>url(#dots)</code>.</p>
-<p>A special use case is made for patterns that are applied as a fill operation in <class name="VectorViewport">VectorViewport</class> objects.  In this case the renderer will dynamically render the pattern as a background within the viewport.  This ensures that the pattern is rendered at maximum fidelity whenever it is used, and not affected by bitmap clipping restrictions.  It should be noted that this means the image caching feature will be disabled.</p>
+<p>A special use case is made for patterns that are applied as a fill operation in <class name="VectorViewport">VectorViewport</class> objects.  If the pattern is a single tile that covers the viewport, which is the default when <fl>Units</fl> is <code>BOUNDING_BOX</code>, <fl>X</fl> and <fl>Y</fl> are zero, <fl>Width</fl> and <fl>Height</fl> are <code>100%</code> and no <fl>Transform</fl> is set, the renderer will dynamically render the pattern as a background within the viewport.  This ensures that the pattern is rendered at maximum fidelity whenever it is used, and not affected by bitmap clipping restrictions.  It should be noted that this means the image caching feature will be disabled.</p>
+<p>Any other configuration is tiled within the viewport in the same way as a vector fill, with the viewport serving as both the bounding box and the user space of the pattern.  User space coordinates are therefore relative to the viewport's top-left corner.</p>
 <p>It is strongly recommended that the VectorPattern is owned by the <class name="VectorScene">VectorScene</class> that is handling the definition.  This will ensure that the VectorPattern is deallocated when the scene is destroyed.</p></description>
     <source>
       <file path="painters/">pattern.cpp</file>
@@ -142,7 +143,8 @@
       <access read="R" write="W">Read/Write</access>
       <type lookup="VUNIT">VUNIT</type>
       <description>
-<p>This field declares the coordinate system that is used for values in the <fl>X</fl>, <fl>Y</fl>, <fl>Width</fl> and <fl>Height</fl> fields.  The default setting is <code>BOUNDING_BOX</code>, which means the pattern will be drawn to scale in realtime.  The most efficient method is <code>USERSPACE</code>, which allows the pattern image to be persistently cached.</p>
+<p>This field declares the coordinate system that is used for values in the <fl>X</fl>, <fl>Y</fl>, <fl>Width</fl> and <fl>Height</fl> fields.  The default setting is <code>BOUNDING_BOX</code>, which means the pattern tile is sized relative to the bounding box of each vector that uses it.  With <code>USERSPACE</code>, the tile size is independent of the consumer, which makes it the most efficient choice when a pattern is shared by vectors of different sizes.</p>
+<p>In both cases the tile is rendered at its scale on the display, including any scaling from <fl>Transform</fl>, and it is cached until the definition or that display size changes.</p>
 <types lookup="VUNIT"/>
       </description>
     </field>
