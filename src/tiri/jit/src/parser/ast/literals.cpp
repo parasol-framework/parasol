@@ -1055,8 +1055,10 @@ ParserResult<ExprNodeList> AstBuilder::parse_call_arguments(bool *ForwardsMultre
 
          args = std::move(parsed.value_ref());
          if (not args.empty()) {
+            // A trailing call, vararg or result filter forwards every value it produces.
             const ExprNodePtr& tail = args.back();
-            if (tail and (tail->kind IS AstNodeKind::CallExpr or tail->kind IS AstNodeKind::VarArgExpr)) {
+            if (tail and (tail->kind IS AstNodeKind::CallExpr or tail->kind IS AstNodeKind::VarArgExpr or
+                tail->kind IS AstNodeKind::ResultFilterExpr)) {
                *ForwardsMultret = true;
             }
          }

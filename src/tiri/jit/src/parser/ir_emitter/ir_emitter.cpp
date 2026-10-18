@@ -447,6 +447,8 @@ static bool block_contains_try(const BlockStmt *Block)
    return false;
 }
 
+static BCPOS emit_skipped_call_result(FuncState *State, BCReg ResultBase);  // emit_call.cpp
+
 //********************************************************************************************************************
 // NilShortCircuitGuard - RAII helper for safe navigation nil-check pattern.
 //
@@ -534,9 +536,8 @@ public:
       ControlFlowEdge skip_nil = this->emitter->control_flow.make_unconditional(
          BCPos(bcemit_jmp(&this->emitter->func_state)));
 
-      BCPos nil_path = BCPos(this->emitter->func_state.pc);
-      this->nil_jump.patch_to(nil_path);
-      bcemit_nil(&this->emitter->func_state, CallBase.raw(), 1);
+      this->nil_jump.patch_here();
+      BCPOS nil_init = emit_skipped_call_result(&this->emitter->func_state, CallBase);
 
       skip_nil.patch_to(BCPos(this->emitter->func_state.pc));
 
@@ -546,7 +547,7 @@ public:
       ExpDesc result;
       result.init(ExpKind::Call, CallPc);
       result.u.s.aux = CallBase;
-      result.safe_nil_init = nil_path.raw();
+      result.safe_nil_init = nil_init;
       this->emitter->func_state.freereg = CallBase + 1;
       return ParserResult<ExpDesc>::success(result);
    }
@@ -991,27 +992,13 @@ static void set_call_result_count(FuncState *State, const ExpDesc &Expression, B
    if (Expression.alternate_call != NO_JMP) {
       setbc_b(&State->bcbase[Expression.alternate_call].ins, EncodedCount);
    }
+   // The skipped path of a safe or optional call is itself a nil-producing call (see emit_skipped_call_result()), so it
+   // takes the present call's result count, including the all-results and no-results modes.
    auto widen_nil_init = [&](BCPOS Position) {
       if (Position IS NO_JMP) return;
       BCIns *nil_init = &State->bcbase[Position].ins;
-      // The skipped path of an optional call is itself a nil-producing call (see emit_optional_call_skip()), so it
-      // takes the present call's result count, including the all-results and no-results modes.
-      if (bc_op(*nil_init) IS BC_CALL) {
-         setbc_b(nil_init, EncodedCount);
-         return;
-      }
-      if (EncodedCount <= BCREG(CallResultMode::NoResults)) return;
-      BCREG first = bc_a(*nil_init);
-      lj_assertX(bc_op(*nil_init) IS BC_KPRI or bc_op(*nil_init) IS BC_KNIL,
-         "safe-call nil path does not start with a nil initialiser");
-      BCREG result_count = EncodedCount - BCREG(CallResultMode::NoResults);
-      BCREG required_top = first + result_count;
-      if (State->freereg < required_top) {
-         RegisterAllocator allocator(State);
-         allocator.bump(BCReg(required_top - State->freereg));
-      }
-      *nil_init = EncodedCount IS BCREG(CallResultMode::OneResult) ? BCINS_AD(BC_KPRI, first, ExpKind::Nil) :
-         BCINS_AD(BC_KNIL, first, first + result_count - 1);
+      lj_assertX(bc_op(*nil_init) IS BC_CALL, "skipped call path does not end with a nil-producing call");
+      setbc_b(nil_init, EncodedCount);
    };
    widen_nil_init(Expression.safe_nil_init);
    widen_nil_init(Expression.alternate_safe_nil_init);
@@ -1768,7 +1755,7 @@ ParserResult<IrEmitUnit> IrEmitter::emit_return_stmt(const ReturnStmtPayload &Pa
          // A bound body (function[X]) leaves its context block before CALLT, so a tail callee would run in the
          // caller's context.  It keeps CALL + RETM instead, and every callee observes the bound context (D5).
          bool tail_call_eligible = this->func_state.runtime_scopes.empty() and not has_post_call_control_flow and
-            not this->context_bound and not has_user_cleanup and not optional_call and
+            not this->context_bound and not has_user_cleanup and not optional_call and not safe_call and
             (direct_tail_call or contextual_tail_call) and
             tail_call_preserves_checkall_boundary(this->ctx, *Payload.values.back()) and
             (forwards_current_contract or (not truncate_return_results and not has_return_contract));
@@ -1802,17 +1789,11 @@ ParserResult<IrEmitUnit> IrEmitter::emit_return_stmt(const ReturnStmtPayload &Pa
                BCINS_AD(BC_RET, last.u.s.aux, result_count + 1) :
                BCINS_AD(BC_RET0, 0, 1);
          }
-         else if (optional_call) {
-            // Both paths of an optional call set MULTRES, so every result of a present callee is returned.  The
-            // skipped branch prevents tail-call conversion.
+         else if (optional_call or safe_call) {
+            // Both paths of a safe or optional call set MULTRES (see emit_skipped_call_result()), so every result of
+            // a present callee is returned.  The skipped branch prevents tail-call conversion.
             set_call_result_count(&this->func_state, last, CallResultMode::AllResults);
             ins = BCINS_AD(BC_RETM, return_base, last.u.s.aux - return_base);
-         }
-         else if (safe_call) {
-            // An unconstrained nil short-circuit has no dynamic MULTRES value, so consolidate it to one result.
-            // Fixed return declarations are handled above and widen the nil path to the declared result count.
-            set_call_result_count(&this->func_state, last, CallResultMode::OneResult);
-            ins = BCINS_AD(BC_RET1, last.u.s.aux, 2);
          }
          else if (not this->func_state.runtime_scopes.empty()) {
             // DISABLE TAIL-CALL inside try blocks: use CALL + RET instead of CALLT.
@@ -1873,10 +1854,6 @@ ParserResult<IrEmitUnit> IrEmitter::emit_return_stmt(const ReturnStmtPayload &Pa
                ins = result_count > 0 ?
                   BCINS_AD(BC_RET, return_base, result_count + 1) :
                   BCINS_AD(BC_RET0, 0, 1);
-            }
-            else if (is_safe_call_expression(*Payload.values.back())) {
-               set_call_result_count(&this->func_state, last, CallResultMode::OneResult);
-               ins = BCINS_AD(BC_RET, return_base, count + 1);
             }
             else {
                set_call_result_count(&this->func_state, last, CallResultMode::AllResults);

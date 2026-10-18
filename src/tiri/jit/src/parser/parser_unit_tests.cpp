@@ -8397,6 +8397,28 @@ static const BCIns * find_builtin_callable_opcode(const BytecodeSnapshot &Snapsh
    return nullptr;
 }
 
+static std::optional<size_t> opcode_position(const BytecodeSnapshot &Snapshot, BCOp Opcode, size_t Start = 0)
+{
+   for (size_t i = Start; i < Snapshot.instructions.size(); ++i) {
+      if (bc_op(Snapshot.instructions[i]) IS Opcode) return i;
+   }
+   return std::nullopt;
+}
+
+// Locate the skipped-path CALL of a safe or optional call: the call that immediately follows the canonical tonumber
+// load and its nil argument.
+
+static const BCIns * skipped_call_result(const BytecodeSnapshot &Snapshot)
+{
+   BCREG tonumber = builtin_callable_index(builtin_callable_id(FastFunc::tonumber));
+   for (auto load = opcode_position(Snapshot, BC_BFUNC); load; load = opcode_position(Snapshot, BC_BFUNC, *load + 1)) {
+      if (bc_d(Snapshot.instructions[*load]) != tonumber or *load + 2 >= Snapshot.instructions.size()) continue;
+      const BCIns &call = Snapshot.instructions[*load + 2];
+      if (bc_op(call) IS BC_CALL and bc_a(call) IS bc_a(Snapshot.instructions[*load])) return &call;
+   }
+   return nullptr;
+}
+
 static bool test_builtin_method_bytecode_emission(kt::Log &Log)
 {
    LuaStateHolder state;
@@ -8455,9 +8477,10 @@ static bool test_builtin_method_bytecode_emission(kt::Log &Log)
    error.clear();
    auto safe = compile_snapshot(L,
       "local maybe:table = nil\nmaybe?.insert(1)\nreturn maybe\n", true, error);
-   if (not safe or count_opcode(*safe, BC_BFUNC) != 1 or count_opcode(*safe, BC_ISEQP) != 1 or
-       count_opcode(*safe, BC_CALL) != 1 or count_opcode(*safe, BC_TGETS) != 0 or
-       count_opcode(*safe, BC_TGETV) != 0) {
+   // The second BFUNC and CALL are the skipped path's tonumber(nil), which keeps MULTRES valid.
+   if (not safe or count_opcode(*safe, BC_BFUNC) != 2 or count_opcode(*safe, BC_ISEQP) != 1 or
+       count_opcode(*safe, BC_CALL) != 2 or count_opcode(*safe, BC_TGETS) != 0 or
+       count_opcode(*safe, BC_TGETV) != 0 or not skipped_call_result(*safe)) {
       Log.error("safe built-in method call lost canonical nil-short-circuit lowering: %s", error.c_str());
       return false;
    }
@@ -8546,10 +8569,11 @@ static bool test_builtin_method_bytecode_emission(kt::Log &Log)
    }
 
    error.clear();
+   // The second and third CALL are the tonumber(nil) skipped paths for a nil field and a nil receiver.
    auto dynamic_safe = compile_snapshot(L,
       "local function use(Maybe:any) Maybe?.insert(1) end\n", true, error);
    if (not dynamic_safe or count_opcode_tree(*dynamic_safe, BC_BMETH) != 1 or
-       count_opcode_tree(*dynamic_safe, BC_ISEQP) != 2 or count_opcode_tree(*dynamic_safe, BC_CALL) != 1 or
+       count_opcode_tree(*dynamic_safe, BC_ISEQP) != 2 or count_opcode_tree(*dynamic_safe, BC_CALL) != 3 or
        count_opcode_tree(*dynamic_safe, BC_CTXCALL) != 1) {
       Log.error("unproved safe dot call lost runtime dispatch or nil short-circuiting: %s", error.c_str());
       return false;
@@ -9889,9 +9913,10 @@ static bool test_tail_call_eligibility(kt::Log &Log)
       "end\n"
       "return checked_safe\n";
    auto checked_safe = compile_snapshot(L, checked_safe_source, true, error);
-   if (not checked_safe or count_opcode_tree(*checked_safe, BC_RET1) IS 0 or
-       count_opcode_tree(*checked_safe, BC_RETM) != 0) {
-      Log.error("a checked safe-call return did not lower to one fixed result: %s", error.c_str());
+   // Both paths of a safe call set MULTRES, so a checked safe-call return forwards every result without a tail call.
+   if (not checked_safe or count_opcode_tree(*checked_safe, BC_RETM) IS 0 or
+       count_opcode_tree(*checked_safe, BC_CALLT) != 0) {
+      Log.error("a checked safe-call return did not forward every result: %s", error.c_str());
       return false;
    }
 
@@ -9905,9 +9930,10 @@ static bool test_tail_call_eligibility(kt::Log &Log)
       "end\n"
       "return checked_safe_try\n";
    auto checked_safe_try = compile_snapshot(L, checked_safe_try_source, true, error);
-   if (not checked_safe_try or count_opcode_tree(*checked_safe_try, BC_RET1) IS 0 or
-       count_opcode_tree(*checked_safe_try, BC_RETM) != 0) {
-      Log.error("a checked safe-call return inside try did not lower to one fixed result: %s", error.c_str());
+   // Leaving the try scope must preserve the forwarded result count across TRYLEAVE.
+   if (not checked_safe_try or count_opcode_tree(*checked_safe_try, BC_RETM) IS 0 or
+       count_opcode_tree(*checked_safe_try, BC_MRSAVE) IS 0 or count_opcode_tree(*checked_safe_try, BC_CALLT) != 0) {
+      Log.error("a checked safe-call return inside try did not forward every result: %s", error.c_str());
       return false;
    }
 
@@ -9946,9 +9972,8 @@ static bool test_tail_call_eligibility(kt::Log &Log)
       "end\n"
       "return checked_safe_list\n";
    auto checked_safe_list = compile_snapshot(L, checked_safe_list_source, true, error);
-   if (not checked_safe_list or count_opcode_tree(*checked_safe_list, BC_RET) IS 0 or
-       count_opcode_tree(*checked_safe_list, BC_RETM) != 0) {
-      Log.error("a trailing checked safe-call return did not lower to fixed results: %s", error.c_str());
+   if (not checked_safe_list or count_opcode_tree(*checked_safe_list, BC_RETM) IS 0) {
+      Log.error("a trailing checked safe-call return did not forward every result: %s", error.c_str());
       return false;
    }
 
@@ -11439,26 +11464,6 @@ static bool test_optional_table_call_ast(kt::Log &Log)
 // Optional table calls lower to a receiver table check, an ordinary lookup, a nil guard ahead of the arguments and a
 // skipped path whose nil-producing CALL tracks the requested result count.
 
-static std::optional<size_t> opcode_position(const BytecodeSnapshot &Snapshot, BCOp Opcode, size_t Start = 0)
-{
-   for (size_t i = Start; i < Snapshot.instructions.size(); ++i) {
-      if (bc_op(Snapshot.instructions[i]) IS Opcode) return i;
-   }
-   return std::nullopt;
-}
-
-// Locate the skipped-path CALL: the call that immediately follows the canonical tonumber load and nil argument.
-
-static const BCIns * optional_skip_call(const BytecodeSnapshot &Snapshot)
-{
-   auto skip_load = opcode_position(Snapshot, BC_BFUNC);
-   if (not skip_load or *skip_load + 2 >= Snapshot.instructions.size()) return nullptr;
-   const BCIns &load = Snapshot.instructions[*skip_load];
-   if (bc_d(load) != builtin_callable_index(builtin_callable_id(FastFunc::tonumber))) return nullptr;
-   const BCIns &call = Snapshot.instructions[*skip_load + 2];
-   return bc_op(call) IS BC_CALL and bc_a(call) IS bc_a(load) ? &call : nullptr;
-}
-
 static bool test_optional_table_call_bytecode(kt::Log &Log)
 {
    LuaStateHolder state;
@@ -11472,7 +11477,7 @@ static bool test_optional_table_call_bytecode(kt::Log &Log)
    if (not proved or count_opcode(*proved, BC_TYPETEST) != 0 or count_opcode(*proved, BC_RAISE) != 0 or
        count_opcode(*proved, BC_TGETS) != 1 or count_opcode(*proved, BC_ISEQP) != 1 or
        count_opcode(*proved, BC_CALL) != 2 or not guard or not argument or *guard > *argument or
-       not optional_skip_call(*proved)) {
+       not skipped_call_result(*proved)) {
       Log.error("proved table optional call did not emit lookup, nil guard and skipped call: %s", error.c_str());
       return false;
    }
@@ -11490,7 +11495,7 @@ static bool test_optional_table_call_bytecode(kt::Log &Log)
        not lookup or not nil_test or not entry or not leave or not skip_load or
        count_opcode(*body, BC_CTXENTER) != 1 or count_opcode(*body, BC_CTXLEAVE) != 1 or
        count_opcode(*body, BC_CTXCALL) != 1 or not (*type_test < *lookup and *lookup < *nil_test and
-       *nil_test < *entry and *entry < *leave and *leave < *skip_load) or not optional_skip_call(*body)) {
+       *nil_test < *entry and *entry < *leave and *leave < *skip_load) or not skipped_call_result(*body)) {
       Log.error("unproved optional call did not check the table before a balanced contextual call: %s",
          error.c_str());
       return false;
@@ -11498,7 +11503,7 @@ static bool test_optional_table_call_bytecode(kt::Log &Log)
 
    error.clear();
    auto fixed = compile_snapshot(L, "local thing = {}\nlocal a, b, c = thing.call?()\nreturn a, b, c\n", true, error);
-   const BCIns *fixed_skip = fixed ? optional_skip_call(*fixed) : nullptr;
+   const BCIns *fixed_skip = fixed ? skipped_call_result(*fixed) : nullptr;
    auto fixed_call = fixed ? opcode_position(*fixed, BC_CALL) : std::nullopt;
    if (not fixed or not fixed_skip or not fixed_call or bc_b(*fixed_skip) != 4 or
        bc_b(fixed->instructions[*fixed_call]) != 4) {
@@ -11508,7 +11513,7 @@ static bool test_optional_table_call_bytecode(kt::Log &Log)
 
    error.clear();
    auto forwarded = compile_snapshot(L, "local thing = {}\nreturn thing.call?()\n", true, error);
-   const BCIns *forwarded_skip = forwarded ? optional_skip_call(*forwarded) : nullptr;
+   const BCIns *forwarded_skip = forwarded ? skipped_call_result(*forwarded) : nullptr;
    if (not forwarded or not forwarded_skip or bc_b(*forwarded_skip) != 0 or count_opcode(*forwarded, BC_CALLT) != 0 or
        count_opcode(*forwarded, BC_RETM) != 1) {
       Log.error("returned optional call was tail-called or did not forward every result: %s", error.c_str());
@@ -11545,8 +11550,65 @@ static bool test_optional_table_call_bytecode(kt::Log &Log)
    auto pipe_guard = piped ? opcode_position(*piped, BC_ISEQP) : std::nullopt;
    auto operand_call = piped ? opcode_position(*piped, BC_CALL) : std::nullopt;
    if (not piped or not pipe_guard or not operand_call or *operand_call < *pipe_guard or
-       not optional_skip_call(*piped)) {
+       not skipped_call_result(*piped)) {
       Log.error("piped optional call did not guard the callable before its operand: %s", error.c_str());
+      return false;
+   }
+   return true;
+}
+
+//********************************************************************************************************************
+// A skipped safe call ends with a nil-producing CALL so that consumers forwarding every result observe a valid MULTRES,
+// and a result filter requests one result unless its consumer forwards every result.
+
+static bool test_skipped_call_multret_bytecode(kt::Log &Log)
+{
+   LuaStateHolder state;
+   lua_State *L = state.get();
+   luaL_openlibs(L);
+   std::string error;
+
+   auto argument = compile_snapshot(L, "local function f(...) end\nlocal t:any = {}\nf(t?.g())\n", true, error);
+   const BCIns *argument_skip = argument ? skipped_call_result(*argument) : nullptr;
+   if (not argument_skip or bc_b(*argument_skip) != 0 or count_opcode(*argument, BC_CALLM) != 1) {
+      Log.error("trailing safe-call argument did not forward a nil-producing skipped call: %s", error.c_str());
+      return false;
+   }
+
+   error.clear();
+   auto constructor = compile_snapshot(L, "local t:any = {}\nreturn { t?.g() }\n", true, error);
+   const BCIns *constructor_skip = constructor ? skipped_call_result(*constructor) : nullptr;
+   if (not constructor_skip or bc_b(*constructor_skip) != 0 or count_opcode(*constructor, BC_TSETM) != 1) {
+      Log.error("safe-call table constructor tail did not widen its skipped call: %s", error.c_str());
+      return false;
+   }
+
+   error.clear();
+   auto returned = compile_snapshot(L, "local t:any = {}\nreturn t?.g()\n", true, error);
+   const BCIns *returned_skip = returned ? skipped_call_result(*returned) : nullptr;
+   if (not returned_skip or bc_b(*returned_skip) != 0 or count_opcode(*returned, BC_RETM) != 1 or
+       count_opcode(*returned, BC_CALLT) != 0) {
+      Log.error("safe-call return did not forward every result without a tail call: %s", error.c_str());
+      return false;
+   }
+
+   error.clear();
+   auto fixed_filter = compile_snapshot(L,
+      "local function one():num return 1 end\nlocal function f(...) end\nf([_*]one(), 2)\n", true, error);
+   auto filter_call = fixed_filter ? opcode_position(*fixed_filter, BC_CALLM) : std::nullopt;
+   if (not filter_call or count_opcode(*fixed_filter, BC_CALLM) != 1 or
+       bc_b(fixed_filter->instructions[*filter_call]) != 2) {
+      Log.error("non-trailing result filter did not request exactly one result: %s", error.c_str());
+      return false;
+   }
+
+   error.clear();
+   auto forwarded_filter = compile_snapshot(L,
+      "local function one():num return 1 end\nlocal function f(...) end\nf([_*]one())\n", true, error);
+   auto inner_filter = forwarded_filter ? opcode_position(*forwarded_filter, BC_CALLM) : std::nullopt;
+   if (not inner_filter or count_opcode(*forwarded_filter, BC_CALLM) != 2 or
+       bc_b(forwarded_filter->instructions[*inner_filter]) != 0) {
+      Log.error("trailing result filter did not forward every kept value: %s", error.c_str());
       return false;
    }
    return true;
@@ -12942,7 +13004,7 @@ static bool test_import_module_relocation_transaction(kt::Log &Log)
 
 extern void parser_unit_tests(int &Passed, int &Total)
 {
-   constexpr std::array<TestCase, 114> tests = { {
+   constexpr std::array<TestCase, 115> tests = { {
       { "nested_function_failure_after_bytecode_growth", test_nested_function_failure_after_bytecode_growth },
       { "ordinary_function_policy", test_ordinary_function_policy },
       { "function_context_binding_syntax", test_function_context_binding_syntax },
@@ -13056,7 +13118,8 @@ extern void parser_unit_tests(int &Passed, int &Total)
       { "contextual_metatable_designation", test_contextual_metatable_designation },
       { "temporary_context_blocks", test_temporary_context_blocks },
       { "optional_table_call_ast", test_optional_table_call_ast },
-      { "optional_table_call_bytecode", test_optional_table_call_bytecode }
+      { "optional_table_call_bytecode", test_optional_table_call_bytecode },
+      { "skipped_call_multret_bytecode", test_skipped_call_multret_bytecode }
    } };
 
    // A dummy object is required to manage state.

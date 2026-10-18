@@ -70,14 +70,15 @@ static GCstr * optional_call_member(const CallExprPayload &Payload)
 }
 
 //********************************************************************************************************************
-// Emit the skipped path of an optional table call, leaving its result frame at ResultBase.
+// Emit the skipped path of a safe or optional call, leaving its result frame at ResultBase.
 //
 // Writing nil directly would leave MULTRES stale for a consumer that forwards every result, such as a trailing
-// argument or `return`.  The path therefore calls the canonical tonumber(nil), which yields exactly one nil and is
-// recorded by the JIT as a constant.  The returned CALL position is published as the expression's safe_nil_init, and
-// set_call_result_count() gives it the same result count as the present call, so fixed requests are nil-filled too.
+// argument, `return` or a table constructor tail.  The path therefore calls the canonical tonumber(nil), which yields
+// exactly one nil and is recorded by the JIT as a constant.  The returned CALL position is published as the
+// expression's safe_nil_init, and set_call_result_count() gives it the same result count as the present call, so fixed
+// requests are nil-filled too.
 
-static BCPOS emit_optional_call_skip(FuncState *State, BCReg ResultBase)
+static BCPOS emit_skipped_call_result(FuncState *State, BCReg ResultBase)
 {
    BCREG argument = ResultBase.raw() + 1 + LJ_FR2;
    BCREG saved_free = State->freereg;
@@ -281,8 +282,7 @@ ParserResult<ExpDesc> IrEmitter::emit_runtime_builtin_method_pipe(
       // the synthetic nil-result block; skip_nil carries both successful paths around it to the common continuation.
       ControlFlowEdge skip_nil = this->control_flow.make_unconditional(BCPos(bcemit_jmp(state)));
       field_nil_jump.patch_to(state->current_pc());
-      field_nil_init = state->pc;
-      bcemit_nil(state, call_base.raw(), 1);
+      field_nil_init = emit_skipped_call_result(state, call_base);
       skip_nil.patch_here();
    }
 
@@ -470,19 +470,18 @@ ParserResult<ExpDesc> IrEmitter::emit_pipe_expr(const PipeExprPayload &Payload)
       BCPos call_pc = BCPos(bcemit_INS(fs, instruction));
       bcemit_INS(fs, BCINS_AD(BC_CTXLEAVE, base, BCREG(base.raw() - context_result_base.raw())));
 
-      BCPOS optional_skip = NO_JMP;
+      BCPOS skipped_result = NO_JMP;
       if (safe_callable or optional_call) {
          ControlFlowEdge skip_nil = this->control_flow.make_unconditional(BCPos(bcemit_jmp(fs)));
          BCPos nil_path = BCPos(fs->pc);
          if (not receiver_nil_jump.empty()) receiver_nil_jump.patch_to(nil_path);
          nil_jump.patch_to(nil_path);
-         if (optional_call) optional_skip = emit_optional_call_skip(fs, context_result_base);
-         else bcemit_nil(fs, context_result_base.raw(), 1);
+         skipped_result = emit_skipped_call_result(fs, context_result_base);
          skip_nil.patch_to(BCPos(fs->pc));
       }
 
       ExpDesc result(ExpKind::Call, call_pc);
-      result.safe_nil_init = optional_skip;
+      result.safe_nil_init = skipped_result;
       result.u.s.aux = context_result_base.raw();
       result.static_results = call_payload.results;
       if (call_payload.results) {
@@ -645,7 +644,7 @@ ParserResult<ExpDesc> IrEmitter::emit_pipe_expr(const PipeExprPayload &Payload)
    if (guards_optional_field) {
       ControlFlowEdge skip_nil = this->control_flow.make_unconditional(BCPos(bcemit_jmp(fs)));
       optional_nil_jump.patch_here();
-      result.safe_nil_init = emit_optional_call_skip(fs, base);
+      result.safe_nil_init = emit_skipped_call_result(fs, base);
       skip_nil.patch_here();
    }
    result.u.s.aux = base;
@@ -870,8 +869,7 @@ ParserResult<ExpDesc> IrEmitter::emit_runtime_builtin_method_call(const CallExpr
       // into call_base before all paths rejoin for the existing receiver nil guard and result metadata handling.
       ControlFlowEdge skip_nil = this->control_flow.make_unconditional(BCPos(bcemit_jmp(state)));
       field_nil_jump.patch_to(state->current_pc());
-      field_nil_init = state->pc;
-      bcemit_nil(state, call_base.raw(), 1);
+      field_nil_init = emit_skipped_call_result(state, call_base);
       skip_nil.patch_here();
    }
 
@@ -1214,11 +1212,7 @@ ParserResult<ExpDesc> IrEmitter::emit_call_expr(const CallExprPayload &Payload)
       nil_jump.patch_to(nil_path);
       if (not receiver_nil_jump.empty()) receiver_nil_jump.patch_to(nil_path);
       BCReg result_reg = is_contextual_call ? context_result_base : base;
-      if (is_optional_call) safe_nil_init = BCPos(emit_optional_call_skip(&this->func_state, result_reg));
-      else {
-         safe_nil_init = nil_path;
-         bcemit_nil(&this->func_state, result_reg.raw(), 1);
-      }
+      safe_nil_init = BCPos(emit_skipped_call_result(&this->func_state, result_reg));
 
       skip_nil.patch_to(BCPos(this->func_state.pc));
    }
@@ -1345,9 +1339,11 @@ ParserResult<ExpDesc> IrEmitter::emit_result_filter_expr(const ResultFilterPaylo
 
    // Emit CALLM to call __filter with variable arguments from the inner call
    // CALLM: base = function, C+1 = fixed args before vararg (3: mask, count, trailing)
-   // The varargs come from the inner call's multiple returns
+   // The varargs come from the inner call's multiple returns.  Like any other call, the filter initially requests one
+   // result so that a single-value consumer receives nil when nothing is kept; consumers that forward every result
+   // widen it through set_call_result_count().
 
-   BCIns ins = BCINS_ABC(BC_CALLM, base, 0, 3);  // 3 fixed args before vararg
+   BCIns ins = BCINS_ABC(BC_CALLM, base, BCREG(CallResultMode::OneResult), 3);  // 3 fixed args before vararg
 
    ExpDesc result;
    result.init(ExpKind::Call, bcemit_INS(fs, ins));

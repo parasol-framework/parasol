@@ -1128,6 +1128,48 @@ end
 end
 
 ----------------------------------------------------------------------------------------------------------------------
+-- A skipped safe call yields a single nil in every variable-result context.  The prior call primes the result count
+-- with three values so that a stale count would be observed as extra values or a crash.
+
+@Test function testSafeCallVariableResults()
+   local full:any = { three = optional_three }
+   local empty:any = {}
+   local none:any = nil
+   local function forward(Receiver:any):<any, ...> return Receiver?.three() end
+   local function size(...):num return table.size({ ... }) end
+
+   assert(size(full?.three()) is 3 and optional_second(0, full?.three()) is 1,
+      'A trailing safe call should forward every present result')
+   local primed = { optional_three() }
+   assert(size(empty?.three()) is 0, 'A trailing argument should receive only nil for a missing method')
+   primed = { optional_three() }
+   assert(size(none?.three()) is 0, 'A trailing argument should receive only nil for a nil receiver')
+   primed = { optional_three() }
+   assert(table.size({ empty?.three() }) is 0 and table.size({ 1, none?.three() }) is 1,
+      'A table constructor tail should receive only nil from a skipped safe call')
+   assert(table.size({ forward(full) }) is 3, 'return should forward every present safe call result')
+   primed = { optional_three() }
+   assert(table.size({ forward(none) }) is 0, 'return should forward only nil from a skipped safe call')
+   primed = { optional_three() }
+   assert(size(1 |> empty?.three()) is 0, 'A trailing safe pipe should receive only nil when skipped')
+
+   local a:any, b:any, c:any = 5, 5, 5
+   a, b, c = empty?.three()
+   assert(a is nil and b is nil and c is nil, 'Fixed results should all be nil for a skipped safe call')
+
+   local text:any = ' abc '
+   primed = { optional_three() }
+   assert(size(text?.trim()) is 1 and size(empty?.trim()) is 0,
+      'Runtime built-in method dispatch should forward present and skipped results')
+
+   local total = 0
+   for i in {0 to 500} do
+      total += size(full?.three()) + size(empty?.three()) + size(none?.three())
+   end
+   assert(total is 1500, 'Skipped safe calls should forward one nil once traces compile')
+end
+
+----------------------------------------------------------------------------------------------------------------------
 
 @Test function testOptionalPipeReturnResults()
    local thing = { three = function(Value:num):<num, num, num> return Value, 2, 3 end }
