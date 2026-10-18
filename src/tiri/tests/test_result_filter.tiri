@@ -202,6 +202,28 @@ end
    assert(tbl.value is 123, "filter preserves reference: value should be 123")
 end
 
+-- A filter passed as an argument follows the standard adjustment rules: a trailing filter forwards every kept value
+-- and any other position receives exactly one value, which is nil when nothing is kept.
+
+local function size(...):num return table.size({ ... }) end
+local function second(First:any, Second:any):any return Second end
+local function single():num return 1 end
+
+@Test function FilterAsTrailingArgument()
+   assert(size([_*]multi()) is 4, "trailing filter should forward every kept value")
+   assert(size(0, [__*]three()) is 2, "trailing filter after a fixed argument should forward every kept value")
+   assert(size([_*]single()) is 0, "trailing filter keeping nothing should forward no values")
+   assert(size([]multi()) is 0, "trailing empty filter should forward no values")
+end
+
+@Test function FilterKeepingNothingAsArgument()
+   assert(second([_*]single(), 7) is 7, "non-trailing filter should occupy exactly one argument")
+   assert(size([_*]single(), 7) is 1, "non-trailing filter keeping nothing should pass nil")
+   assert(size([*]multi(), 7) is 2, "non-trailing filter should be truncated to its first kept value")
+   local text = tostring([_*]single())
+   assert(text is 'nil', "single-value filter keeping nothing should be nil, got " .. text)
+end
+
 -- Test error case: Invalid pattern should fail at parse time
 
 @Test function ErrorInvalidPatternCharacter()
