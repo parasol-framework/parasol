@@ -91,8 +91,21 @@ ParserResult<StmtNodePtr> AstBuilder::make_assignment_statement(const Token &Ope
 
 ParserResult<StmtNodePtr> AstBuilder::parse_expression_stmt()
 {
+   this->field_block_base = nullptr;
    auto first = this->parse_expression();
    if (not first.ok()) return ParserResult<StmtNodePtr>::failure(first.error_ref());
+
+   Token block_token = this->ctx.tokens().current();
+   if ((block_token.kind() IS TokenKind::Dot or block_token.kind() IS TokenKind::SafeField) and
+         this->ctx.tokens().peek(1).kind() IS TokenKind::LeftBrace) {
+      // A base that is not the whole expression, as in `a + b.{ ... }`, is rejected rather than silently grouped.
+      if (first.value_ref().get() != this->field_block_base) {
+         return this->fail<StmtNodePtr>(ParserErrorCode::UnexpectedToken, block_token,
+            "field assignment block base must be a variable, field, call or parenthesised expression");
+      }
+      return this->parse_field_assignment_block(std::move(first.value_ref()),
+         block_token.kind() IS TokenKind::SafeField);
+   }
 
    ExprNodeList targets;
    targets.push_back(std::move(first.value_ref()));
@@ -1202,6 +1215,15 @@ ParserResult<ExprNodePtr> AstBuilder::parse_suffixed(ExprNodePtr base)
 {
    while (true) {
       Token token = this->ctx.tokens().current();
+
+      // `.{` and `?.{` open a field assignment block.  The chain stops here and parse_expression_stmt() consumes
+      // the block if this base turns out to be the complete statement expression.
+      if ((token.kind() IS TokenKind::Dot or token.kind() IS TokenKind::SafeField) and
+            this->ctx.tokens().peek(1).kind() IS TokenKind::LeftBrace) {
+         this->field_block_base = base.get();
+         break;
+      }
+
       if (token.kind() IS TokenKind::Dot) {
          this->ctx.tokens().advance();
          auto name_token = this->ctx.expect_name(ParserErrorCode::ExpectedIdentifier);

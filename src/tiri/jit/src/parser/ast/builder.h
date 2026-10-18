@@ -62,6 +62,7 @@ private:
    int handler_depth = 0;             // Active handlers in the current lexical function
    int function_depth = 0;            // Tracks nesting depth inside function bodies
    int block_depth = 0;               // Tracks nested statement blocks below chunk scope
+   const ExprNode *field_block_base = nullptr; // Suffix chain that stopped at `.{` in the current expression statement
    bool enum_constants_committed = false;
    bool source_namespace_declared = false;
    bool module_initialiser = false;
@@ -261,6 +262,7 @@ private:
    ParserResult<StmtNodePtr> parse_compile_if();
    void skip_to_compile_end();
    ParserResult<StmtNodePtr> parse_expression_stmt();
+   ParserResult<StmtNodePtr> parse_field_assignment_block(ExprNodePtr Base, bool Safe);
    ParserResult<ExprNodePtr> parse_choose_expr();
    ParserResult<ExprNodePtr> parse_unary();
    ParserResult<ExprNodePtr> parse_primary();

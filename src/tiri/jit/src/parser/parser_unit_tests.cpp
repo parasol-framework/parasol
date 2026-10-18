@@ -2930,6 +2930,114 @@ static std::optional<BytecodeSnapshot> compile_snapshot(lua_State* L, std::strin
    return snapshot;
 }
 
+//********************************************************************************************************************
+// A field assignment block lowers to `do local <hidden> = base; <hidden>.field = value ... end`, with each synthesised
+// assignment carrying the span of its source entry, and emits the same bytecode as the hand-written equivalent.
+
+static bool test_field_assignment_block_lowering(kt::Log &Log)
+{
+   constexpr const char *source = "local dec = {}\nlocal k = 'k'\ndec.{\n   x = 1,\n   [k] = 2\n}\ndec?.{ y = 3 }\n";
+
+   auto result = build_ast_from_source(source);
+   if (not result.chunk.ok()) {
+      Log.error("failed to parse field assignment blocks");
+      log_diagnostics(result.diagnostics, Log);
+      return false;
+   }
+
+   StatementListView statements = result.chunk.value_ref()->view();
+   if (statements.size() != 4 or statements[2].kind != AstNodeKind::DoStmt or
+       statements[3].kind != AstNodeKind::DoStmt) {
+      Log.error("expected two locals followed by two lowered do blocks");
+      log_block_outline(*result.chunk.value_ref(), Log);
+      return false;
+   }
+
+   auto hidden_name = [](const ExprNode &Expression) {
+      const auto *name = std::get_if<NameRef>(&Expression.data);
+      return Expression.kind IS AstNodeKind::IdentifierExpr and name and name->identifier.symbol and
+         name->identifier.symbol->len > 0 and strdata(name->identifier.symbol)[0] IS '\x1f';
+   };
+
+   auto valid_hidden_decl = [&](const StmtNode &Statement) {
+      const auto *decl = std::get_if<LocalDeclStmtPayload>(&Statement.data);
+      if (Statement.kind != AstNodeKind::LocalDeclStmt or not decl or decl->names.size() != 1 or
+          decl->values.size() != 1 or not decl->names[0].symbol) return false;
+      if (strdata(decl->names[0].symbol)[0] != '\x1f') return false;
+      return decl->values[0] and decl->values[0]->kind IS AstNodeKind::IdentifierExpr;
+   };
+
+   auto valid_entry = [&](const StmtNode &Statement, AstNodeKind TargetKind, BCLine Line) {
+      const auto *assignment = std::get_if<AssignmentStmtPayload>(&Statement.data);
+      if (Statement.kind != AstNodeKind::AssignmentStmt or not assignment or
+          assignment->op != AssignmentOperator::Plain or assignment->targets.size() != 1 or
+          assignment->values.size() != 1) return false;
+      const ExprNodePtr &target = assignment->targets[0];
+      if (not target or target->kind != TargetKind or Statement.span.line != Line or target->span.line != Line) {
+         return false;
+      }
+      if (TargetKind IS AstNodeKind::MemberExpr) {
+         const auto &member = std::get<MemberExprPayload>(target->data);
+         return member.table and hidden_name(*member.table);
+      }
+      const auto &index = std::get<IndexExprPayload>(target->data);
+      return index.table and hidden_name(*index.table);
+   };
+
+   const auto &plain = std::get<DoStmtPayload>(statements[2].data);
+   StatementListView plain_body = plain.block->view();
+   if (plain_body.size() != 3 or not valid_hidden_decl(plain_body[0]) or
+       not valid_entry(plain_body[1], AstNodeKind::MemberExpr, 4) or
+       not valid_entry(plain_body[2], AstNodeKind::IndexExpr, 5)) {
+      Log.error("plain field block should lower to a hidden local and per-entry assignments with entry spans");
+      log_block_outline(*plain.block, Log);
+      return false;
+   }
+
+   const auto &safe = std::get<DoStmtPayload>(statements[3].data);
+   StatementListView safe_body = safe.block->view();
+   if (safe_body.size() != 2 or not valid_hidden_decl(safe_body[0]) or safe_body[1].kind != AstNodeKind::IfStmt) {
+      Log.error("safe field block should lower to a hidden local and a nil guard");
+      log_block_outline(*safe.block, Log);
+      return false;
+   }
+
+   const auto &guard = std::get<IfStmtPayload>(safe_body[1].data);
+   if (guard.clauses.size() != 1 or not guard.clauses[0].condition or not guard.clauses[0].block) {
+      Log.error("safe field block guard should have a single conditional clause");
+      return false;
+   }
+   const auto *condition = std::get_if<BinaryExprPayload>(&guard.clauses[0].condition->data);
+   StatementListView guarded = guard.clauses[0].block->view();
+   if (not condition or condition->op != AstBinaryOperator::NotEqual or guarded.size() != 1 or
+       not valid_entry(guarded[0], AstNodeKind::MemberExpr, 7)) {
+      Log.error("safe field block guard should test '!= nil' and contain the entry assignment");
+      return false;
+   }
+
+   LuaStateHolder holder;
+   lua_State *L = holder.get();
+   std::string error;
+   auto block = compile_snapshot(L, "local dec = {}\ndec.{ x = 1, y = 2 }\n", true, error);
+   if (not block) {
+      Log.error("failed to compile field block bytecode: %s", error.c_str());
+      return false;
+   }
+   auto manual = compile_snapshot(L, "local dec = {}\ndo local t = dec t.x = 1 t.y = 2 end\n", true, error);
+   if (not manual) {
+      Log.error("failed to compile hand-written bytecode: %s", error.c_str());
+      return false;
+   }
+   if (not exact_snapshot_match(*block, *manual)) {
+      log_snapshot(*block, "field block");
+      log_snapshot(*manual, "hand-written");
+      Log.error("field block bytecode should match the hand-written hidden-local form");
+      return false;
+   }
+
+   return true;
+}
+
 static int bytecode_writer(lua_State *, const void *Data, size_t Size, void *Context)
 {
    auto *dump = (std::string *)Context;
@@ -12572,7 +12680,7 @@ static bool test_import_module_relocation_transaction(kt::Log &Log)
 
 extern void parser_unit_tests(int &Passed, int &Total)
 {
-   constexpr std::array<TestCase, 111> tests = { {
+   constexpr std::array<TestCase, 112> tests = { {
       { "nested_function_failure_after_bytecode_growth", test_nested_function_failure_after_bytecode_growth },
       { "ordinary_function_policy", test_ordinary_function_policy },
       { "function_context_binding_syntax", test_function_context_binding_syntax },
@@ -12604,6 +12712,7 @@ extern void parser_unit_tests(int &Passed, int &Total)
       { "immutable_global_contract_analysis", test_immutable_global_contract_analysis },
       { "loop_ast", test_loop_ast },
       { "if_stmt_with_elseif_ast", test_if_stmt_with_elseif_ast },
+      { "field_assignment_block_lowering", test_field_assignment_block_lowering },
       { "local_function_table_ast", test_local_function_table_ast },
       { "ast_statement_matrix", test_ast_statement_matrix },
       { "checkall_syntax_and_bytecode", test_checkall_syntax_and_bytecode },

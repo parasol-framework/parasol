@@ -936,6 +936,7 @@ GCproto * LexState::fs_finish(BCLine Line)
          GCstr *name_str = strref(var->name);
          if (uintptr_t(name_str) < VARNAME__MAX) continue;
          if (name_str IS NAME_BLANK) continue;
+         if (name_str->len > 0 and strdata(name_str)[0] IS '\x1f') continue; // Compiler-generated hidden binding
 
          VariableInfo info {
             .line   = var->line,

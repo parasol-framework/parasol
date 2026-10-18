@@ -1,4 +1,4 @@
-extern maskNonCode, maskDeclarationTypeParameters
+extern maskNonCode, maskDeclarationTypeParameters, findFieldBlocks
 
 ----------------------------------------------------------------------------------------------------------------------
 -- Document Symbol Support
@@ -397,9 +397,11 @@ end
 
 symbol_block_openers = array<str> { 'do', 'defer', 'try', 'choose', 'checkall' }
 
-function symbolPushBlockFrames(Stack:array<table>, LineCode:str, FunctionFrame:table)
+-- Claimed is the number of function frames the caller has already pushed for this line's named functions.
+
+function symbolPushBlockFrames(Stack:array<table>, LineCode:str, Claimed:num)
    function_count = symbolCountBlockKeyword(LineCode, 'function') + symbolCountBlockKeyword(LineCode, 'thunk')
-   if FunctionFrame and function_count > 0 then function_count -= 1 end
+   function_count = function_count > Claimed and function_count - Claimed or 0
 
    for i in {1 to function_count+1} do
       Stack.push({ kind = 'function' })
@@ -455,6 +457,14 @@ function symbolCloseTables(Stack:array<table>, LineCode:str, LineNo:num, LineTex
    table_frame = symbolFindTopTableFrame(Stack)
    if not table_frame then return end
 
+   -- A field assignment block's table value closes on the line that the field block scanner recorded.
+   if table_frame.end_line != nil then
+      if LineNo < table_frame.end_line then return end
+      Stack.remove(Stack.indexOf(table_frame))
+      symbolCloseFrame(table_frame, LineNo, LineText)
+      return
+   end
+
    if table_frame.awaiting_brace then
       if symbolCountChar(LineCode, '{') is 0 then return end
       table_frame.awaiting_brace = false
@@ -471,6 +481,47 @@ function symbolCloseTables(Stack:array<table>, LineCode:str, LineNo:num, LineTex
          break
       end
    end
+end
+
+-- Add symbols for the field assignment block entries keyed on this line.  An entry is named `base.key`, as the
+-- equivalent `base.key = value` statement would be: function values are methods at any depth, while other values are
+-- listed only at module scope.  Entries of blocks without a plain dotted base are not listed.  Symbols are added
+-- before any frame is pushed, so that entries sharing a line are siblings.  Returns the number of function frames
+-- pushed.
+
+function symbolAddFieldBlockEntries(Symbols:array<table>, Stack:array<table>, Entries:array<table>, LineText:str,
+   LineNo:num):num
+   module_level = #Stack is 0
+   frames = array<table>
+
+   for entry in values(Entries) do
+      if not entry.block.name then continue end
+      name = entry.block.name .. '.' .. entry.key
+      symbol = nil
+      if entry.isFunction then
+         symbol = symbolMakeDocumentSymbol(name, SYMBOL_KIND.METHOD, LineNo, LineText, entry.startCol, 'method', nil)
+         frames.push({ kind = 'function', symbol = symbol })
+      elseif module_level then
+         kind = entry.isTable and SYMBOL_KIND.OBJECT or SYMBOL_KIND.VARIABLE
+         symbol = symbolMakeDocumentSymbol(name, kind, LineNo, LineText, entry.startCol,
+            entry.isTable and 'table' or nil, nil)
+         if entry.isTable and entry.tableEndLine != nil and entry.tableEndLine > LineNo then
+            frames.push({ kind = 'table', symbol = symbol, end_line = entry.tableEndLine })
+         end
+      end
+
+      if symbol then
+         symbol.selectionRange = symbolMakeRange(LineNo, entry.startCol, entry.endCol)
+         symbolAddChild(Symbols, Stack, symbol)
+      end
+   end
+
+   claimed = 0
+   for frame in values(frames) do
+      Stack.push(frame)
+      if frame.kind is 'function' then claimed++ end
+   end
+   return claimed
 end
 
 function symbolLastContentLine(Doc:table, TotalLines:num):num
@@ -490,6 +541,7 @@ global function extractDocumentSymbols(Doc:table):array<table>
    stack = array<table>
    in_block_comment = false
    pending_annotations = array<table>
+   field_blocks = findFieldBlocks(Doc)
 
    for line_num in {0 to total_lines} do
       line_text = getLine(Doc, line_num)
@@ -520,14 +572,24 @@ global function extractDocumentSymbols(Doc:table):array<table>
          end
       end
 
-      current_symbol = symbolDetectFunction(symbol_code, line_text, line_num, line_annotations)
-      function_frame = nil
+      field_entries = field_blocks.entriesByLine[line_num]
+      current_symbol = nil
+      if not field_entries then
+         current_symbol = symbolDetectFunction(symbol_code, line_text, line_num, line_annotations)
+      end
+      claimed_functions = 0
 
-      if current_symbol then
-         symbolAddChild(symbols, stack, current_symbol)
-         function_frame = { kind = 'function', symbol = current_symbol }
-         stack.push(function_frame)
+      if field_entries then
+         -- Field block keys are members of the block's base, never declarations of their own.
+         claimed_functions = symbolAddFieldBlockEntries(symbols, stack, field_entries, line_text, line_num)
          pending_annotations = array<table>
+      elseif current_symbol then
+         symbolAddChild(symbols, stack, current_symbol)
+         stack.push({ kind = 'function', symbol = current_symbol })
+         claimed_functions = 1
+         pending_annotations = array<table>
+      elseif #stack is 0 and field_blocks.linesInside[line_num] then
+         pending_annotations = array<table> -- Module values cannot be declared inside a field block
       elseif #stack is 0 then
          struct_symbol = symbolDetectStruct(symbol_code, line_text, line_num)
          if struct_symbol then
@@ -557,7 +619,7 @@ global function extractDocumentSymbols(Doc:table):array<table>
          pending_annotations = array<table>
       end
 
-      symbolPushBlockFrames(stack, symbol_code, function_frame)
+      symbolPushBlockFrames(stack, symbol_code, claimed_functions)
       symbolCloseBlockFrames(stack, symbol_code, line_num, line_text)
       symbolCloseTables(stack, symbol_code, line_num, line_text)
    end

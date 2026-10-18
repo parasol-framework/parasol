@@ -939,6 +939,14 @@ ParserResult<StmtNodePtr> AstBuilder::parse_statement()
          "temporary context blocks use 'using Reference do ... end'");
    }
 
+   // A statement cannot begin with `.{`; this is the remainder of a block written in a value position, such as
+   // `local v = dec.{ x = 1 }`, where the suffix chain stopped before the block.
+   if ((current.kind() IS TokenKind::Dot or current.kind() IS TokenKind::SafeField) and
+         this->ctx.tokens().peek(1).kind() IS TokenKind::LeftBrace) {
+      return this->fail<StmtNodePtr>(ParserErrorCode::UnexpectedToken, current,
+         "field assignment blocks are statements and cannot be used as values");
+   }
+
    if (current.kind() IS TokenKind::Identifier and current.identifier() and
          std::string_view(strdata(current.identifier()), current.identifier()->len) IS "struct" and
          this->ctx.tokens().peek(1).kind() IS TokenKind::Identifier) {

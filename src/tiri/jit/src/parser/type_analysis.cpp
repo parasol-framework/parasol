@@ -510,6 +510,7 @@ void TypeAnalyser::check_shadowing(GCstr *Name, SourceSpan Location)
    if (not this->should_emit_tip(2)) return;
    if (not Name) return;
    if (Name->len IS 1 and strdata(Name)[0] IS '_') return;
+   if (Name->len > 0 and strdata(Name)[0] IS '\x1f') return; // Compiler-generated hidden binding
 
    // Check all scopes except the current one (outermost to second-to-last)
    // We iterate in reverse (innermost first) but skip the current scope

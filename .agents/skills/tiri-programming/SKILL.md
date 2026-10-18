@@ -72,6 +72,8 @@ Recognise and use these Tiri extensions where they match local code style:
 - Presence check: `value??` (adjacent); default: `value ?? fallback` (whitespace before `??` is significant).
 - Default assignments: `??=` uses extended falsiness; `?=` assigns only for `nil`, preserving `false`, `0`, and `""`.
 - Safe navigation: `obj?.field`, `obj?.method()`, `obj?[key]`
+- Field assignment blocks: `ref.{ x = 1, [key] = 2 }` and `ref?.{ ... }` assign fields in order with `ref` evaluated
+  once; values use the caller's scope (unlike `using`). Statement only; no positional, vararg or compound entries.
 - Deferred cleanup: `defer ... end`
 - To-be-closed variables: `resource <close> = acquire_resource()`
 - Constants: `local name <const> = value`

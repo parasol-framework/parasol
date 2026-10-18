@@ -395,3 +395,10 @@ end
    assert(checked > 50, f'Only {checked} documented classes declare a source file.')
    assert(missing is '', 'Class sources are missing from the source tree:' .. missing)
 end
+
+@Test function FieldBlockKeyResolvesToBaseMember()
+   doc = makeDoc('clock = obj<Time> {}\nclock.{\n   year = 2001\n}\n')
+   locations = resolveDefinition(doc, { line = 2, character = 4 })
+   assertUriIs(locations, 'https://kotuku.dev/modules/classes/time.html#tf-Year',
+      'Field block keys should resolve through the class of the block base')
+end

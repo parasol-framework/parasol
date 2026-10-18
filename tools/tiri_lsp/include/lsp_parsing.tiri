@@ -110,6 +110,251 @@ global function findUsingHeaders(Doc:table):array<table>
    return headers
 end
 
+----------------------------------------------------------------------------------------------------------------------
+-- Field Assignment Blocks
+--
+-- `ref.{ name = value, [key] = value }` and `ref?.{ ... }` assign fields of an existing reference.  Their keys are
+-- members of the base rather than declarations, so hover, definition and symbol extraction attribute them to the base.
+-- Outside a block the scanner only searches for the next opener.  Inside one it tracks brackets, so that nested tables
+-- and calls cannot supply keys, and block keywords, so that `,` and `;` inside a function value cannot start an entry.
+
+rx_field_block_hint   = <{ regex.new([[\.\s*\{]]) }>
+rx_field_block_open   = <{ regex.new([[\.[ \t]*\{]]) }>
+rx_field_block_base   = <{ regex.new([[&?([A-Za-z_]\w*(?:[ \t]*\??\.[ \t]*[A-Za-z_]\w*)*)[ \t]*\??$]]) }>
+rx_field_block_simple = <{ regex.new([[^[A-Za-z_]\w*(?:\.[A-Za-z_]\w*)*$]]) }>
+rx_field_block_last   = <{ regex.new([[([A-Za-z_]\w*)$]]) }>
+
+field_block_openers = {
+   ['function'] = true, ['thunk'] = true, ['do'] = true, ['then'] = true, ['repeat'] = true,
+   ['defer'] = true, ['try'] = true, ['choose'] = true, ['checkall'] = true
+}
+
+-- `elseif` closes its branch and the following `then` re-opens it.
+
+field_block_closers = { ['end'] = true, ['until'] = true, ['elseif'] = true }
+
+field_block_compound_ops = array<str> { '+=', '-=', '*=', '/=', '%=', '..=', '??=', '?=' }
+
+function fieldBlockIdentStart(Char:str):bool
+   return (Char >= 'a' and Char <= 'z') or (Char >= 'A' and Char <= 'Z') or Char is '_'
+end
+
+function fieldBlockIdentChar(Char:str):bool
+   return fieldBlockIdentStart(Char) or (Char >= '0' and Char <= '9')
+end
+
+function fieldBlockSkipSpaces(Code:str, Pos:num):num
+   while Pos < #Code do
+      local char = Code.sub(Pos, Pos + 1)
+      if char != ' ' and char != '\t' and char != '\r' then break end
+      Pos++
+   end
+   return Pos
+end
+
+-- Return the position after an entry's assignment operator when one starts at Pos (after optional spaces).  Comparisons
+-- and arrows are not assignments.  Compound operators are accepted so that later grammar extensions resolve as keys.
+
+global function fieldBlockAssignmentEnd(Code:str, Pos:num):num
+   local pos = fieldBlockSkipSpaces(Code, Pos)
+   if Code.sub(pos, pos + 1) is '=' then
+      local next_char = Code.sub(pos + 1, pos + 2)
+      if next_char is '=' or next_char is '>' then return nil end
+      return pos + 1
+   end
+
+   for op in values(field_block_compound_ops) do
+      if Code.sub(pos, pos + #op) is op then return pos + #op end
+   end
+   return nil
+end
+
+-- Describe the base of a block whose `.` is at DotPos, or return nil if the `.{` is not an opener.  Name is the dotted
+-- base for plain identifier chains only, mirroring the names that ordinary `base.key = value` statements produce.
+-- Object is the identifier immediately before the block, as getTokenAtPosition() reports for `base.key`.
+
+function fieldBlockBase(Code:str, DotPos:num):table
+   if DotPos > 0 and Code.sub(DotPos - 1, DotPos) is '.' then return nil end -- `..{` is a concatenation
+
+   local prefix = Code.sub(0, DotPos).rtrim()
+   local safe = prefix.endsWith('?')
+   if safe then prefix = prefix.sub(0, #prefix - 1).rtrim() end
+   if prefix is '' then return nil end
+
+   local last = prefix.sub(#prefix - 1)
+   if last is ')' or last is ']' then return { safe = safe } end -- Calls and index chains have no simple name
+
+   local start_pos, _, cap = rx_field_block_base.findFirst(prefix)
+   if not start_pos then return nil end
+
+   local chain = cap[0]
+   local _, _, last_cap = rx_field_block_last.findFirst(chain)
+   local compact = chain.replace(' ', '').replace('\t', '')
+   local before = prefix.sub(0, start_pos).rtrim()
+   local name = nil
+   if prefix.sub(start_pos, start_pos + 1) != '&' and not before.endsWith('.') and not before.endsWith(':') and
+         rx_field_block_simple.test(compact) then
+      name = compact
+   end
+
+   return { name = name, object = last_cap and last_cap[0], safe = safe }
+end
+
+function fieldBlockOpen(Result:table, Stack:array<table>, Base:table, Line:num, BraceCol:num)
+   local block = {
+      name = Base.name, object = Base.object, safe = Base.safe, line = Line, col = BraceCol,
+      kwDepth = 0, expectKey = true, entries = array<table>
+   }
+   Result.blocks.push(block)
+   Stack.push({ block = block })
+end
+
+-- Return the field assignment blocks of a document and their keyed entries:
+--
+--   blocks        array of { name, object, safe, line, col, endLine, endCol, entries }
+--   entries       array of { key, line, startCol, endCol, block, isFunction, isTable, tableEndLine }
+--   entriesByLine line number to the entries whose key starts on that line
+--   linesInside   line numbers that start inside a block
+--
+-- Columns are byte offsets.  The result is cached against the document content.
+
+global function findFieldBlocks(Doc:table):table
+   if Doc._field_blocks and Doc._field_blocks_content is Doc.content then return Doc._field_blocks end
+
+   local result = { blocks = array<table>, entries = array<table>, entriesByLine = {}, linesInside = {} }
+   Doc._field_blocks = result
+   Doc._field_blocks_content = Doc.content
+   if not Doc.content or not rx_field_block_hint.test(Doc.content) then return result end
+
+   local stack = array<table>
+   local in_non_code = false
+
+   for line_num in {0 to getTotalLines(Doc)} do
+      local code
+      code, in_non_code = maskNonCode(getLine(Doc, line_num), in_non_code)
+      if #stack > 0 then result.linesInside[line_num] = true end
+
+      local pos = 0
+      local len = #code
+      while pos < len do
+         if #stack is 0 then
+            -- Outside a block only an opener matters, so jump straight to the next candidate.
+            local start_pos, stop_pos = rx_field_block_open.findFirst(code, pos)
+            if not start_pos then break end
+            pos = stop_pos
+            local base = fieldBlockBase(code, start_pos)
+            if base then fieldBlockOpen(result, stack, base, line_num, stop_pos - 1) end
+            continue
+         end
+
+         local char = code.sub(pos, pos + 1)
+         local block = stack[#stack - 1].block -- Set only when the innermost bracket is a field block
+
+         if char is ' ' or char is '\t' or char is '\r' then
+            pos++
+         elseif fieldBlockIdentChar(char) then
+            local word_end = pos + 1
+            while word_end < len and fieldBlockIdentChar(code.sub(word_end, word_end + 1)) do word_end++ end
+            local word = code.sub(pos, word_end)
+
+            if block and block.expectKey then
+               block.expectKey = false
+               local op_end = (block.kwDepth is 0 and fieldBlockIdentStart(char)) and
+                  fieldBlockAssignmentEnd(code, word_end) or nil
+               if op_end then
+                  local value_pos = fieldBlockSkipSpaces(code, op_end)
+                  local value_end = value_pos
+                  while value_end < len and fieldBlockIdentChar(code.sub(value_end, value_end + 1)) do
+                     value_end++
+                  end
+                  local value_word = code.sub(value_pos, value_end)
+                  local entry = {
+                     key = word, line = line_num, startCol = pos, endCol = word_end, block = block,
+                     isFunction = value_word is 'function' or value_word is 'thunk',
+                     isTable = code.sub(value_pos, value_pos + 1) is '{'
+                  }
+                  block.entries.push(entry)
+                  result.entries.push(entry)
+                  local line_entries = result.entriesByLine[line_num]
+                  if not line_entries then
+                     line_entries = array<table>
+                     result.entriesByLine[line_num] = line_entries
+                  end
+                  line_entries.push(entry)
+
+                  -- A table value is tracked so that symbol extraction can close it on the right line.
+                  if entry.isTable then
+                     stack.push({ entry = entry })
+                     pos = value_pos + 1
+                  else
+                     pos = op_end
+                  end
+                  continue
+               end
+            end
+
+            if block then
+               if field_block_openers[word] then
+                  block.kwDepth++
+               elseif field_block_closers[word] and block.kwDepth > 0 then
+                  block.kwDepth -= 1
+               end
+            end
+            pos = word_end
+         elseif char is '{' then
+            if block then block.expectKey = false end
+            local dot_pos = pos - 1
+            while dot_pos >= 0 and (code.sub(dot_pos, dot_pos + 1) is ' ' or code.sub(dot_pos, dot_pos + 1) is '\t') do
+               dot_pos -= 1
+            end
+            local base = nil
+            if dot_pos >= 0 and code.sub(dot_pos, dot_pos + 1) is '.' then base = fieldBlockBase(code, dot_pos) end
+            if base then
+               fieldBlockOpen(result, stack, base, line_num, pos)
+            else
+               stack.push({})
+            end
+            pos++
+         elseif char is '(' or char is '[' then
+            if block then block.expectKey = false end -- `[` starts a computed key, which has no name
+            stack.push({})
+            pos++
+         elseif char is ')' or char is ']' or char is '}' then
+            local frame = stack.pop()
+            if frame.block then
+               frame.block.endLine = line_num
+               frame.block.endCol = pos + 1
+            elseif frame.entry then
+               frame.entry.tableEndLine = line_num
+            end
+            pos++
+         else
+            if block then
+               if (char is ',' or char is ';') and block.kwDepth is 0 then
+                  block.expectKey = true
+               else
+                  block.expectKey = false
+               end
+            end
+            pos++
+         end
+      end
+   end
+
+   return result
+end
+
+-- Return the field assignment block entry whose key starts at the byte column, or nil.
+
+global function fieldBlockEntryAt(Doc:table, Line:num, ByteCol:num):table
+   local line_entries = findFieldBlocks(Doc).entriesByLine[Line]
+   if not line_entries then return nil end
+   for entry in values(line_entries) do
+      if entry.startCol is ByteCol then return entry end
+   end
+   return nil
+end
+
 -- Multi-byte (non-ASCII) operators recognised by the Tiri lexer, keyed by their UTF-8 byte sequence.  These are
 -- scanned byte-at-a-time by .sub(), so the tokeniser cannot match them with a single-character comparison and must
 -- look them up by their full sequence.  The value is the number of UTF-8 bytes the operator occupies.
