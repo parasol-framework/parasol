@@ -124,6 +124,10 @@ rx_field_block_base   = <{ regex.new([[&?([A-Za-z_]\w*(?:[ \t]*\??\.[ \t]*[A-Za-
 rx_field_block_simple = <{ regex.new([[^[A-Za-z_]\w*(?:\.[A-Za-z_]\w*)*$]]) }>
 rx_field_block_last   = <{ regex.new([[([A-Za-z_]\w*)$]]) }>
 
+-- Match only a value's parameter prefix, so arrows inside calls or table values are not methods of the base.
+rx_field_block_arrow = <{ regex.new(
+   [[^\s*\(*\s*(?:[A-Za-z_]\w*|\(\s*(?:[A-Za-z_]\w*(?:\s*,\s*[A-Za-z_]\w*)*)?\s*\))\s*=>\s*]]) }>
+
 field_block_openers = {
    ['function'] = true, ['thunk'] = true, ['do'] = true, ['then'] = true, ['repeat'] = true,
    ['defer'] = true, ['try'] = true, ['choose'] = true, ['checkall'] = true
@@ -212,7 +216,8 @@ end
 -- Return the field assignment blocks of a document and their keyed entries:
 --
 --   blocks        array of { name, object, safe, line, col, endLine, endCol, entries }
---   entries       array of { key, line, startCol, endCol, block, isFunction, isTable, tableEndLine }
+--   entries       array of { key, line, startCol, endCol, block, isFunction, isArrow, arrowBlock, isTable,
+--                             tableEndLine, tableEndCol }
 --   entriesByLine line number to the entries whose key starts on that line
 --   linesInside   line numbers that start inside a block
 --
@@ -268,9 +273,14 @@ global function findFieldBlocks(Doc:table):table
                      value_end++
                   end
                   local value_word = code.sub(value_pos, value_end)
+                  local _, arrow_end = rx_field_block_arrow.findFirst(code.sub(value_pos))
                   local entry = {
                      key = word, line = line_num, startCol = pos, endCol = word_end, block = block,
-                     isFunction = value_word is 'function' or value_word is 'thunk',
+                     isFunction = value_word is 'function' or value_word is 'thunk' or arrow_end != nil,
+                     isArrow = arrow_end != nil,
+                     arrowBlock = arrow_end != nil and
+                        code.sub(value_pos + arrow_end, value_pos + arrow_end + 2) is 'do' and
+                        not fieldBlockIdentChar(code.sub(value_pos + arrow_end + 2, value_pos + arrow_end + 3)),
                      isTable = code.sub(value_pos, value_pos + 1) is '{'
                   }
                   block.entries.push(entry)
@@ -326,6 +336,7 @@ global function findFieldBlocks(Doc:table):table
                frame.block.endCol = pos + 1
             elseif frame.entry then
                frame.entry.tableEndLine = line_num
+               frame.entry.tableEndCol = pos + 1
             end
             pos++
          else

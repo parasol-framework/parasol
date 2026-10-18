@@ -490,3 +490,54 @@ end
    assert(findChild(setup, 'Self.refresh'), 'Function entries in a function body should be child methods.')
    assert(not findChild(setup, 'Self.count'), 'Value entries in a function body should not be listed.')
 end
+
+@Test function FieldBlockSiblingsAfterClosingValues()
+   for value in values(array<str> { '{\n   cb = function() end\n}',
+      'function()\n   if true then print(1) end\nend', 'A => do\n   return A\nend' }) do
+      doc = makeDoc('t.{ first = ' .. value .. ', next = function() end, count = 1 }\n' ..
+         'function after()\nend\n')
+      symbols = extractDocumentSymbols(doc)
+      first = findSymbol(symbols, 't.first')
+      next_symbol = findSymbol(symbols, 't.next')
+      assert(first and first.range['end'].line is 2, 'The preceding value must close on its last line.')
+      assert(next_symbol and next_symbol.kind is SYMBOL_KIND.METHOD,
+         'A method after a closing value must be a module-level sibling.')
+      assert(next_symbol.range['end'].line is 2, 'The sibling method must close on its own end.')
+      assert(findSymbol(symbols, 't.count'), 'A value after a closing method must remain at module scope.')
+      after = findSymbol(symbols, 'after')
+      assert(after and after.range['end'].line is 4, 'Following function ranges must remain balanced.')
+   end
+
+   doc = makeDoc('function setup()\n   t.{ first = function()\n   end, next = function() end }\nend\n')
+   setup = findSymbol(extractDocumentSymbols(doc), 'setup')
+   assert(setup and setup.range['end'].line is 3, 'The enclosing function must retain its range.')
+   assert(findChild(setup, 't.first') and findChild(setup, 't.next'),
+      'Methods separated by an end on the same line must share their enclosing parent.')
+end
+
+@Test function FieldBlockArrowValuesAreMethods()
+   for value in values(array<str> { '(A) => A + 1', 'A => A + 1', '() => 1', '(A, B) => A + B',
+      '(A => num: A + 1)', 'A => double(A)', '() => do\n      return 1\n   end' }) do
+      for nested in values(array<any> { false, true }) do
+         prefix = nested and 'function setup()\n' or ''
+         suffix = nested and 'end\n' or ''
+         doc = makeDoc(prefix .. 't.{ f = ' .. value .. ', count = 1, g = function() end }\n' .. suffix)
+         symbols = extractDocumentSymbols(doc)
+         parent = nested and findSymbol(symbols, 'setup') or nil
+         methods = parent and parent.children or symbols
+         f = findSymbol(methods, 't.f')
+         assert(f and f.kind is SYMBOL_KIND.METHOD and f.detail is 'method',
+            f'Arrow value {value} must be a method at either scope.')
+         assert(findSymbol(methods, 't.g'), 'An arrow must not consume the following method as a child.')
+         assert((findSymbol(methods, 't.count') != nil) is not nested,
+            'Ordinary value entries must be listed only at module scope.')
+      end
+   end
+
+   doc = makeDoc('t.{ value = compute(A => A + 1), cfg = { cb = A => A } }\n')
+   symbols = extractDocumentSymbols(doc)
+   assert(findSymbol(symbols, 't.value').kind is SYMBOL_KIND.VARIABLE,
+      'An arrow argument must not turn its containing call into a method.')
+   assert(findSymbol(symbols, 't.cfg').kind is SYMBOL_KIND.OBJECT,
+      'An arrow table member must not turn its containing table into a method.')
+end

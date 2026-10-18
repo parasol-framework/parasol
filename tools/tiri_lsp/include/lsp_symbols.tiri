@@ -397,9 +397,9 @@ end
 
 symbol_block_openers = array<str> { 'do', 'defer', 'try', 'choose', 'checkall' }
 
--- Claimed is the number of function frames the caller has already pushed for this line's named functions.
+-- Claimed counts function frames already pushed for named functions; ClaimedDo counts named arrow block bodies.
 
-function symbolPushBlockFrames(Stack:array<table>, LineCode:str, Claimed:num)
+function symbolPushBlockFrames(Stack:array<table>, LineCode:str, Claimed:num, ClaimedDo:num)
    function_count = symbolCountBlockKeyword(LineCode, 'function') + symbolCountBlockKeyword(LineCode, 'thunk')
    function_count = function_count > Claimed and function_count - Claimed or 0
 
@@ -418,6 +418,7 @@ function symbolPushBlockFrames(Stack:array<table>, LineCode:str, Claimed:num)
 
    for keyword in values(symbol_block_openers) do
       open_count = symbolCountBlockKeyword(LineCode, keyword)
+      if keyword is 'do' then open_count -= ClaimedDo or 0 end
       for i in {1 to open_count+1} do
          Stack.push({ kind = 'block' })
       end
@@ -453,13 +454,14 @@ function symbolFindTopTableFrame(Stack:array<table>):table
    return nil
 end
 
-function symbolCloseTables(Stack:array<table>, LineCode:str, LineNo:num, LineText:str)
+function symbolCloseTables(Stack:array<table>, LineCode:str, LineNo:num, LineText:str, EndCol:num)
    table_frame = symbolFindTopTableFrame(Stack)
    if not table_frame then return end
 
    -- A field assignment block's table value closes on the line that the field block scanner recorded.
    if table_frame.end_line != nil then
       if LineNo < table_frame.end_line then return end
+      if LineNo is table_frame.end_line and EndCol != nil and EndCol < table_frame.end_col then return end
       Stack.remove(Stack.indexOf(table_frame))
       symbolCloseFrame(table_frame, LineNo, LineText)
       return
@@ -483,30 +485,44 @@ function symbolCloseTables(Stack:array<table>, LineCode:str, LineNo:num, LineTex
    end
 end
 
--- Add symbols for the field assignment block entries keyed on this line.  An entry is named `base.key`, as the
--- equivalent `base.key = value` statement would be: function values are methods at any depth, while other values are
--- listed only at module scope.  Entries of blocks without a plain dotted base are not listed.  Symbols are added
--- before any frame is pushed, so that entries sharing a line are siblings.  Returns the number of function frames
--- pushed.
+-- Process field entries and the code between their keys in source order.  A value's closing `end` or brace must
+-- leave the stack before the next sibling is attached.  Expression arrows have no end-delimited frame.
 
-function symbolAddFieldBlockEntries(Symbols:array<table>, Stack:array<table>, Entries:array<table>, LineText:str,
-   LineNo:num):num
-   module_level = #Stack is 0
-   frames = array<table>
+function symbolAddFieldBlockEntries(Symbols:array<table>, Stack:array<table>, Entries:array<table>, LineCode:str,
+   LineText:str, LineNo:num)
+   pos = 0
+   claimed = 0
+   claimed_do = 0
 
    for entry in values(Entries) do
+      prefix = LineCode.sub(pos, entry.startCol)
+      symbolPushBlockFrames(Stack, prefix, claimed, claimed_do)
+      symbolCloseBlockFrames(Stack, prefix, LineNo, LineText)
+      symbolCloseTables(Stack, prefix, LineNo, LineText, entry.startCol)
+      claimed = 0
+      claimed_do = 0
+      pos = entry.startCol
+
       if not entry.block.name then continue end
       name = entry.block.name .. '.' .. entry.key
       symbol = nil
+      frame = nil
       if entry.isFunction then
          symbol = symbolMakeDocumentSymbol(name, SYMBOL_KIND.METHOD, LineNo, LineText, entry.startCol, 'method', nil)
-         frames.push({ kind = 'function', symbol = symbol })
-      elseif module_level then
+         if not entry.isArrow then
+            frame = { kind = 'function', symbol = symbol }
+            claimed = 1
+         elseif entry.arrowBlock then
+            frame = { kind = 'block', symbol = symbol }
+            claimed_do = 1
+         end
+      elseif #Stack is 0 then
          kind = entry.isTable and SYMBOL_KIND.OBJECT or SYMBOL_KIND.VARIABLE
          symbol = symbolMakeDocumentSymbol(name, kind, LineNo, LineText, entry.startCol,
             entry.isTable and 'table' or nil, nil)
          if entry.isTable and entry.tableEndLine != nil and entry.tableEndLine > LineNo then
-            frames.push({ kind = 'table', symbol = symbol, end_line = entry.tableEndLine })
+            frame = { kind = 'table', symbol = symbol, end_line = entry.tableEndLine,
+               end_col = entry.tableEndCol }
          end
       end
 
@@ -514,14 +530,13 @@ function symbolAddFieldBlockEntries(Symbols:array<table>, Stack:array<table>, En
          symbol.selectionRange = symbolMakeRange(LineNo, entry.startCol, entry.endCol)
          symbolAddChild(Symbols, Stack, symbol)
       end
+      if frame then Stack.push(frame) end
    end
 
-   claimed = 0
-   for frame in values(frames) do
-      Stack.push(frame)
-      if frame.kind is 'function' then claimed++ end
-   end
-   return claimed
+   remainder = LineCode.sub(pos)
+   symbolPushBlockFrames(Stack, remainder, claimed, claimed_do)
+   symbolCloseBlockFrames(Stack, remainder, LineNo, LineText)
+   symbolCloseTables(Stack, remainder, LineNo, LineText)
 end
 
 function symbolLastContentLine(Doc:table, TotalLines:num):num
@@ -581,8 +596,9 @@ global function extractDocumentSymbols(Doc:table):array<table>
 
       if field_entries then
          -- Field block keys are members of the block's base, never declarations of their own.
-         claimed_functions = symbolAddFieldBlockEntries(symbols, stack, field_entries, line_text, line_num)
+         symbolAddFieldBlockEntries(symbols, stack, field_entries, line_code, line_text, line_num)
          pending_annotations = array<table>
+         continue
       elseif current_symbol then
          symbolAddChild(symbols, stack, current_symbol)
          stack.push({ kind = 'function', symbol = current_symbol })
