@@ -318,8 +318,12 @@ static ERR VECTORPATTERN_SET_Transform(extVectorPattern *Self, const std::string
 Units:  Defines the coordinate system for fields X, Y, Width and Height.
 
 This field declares the coordinate system that is used for values in the #X, #Y, #Width and #Height fields.  The
-default setting is `BOUNDING_BOX`, which means the pattern will be drawn to scale in realtime.  The most efficient
-method is `USERSPACE`, which allows the pattern image to be persistently cached.
+default setting is `BOUNDING_BOX`, which means the pattern tile is sized relative to the bounding box of each vector
+that uses it.  With `USERSPACE`, the tile size is independent of the consumer, which makes it the most efficient
+choice when a pattern is shared by vectors of different sizes.
+
+In both cases the tile is rendered at its scale on the display, including any scaling from #Transform, and it is
+cached until the definition or that display size changes.
 
 -FIELD-
 Viewport: Refers to the viewport that contains the pattern.
