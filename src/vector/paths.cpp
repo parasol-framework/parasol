@@ -86,10 +86,11 @@ void gen_vector_path(extVector *Vector)
       // vpFixedX/Y are the fixed coordinate position of the viewport relative to root position (0,0)
 
       if (parent_view) {
-         if (parent_view->vpViewWidth) parent_width = parent_view->vpViewWidth;
+         auto parent_source = viewport_source(parent_view);
+         if (parent_source.Width) parent_width = parent_source.Width;
          else parent_width = parent_view->vpFixedWidth;
 
-         if (parent_view->vpViewHeight) parent_height = parent_view->vpViewHeight;
+         if (parent_source.Height) parent_height = parent_source.Height;
          else parent_height = parent_view->vpFixedHeight;
 
          if ((!parent_width) or (!parent_height)) {
@@ -149,16 +150,18 @@ void gen_vector_path(extVector *Vector)
          view->vpFixedHeight = parent_height;
       }
 
+      auto source = viewport_source(view);
+
       log.trace("Vector: #%d, Parent: #%d %.2fw %.2fh, Target: %.2fw %.2fh, Viewbox: %.2f %.2f %.2f %.2f",
-         Vector->UID, parent_id, parent_width, parent_height, target_width, target_height, view->vpViewX, view->vpViewY,
-         view->vpViewWidth, view->vpViewHeight);
+         Vector->UID, parent_id, parent_width, parent_height, target_width, target_height, source.X, source.Y,
+         source.Width, source.Height);
 
       // This part computes the alignment of the viewbox (source) within the viewport's target area.
       // AspectRatio choices affect this, e.g. "xMinYMin slice".  Note that alignment specifically impacts
       // the position of paths within the viewport and not the position of the viewport itself.
 
-      calc_aspectratio(__FUNCTION__, view->vpAspectRatio, target_width, target_height,
-         view->vpViewWidth, view->vpViewHeight, view->vpAlignX, view->vpAlignY,
+      calc_aspectratio(__FUNCTION__, source.AspectRatio, target_width, target_height,
+         source.Width, source.Height, view->vpAlignX, view->vpAlignY,
          view->vpXScale, view->vpYScale);
 
       log.trace("AlignXY: %.2f %.2f, ScaleXY: %.2f %.2f", view->vpAlignX, view->vpAlignY, view->vpXScale, view->vpYScale);
@@ -391,8 +394,9 @@ void apply_parent_transforms(extVector *Start, agg::trans_affine &AGGTransform)
 
          DBG_TRANSFORM("Parent view #%d x/y: %.2f %.2f", node->UID, view->FinalX, view->FinalY);
 
-         AGGTransform.tx -= view->vpViewX;
-         AGGTransform.ty -= view->vpViewY;
+         auto source = viewport_source(view);
+         AGGTransform.tx -= source.X;
+         AGGTransform.ty -= source.Y;
 
          if ((view->vpXScale != 1.0) or (view->vpYScale != 1.0)) {
             if (std::isnan(view->vpXScale) or std::isnan(view->vpYScale)) {

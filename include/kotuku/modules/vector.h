@@ -1109,7 +1109,7 @@ class objVectorPattern : public Object {
    objVectorPattern * Inherit;           // Inherit attributes from a VectorPattern referenced here.
    VSPREAD SpreadMethod;                 // The behaviour to use when the pattern bounds do not match the vector path.
    VUNIT   Units;                        // Defines the coordinate system for fields X, Y, Width and Height.
-   VUNIT   ContentUnits;                 // Not yet implemented.
+   VUNIT   ContentUnits;                 // Defines the coordinate system for the content of the pattern.
 
 #ifdef PRV_VECTORPATTERN
    objVectorPattern(objMetaClass *pClass, OBJECTID pUID) noexcept : Object(pClass, pUID) {
@@ -1194,11 +1194,19 @@ class objVectorPattern : public Object {
       return ERR::Okay;
    }
 
+   inline ERR getAspectRatio(ARF &Value) noexcept {
+      auto field = &this->Class->Dictionary[8];
+      SetObjectContext(this, field, AC::NIL);
+      auto error = field->GetValue(this, &Value);
+      RestoreObjectContext();
+      return error;
+   }
+
 
    // Customised field setting
 
    inline ERR setX(const Unit Value) noexcept {
-      auto field = &this->Class->Dictionary[8];
+      auto field = &this->Class->Dictionary[9];
       return field->WriteValue(this, field, FD_UNIT, &Value);
    }
 
@@ -1208,12 +1216,12 @@ class objVectorPattern : public Object {
    }
 
    inline ERR setWidth(const Unit Value) noexcept {
-      auto field = &this->Class->Dictionary[12];
+      auto field = &this->Class->Dictionary[13];
       return field->WriteValue(this, field, FD_UNIT, &Value);
    }
 
    inline ERR setHeight(const Unit Value) noexcept {
-      auto field = &this->Class->Dictionary[16];
+      auto field = &this->Class->Dictionary[17];
       return field->WriteValue(this, field, FD_UNIT, &Value);
    }
 
@@ -1223,17 +1231,17 @@ class objVectorPattern : public Object {
    }
 
    inline ERR setOpacity(const double Value) noexcept {
-      auto field = &this->Class->Dictionary[9];
+      auto field = &this->Class->Dictionary[10];
       return field->WriteValue(this, field, FD_DOUBLE, &Value);
    }
 
    inline ERR setInherit(objVectorPattern * Value) noexcept {
-      auto field = &this->Class->Dictionary[15];
+      auto field = &this->Class->Dictionary[16];
       return field->WriteValue(this, field, 0x08000301, Value);
    }
 
    inline ERR setSpreadMethod(const VSPREAD Value) noexcept {
-      auto field = &this->Class->Dictionary[14];
+      auto field = &this->Class->Dictionary[15];
       return field->WriteValue(this, field, FD_INT, &Value);
    }
 
@@ -1247,8 +1255,13 @@ class objVectorPattern : public Object {
       return ERR::Okay;
    }
 
+   inline ERR setAspectRatio(const ARF Value) noexcept {
+      auto field = &this->Class->Dictionary[8];
+      return field->WriteValue(this, field, FD_INT, &Value);
+   }
+
    inline ERR setTransform(const std::string_view &Value) noexcept {
-      auto field = &this->Class->Dictionary[17];
+      auto field = &this->Class->Dictionary[18];
       return field->WriteValue(this, field, 0x00804208, &Value);
    }
 

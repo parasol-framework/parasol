@@ -85,7 +85,8 @@ function addPattern()
       name = 'pattern',
       width = 0.1, height = 0.1,
       units = VUNIT_BOUNDING_BOX,
-      spreadMethod = VSPREAD_REPEAT
+      spreadMethod = VSPREAD_REPEAT,
+      aspectRatio = ARF_NONE -- Stretch the 1x1 viewbox to fill each tile
    })
 
    pattern.viewport.viewWidth = 1
@@ -122,7 +123,8 @@ function addGradient()
       name = 'pattern_gradient',
       width = 0.1, height = 0.1,
       units = VUNIT_BOUNDING_BOX,
-      spreadMethod = VSPREAD_REPEAT
+      spreadMethod = VSPREAD_REPEAT,
+      aspectRatio = ARF_NONE -- Stretch the 1x1 viewbox to fill each tile
    })
 
    pattern.viewport.viewWidth  = 1

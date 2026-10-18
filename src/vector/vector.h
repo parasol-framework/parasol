@@ -12,6 +12,7 @@ template<class... Args> void DBG_TRANSFORM(Args...) {
 #include <array>
 #include <list>
 #include <memory>
+#include <optional>
 #include <vector>
 #include <unordered_set>
 #include <sstream>
@@ -953,6 +954,13 @@ inline extVectorFilter::~extVectorFilter()
 // NB: Considered a shape (can be transformed).
 // Routed through extVector rather than objVectorViewport so that we have visibility of extVector fields.
 
+// The source area (viewbox) of a viewport and the aspect ratio that fits it to the target area.
+
+struct ViewSource {
+   double X, Y, Width, Height;
+   ARF AspectRatio;
+};
+
 class extVectorViewport : public extVector {
    public:
    static constexpr CLASSID CLASS_ID = CLASSID::VECTORVIEWPORT;
@@ -983,6 +991,10 @@ class extVectorViewport : public extVector {
    uint8_t vpDragging:1;
    uint8_t vpBuffered:1; // True if the client requested that the viewport is buffered.
    uint8_t vpRefreshBuffer:1;
+   // Render-time content scale (target units per content unit) derived by a VectorPattern when its client has not
+   // configured a viewbox.  It replaces the viewbox and aspect ratio during path generation, but is never reported as
+   // the viewport's configuration.
+   std::optional<std::array<double, 2>> vpDerivedScale;
 
    extVectorViewport(objMetaClass *ClassPtr, OBJECTID ObjectID) : extVector(ClassPtr, ObjectID) {
       vpClipOwner = nullptr;
@@ -1018,9 +1030,21 @@ inline static bool viewport_has_target_height(const extVectorViewport *View)
    return View->vpTargetHeight.defined() or View->vpTargetYO.defined();
 }
 
+// Returns the source area that is in effect for rendering.  A derived pattern scale takes precedence over the
+// configured viewbox and is expressed as a source area that is stretched to the viewport's fixed size.
+
+inline static ViewSource viewport_source(const extVectorViewport *View)
+{
+   if (View->vpDerivedScale) {
+      auto &scale = *View->vpDerivedScale;
+      return { 0, 0, View->vpFixedWidth / scale[0], View->vpFixedHeight / scale[1], ARF::NONE };
+   }
+   return { View->vpViewX, View->vpViewY, View->vpViewWidth, View->vpViewHeight, View->vpAspectRatio };
+}
+
 inline static double viewport_coordinate_width(const extVectorViewport *View)
 {
-   if (View->vpViewWidth > 0) return View->vpViewWidth;
+   if (auto width = viewport_source(View).Width; width > 0) return width;
    else if (viewport_has_target_width(View)) return View->vpFixedWidth;
    else if (View->Scene) return View->Scene->PageWidth;
    else return 0;
@@ -1028,7 +1052,7 @@ inline static double viewport_coordinate_width(const extVectorViewport *View)
 
 inline static double viewport_coordinate_height(const extVectorViewport *View)
 {
-   if (View->vpViewHeight > 0) return View->vpViewHeight;
+   if (auto height = viewport_source(View).Height; height > 0) return height;
    else if (viewport_has_target_height(View)) return View->vpFixedHeight;
    else if (View->Scene) return View->Scene->PageHeight;
    else return 0;
@@ -1252,6 +1276,8 @@ extern void apply_parent_transforms(extVector *, agg::trans_affine &);
 extern void apply_transition(extVectorTransition *, double, agg::trans_affine &);
 extern void apply_transition_xy(extVectorTransition *, double, double *, double *);
 extern void calc_aspectratio(CSTRING, ARF, double, double, double, double, double &X, double &Y, double &, double &);
+extern void prepare_pattern(extVectorPattern *, double, double, double);
+extern ERR render_pattern(extVectorPattern *);
 extern void calc_full_boundary(extVector *, TClipRectangle<double> &, bool IncludeSiblings = true, bool IncludeTransforms = true, bool IncludeStrokes = false);
 extern void convert_to_aggpath(extVectorPath *, std::vector<PathCommand> &, agg::path_storage &);
 extern void debug_tree(extVector *, int &);
