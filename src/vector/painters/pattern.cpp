@@ -12,10 +12,16 @@ The VectorPattern must be registered with a @VectorScene via the @VectorScene.Ad
 Any vector within the target scene will be able to utilise the pattern for filling or stroking by referencing its
 name through the @Vector.Fill and @Vector.Stroke fields.  For instance `url(#dots)`.
 
-A special use case is made for patterns that are applied as a fill operation in @VectorViewport objects.  In this
-case the renderer will dynamically render the pattern as a background within the viewport.  This ensures that the
-pattern is rendered at maximum fidelity whenever it is used, and not affected by bitmap clipping restrictions.  It
-should be noted that this means the image caching feature will be disabled.
+A special use case is made for patterns that are applied as a fill operation in @VectorViewport objects.  If the
+pattern is a single tile that covers the viewport, which is the default when #Units is `BOUNDING_BOX`, #X and #Y
+are zero, #Width and #Height are `100%` and no #Transform is set, the renderer will dynamically render the pattern
+as a background within the viewport.  This ensures that the pattern is rendered at maximum fidelity whenever it is
+used, and not affected by bitmap clipping restrictions.  It should be noted that this means the image caching
+feature will be disabled.
+
+Any other configuration is tiled within the viewport in the same way as a vector fill, with the viewport serving as
+both the bounding box and the user space of the pattern.  User space coordinates are therefore relative to the
+viewport's top-left corner.
 
 It is strongly recommended that the VectorPattern is owned by the @VectorScene that is handling the
 definition.  This will ensure that the VectorPattern is deallocated when the scene is destroyed.
@@ -73,6 +79,7 @@ ERR render_pattern(extVectorPattern *Self)
       }
    }
    else if (not (Self->Bitmap = objBitmap::create::local(
+      fl::Owner(Self->UID),
       fl::Width(Self->Scene->PageWidth),
       fl::Height(Self->Scene->PageHeight),
       fl::Flags(BMF::ALPHA_CHANNEL),
