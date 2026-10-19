@@ -293,7 +293,8 @@ void release_zombie_blocks(void)
 
    for (auto object : zombies) {
       #ifndef NDEBUG
-      kt::Log("Shutdown").warning("Force-releasing zombie object block %p with RefCount %d.", object,
+      // NB: Object UID is cleared when it becomes a zombie, so information is limited.
+      kt::Log("Shutdown").warning("Force-releasing zombie object %p with RefCount %d.", object,
          int(object->RefCount.load(std::memory_order_acquire)));
       #endif
       object->RefCount.store(0, std::memory_order_release);

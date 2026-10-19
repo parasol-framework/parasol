@@ -708,6 +708,18 @@ extModule::~extModule() {
 objRootModule::~objRootModule() {
    if (Table) Table->Root = nullptr; // Remove the DLL's reference to the root.
 
+   // A forced expunge can free a root while Module objects still refer to it, e.g. when two modules hold handles on
+   // each other.  Detach those handles so that they do not access the root or call its Close() routine when freed.
+
+   {
+      std::lock_guard lock(glmObjects);
+      for (auto &entry : glObjects) {
+         if ((entry.second.Object) and (entry.second.Object->classID() IS CLASSID::MODULE)) {
+            if (auto mod = (extModule *)entry.second.Object; mod->Root IS this) mod->Root = nullptr;
+         }
+      }
+   }
+
    // Note that the order in which we perform the following actions is very important.
 
    if (CoreBase) { free(CoreBase); CoreBase = nullptr; }

@@ -499,16 +499,40 @@ __export void Expunge(int16_t Force)
 
       // If we are shutting down, force the expunging of any stubborn modules.  A forced expunge can release module
       // handles and make other roots normally eligible, so always process those roots before forcing another module.
+      // Forcing a root that another loaded module still holds a handle on would leave that handle referencing a freed
+      // root, so stubborn modules that no other root holds are forced first.  If every stubborn module is held (a
+      // cyclic dependency) then the one with the lowest open count is chosen.
 
       objRootModule *sanity_check = nullptr;
 restart_forced_expunge:
+      std::unordered_set<objRootModule *> held_roots;
+
+      {
+         std::lock_guard lock(glmObjects);
+         for (auto scan=glModuleList; scan; scan=scan->Next) {
+            if (auto object_rec = glObjects.find(scan->UID); object_rec != glObjects.end()) {
+               for (auto child : object_rec->second.Children) {
+                  if (child->classID() IS CLASSID::MODULE) {
+                     if (auto root = ((extModule *)child)->Root; (root) and (root != scan)) held_roots.insert(root);
+                  }
+               }
+            }
+         }
+      }
+
+      auto force_priority = [&held_roots](objRootModule *Root) {
+         return std::make_tuple(held_roots.contains(Root), Root->OpenCount, Root->UID);
+      };
+
       objRootModule *mod_master = nullptr;
       objRootModule *stubborn_module = nullptr;
       for (auto scan=glModuleList; scan; scan=scan->Next) {
          if (scan->OpenCount <= 0) {
             if ((not mod_master) or (scan->UID < mod_master->UID)) mod_master = scan;
          }
-         else if ((not stubborn_module) or (scan->UID < stubborn_module->UID)) stubborn_module = scan;
+         else if ((not stubborn_module) or (force_priority(scan) < force_priority(stubborn_module))) {
+            stubborn_module = scan;
+         }
       }
       if (not mod_master) mod_master = stubborn_module;
 
