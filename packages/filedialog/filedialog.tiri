@@ -26,8 +26,8 @@ gui.dialog.file = function(Options)
       allowNew    = Options.allowNew
    }
 
-   local accepting = false
-   local closed = false
+   accepting = false
+   closed = false
 
    function closeDialog()
       if closed then return end
@@ -53,12 +53,13 @@ gui.dialog.file = function(Options)
       end
 
       if (self.warnExists is true) and (#list > 0) then
-         local exists = false
-         local accepted_path = self.fileview.path
+         exists = false
+         accepted_path = self.fileview.path
          for item in values(list) do
             local _, location = mSys.AnalysePath((accepted_path ?? '') .. item.filename)
             if location is LOC_FILE then exists = true end
          end
+
          if exists then
             accepting = true
             local msg
@@ -256,8 +257,10 @@ gui.dialog.file = function(Options)
       toolBar       = { clipboard=true, settings=true },
       viewOptions   = { },
       pathChanged = function(FileView:table!, Path:str)
-         self.currentPath = Path
-         self.pathbox.setText(self.currentPath)
+         if Path then
+            self.currentPath = Path
+            self.pathbox.setText(Path)
+         end
       end
    })
 
