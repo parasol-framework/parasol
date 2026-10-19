@@ -1327,7 +1327,6 @@ if (KOTUKU_INSTALL)
          PATTERN "NotoColorEmoji.ttf" EXCLUDE)
    endif ()
 
-   install (DIRECTORY "${PROJECT_SOURCE_DIR}/data/styles/" DESTINATION "${CONFIG_TARGET}/styles")
    install (FILES "${CMAKE_BINARY_DIR}/icons/Default.zip" DESTINATION "${CONFIG_TARGET}/styles/icons")
 
    install (DIRECTORY "${PROJECT_SOURCE_DIR}/apps/data" DESTINATION "${SHARE_TARGET}/apps")
