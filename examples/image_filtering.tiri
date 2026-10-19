@@ -183,18 +183,18 @@ function buildScene()
       x      = win.margins.left,
       y      = 10,
       items = {
-         { item='Nearest Neighbour' },
-         { item='Bicubic' },
-         { item='Bilinear' },
-         { item='Blackman' },
-         { item='Sinc' },
-         { item='Lanczos' },
-         { item='Spline16' },
-         { item='Kaiser' },
-         { item='Quadric' },
-         { item='Gaussian' },
-         { item='Bessel' },
-         { item='Mitchell' }
+         { label='Nearest Neighbour' },
+         { label='Bicubic' },
+         { label='Bilinear' },
+         { label='Blackman' },
+         { label='Sinc' },
+         { label='Lanczos' },
+         { label='Spline16' },
+         { label='Kaiser' },
+         { label='Quadric' },
+         { label='Gaussian' },
+         { label='Bessel' },
+         { label='Mitchell' }
       },
       events = {
          activate = function(Text)
@@ -211,7 +211,7 @@ function buildScene()
       text   = 'Photo',
       x      = cmbFilter.viewport.x + cmbFilter.viewport.width + 10,
       y      = 10,
-      items  = { { item='Test Pattern' }, { item='Photo' }, { item='Gradient' } },
+      items  = { { label='Test Pattern' }, { label='Photo' }, { label='Gradient' } },
       events = {
          activate = function(Text)
             if Text is 'Test Pattern' then

@@ -14,11 +14,11 @@ FONT_MAX_HEIGHT, FONT_HEIGHT = gui.getFontHeight(gui.fonts.widget)
 DEFAULT_HEIGHT <const> = math.floor(FONT_MAX_HEIGHT * 1.25) + 1
 
 function toggleState()
-   if &state is 1 then
-      &state = 0
+   if &value is 1 then
+      &value = 0
       &iconRender.opacity = 0.25
    else
-      &state = 1
+      &value = 1
       &iconRender.opacity = 1.0
    end
 
@@ -28,9 +28,10 @@ end
 gui.toggle = function(Options)
    self = entity { -- Public interface
       events         = Options.events ?? { },
+      labelPos       = Options.labelPos ?? 'right',
       parentViewport = Options.target,
-      state          = Options.state ?? 0,
       text           = nil, -- A VectorText that represents the string
+      value          = Options.value ?? 0,
       viewport       = nil, -- The toggle's primary viewport
    }
 
@@ -56,6 +57,7 @@ gui.toggle = function(Options)
 
    using self do
       assert(Options.target, 'A target viewport is required.')
+      assert((&labelPos is 'left') or (&labelPos is 'right'), f"Invalid labelPos '{&labelPos}'")
 
       theme = gui.getTheme(&parentViewport)
       &theme = theme.input
@@ -100,7 +102,7 @@ gui.toggle = function(Options)
          height = ICON_SIZE,
          fill   = chk_icon.fill,
          opacity = (function()
-            return &state is 1 ? 1.0 : 0.25
+            return &value is 1 ? 1.0 : 0.25
          end)()
       })
 
@@ -118,7 +120,7 @@ gui.toggle = function(Options)
          &viewport.width = HEIGHT + GAP + &text.textWidth
       end
 
-      if Options.align is 'right' then
+      if &labelPos is 'left' then
          &text.x = 0
          &bkgd.x = &viewport.width - HEIGHT + (&theme.bkgd.strokeWidth * 0.5)
          &iconRender.x = &viewport.width - HEIGHT + ((HEIGHT - ICON_SIZE) * 0.5)

@@ -20,7 +20,7 @@ end
 
 function firstItem(Items:any):table
    for item in values(Items ?? { }) do
-      if item.item then return item end
+      if item.label then return item end
    end
 end
 
@@ -75,7 +75,7 @@ function createMenu(Items:any)
       config    = Items ?? { },
       lineLimit = 8,
       feedback = function[<weak> &&](Item:table!)
-         &text.string = Item.item
+         &text.string = Item.label
          reportFeedback()
          &viewport.acDraw()
       end,
@@ -137,9 +137,9 @@ gui.combobox = function(Options)
          current = &text.string
          found = false
          for item in values(Items) do
-            if item.item is current then found = true break end
+            if item.label is current then found = true break end
          end
-         if not found then &setText(firstItem(Items).item) end
+         if not found then &setText(firstItem(Items).label) end
       end
 
       &viewport.acDraw()
@@ -233,7 +233,7 @@ gui.combobox = function(Options)
 
       defaultText = Options.text
       if not Options.allowCustom and not defaultText then
-         defaultText = firstItem(Options.items).item
+         defaultText = firstItem(Options.items).label
       end
 
       &text = &_textClip.new('VectorText', table.merge({

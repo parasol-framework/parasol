@@ -88,8 +88,8 @@ try
   filterList = { { name='Script Files', ext='.tiri' } },
   strictFilter = true,
   title = 'Run a Script',
-  okText = 'Run Script',
-  cancelText = 'Exit',
+  okLabel = 'Run Script',
+  cancelLabel = 'Exit',
   path = '%%PATH%%',
   feedback = function(Dialog, Path, Files)
    if not Files then mSys.SendMessage(MSGID_QUIT) return end

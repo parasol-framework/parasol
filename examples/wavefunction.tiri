@@ -44,8 +44,8 @@ end
       x      = win.margins.left,
       y      = 10,
       items  = {
-         { item='Magma' }, { item='Rocket' }, { item='Mako' }, { item='IceFire' },
-         { item='Flare' }, { item='Crest' }, { item='Viridis' }, { item='Plasma' }, { item='Inferno' } },
+         { label='Magma' }, { label='Rocket' }, { label='Mako' }, { label='IceFire' },
+         { label='Flare' }, { label='Crest' }, { label='Viridis' }, { label='Plasma' }, { label='Inferno' } },
       events = {
          activate = function(Text)
             waveFunction.colourMap = 'cmap:' .. Text.lower()

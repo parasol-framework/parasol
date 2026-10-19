@@ -4,8 +4,8 @@
 
    gui.dialog.file({
       filterList  = { { name='All Files', ext='' }, { name='MP3 Audio Files', ext='.mp3' }, { name='Text Files', ext='.txt' } },
-      okText      = 'Select File',
-      cancelText  = 'Exit',
+      okLabel     = 'Select File',
+      cancelLabel = 'Exit',
       warnExists  = true,
       multiSelect = true,
       allowNew    = arg('save'),

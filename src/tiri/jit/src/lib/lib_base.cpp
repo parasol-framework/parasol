@@ -1272,6 +1272,7 @@ extern int luaopen_base(lua_State* L)
    reg_func_prototype("pairs", { TiriType::Func, TiriType::Table, TiriType::Nil }, { TiriType::Any });
    reg_func_prototype("ipairs", { TiriType::Func, TiriType::Table, TiriType::Num }, { TiriType::Any });
    reg_func_prototype("values", { TiriType::Func, TiriType::Table, TiriType::Num }, { TiriType::Any });
+   reg_func_prototype("keys", { TiriType::Func, TiriType::Nil, TiriType::Nil }, { TiriType::Table });
    reg_func_prototype("forEach", { TiriType::Any }, { TiriType::Any, TiriType::Func });
    reg_func_prototype("rawget", { TiriType::Any }, { TiriType::Table, TiriType::Any });
    reg_func_prototype("rawset", { TiriType::Table }, { TiriType::Table, TiriType::Any, TiriType::Any });

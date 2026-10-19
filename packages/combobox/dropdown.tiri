@@ -253,7 +253,7 @@ gui.dropdown = function(Options)
 
    self.highlightText = function(Text:str)
       for item in values(&items) do
-         if item.config.item is Text then
+         if item.config.label is Text then
             highlightItem(item)
             ensureVisible(item)
             return
@@ -291,8 +291,7 @@ gui.dropdown = function(Options)
       &surface.height   = 400
       &surface.init()
 
-      &scene = obj.new('VectorScene', { flags=VPF_RESIZE, surface=&surface })
-      gui.setTheme(&scene, theme_name) -- Child widgets such as the scrollbar read the theme from the scene
+      &scene = obj.new('VectorScene', { flags=VPF_RESIZE, surface=&surface, hostScene=&relative.scene })
       &viewport = &scene.new('VectorViewport', { })
 
       &surface.subscribe('free', function(Surface, Args)
@@ -388,12 +387,12 @@ gui.dropdown = function(Options)
       _, _, ascent = gui.getFontHeight(dropdown.text, false)
 
       for item in values(Options.config) do
-         if item['item'] then
+         if item.label then
             mi = { y=y, config=item }
             vText = &page.new('VectorText', table.merge({
                x        = TEXT_X,
                align    = 'left',
-               string   = item['item']
+               string   = item.label
             }, dropdown.text))
 
             bw = [___*_]vText.mtGetBoundary(0)
@@ -411,11 +410,11 @@ gui.dropdown = function(Options)
 
             if showIcons and item.icon then
                try
-                  info = gui.createIcon(&viewport.scene, item.icon, ICON_SIZE, dropdown.icon)
+                  info = gui.createIcon(&relative.scene, item.icon, ICON_SIZE, dropdown.icon)
                   mi.iconFill = info.fill
 
                   if dropdown.iconHighlight and dropdown.iconHighlight != dropdown.icon then
-                     local info = gui.createIcon(&viewport.scene, item.icon, ICON_SIZE, dropdown.iconHighlight)
+                     local info = gui.createIcon(&relative.scene, item.icon, ICON_SIZE, dropdown.iconHighlight)
                      mi.iconHighlightFill = info.fill
                   else
                      mi.iconHighlightFill = mi.iconFill

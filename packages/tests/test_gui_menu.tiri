@@ -25,8 +25,8 @@ end
    local menu = gui.menu({
       target = surface,
       config = array<table> {
-         { id='disabled', item='Disabled', disabled=true },
-         { id='parent', item='Parent', items=array<table> { { id='child', item='Child' } } }
+         { id='disabled', label='Disabled', disabled=true },
+         { id='parent', label='Parent', items=array<table> { { id='child', label='Child' } } }
       }
    })
 
@@ -42,13 +42,13 @@ end
    local bar = gui.menubar({
       target = target,
       createItems = function(Bar)
-         Bar.addItem('file', 'File', nil, nil, array<table> { { item='Open' } })
+         Bar.addItem('file', 'File', nil, nil, array<table> { { label='Open' } })
       end
    })
 
    local file = bar._lookup.file
    local original_width = file.width
-   bar.addItem('edit', 'Edit', nil, nil, array<table> { { item='Copy' } })
+   bar.addItem('edit', 'Edit', nil, nil, array<table> { { label='Copy' } })
    assert(bar._lookup.edit.vectorText, 'Items added after construction must render immediately')
    assert(bar._lookup.edit.x is original_width, 'A newly added item must be positioned after existing items')
 
@@ -57,9 +57,9 @@ end
    bar.enableItem('edit')
    assert(bar._lookup.edit.vectorText.opacity is 1, 'Enabling an item must restore its presentation immediately')
 
-   assert(bar.setItemText('edit', 'Edit Menu'), 'setItemText() must report success for a known item')
+   assert(bar.setItemLabel('edit', 'Edit Menu'), 'setItemLabel() must report success for a known item')
    assert(bar._lookup.edit.name is 'Edit Menu' and bar._lookup.edit.width > original_width,
-      'setItemText() must update the item and recompute its width')
+      'setItemLabel() must update the item and recompute its width')
    assert(bar.removeItem('file'), 'removeItem() must report success for a known item')
    assert(not bar._lookup.file and bar._first is bar._lookup.edit,
       'removeItem() must unlink the item and update lookup state')
@@ -70,8 +70,8 @@ end
    local bar = gui.menubar({
       target = target,
       createItems = function(Bar)
-         Bar.addItem('file', 'File', nil, nil, array<table> { { item='Open' } })
-         Bar.addItem('edit', 'Edit', nil, nil, array<table> { { item='Copy' } })
+         Bar.addItem('file', 'File', nil, nil, array<table> { { label='Open' } })
+         Bar.addItem('edit', 'Edit', nil, nil, array<table> { { label='Copy' } })
       end
    })
 
@@ -125,9 +125,9 @@ end
    local hits = 0
    local dropdown = gui.dropdown({
       relative = target, x = 20, y = 20,
-      config = array<table> { { item='First' }, { item='Second' } },
+      config = array<table> { { label='First' }, { label='Second' } },
       feedback = function(Item)
-         if Item.item is 'Second' then hits++ end
+         if Item.label is 'Second' then hits++ end
       end
    })
    defer dropdown.surface?.free() end
@@ -147,12 +147,12 @@ end
 @Test function MenuReportsHighlightChanges()
    local surface <close>, target = newTarget()
    local events = array<table>
-   local first = { id='first', item='First' }
-   local second = { id='second', item='Second' }
-   local child = { id='child', item='Child' }
-   local parent = { id='parent', item='Parent', items=array<table> { child } }
+   local first = { id='first', label='First' }
+   local second = { id='second', label='Second' }
+   local child = { id='child', label='Child' }
+   local parent = { id='parent', label='Parent', items=array<table> { child } }
    local menu = gui.menu({ target=surface, relative=target,
-      config=array<table> { first, { group='Heading' }, { item='Disabled', disabled=true }, second, parent },
+      config=array<table> { first, { group='Heading' }, { label='Disabled', disabled=true }, second, parent },
       onHighlight=function(Item)
          events.push({ menu=&&, item=Item })
       end
@@ -212,7 +212,7 @@ end
 @Test function ReopenSubmenuOnSameItem()
    local surface <close>, target = newTarget()
    local menu = gui.menu({ target=surface, config=array<table> {
-      { id='parent', item='Parent', items=array<table> { { item='Child' } } }
+      { id='parent', label='Parent', items=array<table> { { label='Child' } } }
    } })
    defer menu.surface?.free() end
    menu.selectItem('parent')
@@ -226,7 +226,7 @@ end
    target.x = 70
    target.y = 40
    local menu = gui.menu({ target=surface, relative=target, x=10, y=20,
-      config=array<table> { { item='Open' } } })
+      config=array<table> { { label='Open' } } })
    defer menu.surface?.free() end
    surface.acShow()
    surface.acDraw()
@@ -241,8 +241,8 @@ end
    local hits = 0
    local menu = gui.menu({ target=surface, relative=target, x=0, y=0,
       config=array<table> {
-         { id='enabled', item='Enabled', onActivate=function() hits++ end },
-         { id='disabled', item='Disabled', disabled=true }
+         { id='enabled', label='Enabled', onActivate=function() hits++ end },
+         { id='disabled', label='Disabled', disabled=true }
       } })
    defer menu.surface?.free() end
    surface.acShow()
@@ -268,9 +268,9 @@ end
       target=target,
       createItems=function(Bar)
          Bar.addItem('file', 'File', nil, nil, array<table> {
-            { item='Open' }, { item='Save', onActivate=function() hits++ end }
+            { label='Open' }, { label='Save', onActivate=function() hits++ end }
          })
-         Bar.addItem('edit', 'Edit', nil, nil, array<table> { { item='Copy' } })
+         Bar.addItem('edit', 'Edit', nil, nil, array<table> { { label='Copy' } })
       end
    })
    surface.acShow()
@@ -301,7 +301,7 @@ end
    local hits = 0
    local bar = gui.menubar({ target=target, createItems=function(Bar)
       Bar.addItem('file', 'File', nil, nil, array<table> {
-         { item='Open', onActivate=function() hits++ end }
+         { label='Open', onActivate=function() hits++ end }
       })
    end })
    surface.acShow()
@@ -328,8 +328,8 @@ end
    local menu = gui.menu({
       target=surface, relative=target, client=target,
       config=array<table> {
-         { id='parent', item='Parent', items=array<table> {
-            { item='First', onActivate=function() hits++ end }, { item='Second' }
+         { id='parent', label='Parent', items=array<table> {
+            { label='First', onActivate=function() hits++ end }, { label='Second' }
          } }
       }
    })
@@ -363,8 +363,8 @@ end
    local menu = gui.menu({
       target=surface, relative=target,
       config=array<table> {
-         { item='Undo' },
-         { id='clipboard', item='Clipboard', items=array<table> { { item='Copy' } } }
+         { label='Undo' },
+         { id='clipboard', label='Clipboard', items=array<table> { { label='Copy' } } }
       }
    })
    target.mtSubscribeKeyboard(function() end)
@@ -391,7 +391,7 @@ end
    local hits = 0
    local menu = gui.menu({
       target=surface, relative=target,
-      config=array<table> { { item='Copy', onActivate=function() hits++ end } }
+      config=array<table> { { label='Copy', onActivate=function() hits++ end } }
    })
    target.mtSubscribeKeyboard(function() end)
    target.mtSubscribeFeedback(FM_LOST_FOCUS, function() menu.hide() end)
@@ -412,9 +412,9 @@ end
    local menu = gui.menu({
       target=surface, relative=target, client=target,
       config=array<table> {
-         { item='New File' },
-         { item='Open Recent', items=array<table> { { item='Project Notes' }, { item='Widget Ideas' } } },
-         { item='Save' }
+         { label='New File' },
+         { label='Open Recent', items=array<table> { { label='Project Notes' }, { label='Widget Ideas' } } },
+         { label='Save' }
       }
    })
    surface.acShow()
@@ -456,8 +456,8 @@ end
    local menu = gui.menu({
       target=surface, relative=target,
       config=array<table> {
-         { item='New File' },
-         { id='recent', item='Open Recent', items=array<table> { { item='First' }, { item='Second' } } }
+         { label='New File' },
+         { id='recent', label='Open Recent', items=array<table> { { label='First' }, { label='Second' } } }
       }
    })
    surface.acShow()
@@ -541,11 +541,11 @@ end
    local bar = gui.menubar({ target=target, createItems=function(Bar)
       Bar.addItem('file', 'File', nil, nil, array<table> {
          { group='Files' },
-         { item='Unavailable', disabled=true },
-         { item='Open Recent', items=array<table> { { item='Project Notes' } } },
-         { item='Save' }
+         { label='Unavailable', disabled=true },
+         { label='Open Recent', items=array<table> { { label='Project Notes' } } },
+         { label='Save' }
       })
-      Bar.addItem('edit', 'Edit', nil, nil, array<table> { { item='Copy' } })
+      Bar.addItem('edit', 'Edit', nil, nil, array<table> { { label='Copy' } })
    end })
    surface.acShow()
    surface.acFocus()
@@ -617,14 +617,14 @@ end
    local calls = 0
    local opens = 0
    local received_menu:table
-   local config = { id='copy', item='Copy', qualifier='ctrl', key='c', onActivate=function(Item)
+   local config = { id='copy', label='Copy', qualifier='ctrl', key='c', onActivate=function(Item)
       calls++
       received_menu = &&
       assert(Item.id is 'copy', 'The activation callback must receive the original shortcut item')
    end }
    local bar = gui.menubar({ target=target, createItems=function(Bar)
       Bar.addItem('edit', 'Edit', nil, function() opens++ end, array<table> {
-         { menu={ text='Clipboard', items=array<table> { config } } }
+         { menu={ label='Clipboard', items=array<table> { config } } }
       })
    end })
    surface.acShow()
@@ -644,12 +644,12 @@ end
    local surface <close>, target = newTarget()
    local saves = 0
    local save_as = 0
-   local config = { item='Save As', qualifier='Ctrl + Shift', key='S', disabled=true,
+   local config = { label='Save As', qualifier='Ctrl + Shift', key='S', disabled=true,
       onActivate=function() save_as++ end }
    local bar = gui.menubar({ target=target, createItems=function(Bar)
       Bar.addItem('file', 'File', nil, nil, array<table> {
-         { item='Save', qualifier='CONTROL', key='S', onActivate=function() saves++ end }, config,
-         { item='Invalid', qualifier='TYPO', key='S', onActivate=function() raise 'Invalid modifier matched' end }
+         { label='Save', qualifier='CONTROL', key='S', onActivate=function() saves++ end }, config,
+         { label='Invalid', qualifier='TYPO', key='S', onActivate=function() raise 'Invalid modifier matched' end }
       })
    end })
    surface.acShow()
@@ -681,10 +681,10 @@ end
    local hits = { reload=0, plus=0, minus=0, zero=0 }
    local bar = gui.menubar({ target=target, createItems=function(Bar)
       Bar.addItem('view', 'View', nil, nil, array<table> {
-         { item='Reload', key='F5', onActivate=function() hits.reload++ end },
-         { item='Zoom In', key='+', qualifier='CTRL', onActivate=function() hits.plus++ end },
-         { item='Zoom Out', key='-', qualifier='CTRL', onActivate=function() hits.minus++ end },
-         { item='Reset', key='0', qualifier='CTRL', onActivate=function() hits.zero++ end }
+         { label='Reload', key='F5', onActivate=function() hits.reload++ end },
+         { label='Zoom In', key='+', qualifier='CTRL', onActivate=function() hits.plus++ end },
+         { label='Zoom Out', key='-', qualifier='CTRL', onActivate=function() hits.minus++ end },
+         { label='Reset', key='0', qualifier='CTRL', onActivate=function() hits.zero++ end }
       })
    end })
    surface.acShow()
@@ -707,8 +707,8 @@ end
    local wrong_hits = 0
    local bar = gui.menubar({ target=target, createItems=function(Bar)
       Bar.addItem('file', 'File', nil, nil, array<table> {
-         { item='Selected', onActivate=function() wrong_hits++ end },
-         { item='Shortcut', key='Space', qualifier='CTRL', onActivate=function() hits++ end }
+         { label='Selected', onActivate=function() wrong_hits++ end },
+         { label='Shortcut', key='Space', qualifier='CTRL', onActivate=function() hits++ end }
       })
    end })
    surface.acShow()
@@ -726,8 +726,8 @@ end
    local surface <close>, target = newTarget()
    local hits = 0
    local wrong_hits = 0
-   local branch = { text='Clipboard', disabled=true, items=array<table> {
-      { item='Copy', qualifier='CTRL', key='C', onActivate=function() hits++ end }
+   local branch = { label='Clipboard', disabled=true, items=array<table> {
+      { label='Copy', qualifier='CTRL', key='C', onActivate=function() hits++ end }
    } }
    local bar = gui.menubar({ target=target, createItems=function(Bar)
       Bar.addItem('edit', 'Edit', nil, nil, array<table> { { menu=branch } })
@@ -740,7 +740,7 @@ end
    branch.disabled = false
    sendKey(KEY_C, KQ_PRESSED | KQ_CTRL)
    bar.addItem('duplicate', 'Duplicate', nil, nil, array<table> {
-      { item='Other Copy', qualifier='CTRL', key='C', onActivate=function() wrong_hits++ end }
+      { label='Other Copy', qualifier='CTRL', key='C', onActivate=function() wrong_hits++ end }
    })
    sendKey(KEY_C, KQ_PRESSED | KQ_CTRL)
    assert(hits is 2 and wrong_hits is 0, 'Duplicate shortcuts must dispatch only the first enabled match')
@@ -758,7 +758,7 @@ end
    local hits = 0
    bar = gui.menubar({ target=target, createItems=function(Bar)
       Bar.addItem('file', 'File', nil, nil, array<table> {
-         { item='Remove Menu', qualifier='CTRL', key='D', onActivate=function()
+         { label='Remove Menu', qualifier='CTRL', key='D', onActivate=function()
             hits++
             bar.removeItem('file')
          end }
@@ -774,10 +774,10 @@ end
 
 @Test function ShortcutMatcherSupportsNamedKeysAndRejectsUnknownBindings()
    local config = array<table> {
-      { item='Alt Home', qualifier='alt', key='Home' },
-      { item='Command F20', qualifier='cmd', key='F20' },
-      { item='Invalid', qualifier='Hyper', key='S' },
-      { item='Invalid Key', key='UnknownKey' }
+      { label='Alt Home', qualifier='alt', key='Home' },
+      { label='Command F20', qualifier='cmd', key='F20' },
+      { label='Invalid', qualifier='Hyper', key='S' },
+      { label='Invalid Key', key='UnknownKey' }
    }
    assert(gui.findMenuShortcut(config, KQ_PRESSED | KQ_R_ALT, KEY_HOME)[0] is config[0],
       'Named keys and right-hand Alt must match')
@@ -795,10 +795,10 @@ end
    local hits = 0
    local menu = gui.menu({ popup=true, config=array<table> {
       { group='Files' },
-      { item='Disabled', disabled=true },
-      { item='Open', onActivate=function() hits++ end },
-      { item='Recent', items=array<table> {
-         { item='First', onActivate=function() hits++ end }, { item='Second' }
+      { label='Disabled', disabled=true },
+      { label='Open', onActivate=function() hits++ end },
+      { label='Recent', items=array<table> {
+         { label='First', onActivate=function() hits++ end }, { label='Second' }
       } }
    } })
    defer menu.surface?.free() end
@@ -828,7 +828,7 @@ end
    target.mtSubscribeKeyboard(function() end)
    local hits = 0
    local menu = gui.menu({ target=surface, popup=true, client=target, config=array<table> {
-      { item='Save', key='S', qualifier='CTRL', onActivate=function() hits++ end }
+      { label='Save', key='S', qualifier='CTRL', onActivate=function() hits++ end }
    } })
    surface.acShow()
    surface.acFocus()
@@ -846,11 +846,11 @@ end
    local surface <close>, target = newTarget()
    local states = array<any>
    local menu_states = array<any>
-   local config = { id='grid', item='Show Grid', checkable=true,
+   local config = { id='grid', label='Show Grid', checkable=true,
       onActivate=function(Item) states.push(Item.checked) end }
    local menu = gui.menu({ target=surface, relative=target, showIcons=false,
       onActivate=function(Item) menu_states.push(Item.checked) end,
-      config=array<table> { config, { item='Disabled', checkable=true, checked=true, disabled=true } }
+      config=array<table> { config, { label='Disabled', checkable=true, checked=true, disabled=true } }
    })
    assert(menu.getChecked('grid') is false, 'Checkable items must default to unchecked')
    assert(menu.items[0].checkmark and menu.items[0].checkmark.visibility is VIS_HIDDEN,
@@ -875,13 +875,13 @@ end
 @Test function CheckedStateCanBeUpdatedWithoutActivation()
    local surface <close>, target = newTarget()
    local hits = 0
-   local config = { id='checked', item='Checked', checkable=true, checked=true, icon='items/file_new',
+   local config = { id='checked', label='Checked', checkable=true, checked=true, icon='items/file_new',
       qualifier='CTRL', key='G',
       onActivate=function() hits++ end }
    local menu = gui.menu({ target=surface, relative=target, config=array<table> {
-      config, { id='ordinary', item='A much longer ordinary menu item' }, { group='Heading' },
-      { id='parent', item='Submenu', checkable=true, items=array<table> { { item='Child' } } },
-      { id='second', item='Second', checkable=true }
+      config, { id='ordinary', label='A much longer ordinary menu item' }, { group='Heading' },
+      { id='parent', label='Submenu', checkable=true, items=array<table> { { label='Child' } } },
+      { id='second', label='Second', checkable=true }
    } })
    assert(menu.getChecked('checked') and menu.items[0].checkmark.visibility is VIS_VISIBLE,
       'Initially checked items must render a checkmark')
@@ -913,11 +913,11 @@ end
 @Test function NestedCheckableShortcutsToggleExactlyOnce()
    local surface <close>, target = newTarget()
    local states = array<any>
-   local config = { id='grid', item='Show Grid', checkable=true, qualifier='CTRL', key='G',
+   local config = { id='grid', label='Show Grid', checkable=true, qualifier='CTRL', key='G',
       onActivate=function(Item) states.push(Item.checked) end }
    local bar = gui.menubar({ target=target, createItems=function(Bar)
       Bar.addItem('view', 'View', nil, nil, array<table> {
-         { menu={ text='Display', items=array<table> { config } } }
+         { menu={ label='Display', items=array<table> { config } } }
       })
    end })
    surface.acShow()
@@ -935,7 +935,7 @@ end
 @Test function FreeingPopupReleasesItsKeyboardScene()
    local surface <close>, target = newTarget()
    surface.acShow()
-   local menu = gui.menu({ target=surface, popup=true, config=array<table> { { item='Open' } } })
+   local menu = gui.menu({ target=surface, popup=true, config=array<table> { { label='Open' } } })
    menu.show()
    local scene_id = menu.scene.id
    menu.surface.free()
@@ -945,16 +945,16 @@ end
 @Test function PrepareRefreshesLayoutOnEachOpening()
    local surface <close>, target = newTarget()
    local calls = 0
-   local config = array<table> { { id='save', item='Save', checkable=true } }
+   local config = array<table> { { id='save', label='Save', checkable=true } }
    local menu = gui.menu({ target=surface, relative=target, config=config,
       prepare=function(Config)
          assert(&config is Config and Config is config, 'Prepare must receive the live configuration')
          assert(not &visible, 'Prepare must run before the menu becomes visible')
          calls++
-         Config[0].item = calls is 1 ? 'Save the current document' : 'Save'
+         Config[0].label = calls is 1 ? 'Save the current document' : 'Save'
          Config[0].checked = calls is 1
          Config[0].disabled = calls is 1
-         if calls is 1 then Config.push({ id='new', item='New', key='N', qualifier='CTRL' })
+         if calls is 1 then Config.push({ id='new', label='New', key='N', qualifier='CTRL' })
          else Config.pop()
          end
          &show()
@@ -969,7 +969,7 @@ end
    local expanded_height = menu.surface.height
    assert(calls is 1 and #menu.items is 2 and menu.surface.width > initial_width,
       'Prepare must rebuild the rows and resize before showing')
-   assert(menu.items[0].text.string is config[0].item and menu.items[0].checkmark.visibility is VIS_VISIBLE,
+   assert(menu.items[0].text.string is config[0].label and menu.items[0].checkmark.visibility is VIS_VISIBLE,
       'Prepared labels and checked state must be rendered')
    assert(not menu.selectItem('save') and menu.selectItem('new'), 'Prepared disabled state must apply')
    assert(menu.viewport.id is viewport_id and not obj.find(content_id),
@@ -988,10 +988,10 @@ end
    local surface <close>, target = newTarget()
    local calls = 0
    local menu = gui.menu({ target=surface, relative=target, prepare=function() end,
-      config=array<table> { { menu={ text='Recent', items=array<table>,
+      config=array<table> { { menu={ label='Recent', items=array<table>,
          prepare=function(Config)
             calls++
-            &config = array<table> { { id='recent', item=f'Recent document {calls}',
+            &config = array<table> { { id='recent', label=f'Recent document {calls}',
                key='R', qualifier='CTRL' } }
          end
       } } }
@@ -1022,7 +1022,7 @@ end
    local bar = gui.menubar({ target=target, createItems=function(Bar)
       entry = Bar.addItem('file', 'File', nil, nil, nil, function(Config)
          calls++
-         &config = array<table> { { item='Dynamic action', key='G', qualifier='CTRL',
+         &config = array<table> { { label='Dynamic action', key='G', qualifier='CTRL',
             onActivate=function() hits++ end } }
       end)
    end })
@@ -1041,7 +1041,7 @@ end
 @Test function PrepareFailureLeavesMenuHiddenAndAllowsRetry()
    local surface <close>, target = newTarget()
    local calls = 0
-   local menu = gui.menu({ target=surface, relative=target, config=array<table> { { item='Open' } },
+   local menu = gui.menu({ target=surface, relative=target, config=array<table> { { label='Open' } },
       prepare=function()
          calls++
          if calls is 1 then raise 'Expected prepare failure' end
@@ -1063,7 +1063,7 @@ end
    local hits = 0
    local bar = gui.menubar({ target=target, createItems=function(Bar)
       Bar.addItem('file', 'File', nil, function() hits++ end,
-         array<table> { { item='Open' } })
+         array<table> { { label='Open' } })
       Bar.addItem('disabled', 'Disabled')
    end })
    bar.disableItem('disabled')
@@ -1093,9 +1093,9 @@ end
    local surface <close>, target = newTarget()
    local hits, prepares = 0, 0
    local bar = gui.menubar({ target=target, createItems=function(Bar)
-      Bar.addItem('file', 'File', nil, nil, array<table> { { item='Open' } })
+      Bar.addItem('file', 'File', nil, nil, array<table> { { label='Open' } })
       Bar.addItem('edit', 'Edit', nil, function() hits++ end,
-         array<table> { { item='Copy' } }, function() prepares++ end)
+         array<table> { { label='Copy' } }, function() prepares++ end)
       Bar.addItem('help', 'Help', nil, function() hits++ end)
    end })
    surface.acShow()
@@ -1124,11 +1124,11 @@ end
 
 @Test function WrappedSubmenusRespectLiveDisabledState()
    local surface <close>, target = newTarget()
-   local wrapper = { disabled=true, menu={ id='wrapped', text='Wrapped', items=array<table> {
-      { item='Child', key='G', qualifier='CTRL' }
+   local wrapper = { disabled=true, menu={ id='wrapped', label='Wrapped', items=array<table> {
+      { label='Child', key='G', qualifier='CTRL' }
    } } }
    local menu = gui.menu({ target=surface, relative=target, config=array<table> {
-      wrapper, { item='Enabled' }
+      wrapper, { label='Enabled' }
    } })
    assert(not menu.selectItem('wrapped') and not menu.activate('wrapped'),
       'Disabled wrappers must reject selection and activation')
@@ -1176,7 +1176,7 @@ end
    bar.disableItem('file')
    assert(bar._lookup.file.mnemonic is 'F' and bar._lookup.format.mnemonic is 'R',
       'Disabling an item must not reassign mnemonics')
-   bar.setItemText('open', 'View')
+   bar.setItemLabel('open', 'View')
    assert(bar._lookup.open.mnemonic is 'V' and bar._lookup.format.mnemonic is 'O',
       'Renaming must recompute both mnemonic passes')
    bar.removeItem('file')
@@ -1192,10 +1192,10 @@ end
    local calls, shortcut_hits, action_hits, unmatched_hits = 0, 0, 0, 0
    local bar = gui.menubar({ target=target, createItems=function(Bar)
       Bar.addItem('file', 'File', nil, nil, array<table> {
-         { item='Other action', qualifier='ALT', key='F', onActivate=function() shortcut_hits++ end },
-         { item='Unassigned letter', qualifier='ALT', key='Z', onActivate=function() unmatched_hits++ end }
+         { label='Other action', qualifier='ALT', key='F', onActivate=function() shortcut_hits++ end },
+         { label='Unassigned letter', qualifier='ALT', key='Z', onActivate=function() unmatched_hits++ end }
       }, function() calls++ end)
-      Bar.addItem('edit', 'Edit', nil, nil, array<table> { { item='Copy' } })
+      Bar.addItem('edit', 'Edit', nil, nil, array<table> { { label='Copy' } })
       Bar.addItem('help', 'Help', nil, function() action_hits++ end)
    end })
    surface.acShow()
@@ -1269,7 +1269,7 @@ end
    local surface <close>, target = newTarget()
    local dropdown = gui.dropdown({
       relative = target, x = 20, y = 20,
-      config = array<table> { { item='First', icon='items/cancel' }, { item='Second' }, { item='Third' } }
+      config = array<table> { { label='First', icon='items/cancel' }, { label='Second' }, { label='Third' } }
    })
    defer dropdown.surface?.free() end
 

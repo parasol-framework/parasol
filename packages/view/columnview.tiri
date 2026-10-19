@@ -148,7 +148,7 @@ function checkboxX(Column:table!):num
    return Column._checkboxMargin
 end
 
-function refreshCheckbox(View:table!, Item:table!, Column:table!, Highlighted:bool)
+function refreshCheckbox(View:table!, Item:table!, Column:table!)
    cell = Item._col?[Column.attrib]
    cell?.checkbox ?! return
 
@@ -161,8 +161,8 @@ function refreshCheckbox(View:table!, Item:table!, Column:table!, Highlighted:bo
    disabled = View.disabled or Item.insensitive or Column.disabled
    box.opacity = disabled ? 0.5 : 1
 
-   highlighted = Highlighted is nil ? Item is View.hItem : Highlighted
-   focused = not disabled and View.hasFocus and highlighted and View.checkboxColumn is Column.attrib
+   -- Focus follows the keyboard target, which pointer hover does not change.
+   focused = not disabled and View.hasFocus and Item is View.kItem and View.checkboxColumn is Column.attrib
 
    box.stroke = focused ? (View.theme.input.focus.stroke ?? View.theme.page.textHighlightBkgd) : 'none'
    box.strokeWidth = focused ? 1 : 0
@@ -170,7 +170,7 @@ end
 
 function highlightItem(View:table!, Item:table, Highlighted:bool)
    for col in values(View.columns) do
-      if col.checkBoxes then refreshCheckbox(View, Item, col, Highlighted) end
+      if col.checkBoxes then refreshCheckbox(View, Item, col) end
    end
 
    if not Item._vectors.highlight and (Highlighted or Item._selected) then
@@ -401,6 +401,7 @@ gui.columnView = function(Options):table
             end
             item._vectors.iconImage = nil
          end
+
          for col in values(View.columns) do
             col.vecViewport?.free()
             col.vecGradient?.free()
@@ -484,9 +485,9 @@ gui.columnView = function(Options):table
             -- Column title
 
             col.vecTitle = col.bannerVP.new('VectorText', table.merge({
-               name      = 'col_title',
-               align     = col.align ?? 'left',
-               y         = LINE_OFFSET,
+               name  = 'col_title',
+               align = col.align ?? 'left',
+               y     = LINE_OFFSET,
             }, View.theme.page.text))
 
             -- Support for resize management
@@ -498,6 +499,7 @@ gui.columnView = function(Options):table
             })
 
             col.resizeVP.dragCallback = function(SizeVP, X, Y)
+               print('dragCallback')
                -- Rearrange layout
                delta_x = X - SizeVP.x
                col.px_width += delta_x
@@ -532,11 +534,8 @@ gui.columnView = function(Options):table
                SizeVP.acDraw()
             end
          else
-            col.bannerVP.x = x
-            col.bannerVP.width = col.px_width
-
-            col.vecViewport.x = x
-            col.vecViewport.width = col.px_width
+            col.bannerVP.{ x = x, width = col.px_width }
+            col.vecViewport.{ x = x, width = col.px_width }
          end
 
          col.vecTitle.string = col['title'] ?? 'Untitled'
@@ -597,9 +596,7 @@ gui.columnView = function(Options):table
                name = 'item_vp', x = EDGE, y = y, xOffset = EDGE, height = LINE_HEIGHT, visibility = vis
             })
          else
-            item._vectors.viewport.y     = y
-            item._vectors.viewport.width = width
-            item._vectors.viewport.visibility = vis
+            item._vectors.viewport.{ y = y, width = width, visibility = vis }
          end
 
          item._highlightEvent = highlightItem
@@ -639,8 +636,7 @@ gui.columnView = function(Options):table
                         visibility = vis
                      })
                   else
-                     item._vectors.iconImage.y = y + ICON_OFFSET
-                     item._vectors.iconImage.visibility = vis
+                     item._vectors.iconImage.{ y = y + ICON_OFFSET, visibility = vis }
                   end
                end
             end
@@ -653,6 +649,7 @@ gui.columnView = function(Options):table
                   })
                   item._vectors['_check_' .. attrib] = cell.checkbox
                end
+
                refreshCheckbox(View, item, col)
             end
 
@@ -815,9 +812,9 @@ gui.columnView = function(Options):table
             index += step
          end
 
-         if vw.hItem then
+         if vw.kItem then
             for column in values(vw.columns) do
-               if column.checkBoxes then refreshCheckbox(vw, vw.hItem, column) end
+               if column.checkBoxes then refreshCheckbox(vw, vw.kItem, column) end
             end
          end
 
@@ -825,7 +822,7 @@ gui.columnView = function(Options):table
          return true
       elseif Code is KEY_SPACE and not (Qualifiers has (KQ_CTRL | KQ_SHIFT | KQ_ALT)) then
          col = vw.namedCol[vw.checkboxColumn]
-         item = vw.hItem
+         item = vw.kItem
 
          if item and not item.hidden and not item.insensitive and not col.disabled then
             setCheckbox(item, col, not checkboxValue(item, col), 'user')

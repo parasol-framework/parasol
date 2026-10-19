@@ -26,7 +26,7 @@ end
 -- This is a universal callback for any menu item that is activated by the user.
 
 function itemClicked(Item)
-   print(f'Selected menu item "{Item.item}" (id: {Item.id ?? "none"})')
+   print(f'Selected menu item "{Item.label}" (id: {Item.id ?? "none"})')
 end
 
 local menubar:table
@@ -57,7 +57,7 @@ function renameDynamicMenuItem(Menu, Item)
 
    dynamic_name_long = not dynamic_name_long
    name = dynamic_name_long ? 'Dynamic Example' : 'Dynamic'
-   menubar.setItemText('dynamic', name)
+   menubar.setItemLabel('dynamic', name)
    print(f'Renamed the dynamic menubar item to "{name}".')
 end
 
@@ -98,75 +98,75 @@ end
          Bar.addItem('file', 'File', 'devices/harddisk', menuCallback, array<table> {
             { group='Documents' },
             {
-               id='new', item='New File', icon='items/file_new', qualifier='CTRL', key='N',
+               id='new', label='New File', icon='items/file_new', qualifier='CTRL', key='N',
                onActivate=itemClicked
             },
             {
                menu={
-                  id='open_recent', text='Open Recent', icon='office/documents', items=array<table> {
-                     { id='recent_one', item='Project Notes.tiri', onActivate=itemClicked },
-                     { id='recent_two', item='Widget Ideas.txt', onActivate=itemClicked },
-                     { id='recent_missing', item='Missing Document', disabled=true, onActivate=itemClicked }
+                  id='open_recent', label='Open Recent', icon='office/documents', items=array<table> {
+                     { id='recent_one', label='Project Notes.tiri', onActivate=itemClicked },
+                     { id='recent_two', label='Widget Ideas.txt', onActivate=itemClicked },
+                     { id='recent_missing', label='Missing Document', disabled=true, onActivate=itemClicked }
                   }
                }
             },
-            { id='reload', item='Reload Document', icon='items/reload', key='F5', onActivate=itemClicked },
+            { id='reload', label='Reload Document', icon='items/reload', key='F5', onActivate=itemClicked },
             { group='Save' },
             {
-               id='save', item='Save File', icon='items/file_save', qualifier='CTRL', key='S',
+               id='save', label='Save File', icon='items/file_save', qualifier='CTRL', key='S',
                onActivate=itemClicked
             },
             {
-               id='save_as', item='Save As...', icon='items/file_saveas', qualifier='CTRL+SHIFT', key='S',
+               id='save_as', label='Save As...', icon='items/file_saveas', qualifier='CTRL+SHIFT', key='S',
                disabled=true, onActivate=itemClicked
             }
          })
          Bar.addItem('edit', 'Edit', 'tools/edit', menuCallback, array<table> {
-            { id='undo', item='Undo', icon='items/undo', qualifier='CTRL', key='Z', onActivate=itemClicked },
-            { id='redo', item='Redo', icon='items/redo', qualifier='CTRL', key='Y', disabled=true,
+            { id='undo', label='Undo', icon='items/undo', qualifier='CTRL', key='Z', onActivate=itemClicked },
+            { id='redo', label='Redo', icon='items/redo', qualifier='CTRL', key='Y', disabled=true,
               onActivate=itemClicked },
             {
                menu={
-                  id='clipboard', text='Clipboard', icon='items/clipboard', items=array<table> {
-                     { id='cut', item='Cut', icon='tools/cut', qualifier='CTRL', key='X', onActivate=itemClicked },
-                     { id='copy', item='Copy', icon='tools/copy', qualifier='CTRL', key='C', onActivate=itemClicked },
-                     { id='paste', item='Paste', icon='tools/paste', qualifier='CTRL', key='V', onActivate=itemClicked }
+                  id='clipboard', label='Clipboard', icon='items/clipboard', items=array<table> {
+                     { id='cut', label='Cut', icon='tools/cut', qualifier='CTRL', key='X', onActivate=itemClicked },
+                     { id='copy', label='Copy', icon='tools/copy', qualifier='CTRL', key='C', onActivate=itemClicked },
+                     { id='paste', label='Paste', icon='tools/paste', qualifier='CTRL', key='V', onActivate=itemClicked }
                   }
                }
             }
          })
          Bar.addItem('view', 'View', 'page/page', menuCallback, array<table> {
             { group='Layout' },
-            { id='show_grid', item='Show Grid', checkable=true, checked=false, qualifier='CTRL', key='G',
+            { id='show_grid', label='Show Grid', checkable=true, checked=false, qualifier='CTRL', key='G',
               onActivate=function(Item) print(f'Grid display enabled: {Item.checked}') end },
-            { id='columns', item='Column View', icon='layout/column_three', onActivate=itemClicked },
-            { id='list', item='List View', icon='layout/list', onActivate=itemClicked },
+            { id='columns', label='Column View', icon='layout/column_three', onActivate=itemClicked },
+            { id='list', label='List View', icon='layout/list', onActivate=itemClicked },
             {
                menu={
-                  id='zoom', text='Zoom', icon='tools/magnifier', items=array<table> {
-                     { id='zoom_in', item='Zoom In', qualifier='CTRL', key='+', onActivate=itemClicked },
-                     { id='zoom_out', item='Zoom Out', qualifier='CTRL', key='-', onActivate=itemClicked },
-                     { id='zoom_reset', item='Actual Size', qualifier='CTRL', key='0', onActivate=itemClicked }
+                  id='zoom', label='Zoom', icon='tools/magnifier', items=array<table> {
+                     { id='zoom_in', label='Zoom In', qualifier='CTRL', key='+', onActivate=itemClicked },
+                     { id='zoom_out', label='Zoom Out', qualifier='CTRL', key='-', onActivate=itemClicked },
+                     { id='zoom_reset', label='Actual Size', qualifier='CTRL', key='0', onActivate=itemClicked }
                   }
                }
             }
          })
          Bar.addItem('tools', 'Tools', 'tools/wizard', menuCallback, array<table> {
             { group='Menubar API' },
-            { id='add_dynamic', item='Add Dynamic Item', onActivate=addDynamicMenuItem },
-            { id='rename_dynamic', item='Rename Dynamic Item', onActivate=renameDynamicMenuItem },
-            { id='remove_dynamic', item='Remove Dynamic Item', onActivate=removeDynamicMenuItem },
+            { id='add_dynamic', label='Add Dynamic Item', onActivate=addDynamicMenuItem },
+            { id='rename_dynamic', label='Rename Dynamic Item', onActivate=renameDynamicMenuItem },
+            { id='remove_dynamic', label='Remove Dynamic Item', onActivate=removeDynamicMenuItem },
             { group='Item State' },
-            { id='disable_view', item='Disable View Menu', onActivate=disableViewMenu },
-            { id='enable_view', item='Enable View Menu', onActivate=enableViewMenu }
+            { id='disable_view', label='Disable View Menu', onActivate=disableViewMenu },
+            { id='enable_view', label='Enable View Menu', onActivate=enableViewMenu }
          })
          Bar.addItem('help', 'Help', 'items/help', menuCallback, array<table> {
             { group='Keyboard' },
-            { item='Alt or F10 activates the menubar', disabled=true },
-            { item='Arrow keys move between menus', disabled=true },
-            { item='Tab continues normal focus traversal', disabled=true },
+            { label='Alt or F10 activates the menubar', disabled=true },
+            { label='Arrow keys move between menus', disabled=true },
+            { label='Tab continues normal focus traversal', disabled=true },
             { group='About' },
-            { id='about', item='About Widget Examples', icon='items/info', onActivate=itemClicked }
+            { id='about', label='About Widget Examples', icon='items/info', onActivate=itemClicked }
          })
       end
    })
@@ -206,28 +206,28 @@ end
       popup  = true,
       onActivate = itemClicked,
       onHighlight = function(Item)
-         print(f'Highlighted menu item: {Item.item}')
+         print(f'Highlighted menu item: {Item.label}')
       end,
       config = array<table> {
          { group='Files' },
          {
-            id='new', item='New File', icon='items/file_new', qualifier='CTRL', key='N'
+            id='new', label='New File', icon='items/file_new', qualifier='CTRL', key='N'
          },
          {
             menu={
-               id='open_recent', text='Open Recent', icon='office/documents', items=array<table> {
-                  { id='recent_one', item='Project Notes.tiri' },
-                  { id='recent_two', item='Widget Ideas.txt' }
+               id='open_recent', label='Open Recent', icon='office/documents', items=array<table> {
+                  { id='recent_one', label='Project Notes.tiri' },
+                  { id='recent_two', label='Widget Ideas.txt' }
                }
             }
          },
-         { id='reload', item='Reload Document', icon='items/reload', key='F5' },
-         { id='save', item='Save File', icon='items/file_save', qualifier='CTRL', key='S' },
-         { id='save_as', item='Save As...', icon='items/file_saveas', disabled=true },
+         { id='reload', label='Reload Document', icon='items/reload', key='F5' },
+         { id='save', label='Save File', icon='items/file_save', qualifier='CTRL', key='S' },
+         { id='save_as', label='Save As...', icon='items/file_saveas', disabled=true },
          { group='Print' },
-         { id='print', item='Print', icon='devices/printer', qualifier='CTRL', key='P' },
+         { id='print', label='Print', icon='devices/printer', qualifier='CTRL', key='P' },
          { group='Quit' },
-         { id='quit', item='Quit', icon='items/quit', qualifier='CTRL', key='Q' }
+         { id='quit', label='Quit', icon='items/quit', qualifier='CTRL', key='Q' }
       }
    })
 
@@ -249,7 +249,7 @@ end
 
    msgButton = gui.button({
       target = viewport,
-      text   = 'Message Box',
+      label  = 'Message Box',
       x      = win.margins.left,
       y      = y,
       icon   = 'items/question',
@@ -263,8 +263,8 @@ end
                userInput     = 'That is the question',
                checkboxLabel = '\'Tis nobler to suffer',
                options = array<table> {
-                  { id=1, text='To be', icon='items/checkmark' },
-                  { id=2, text='Not to be', icon='items/cancel' }
+                  { id=1, label='To be', icon='items/checkmark' },
+                  { id=2, label='Not to be', icon='items/cancel' }
                },
                feedback = function(Dialog, Response, State)
                   if Response then
@@ -287,7 +287,7 @@ end
 
    colourButton = gui.button({
       target = viewport,
-      text   = 'Select Colour',
+      label  = 'Select Colour',
       x      = msgButton.viewport.x + msgButton.viewport.width + 4,
       y      = y,
       icon   = 'tools/palette',
@@ -313,15 +313,13 @@ end
 
    fontButton = gui.button({
       target = viewport,
-      text   = 'Select Font',
+      label  = 'Select Font',
       x      = colourButton.viewport.x + colourButton.viewport.width + 4,
       y      = y,
       icon   = 'items/font',
       events = {
          activate = function()
             gui.dialog.font({
-               okText     = 'Select Font',
-               cancelText = 'Exit',
                modal      = true,
                popOver    = win.surface,
                feedback = function(Accepted)
@@ -339,7 +337,7 @@ end
 
    fileButton = gui.button({
       target = viewport,
-      text   = 'Select File',
+      label  = 'Select File',
       x      = fontButton.viewport.x + fontButton.viewport.width + 4,
       y      = y,
       icon   = 'folders/folder',
@@ -347,8 +345,8 @@ end
          activate = function()
             gui.dialog.file({
                filterList  = array<table> { { name='MP3 Audio Files', ext='mp3' }, { name='Text Files', ext='txt' } },
-               okText      = 'Select File',
-               cancelText  = 'Exit',
+               okLabel     = 'Select File',
+               cancelLabel = 'Exit',
                modal       = true,
                popOver     = win.surface,
                warnExists  = false,
@@ -374,7 +372,6 @@ end
    checkbox = gui.toggle({
       target = viewport,
       label  = 'Checkbox',
-      align  = 'left',
       x      = win.margins.left,
       y      = y,
       events = {
@@ -428,13 +425,13 @@ end
       allowCustom = true,
       items = {
          { group='Office' },
-         { item='Address Book', icon='office/addressbook' },
-         { item='Inbox', icon='office/cabinet_in' },
-         { item='Tasks', icon='office/tasks' },
-         { item='Finances', icon='office/money' },
+         { label='Address Book', icon='office/addressbook' },
+         { label='Inbox', icon='office/cabinet_in' },
+         { label='Tasks', icon='office/tasks' },
+         { label='Finances', icon='office/money' },
          { group='Weather' },
-         { item='Snow', icon='weather/snow' },
-         { item='Thunder', icon='weather/thunder' }
+         { label='Snow', icon='weather/snow' },
+         { label='Thunder', icon='weather/thunder' }
       },
       events = {
          activate = function()
@@ -472,7 +469,7 @@ end
       x      = 20,
       y      = y,
       image  = 'time/alarm',
-      text   = 'Alarm',
+      label  = 'Alarm',
       size   = 80,
       draggable = true,
       events = {
@@ -503,7 +500,7 @@ end
       x      = 120,
       y      = y,
       image  = 'programs/filemanager',
-      text   = 'Wilhelm\'s House',
+      label  = 'Wilhelm\'s House',
       draggable = true,
       events = {
          show = function()

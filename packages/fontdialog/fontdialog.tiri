@@ -193,7 +193,7 @@ Fusce auctor metus egestas commodo laoreet. Morbi sed venenatis augue. Maecenas 
 
       cancel = gui.button({
          target  = &viewport,
-         text    = 'Cancel',
+         label   = 'Cancel',
          xOffset = gui.sizing.widget.gap,
          yOffset = footer,
          icon    = 'items/cancel',
@@ -210,7 +210,7 @@ Fusce auctor metus egestas commodo laoreet. Morbi sed venenatis augue. Maecenas 
 
       okay = gui.button({
          target  = &viewport,
-         text    = 'OK',
+         label   = 'OK',
          xOffset = cancel.viewport.width + (gui.sizing.widget.gap * 2),
          yOffset = footer,
          icon    = 'items/checkmark',
@@ -412,8 +412,6 @@ end
       popOver    = arg('popOver'),
       target     = arg('target'),
       modal      = arg('modal'),
-      okText     = arg('okText'),
-      cancelText = arg('cancelText'),
       icon       = arg('icon')
    })
 

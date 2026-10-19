@@ -174,10 +174,10 @@ end
       processing.flush()
 
       gui.dialog.file({
-         title      = 'Select SVG File for Benchmark',
-         okText     = 'Select',
-         cancelText = 'Cancel',
-         modal      = true,
+         title       = 'Select SVG File for Benchmark',
+         okLabel     = 'Select',
+         cancelLabel = 'Cancel',
+         modal       = true,
          strictFilter = true,
          filterList = {
             { name = 'SVG Files', ext = { 'svg', 'svgz' }, selected = true }

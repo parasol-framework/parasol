@@ -19,30 +19,58 @@ function checkCursorImage(View:table)
    end
 end
 
--- Simplifies the process of highlighting an item.  Item can be nil for deselection.
+-- Simplifies the process of highlighting an item.  Item can be nil for deselection.  The highlight reference is
+-- committed before either item is notified so that handlers observe the final state.
 
 function highlightItem(View:table!, Item:table)
    if Item is View.hItem then return end
 
-   if Item != View.hItem then
-      View.hItem?._highlightEvent(View, View.hItem, false)
-   end
-
+   local previous = View.hItem
    View.hItem = Item
+   previous?._highlightEvent(View, previous, false)
    Item?._highlightEvent(View, Item, true)
    View.viewport.acDraw()
 end
 
-function clearItems(View)
-   if View.items then
-      for item in values(View.items) do
-         item?._free(item)
-      end
-   end
+-- The keyboard target (kItem) is the row that Enter, Space and keyboard navigation act upon.  It is set by keyboard
+-- navigation and pointer presses, but never by pointer hover.
 
+function setKeyboardTarget(View:table!, Item:table)
+   local previous = View.kItem
+   if previous is Item then return end
+   View.kItem = Item
+   previous?._highlightEvent(View, previous, previous is View.hItem)
+   Item?._highlightEvent(View, Item, Item is View.hItem)
+end
+
+-- Rethrows an exception captured with try-except.
+
+function rethrow(Exception)
+   raise(Exception.code ?? ERR_Failed, Exception.message)
+end
+
+-- Release every item.  All items are freed even if a client cleanup callback fails; the first failure is returned
+-- for the caller to report once the view is consistent.
+
+function clearItems(View):any
+   local failure:any = nil
+   local items = View.items
+   View.zones = { }
+   View.hoveredItem = nil
+   View.activeZone = nil
+   View.hItem = nil
+   View.kItem = nil
    View.items = { }
    View.lookup = { }
    View._contentsVersion = (View._contentsVersion ?? 0) + 1
+
+   if items then
+      for item in values(items) do
+         local err = item?._free(item)
+         failure ?= err
+      end
+   end
+   return failure
 end
 
 ----------------------------------------------------------------------------------------------------------------------
@@ -189,7 +217,7 @@ end
 
 ----------------------------------------------------------------------------------------------------------------------
 
-gui.initView = function(Options:table!, BuildUI, NewItems)
+gui.initView = function(Options:table!, BuildUI, NewItems, PrepareView:func)
    local scroll_direction = Options.scrollDirection ?? 'all'
    assert(scroll_direction is 'all' or scroll_direction is 'vertical' or scroll_direction is 'horizontal',
       'scrollDirection must be all, vertical or horizontal')
@@ -273,33 +301,42 @@ gui.initView = function(Options:table!, BuildUI, NewItems)
       end
    end
 
+   -- Keyboard navigation moves both the highlight and the keyboard target.
+
+   function navigateTo(Item:table!)
+      highlightItem(vw, Item)
+      setKeyboardTarget(vw, Item)
+      vw.revealItem(Item)
+   end
+
    function moveKeyboardHighlight(Step:num!)
       index = nil
-      if vw.hItem then
+      if vw.kItem then
          for i in {0 to #vw.items} do
-            if vw.items[i] is vw.hItem then index = i; break end
+            if vw.items[i] is vw.kItem then index = i; break end
          end
       end
 
       start = index is nil ? (Step > 0 ? 0 : #vw.items - 1) : math.clamp(index + Step, 0, #vw.items - 1)
       item = seekKeyboardItem(start, Step > 0 ? 1 : -1)
       if not item then item = seekKeyboardItem(start, Step > 0 ? -1 : 1) end
-      if item then
-         highlightItem(vw, item)
-         vw.revealItem(item)
-      end
+      if item then navigateTo(item) end
    end
 
    function selectHighlighted(Activate:bool!, Qualifiers:num!)
-      item = vw.hItem
+      item = vw.kItem
       if not selectionEligible(vw, item) then return end
+
       if Activate then
          if not item._selected then
             if not selectionTransaction(vw, { [item._id]=true }, item, item, 'user', vw.activeItem) then
                return
             end
          end
-         if selectionEligible(vw, item) then reportItemActivated(vw, 'user', item) end
+
+         if selectionEligible(vw, item) then
+            reportItemActivated(vw, 'user', item)
+         end
       else
          selectUserItem(item, Qualifiers, true)
       end
@@ -312,14 +349,27 @@ gui.initView = function(Options:table!, BuildUI, NewItems)
 
    vw.addItems = function(Items)
       assert(Items, 'No Items provided')
+      assertStructural()
 
       new_items = { }
       for item in values(Items) do
-         new_item = {
+         new_item = table.merge({
             _id = glItemCounter,
             _vectors = { },
-            _free = function(Item) -- This hook can be overridden by the client
+            -- Releases the item's graphics exactly once.  Client cleanup callbacks are invoked through
+            -- View._releaseItem while the row viewport is still valid.  A cleanup failure does not prevent release;
+            -- it is returned for the caller to report after cleanup is complete.
+            _free = function(Item):any
+               if Item._freed then return end
+               Item._freed = true
+
+               failure:any
                vp = Item._vectors.viewport
+               if vp and vw._releaseItem and not Item._released then
+                  Item._released = true
+                  failure = vw._releaseItem(Item, vp)
+               end
+
                Item._vectors.viewport = nil
 
                for v in values(Item._vectors) do
@@ -329,12 +379,9 @@ gui.initView = function(Options:table!, BuildUI, NewItems)
                vp?.free()
 
                Item._vectors = { }
+               return failure
             end
-         }
-
-         for k, v in pairs(item) do -- Copy all item key-values supplied by the user
-            new_item[k] = v
-         end
+         }, item)
 
          vw.items.insert(new_item)
          if NewItems then new_items.insert(new_item) end
@@ -344,6 +391,7 @@ gui.initView = function(Options:table!, BuildUI, NewItems)
 
       if vw._built and NewItems and (#new_items > 0) then
          NewItems(vw, new_items) -- Report new items to view manager
+         if vw._relayout then vw._afterLayout() end
       end
    end
 
@@ -353,6 +401,7 @@ gui.initView = function(Options:table!, BuildUI, NewItems)
       highlightItem(vw, Zone.item)
 
       vw.hoveredItem = {
+         item = Zone.item,
          click = function(Input)
             if Input.value is 0 and not vw.disabled and not vw._modifiedClick then
                if vw.sensitive and (not Zone.item.insensitive) then
@@ -379,6 +428,42 @@ gui.initView = function(Options:table!, BuildUI, NewItems)
       end
    end
 
+   -- Reconcile selection, highlight and keyboard references with direct changes to item visibility.  Returns false
+   -- if a selection callback replaced the contents or destroyed the view.
+
+   vw._reconcile = function():bool
+      if not selectionTransaction(vw, currentSelection(vw), vw.sItem, vw.selectionAnchor,
+         'manual', vw.activeItem) then return false end
+      if vw.hItem and not selectionEligible(vw, vw.hItem) then highlightItem(vw, nil) end
+      if vw.kItem and not selectionEligible(vw, vw.kItem) then setKeyboardTarget(vw, nil) end
+      return true
+   end
+
+   function afterLayout()
+      cursorActivity() -- Reset the cursor
+      vw.border?.acMoveToFront()
+      vw.scene.surface.mtScheduleRedraw()
+   end
+
+   -- Reposition existing items after a structural change.  Views that implement _relayout() retain their rows and
+   -- scroll position; other views are rebuilt.
+
+   function refreshLayout()
+      if not vw._relayout then
+         vw.rebuild()
+         return
+      end
+
+      if not vw._reconcile() then return end
+      vw.zones = { }
+      vw.hoveredItem = { }
+      vw._relayout()
+      afterLayout()
+   end
+
+   vw._refreshLayout = refreshLayout
+   vw._afterLayout = afterLayout
+
    vw.disable = function()
       vw.disabled = true
       vw?._stateChanged()
@@ -393,7 +478,7 @@ gui.initView = function(Options:table!, BuildUI, NewItems)
    -- If Width is nil then the click zone will span the entire width of the page and X is ignored.
 
    vw.addZone = function(X, Y, Width, Height, Item, HoverCallback):table
-      if not HoverCallback then HoverCallback = itemHoverCallback end
+      HoverCallback ?= itemHoverCallback
 
       vw.zones.insert({
          x      = X,
@@ -409,15 +494,30 @@ gui.initView = function(Options:table!, BuildUI, NewItems)
 
    -- Clears a view of all internal content and updates the display.
 
-   vw.clearView = function()
-      if vw._clearing then return end
+   -- Returns false if a selection callback replaced the contents or destroyed the view, followed by the first
+   -- cleanup failure, if any.
+
+   function clearContents():<bool, any>
+      if vw._clearing then return nil, nil end
       vw._clearing = true
+
       highlightItem(vw, nil)
-      local completed = selectionTransaction(vw, {}, nil, nil, 'clear', nil, function()
-         clearItems(vw)
+      setKeyboardTarget(vw, nil)
+
+      failure:any
+      completed = selectionTransaction(vw, {}, nil, nil, 'clear', nil, function()
+         failure = clearItems(vw)
          vw._clearing = false
       end)
-      if completed then vw.rebuild() end
+
+      if completed then vw.rebuild(true) end
+      return completed, failure
+   end
+
+   vw.clearView = function()
+      assertStructural()
+      completed, failure = clearContents()
+      if failure then rethrow(failure) end
       return completed
    end
 
@@ -425,10 +525,14 @@ gui.initView = function(Options:table!, BuildUI, NewItems)
 
    vw.invertSelection = function()
       if vw.sensitive or not vw.multiSelect then return end
-      local wanted = {}
+
+      wanted = {}
       for item in values(vw.items) do
-         if not item.hidden and not item._selected then wanted[item._id] = true end
+         if not item.hidden and not item._selected then
+            wanted[item._id] = true
+         end
       end
+
       highlightItem(vw, nil)
       selectionTransaction(vw, wanted, nil, vw.selectionAnchor, 'inverted', nil)
    end
@@ -446,11 +550,12 @@ gui.initView = function(Options:table!, BuildUI, NewItems)
 
    vw.lowerItem = function(Item)
       assert(Item, 'No Item provided')
+      assertStructural()
       for i in {0 to #vw.items - 1} do
          if vw.items[i] is Item then
             vw.items[i] = vw.items[i+1]
             vw.items[i+1] = Item
-            vw.rebuild()
+            refreshLayout()
             return
          end
       end
@@ -460,11 +565,13 @@ gui.initView = function(Options:table!, BuildUI, NewItems)
 
    vw.raiseItem = function(Item)
       assert(Item, 'No Item provided')
+      assertStructural()
+
       for i in {1 to #vw.items} do
          if vw.items[i] is Item then
             vw.items[i] = vw.items[i-1]
             vw.items[i-1] = Item
-            vw.rebuild()
+            refreshLayout()
             return
          end
       end
@@ -474,51 +581,72 @@ gui.initView = function(Options:table!, BuildUI, NewItems)
 
    vw.removeItem = function(Item)
       assert(Item, 'No Item provided')
+      assertStructural()
 
       if vw.lookup[Item._id] != Item then return end
       if Item is vw.hItem then highlightItem(vw, nil) end
-      local wanted = currentSelection(vw)
+      if Item is vw.kItem then setKeyboardTarget(vw, nil) end
+
+      wanted = currentSelection(vw)
       wanted[Item._id] = nil
-      local active = vw.activeItem is Item ? nil : vw.activeItem
-      local completed = selectionTransaction(vw, wanted, vw.sItem,
+      active = vw.activeItem is Item ? nil : vw.activeItem
+
+      failure:any
+      completed = selectionTransaction(vw, wanted, vw.sItem,
          vw.selectionAnchor is Item ? nil : vw.selectionAnchor, 'manual', active, function()
             for i in {0 to #vw.items} do
                if vw.items[i] is Item then vw.items.remove(i); break end
             end
+
             vw.lookup[Item._id] = nil
-            Item._free(Item)
+
+            -- Drop input references to the item before its graphics are released
+            local zones = { }
+            for zone in values(vw.zones) do
+               if zone.item != Item then zones.insert(zone) end
+            end
+
+            vw.zones = zones
+
+            if vw.hoveredItem?.item is Item then vw.hoveredItem = nil end
+
+            failure = Item._free(Item)
          end, Item)
-      if completed then vw.rebuild() end
+
+      if completed then refreshLayout() end
+
+      if failure then rethrow(failure) end
+   end
+
+   -- Returns the scroll delta needed to reveal the span [Start, Start+Size) within [Low, High).  A span larger than the
+   -- visible area is left alone if any part of it is visible, otherwise the alternating edge corrections would cause
+   -- the view to flip between its extremes.
+
+   local function revealDelta(Start:num, Size:num, Low:num, High:num):num
+      if Size > High - Low then
+         if (Start < High) and (Start + Size > Low) then return 0 end
+         return Low - Start
+      elseif Start < Low then
+         return Low - Start
+      elseif Start + Size > High then
+         return High - (Start + Size)
+      end
+      return 0
    end
 
    -- Checks the visibility of an item, scrolling it into view if it is partially or fully hidden.
 
    vw.revealItem = function(Item)
       assert(Item, 'No Item provided')
-      if not vw.scrollbar then return end
+      vw.scrollbar ?! return
 
       dims = vw.itemDimensions(Item)
       if (dims.width <= 0) and (dims.height <= 0) then return end
 
-      scroll_top    = -vw.page.y
-      scroll_bottom = scroll_top + vw.frame.height
-
-      delta_y = 0
-      if dims.y < scroll_top then
-         delta_y = scroll_top - dims.y
-      elseif dims.y + dims.height > scroll_bottom then
-         delta_y = scroll_bottom - (dims.y + dims.height)
-      end
-
-      scroll_left  = -vw.page.x
-      scroll_right = scroll_left + vw.frame.width
-
-      delta_x = 0
-      if dims.x < scroll_left then
-         delta_x = scroll_left - dims.x
-      elseif dims.x + dims.width > scroll_right then
-         delta_x = scroll_right - (dims.x + dims.width)
-      end
+      scroll_top  = -vw.page.y
+      scroll_left = -vw.page.x
+      delta_y = revealDelta(dims.y, dims.height, scroll_top, scroll_top + vw.frame.height)
+      delta_x = revealDelta(dims.x, dims.width, scroll_left, scroll_left + vw.frame.width)
 
       if (delta_x != 0) or (delta_y != 0) then
          vw.scrollbar.scrollPage(delta_x, delta_y)
@@ -528,14 +656,15 @@ gui.initView = function(Options:table!, BuildUI, NewItems)
    -- Selects all items in the view for the user.
 
    function selectAllVisible(Reason:str!)
-      local wanted = currentSelection(vw)
-      local lead = selectionEligible(vw, vw.sItem) and vw.sItem._selected ? vw.sItem : nil
+      wanted = currentSelection(vw)
+      lead = selectionEligible(vw, vw.sItem) and vw.sItem._selected ? vw.sItem : nil
       for item in values(vw.items) do
          if not item.hidden and (vw.multiSelect or not lead) then
             wanted[item._id] = true
             lead ?= item
          end
       end
+
       selectionTransaction(vw, wanted, lead, vw.selectionAnchor, Reason, lead)
    end
 
@@ -546,14 +675,14 @@ gui.initView = function(Options:table!, BuildUI, NewItems)
    -- Add visible matches in multiple mode, or replace with the first match in single mode.
 
    vw.selectItems = function[](Conditional:func)
-      local wanted = vw.multiSelect ? currentSelection(vw) : {}
-      local lead:table = nil
+      wanted = vw.multiSelect ? currentSelection(vw) : {}
+      lead:table
 
       for item in values(vw.items) do
          if not item.hidden and Conditional(item) is true then
             wanted[item._id] = true
             lead = item
-            if not vw.multiSelect then break end
+            vw.multiSelect ?! break
          end
       end
 
@@ -588,18 +717,30 @@ gui.initView = function(Options:table!, BuildUI, NewItems)
       selectionTransaction(vw, {}, nil, nil, 'manual', nil)
    end
 
+   -- Cleanup failures are reported only after the view has been completely released.
+
    vw.free = function()
       if vw._freeing then return end
+      assertStructural()
       vw._freeing = true
-      vw.clearView()
+
+      failure:any
+      try
+         vw.clearView()
+      except e
+         failure = e
+      end
+
       vw.viewport?.free()
-      for k,v in pairs(vw) do vw[k] = nil end
+      for k in keys(vw) do vw[k] = nil end
       processing.collect()
+      if failure then rethrow(failure) end
    end
 
    -- Changes the underlying attributes of any item in the view by setting provided key-values.
 
    vw.setItem = function(Item:table!, KV:table!)
+      assertStructural()
       for k, v in pairs(KV) do
          Item[k] = v
       end
@@ -610,9 +751,10 @@ gui.initView = function(Options:table!, BuildUI, NewItems)
    -- Load a new set of items and display them for the user.  Any existing items will be cleared.
 
    vw.loadItems = function(Items)
+      assertStructural()
       if not vw.clearView() or not vw.viewport then return end
       vw.addItems(Items)
-      vw.rebuild()
+      if not vw._relayout then vw.rebuild() end
    end
 
    -- Internal function for sorting items by any named attribute.  Clients must call sort() instead.
@@ -654,23 +796,23 @@ gui.initView = function(Options:table!, BuildUI, NewItems)
       msg('The view implementation must override the sort() method.')
    end
 
-   -- Internal function for building the view's UI
+   -- Internal function for building the view's UI.  The page position is reset unless the view preserves its scroll
+   -- position, in which case the implementation is expected to clamp it to the new extent.
 
-   vw.rebuild = function()
-      if not selectionTransaction(vw, currentSelection(vw), vw.sItem, vw.selectionAnchor,
-         'manual', vw.activeItem) then return end
-      if vw.hItem and not selectionEligible(vw, vw.hItem) then highlightItem(vw, nil) end
+   vw.rebuild = function(ResetScroll:bool)
+      assertStructural()
+      if not vw._reconcile() then return end
       vw.zones = { }
       vw.hoveredItem = { }
 
-      vw.page.x = 0 -- Reset the page position
-      vw.page.y = 0
+      if ResetScroll or not vw._preserveScroll then
+         vw.page.x = 0 -- Reset the page position
+         vw.page.y = 0
+      end
 
       BuildUI(vw)
       vw._built = true
-      cursorActivity() -- Reset the cursor
-      vw.border?.acMoveToFront()
-      vw.scene.surface.mtScheduleRedraw()
+      afterLayout()
    end
 
    -- Internal function for offsetting the frame, e.g. to accommodate a toolbar.
@@ -728,7 +870,7 @@ gui.initView = function(Options:table!, BuildUI, NewItems)
       target    = vw.viewport,
       view      = vw.frame,
       page      = vw.page,
-      direction = 'all'
+      direction = scroll_direction
    })
 
    if not Options.borderless and vw.scrollbar then
@@ -751,6 +893,7 @@ gui.initView = function(Options:table!, BuildUI, NewItems)
 
    -- Pointer input has no qualifiers.  Track them independently of vector focus so that Ctrl/Shift
    -- pressed in another widget still apply to the first click here.
+
    vw._modifierKeyboard = input.keyboard(nil, function(Handle, SurfaceID, Qualifiers, Code, Unicode)
       vw.qualifiers = Qualifiers & (KQ_SHIFT | KQ_CTRL)
       if Qualifiers has KQ_RELEASED then
@@ -760,39 +903,64 @@ gui.initView = function(Options:table!, BuildUI, NewItems)
          if Code is KEY_R_CONTROL then vw.qualifiers = vw.qualifiers & ~KQ_R_CONTROL end
       end
    end)
+
+   -- If the view is destroyed by its parent rather than free(), client cleanup callbacks still run once for each row
+   -- while the row viewports remain valid.  The graphics are released by the parent.
+
    vw.viewport.subscribe('free', function()
       vw._modifierKeyboard?.unsubscribe()
       vw._modifierKeyboard = nil
+      if vw._releaseItem and vw.items then
+         local failure:any = nil
+         for item in values(vw.items) do
+            local vp = item._vectors?.viewport
+            if vp and not item._released then
+               item._released = true
+               local err = vw._releaseItem(item, vp)
+               failure ?= err
+            end
+         end
+         if failure then msg(f'Row cleanup failed during view destruction: {failure.message}') end
+      end
    end)
 
    vw.viewport.mtSubscribeKeyboard(function(Viewport, Qualifiers, Code, Unicode)
       if (Qualifiers has KQ_PRESSED) and not vw.disabled then
          if vw._keyEvent and vw._keyEvent(Qualifiers, Code, Unicode) then return end
+
          if (Code is KEY_ENTER) or (Code is KEY_NP_ENTER) then
             selectHighlighted(true, Qualifiers)
          elseif Code is KEY_A and (Qualifiers has KQ_CTRL) then
-            if vw.multiSelect then selectAllVisible('user') end
+            if vw.multiSelect then
+               selectAllVisible('user')
+            end
          elseif Code is KEY_SPACE then
             selectHighlighted(false, Qualifiers)
          elseif (Code is KEY_UP) or (Code is KEY_LEFT) then
             moveKeyboardHighlight(-1)
-            if vw.hItem and (Qualifiers has KQ_SHIFT) then selectUserItem(vw.hItem, Qualifiers) end
+            if vw.kItem and (Qualifiers has KQ_SHIFT) then
+               selectUserItem(vw.kItem, Qualifiers)
+            end
          elseif (Code is KEY_DOWN) or (Code is KEY_RIGHT) then
             moveKeyboardHighlight(1)
-            if vw.hItem and (Qualifiers has KQ_SHIFT) then selectUserItem(vw.hItem, Qualifiers) end
+            if vw.kItem and (Qualifiers has KQ_SHIFT) then
+               selectUserItem(vw.kItem, Qualifiers)
+            end
          elseif Code is KEY_HOME then
             item = seekKeyboardItem(0, 1)
             if item then
-               highlightItem(vw, item)
-               vw.revealItem(item)
-               if Qualifiers has KQ_SHIFT then selectUserItem(item, Qualifiers) end
+               navigateTo(item)
+               if Qualifiers has KQ_SHIFT then
+                  selectUserItem(item, Qualifiers)
+               end
             end
          elseif Code is KEY_END then
             item = seekKeyboardItem(#vw.items - 1, -1)
             if item then
-               highlightItem(vw, item)
-               vw.revealItem(item)
-               if Qualifiers has KQ_SHIFT then selectUserItem(item, Qualifiers) end
+               navigateTo(item)
+               if Qualifiers has KQ_SHIFT then
+                  selectUserItem(item, Qualifiers)
+               end
             end
          end
       end
@@ -821,6 +989,9 @@ gui.initView = function(Options:table!, BuildUI, NewItems)
                vw.clickAbsY = ev.absY
                vw.clickX = ev.x
                vw.clickY = ev.y
+               if vw.hItem and not vw.activeZone then
+                  setKeyboardTarget(vw, vw.hItem)
+               end
             end
 
             if vw.activeZone then -- Custom zone for click activity
@@ -856,11 +1027,19 @@ gui.initView = function(Options:table!, BuildUI, NewItems)
       end
    end)
 
-   if Options.items then
-      vw.addItems(Options.items)
-   end
+   try
+      -- Install implementation-specific lifecycle hooks before any initial rows are constructed.
+      if PrepareView then PrepareView(vw) end
+      if Options.items then vw.addItems(Options.items) end
 
-   vw.rebuild()
+      vw.rebuild()
+   except e
+      -- No caller receives this view on failure.  Release its rows without selection notifications, preserving
+      -- the construction error even if a client cleanup hook fails.
+      clearItems(vw)
+      vw.viewport?.free()
+      raise
+   end
 
    return vw
 end

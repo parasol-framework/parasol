@@ -303,15 +303,15 @@ function buildScene()
       x      = win.margins.left,
       y      = 10,
       items = array<table> {
-         { item='Radial' },
-         { item='Conic' },
-         { item='Diamond' },
-         { item='Linear' },
-         { item='Contour' },
-         { item='Contour Path' },
-         { item='Distal' },
-         { item='Voronoi' },
-         { item='Gouraud' }
+         { label='Radial' },
+         { label='Conic' },
+         { label='Diamond' },
+         { label='Linear' },
+         { label='Contour' },
+         { label='Contour Path' },
+         { label='Distal' },
+         { label='Voronoi' },
+         { label='Gouraud' }
       },
       events = {
          activate = function(Text)
@@ -326,7 +326,7 @@ function buildScene()
       text   = 'Reflect',
       x      = cmbGradient.viewport.x + cmbGradient.viewport.width + 10,
       y      = 10,
-      items  = array<table> { { item='Pad' }, { item='Repeat' }, { item='Reflect' }, { item='Clip' } },
+      items  = array<table> { { label='Pad' }, { label='Repeat' }, { label='Reflect' }, { label='Clip' } },
       events = {
          activate = function(Text)
             glSpreadMethod = choose Text from
@@ -349,8 +349,8 @@ function buildScene()
       x      = cmbSpread.viewport.x + cmbSpread.viewport.width + 10,
       y      = 10,
       items  = array<table> {
-         { item='Magma' }, { item='Rocket' }, { item='Mako' }, { item='IceFire' },
-         { item='Flare' }, { item='Crest' }, { item='Viridis' }, { item='Plasma' }, { item='Inferno' }
+         { label='Magma' }, { label='Rocket' }, { label='Mako' }, { label='IceFire' },
+         { label='Flare' }, { label='Crest' }, { label='Viridis' }, { label='Plasma' }, { label='Inferno' }
       },
       events = {
          activate = function(Text)
@@ -368,8 +368,8 @@ function buildScene()
       x      = cmbColours.viewport.x + cmbColours.viewport.width + 10,
       y      = 10,
       items  = array<table> {
-         { item='Cubic In' }, { item='Cubic In Out' }, { item='Cubic Out' },
-         { item='In' }, { item='In Out' }, { item='Linear' }, { item='Out' }
+         { label='Cubic In' }, { label='Cubic In Out' }, { label='Cubic Out' },
+         { label='In' }, { label='In Out' }, { label='Linear' }, { label='Out' }
       },
       events = {
          activate = function(Text:str!)
@@ -450,8 +450,8 @@ function buildScene()
          activate = function()
             gui.dialog.file({
                title       = 'Save Gradient as PNG Image',
-               okText      = 'Save',
-               cancelText  = 'Cancel',
+               okLabel     = 'Save',
+               cancelLabel = 'Cancel',
                modal       = true,
                popOver     = win.surface,
                warnExists  = true,

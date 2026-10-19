@@ -625,12 +625,9 @@ end
 -- this to adopt the theme of the window that opened them.
 
 gui.getThemeName = function(Object:obj):str
+   Object ?! return gui.theme
+
    local scene:obj
-
-   if not Object then
-      return gui.theme
-   end
-
    if obj.class(Object).name is 'VectorViewport' then
       scene = Object.scene
    elseif obj.class(Object).name is 'VectorScene' then
@@ -640,8 +637,10 @@ gui.getThemeName = function(Object:obj):str
    end
 
    local state = scene.state()
-   if not state.theme then -- Theme undefined, apply the default
+   if not state.theme then -- Theme undefined, apply the default and its scene resources
       state.theme = gui.theme
+      theme = gui.themes[state.theme]
+      if theme then theme.init?(scene) end
    end
 
    return state.theme

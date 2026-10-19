@@ -113,7 +113,7 @@ function buildScene()
 
    gui.combobox({
       target = glViewport, label = 'Mode:', text = glMode, x = 16, y = glY,
-      items = array<table> { { item = 'Shape' }, { item = 'Repeat' }, { item = 'Spiral' } },
+      items = array<table> { { label = 'Shape' }, { label = 'Repeat' }, { label = 'Spiral' } },
       events = {
          activate = function(Text:str)
             glMode = Text
@@ -125,7 +125,7 @@ function buildScene()
    glY += 32
 
    mod_items = array<table>
-   for i in {0 to #MODS} do mod_items.push({ item = MODS[i] }) end
+   for i in {0 to #MODS} do mod_items.push({ label = MODS[i] }) end
 
    gui.combobox({
       target = glViewport, label = 'Mod:', text = MODS[0], x = 16, y = glY,

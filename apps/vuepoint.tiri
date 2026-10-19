@@ -389,7 +389,7 @@ end
          },
          target      = glViewport,
          style       = 'list',
-         toolBar     = { navigation=true, views=true },
+         toolbar     = { navigation=true, views=true },
          displayPath = true,
          path        = glArgs.path,
          filterList = glOpenFilter,
@@ -406,7 +406,7 @@ end
       -- Document viewer on the right
 
       glViewManager = glViewport.new('VectorViewport', {
-        x=glFileView.view.viewport.x + glFileView.view.viewport.width + 6, y=0,
+        x=glFileView.viewport.x + glFileView.viewport.width + 6, y=0,
         xOffset=glWindow.margins.right, yOffset=glWindow.margins.top
       })
 
@@ -426,8 +426,8 @@ end
             Bar.addItem(2, 'Save As', 'Save Image As', 'items/file_saveas', function()
                gui.dialog.file({
                   title       = 'Save Image As...',
-                  okText      = 'Save',
-                  cancelText  = 'Cancel',
+                  okLabel     = 'Save',
+                  cancelLabel = 'Cancel',
                   modal       = true,
                   popOver     = glWindow.surface,
                   warnExists  = true,
@@ -468,7 +468,7 @@ end
       })
 
       gui.divider({
-         left = glFileView.view.viewport, right = glViewManager,
+         left = glFileView.viewport, right = glViewManager,
          minA = 100, maxA = glWindow.surface.width * 0.4, minB = 100
       })
    end

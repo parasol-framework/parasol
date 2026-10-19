@@ -29,7 +29,7 @@ gui.icon = function(Options:table!)
       parentViewport = Options.target,
       events         = Options.events ?? { },
       disabled       = false,
-      text           = Options.text,
+      label          = Options.label,
       image          = Options.image,
       viewport       = nil -- The icon's primary viewport
    }, {
@@ -205,11 +205,11 @@ gui.icon = function(Options:table!)
       &viewport.acDraw()
    end
 
-   self.setText = function(Text:str)
-      &text = Text
+   self.setLabel = function(Label:str)
+      &label = Label
 
-      if Text != nil and Text.trim() != '' then
-         text_words = rx_whitespace.replace(Text.trim(), ' ').split(' ')
+      if Label != nil and Label.trim() != '' then
+         text_words = rx_whitespace.replace(Label.trim(), ' ').split(' ')
       else
          text_words = nil
       end
@@ -270,8 +270,8 @@ gui.icon = function(Options:table!)
    -- Main entry point
 
    using self do
-      if Options.text != nil and Options.text.trim() != '' then
-         text_words = rx_whitespace.replace(Options.text.trim(), ' ').split(' ')
+      if Options.label != nil and Options.label.trim() != '' then
+         text_words = rx_whitespace.replace(Options.label.trim(), ' ').split(' ')
       else
          text_words = nil
       end
