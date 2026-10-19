@@ -851,6 +851,7 @@ extern int8_t fs_initialised;
 extern APTR glPageFault;
 extern bool glScanClasses;
 extern uint8_t glTimerCycle;
+extern uint64_t glTimerID;
 extern struct CoreBase *LocalCoreBase;
 extern std::atomic_int glUniqueMsgID;
 

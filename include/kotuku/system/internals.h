@@ -41,6 +41,7 @@ public:
    int64_t   PendingInterval; // Switch to this interval after completing the next cycle
    OBJECTPTR Subscriber;      // Weak-pinned subscriber, or null for internal subscriptions with no subscriber
    FUNCTION  Routine;         // Routine to call on trigger
+   uint64_t  ID;              // Unique identifier, returned to the client as the subscription handle
    uint8_t   Cycle;
    bool      Locked;
 };

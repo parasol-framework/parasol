@@ -735,6 +735,22 @@ end
 end
 
 ----------------------------------------------------------------------------------------------------------------------
+-- Regression: stripping the trailing slash from the root folder used to leave an empty path for inotify.
+
+@Test function WatchRootFolder()
+   local folder <close> = obj.new('file', { path='drive1:' })
+
+   local err = folder.mtWatch(function(File, Path, Flags) return ERR_Okay end, MFF_CREATE)
+   if err is ERR_NoSupport then
+      return 'Host platform does not support file system watching.'
+   end
+   assert(err is ERR_Okay, 'Watch() on the root folder failed: ' .. mSys.GetErrorMsg(err))
+
+   err = folder.mtWatch()
+   assert(err is ERR_Okay, 'Disabling the root folder watch failed: ' .. mSys.GetErrorMsg(err))
+end
+
+----------------------------------------------------------------------------------------------------------------------
 
 @Test function CreateLink()
    source = glTempRoot .. 'link_source.txt'

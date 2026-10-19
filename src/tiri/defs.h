@@ -499,6 +499,7 @@ ERR make_struct_ptr_array(lua_State *, std::string_view, int, CPTR *, struct_rec
 void make_struct_serial_array(lua_State *, std::string_view, int, CPTR, struct_record * = nullptr);
 void notify_action(OBJECTPTR, ACTIONID, ERR, APTR);
 void process_error(extTiri *, CSTRING);
+void process_callback_error(extTiri *, CSTRING);
 ERR push_object_id(lua_State *, OBJECTID ObjectID);
 extern ERR delayed_msg_handler(APTR Meta, int MsgID, MSGID MsgType, std::span<std::byte> Message);
 extern int object_index(lua_State *);

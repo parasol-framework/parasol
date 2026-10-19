@@ -353,6 +353,32 @@ void process_error(extTiri *Self, CSTRING Procedure)
 }
 
 //********************************************************************************************************************
+// Report an exception raised by an asynchronous callback, such as an action or event subscription.
+//
+// If a script call is in progress (a SCRIPT_Callback() dispatch or a named procedure), the script's Error and
+// ErrorMessage are restored once the error has been logged.  Otherwise the error would become the result of that
+// call; for instance an enclosing timer would receive ERR::Terminate and be removed.  Callbacks made through sc::Call()
+// are isolated in the same way by SCRIPT_Callback().
+//
+// Outside of a script call, exceptions are recorded against the script so that they remain visible to its owner.
+// Non-critical errors such as ERR::Terminate are not recorded, as they would otherwise change the script's exit code.
+
+void process_callback_error(extTiri *Self, CSTRING Procedure)
+{
+   bool in_call     = (Self->ProcedureID) or (not Self->Procedure.empty());
+   auto saved_error = Self->Error;
+   auto saved_msg   = Self->ErrorMessage;
+
+   process_error(Self, Procedure);
+
+   if ((in_call) or (Self->Error <= ERR::Terminate)) {
+      Self->Error = saved_error;
+      Self->ErrorMessage = std::move(saved_msg);
+   }
+   Self->Lua->CaughtError = ERR::Okay;
+}
+
+//********************************************************************************************************************
 // This routine is intended for handling action notifications only.  It takes the FunctionField list provided by the
 // action and copies them into a table.  Each value is represented by the relevant parameter name for ease of use.
 
@@ -452,7 +478,7 @@ void notify_action(OBJECTPTR Object, ACTIONID ActionID, ERR Result, APTR Args)
             }
 
             if (lua_pcall(Self->Lua, total_args, 0, 0)) { // Make the call, function & args are removed from stack.
-               process_error(Self, "Action Subscription");
+               process_callback_error(Self, "Action Subscription");
             }
 
          }
@@ -605,7 +631,7 @@ static ERR TIRI_DataFeed(extTiri *Self, struct acDataFeed *Args)
                   FreeResource(xml);
 
                   if (lua_pcall(Self->Lua, 1, 0, 0)) { // function(Items)
-                     process_error(Self, "Data Receipt Callback");
+                     process_callback_error(Self, "Data Receipt Callback");
                   }
                }
                else lua_pop(Self->Lua, 2);

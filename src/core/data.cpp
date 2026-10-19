@@ -204,6 +204,7 @@ std::atomic_int glGlobalIDCount = 1;
 int glEventMask = 0;
 TIMER glProcessJanitor = 0;
 uint8_t glTimerCycle = 1;
+uint64_t glTimerID = 0; // Locked with glmTimer
 int8_t glFDProtected = 0;
 std::atomic_int glUniqueMsgID = 1;
 size_t glPageSize = 4096; // Overwritten on opening the Core

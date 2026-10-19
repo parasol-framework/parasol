@@ -1018,6 +1018,9 @@ messages will lead to unreliable timer cycles.  It should be noted that the smal
 the more imperative regular message checking becomes.  Prolonged processing inside a timer routine can also impact on
 other timer subscriptions that are waiting to be processed.
 
+A timer callback is never re-entered.  If the callback processes messages, e.g. by calling ~WaitTime(), its own timer
+is skipped until the callback returns.
+
 -INPUT-
 double Interval:   The total number of seconds to wait between timer calls.
 ptr(func) Callback: A callback function is required that will be called on each time cycle.
@@ -1090,6 +1093,7 @@ ERR SubscribeTimer(double Interval, FUNCTION *Callback, APTR *Subscription)
       it->Routine         = *Callback;
       it->Locked          = false;
       it->Cycle           = glTimerCycle - 1;
+      it->ID              = ++glTimerID;
 
       it->Routine.pin();
 
@@ -1103,7 +1107,9 @@ ERR SubscribeTimer(double Interval, FUNCTION *Callback, APTR *Subscription)
 
       // This flag lets object_free() cheaply detect and remove abandoned timer subscriptions.
       subscriber->setFlag(NF::TIMER_SUB);
-      if (Subscription) *Subscription = &*it;
+      // The handle is an identifier rather than a pointer, so that UpdateTimer() can detect a handle that has outlived
+      // its timer.
+      if (Subscription) *Subscription = (APTR)uintptr_t(it->ID);
       retained_callback = true;
       return ERR::Okay;
    }
@@ -1118,6 +1124,9 @@ UpdateTimer: Modify or remove a subscription created by SubscribeTimer().
 This function complements ~SubscribeTimer().  It can change the interval for an existing timer subscription,
 or remove it if the Interval is set to zero.
 
+A subscription that no longer exists, e.g. because its callback returned `ERR::Terminate`, is detected and results in
+`ERR::Search`.
+
 -INPUT-
 ptr Subscription: The timer subscription to modify.
 double Interval: The new interval for the timer (measured in seconds), or zero to remove.
@@ -1125,6 +1134,7 @@ double Interval: The new interval for the timer (measured in seconds), or zero t
 -ERRORS-
 Okay:
 NullArgs:
+Search: The subscription does not refer to an active timer.
 AlreadyLocked:
 SystemLocked:
 
@@ -1140,7 +1150,11 @@ ERR UpdateTimer(APTR Subscription, double Interval)
    if (not Subscription) return log.warning(ERR::NullArgs);
 
    if (auto lock = std::unique_lock{glmTimer, 1000ms}) {
-      auto timer = (CoreTimer *)Subscription;
+      auto id = uint64_t(uintptr_t(Subscription));
+      auto it = std::find_if(glTimers.begin(), glTimers.end(), [id](const CoreTimer &Timer) { return Timer.ID IS id; });
+      if (it IS glTimers.end()) return log.warning(ERR::Search);
+
+      auto timer = &*it;
       log.msg(VLF::DETAIL|VLF::BRANCH|VLF::FUNCTION, "Subscription: %p, New Interval: %.4f, Current Interval: %.4f", Subscription, Interval, timer->Interval / 1000000.0);
       if (Interval < 0) {
          // Special mode:
@@ -1178,13 +1192,8 @@ ERR UpdateTimer(APTR Subscription, double Interval)
          if (timer->Routine.isScript() and (not timer->Routine.stale())) script_routine = timer->Routine;
          if (timer->Routine.defined()) timer->Routine.unpin();
 
-         for (auto it=glTimers.begin(); it != glTimers.end(); it++) {
-            if (timer IS &(*it)) {
-               if (it->Subscriber) it->Subscriber->unpinWeak();
-               glTimers.erase(it);
-               break;
-            }
-         }
+         if (it->Subscriber) it->Subscriber->unpinWeak();
+         glTimers.erase(it);
 
          lock.unlock();
 
