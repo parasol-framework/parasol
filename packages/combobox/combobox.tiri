@@ -1,8 +1,6 @@
 @Package(name='gui/combobox', version='1.0')
 
 --[[
-The gui.combobox API creates and manages combobox boxes in the user interface.
-
 Documentation is available in the Kotuku Wiki.
 --]]
 

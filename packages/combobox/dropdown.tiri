@@ -202,9 +202,7 @@ gui.dropdown = function(Options)
 
       if &hItem then -- Redraw the previously highlighted item
          &hItem.text.fill = dropdown.text.fill
-         if &hItem.iconView then
-            &hItem.iconView.fill = &hItem.iconFill
-         end
+         &hItem.iconView?.fill = &hItem.iconFill
          &surface.mtScheduleRedraw()
          &hItem = nil
       end
@@ -213,9 +211,7 @@ gui.dropdown = function(Options)
 
       if Item then -- Draw the newly highlighted area
          Item.text.fill = dropdown.textHighlight.fill
-         if Item.iconView then
-            Item.iconView.fill = Item.iconHighlightFill
-         end
+         Item.iconView?.fill = Item.iconHighlightFill
          &highlight.y = Item.y
          &highlight.height = Item.height
          &highlight.visibility = 'visible'
@@ -236,7 +232,7 @@ gui.dropdown = function(Options)
       direction = Count > 0 ? 1 : -1
       index = itemIndex(&hItem)
       start = index is nil ? (direction > 0 ? 0 : #&items - 1) : math.clamp(index + Count, 0, #&items - 1)
-      item = seek(start, direction) or seek(start, -direction)
+      item  = seek(start, direction) or seek(start, -direction)
       if item then
          highlightItem(item)
          ensureVisible(item)
@@ -385,12 +381,12 @@ gui.dropdown = function(Options)
          end
       end)
 
-
-      &items = { }
+      &items     = { }
       widestItem = 0
-      widestKey = 0
-      y = VMARGIN
+      widestKey  = 0
+      y          = VMARGIN
       _, _, ascent = gui.getFontHeight(dropdown.text, false)
+
       for item in values(Options.config) do
          if item['item'] then
             mi = { y=y, config=item }
@@ -405,9 +401,11 @@ gui.dropdown = function(Options)
             -- Rows are whole pixels so that they meet the highlight exactly.  Text capitals and icons are centred
             -- in the row.
 
-            mi.text = vText
-            mi.height = math.round(vText.lineSpacing * ITEM_SPACING)
-            mi.textY = y + math.floor((mi.height + ascent) * 0.5)
+            mi.{
+               text   = vText,
+               height = math.round(vText.lineSpacing * ITEM_SPACING),
+               textY  = y + math.floor((mi.height + ascent) * 0.5)
+            }
 
             if bw > widestItem then widestItem = bw end
 
@@ -471,13 +469,10 @@ gui.dropdown = function(Options)
 
          -- Inset the bar so that it does not cover the menu border.
 
-         &scrollbar.vbar.viewport.y = 2
-         &scrollbar.vbar.viewport.yOffset = 2
-         &scrollbar.vbar.viewport.xOffset = 2
+         &scrollbar.vbar.viewport.{ y = 2, yOffset = 2, xOffset = 2 }
       end
 
-      &surface.width  = &width
-      &surface.height = &height
+      &surface.{ width = &width, height = &height }
 
       return &&
    end

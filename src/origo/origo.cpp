@@ -165,16 +165,22 @@ static ERR process_args(void)
             glCache = true;
          }
          else if (hash IS ARG_CLEAR_CACHE) {
-            // Tiri selects home:.cache/tiri/ on Linux when home:.cache/ exists; clear every candidate location.
+            // On Linux, Tiri prefers $XDG_CACHE_HOME/tiri/ and then home:.cache/tiri/ when their parent folders
+            // exist; clear every candidate location.
+            std::vector<std::string> paths = { "temp:tiri/cache/" };
 #ifdef __linux__
-            for (auto path : { "temp:tiri/cache/", "home:.cache/tiri/" }) {
-#else
-            for (auto path : { "temp:tiri/cache/" }) {
+            paths.push_back("home:.cache/tiri/");
+            if (auto xdg = getenv("XDG_CACHE_HOME"); xdg and (xdg[0] IS '/')) {
+               std::string path(xdg);
+               if (not path.ends_with('/')) path.push_back('/');
+               paths.push_back(path + "tiri/");
+            }
 #endif
+            for (auto &path : paths) {
                auto error = AnalysePath(path, nullptr);
                if (error IS ERR::Okay) error = DeleteFile(path, nullptr);
                if (error != ERR::Okay and error != ERR::FileNotFound) {
-                  log.warning("Failed to clear %s: %s", path, GetErrorMsg(error));
+                  log.warning("Failed to clear %s: %s", path.c_str(), GetErrorMsg(error));
                }
             }
          }
