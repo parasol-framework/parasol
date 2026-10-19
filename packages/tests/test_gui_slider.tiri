@@ -180,7 +180,11 @@ WHEEL_DOWN <const> = 9
       feed(JET_WHEEL_X, WHEEL_DOWN, 0, JTYPE_ALT)
       assert(slider.value is 50, 'Shift wheel down must decrease sliders in either orientation')
       feed(JET_WHEEL_X, WHEEL_UP, 0)
-      assert(slider.value is 50, 'Native horizontal scrolling must not act as vertical wheel rotation')
+      if orientation is 'horizontal' then
+         assert(slider.value is 45, 'Native leftward scrolling must decrease a horizontal slider by one step')
+      else
+         assert(slider.value is 50, 'Native horizontal scrolling must not adjust a vertical slider')
+      end
    end
 end
 
