@@ -328,8 +328,13 @@ ERR ProcessMessages(PMF Flags, int Timeout)
       // Call all objects on the timer list (managed by SubscribeTimer()).  To manage timer locking cleanly, the loop
       // is restarted after each client call.  To prevent more than one call per cycle, the glTimerCycle is used to
       // prevent secondary calls.
+      //
+      // A timer is only due if cycle_time has reached its deadline.  A callback that processes messages increments
+      // glTimerCycle in the nested call, so the Cycle test alone cannot stop a restart from calling it again.  Every
+      // dispatch moves NextCall beyond cycle_time, so each timer runs at most once per cycle irrespective of nesting.
 
       glTimerCycle++;
+      int64_t cycle_time = PreciseTime();
 timer_cycle:
       if ((glTaskState IS TSTATE::STOPPING) and ((Flags & PMF::SYSTEM_NO_BREAK) IS PMF::NIL));
       else if (glmTimer.try_lock_for(200ms)) {
@@ -347,8 +352,14 @@ timer_cycle:
                timer = glTimers.erase(timer);
                continue;
             }
-            if (current_time < timer->NextCall) { timer++; continue; }
+            if (cycle_time < timer->NextCall) { timer++; continue; }
             if (timer->Cycle IS glTimerCycle) { timer++; continue; }
+
+            // A locked timer is mid-callback, e.g. its routine is processing messages.  Dispatching it again would
+            // re-enter the routine, and the nested dispatch would clear the lock (or erase the entry) while the
+            // outer dispatcher still depends on it.
+
+            if (timer->Locked) { timer++; continue; }
             if (timer->Routine.releaseIfStale()) {
                if (timer->Subscriber) timer->Subscriber->unpinWeak();
                timer = glTimers.erase(timer);
@@ -363,7 +374,7 @@ timer_cycle:
             }
 
             timer->NextCall += timer->Interval;
-            if (timer->NextCall < current_time) timer->NextCall = current_time;
+            if (timer->NextCall <= current_time) timer->NextCall = current_time + 1; // Overdue; due on the next cycle
             timer->LastCall = current_time;
             timer->Cycle = glTimerCycle;
 
@@ -541,6 +552,7 @@ timer_cycle:
          int64_t sleep_time = timeout_end;
          if (auto lock = std::unique_lock{glmTimer, 200ms}) {
             for (const auto &timer : glTimers) {
+               if (timer.Locked) continue; // Not dispatchable until its callback returns; waking for it would spin
                if (timer.NextCall < sleep_time) sleep_time = timer.NextCall;
             }
          }

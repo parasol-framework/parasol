@@ -95,10 +95,10 @@ static void release_input_subscription(lua_State *Lua, struct finput *Input)
          lua_rawgeti(Self->Lua, LUA_REGISTRYINDEX, list->InputValue); // +1 Optional input value registered by the Tiri client
          if (!named_struct_to_table(Self->Lua, "InputEvent", Events)) { // +1 Input message
             if (lua_pcall(Self->Lua, 2, 0, 0)) {
-               process_error(Self, "Input DataFeed Callback");
+               process_callback_error(Self, "Input DataFeed Callback");
             }
          }
-         else process_error(Self, "Failed to process InputEvent struct");
+         else process_callback_error(Self, "Failed to process InputEvent struct");
 
          // The remainder of the batch is discarded if the callback unsubscribed from the input feed.
 
@@ -451,7 +451,7 @@ static void key_event(evKey *Event, int Size, struct finput *Input)
    lua_pushinteger(lua, Event->Unicode);    // Arg: Unicode character
 
    if (lua_pcall(lua, 5, 0, 0)) {
-      process_error(tiri, "Keyboard event callback");
+      process_callback_error(tiri, "Keyboard event callback");
    }
 
    lua_settop(lua, top);

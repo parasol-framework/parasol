@@ -54,7 +54,7 @@ ERR fs_watch_path(extFile *File)
    if ((File->prvWatch->Flags & (MFF::MOVED|MFF::RENAME)) != MFF::NIL)  nflags |= IN_MOVED_FROM | IN_MOVED_TO;
 
    auto path = File->prvResolvedPath;
-   if (path.ends_with('/')) path.pop_back();
+   if ((path.size() > 1) and (path.ends_with('/'))) path.pop_back(); // Retain the slash for the root folder
    if (auto handle = inotify_add_watch(glInotify, path.c_str(), nflags); handle != -1) {
       File->prvWatch->Handle = handle;
       {

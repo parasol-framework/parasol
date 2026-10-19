@@ -465,7 +465,7 @@ ERR delayed_msg_handler(APTR Meta, int MsgID, MSGID MsgType, std::span<std::byte
    LuaCallbackContextGuard callback_context(lua);
    auto callback_error = push_tiri_function(lua, msg->function, callback_context);
    if (callback_error IS ERR::Okay) {
-      if (lua_pcall(lua, 0, 0, 0)) process_error(lua->script, "delayedCall()");
+      if (lua_pcall(lua, 0, 0, 0)) process_callback_error(lua->script, "delayedCall()");
    }
    else kt::Log(__FUNCTION__).warning("Delayed callback is no longer valid: %s", GetErrorMsg(callback_error));
    release_tiri_function(lua, &msg->function);

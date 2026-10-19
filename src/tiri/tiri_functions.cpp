@@ -131,7 +131,7 @@ static void receive_event(kt::Event *Info, int InfoSize, APTR CallbackMeta)
    lua_pushnumber(lua, Info->EventID);
    lua_newtable(lua);
    if (lua_pcall(lua, 2, 0, 0)) {
-      process_error(tiri, "Event Subscription");
+      process_callback_error(tiri, "Event Subscription");
    }
 
    collect_garbage(lua);
