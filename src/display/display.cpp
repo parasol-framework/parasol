@@ -40,7 +40,7 @@ const InputType glInputType[int(JET::END)] = {
    { JTYPE::BUTTON,       JTYPE::BUTTON },   // JET::BUTTON_9
    { JTYPE::BUTTON,       JTYPE::BUTTON },   // JET::BUTTON_10
    { JTYPE::EXT_MOVEMENT, JTYPE::EXT_MOVEMENT }, // JET::WHEEL
-   { JTYPE::EXT_MOVEMENT, JTYPE::EXT_MOVEMENT }, // JET::WHEEL_TILT
+   { JTYPE::EXT_MOVEMENT, JTYPE::EXT_MOVEMENT }, // JET::WHEEL_X
    { JTYPE::EXT_MOVEMENT, JTYPE::EXT_MOVEMENT }, // JET::PEN_TILT_XY
    { JTYPE::MOVEMENT,     JTYPE::MOVEMENT },     // JET::ABS_XY
    { JTYPE::CROSSING,     JTYPE::CROSSING },     // JET::CROSSING_IN
@@ -68,7 +68,7 @@ const CSTRING glInputNames[int(JET::END)] = {
    "BUTTON_9",
    "BUTTON_10",
    "WHEEL",
-   "WHEEL_TILT",
+   "WHEEL_X",
    "PEN_TILT_XY",
    "ABS_XY",
    "CROSSING_IN",
@@ -134,7 +134,7 @@ void DriverMovement(OBJECTID SurfaceID, double AbsX, double AbsY, bool NonClient
 void DriverRelativeMovement(OBJECTID SurfaceID, double DX, double DY);
 void DriverPointerLockLost(OBJECTID SurfaceID);
 void DriverTouchInput(OBJECTID SurfaceID, uint32_t SeatID, int32_t ContactID, JET Type, double X, double Y);
-void DriverWheelMovement(OBJECTID SurfaceID, float Wheel);
+void DriverWheelMovement(OBJECTID SurfaceID, float DeltaX, float DeltaY, KQ Qualifiers);
 void DriverButtonInput(int Buttons, bool State);
 void DriverCrossing(OBJECTID SurfaceID, bool Entered, double AbsX, double AbsY);
 void DriverFocusState(OBJECTID SurfaceID, bool State);

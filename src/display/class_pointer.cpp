@@ -163,7 +163,7 @@ static ERR POINTER_DataFeed(extPointer *Self, struct acDataFeed *Args)
 
             //log.traceBranch("Incoming Input: %s, Value: %.2f, Flags: $%.8x, Time: %" PF64, (input->Type < JET::END) ? glInputNames[input->Type] : (STRING)"", input->Value, input->Flags, input->Timestamp);
 
-            if (input.Type IS JET::WHEEL) process_ptr_wheel(Self, &input);
+            if ((input.Type IS JET::WHEEL) or (input.Type IS JET::WHEEL_X)) process_ptr_wheel(Self, &input);
             else if ((input.Flags & JTYPE::BUTTON) != JTYPE::NIL) process_ptr_button(Self, &input);
             else process_ptr_movement(Self, &input);
          }
@@ -335,7 +335,7 @@ static void process_ptr_button(extPointer *Self, struct dcDeviceInput *Input)
 static void process_ptr_wheel(extPointer *Self, struct dcDeviceInput *Input)
 {
    InputEvent msg;
-   msg.Type        = JET::WHEEL;
+   msg.Type        = Input->Type;
    msg.Flags       = JTYPE::ANALOG|JTYPE::EXT_MOVEMENT | Input->Flags;
    msg.Mask        = JTYPE::EXT_MOVEMENT;
    msg.Value       = Input->Values[0];

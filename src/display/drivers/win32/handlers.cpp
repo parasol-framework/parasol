@@ -25,10 +25,10 @@ void MsgMovement(OBJECTID SurfaceID, double AbsX, double AbsY, int WinX, int Win
    }
 }
 
-void MsgWheelMovement(OBJECTID SurfaceID, float Wheel)
+void MsgWheelMovement(OBJECTID SurfaceID, float DeltaX, float DeltaY, int Qualifiers)
 {
    if ((glWin32Callbacks) and (glWin32Callbacks->WheelMovement)) {
-      glWin32Callbacks->WheelMovement(SurfaceID, Wheel);
+      glWin32Callbacks->WheelMovement(SurfaceID, DeltaX, DeltaY, KQ(Qualifiers));
    }
 }
 

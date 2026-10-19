@@ -772,6 +772,7 @@ Z: Close Path
     </constants>
 
     <constants lookup="JTYPE" comment="JTYPE flags are used to categorise input types">
+      <const name="ALT">Alternative behaviour - the event was translated from its native form, e.g. by holding down a key</const>
       <const name="ANALOG">Analog movement (ranging from -1.0 to 1.0)</const>
       <const name="ANCHORED">Cursor has been anchored with LockCursor()</const>
       <const name="BUTTON">Input is a physical button or switch</const>

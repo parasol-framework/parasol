@@ -25,7 +25,7 @@ struct DisplayInfo;
 struct resolution;
 class DisplayDriver;
 
-constexpr int DISPLAY_DRIVER_INTERFACE_VERSION = 12;
+constexpr int DISPLAY_DRIVER_INTERFACE_VERSION = 13;
 
 using CreateDisplayDriver = DisplayDriver *(*)(uint32_t InterfaceVersion, struct CoreBase *Core);
 using DestroyDisplayDriver = void (*)(DisplayDriver *Driver);
@@ -93,7 +93,9 @@ struct DriverCallbacks {
    void (*RelativeMovement)(OBJECTID SurfaceID, double DX, double DY);
    void (*PointerLockLost)(OBJECTID SurfaceID);
    void (*TouchInput)(OBJECTID SurfaceID, uint32_t SeatID, int32_t ContactID, JET Type, double X, double Y);
-   void (*WheelMovement)(OBJECTID SurfaceID, float Delta);
+   // Wheel deltas are reported on their native axes; positive values move down and right.  Qualifiers reflect the
+   // keyboard state at the time of the event so that Shift can redirect vertical rotation to the horizontal axis.
+   void (*WheelMovement)(OBJECTID SurfaceID, float DeltaX, float DeltaY, KQ Qualifiers);
    void (*ButtonInput)(int Buttons, bool Pressed);
    void (*Crossing)(OBJECTID SurfaceID, bool Entered, double AbsX, double AbsY);
    void (*FocusState)(OBJECTID SurfaceID, bool Focused);

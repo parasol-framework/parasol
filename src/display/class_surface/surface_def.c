@@ -92,6 +92,7 @@ static const struct FieldDef clSurfaceJTYPE[] = {
    { "Repeated", 0x00000400 },
    { "DragItem", 0x00000800 },
    { "Touch", 0x00001000 },
+   { "Alt", 0x00002000 },
    { nullptr, 0 }
 };
 
@@ -110,7 +111,7 @@ static const struct FieldDef clSurfaceJET[] = {
    { "Button9", 0x00000009 },
    { "Button10", 0x0000000a },
    { "Wheel", 0x0000000b },
-   { "WheelTilt", 0x0000000c },
+   { "WheelX", 0x0000000c },
    { "PenTiltXY", 0x0000000d },
    { "AbsXY", 0x0000000e },
    { "CrossedIn", 0x0000000f },

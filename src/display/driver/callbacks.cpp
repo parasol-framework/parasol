@@ -126,22 +126,41 @@ void DriverTouchInput(OBJECTID SurfaceID, uint32_t SeatID, int32_t ContactID, JE
 
 //********************************************************************************************************************
 
-void DriverWheelMovement(OBJECTID SurfaceID, float Wheel)
+// Wheel movement is reported as JET::WHEEL for the vertical axis and JET::WHEEL_X for the horizontal axis.  Holding
+// Shift redirects purely vertical rotation to the horizontal axis, as is the convention on desktop platforms.  The
+// redirected event is flagged with JTYPE::ALT so that clients can recognise it, e.g. to apply the rotation to a
+// one-dimensional control such as a slider.
+
+void DriverWheelMovement(OBJECTID SurfaceID, float DeltaX, float DeltaY, KQ Qualifiers)
 {
    if (!glPointerID) {
       if (FindObject("SystemPointer", CLASSID::NIL, &glPointerID) != ERR::Okay) return;
    }
 
-   if (auto pointer = gfx::AccessPointer(); pointer) {
-      struct dcDeviceInput joy = {
-         .Values    = { Wheel, 0 },
-         .Timestamp = PreciseTime(),
-         .Flags     = JTYPE::NIL,
-         .Type      = JET::WHEEL
-      };
+   auto x_flags = JTYPE::NIL;
+   if (((Qualifiers & KQ::SHIFT) != KQ::NIL) and (DeltaX IS 0) and (DeltaY != 0)) {
+      DeltaX  = DeltaY;
+      DeltaY  = 0;
+      x_flags = JTYPE::ALT;
+   }
 
+   std::array<dcDeviceInput, 2> input;
+   size_t total = 0;
+   auto timestamp = PreciseTime();
+
+   if (DeltaY != 0) {
+      input[total++] = { .Values = { DeltaY, 0 }, .Timestamp = timestamp, .Flags = JTYPE::NIL, .Type = JET::WHEEL };
+   }
+
+   if (DeltaX != 0) {
+      input[total++] = { .Values = { DeltaX, 0 }, .Timestamp = timestamp, .Flags = x_flags, .Type = JET::WHEEL_X };
+   }
+
+   if (not total) return;
+
+   if (auto pointer = gfx::AccessPointer(); pointer) {
       acDataFeed(pointer, nullptr, DATA::DEVICE_INPUT,
-         std::span<const int8_t>((const int8_t *)&joy, sizeof(joy)));
+         std::span<const int8_t>((const int8_t *)input.data(), sizeof(dcDeviceInput) * total));
       ReleaseObject(pointer);
    }
 }

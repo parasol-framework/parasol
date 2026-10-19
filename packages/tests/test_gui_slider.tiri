@@ -1,4 +1,4 @@
-   import 'gui', 'gui/slider'
+   import 'gui', 'gui/slider', 'gui/scrollbar'
    include 'display', 'vector'
    module vector as mVec
 
@@ -40,10 +40,13 @@ function putDouble(Buffer:array<byte>!, Offset:num!, Value:num!)
    end
 end
 
-function feed(Type:num!, X:num!, Y:num!)
+function feed(Type:num!, X:num!, Y:num!, Flags:num)
    local input = array<byte, 40>
    putDouble(input, 0, X)
    putDouble(input, 8, Y)
+   for i in {0 to 4} do
+      input[28 + i] = math.floor((Flags ?? 0) / (256 ** i)) % 256
+   end
    input[32] = Type
    check obj.find('SystemPointer').acDataFeed(nil, DATA_DEVICE_INPUT, input)
    processing.sleep(0)
@@ -167,6 +170,42 @@ end
 
 WHEEL_UP   <const> = -9
 WHEEL_DOWN <const> = 9
+
+@Test function ShiftWheelUsesStepsInBothOrientations()
+   for orientation in values(array<str> { 'horizontal', 'vertical' }) do
+      local surface <close>, slider = newSlider({ orientation=orientation, min=0, max=100, step=5, value=50 })
+      pointAtSlider(surface, slider, false)
+      feed(JET_WHEEL_X, WHEEL_UP, 0, JTYPE_ALT)
+      assert(slider.value is 55, 'Shift wheel up must increase sliders in either orientation')
+      feed(JET_WHEEL_X, WHEEL_DOWN, 0, JTYPE_ALT)
+      assert(slider.value is 50, 'Shift wheel down must decrease sliders in either orientation')
+      feed(JET_WHEEL_X, WHEEL_UP, 0)
+      assert(slider.value is 50, 'Native horizontal scrolling must not act as vertical wheel rotation')
+   end
+end
+
+@Test function ScrollbarWheelUsesNativeAxes()
+   local surface <close> = obj.new('Surface', { width=500, height=300 })
+   local scene = surface.new('VectorScene', { surface=surface })
+   local root = scene.new('VectorViewport', { width='100%', height='100%' })
+   local view = root.new('VectorViewport', {
+      width='100%', height='100%', xOffset=0, yOffset=0, overflow=VOF_HIDDEN
+   })
+   local page = view.new('VectorViewport', { width=1000, height=600 })
+   local scrollbar = gui.scrollbar({ target=root, view=view, page=page, direction='all' })
+   surface.acShow()
+   surface.acDraw()
+   processing.sleep(0)
+   feed(JET_ABS_XY, surface.absX + 50, surface.absY + 50)
+   feed(JET_WHEEL_X, WHEEL_DOWN, 0, JTYPE_ALT)
+   assert(page.x < 0 and page.y is 0, 'Shift wheel must scroll only the horizontal axis')
+   local horizontal = page.x
+   feed(JET_WHEEL, WHEEL_DOWN, 0)
+   assert(page.x is horizontal and page.y < 0, 'Vertical wheel must preserve the horizontal position')
+   local vertical = page.y
+   feed(JET_WHEEL_X, WHEEL_UP * 2, 0)
+   assert(page.x is 0 and page.y is vertical, 'Native horizontal wheel must scroll back without moving vertically')
+end
 
 @Test function WheelUsesStepsOverTrackAndThumb()
    for orientation in values(array<str> { 'horizontal', 'vertical' }) do

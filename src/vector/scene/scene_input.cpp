@@ -111,9 +111,9 @@ static void send_input_events(extVector *Vector, InputEvent *Event, bool Propaga
       else it++;
    }
 
-   // Some events can bubble-up if they are not intercepted by the target vector.
+   // Wheel events bubble-up if they are not intercepted by the target vector.
 
-   if ((not consumed) and (Event->Type IS JET::WHEEL)) {
+   if ((not consumed) and ((Event->Type IS JET::WHEEL) or (Event->Type IS JET::WHEEL_X))) {
       if ((Vector->Parent) and (Vector->Parent->Class->BaseClassID IS CLASSID::VECTOR)) {
          send_input_events((extVector *)Vector->Parent, Event, true);
       }
@@ -179,8 +179,8 @@ static void send_wheel_event(extVectorScene *Scene, extVector *Vector, const Inp
       .X           = Scene->ActiveVectorX,
       .Y           = Scene->ActiveVectorY,
       .DeviceID    = Event->DeviceID,
-      .Type        = JET::WHEEL,
-      .Flags       = JTYPE::ANALOG|JTYPE::EXT_MOVEMENT,
+      .Type        = Event->Type,
+      .Flags       = JTYPE::ANALOG|JTYPE::EXT_MOVEMENT|(Event->Flags & JTYPE::ALT),
       .Mask        = JTYPE::EXT_MOVEMENT
    };
    send_input_events(Vector, &event);
@@ -230,7 +230,7 @@ ERR scene_input_events(const InputEvent *Events, int Handle)
          }
       }
 
-      if (input->Type IS JET::WHEEL) {
+      if ((input->Type IS JET::WHEEL) or (input->Type IS JET::WHEEL_X)) {
          if (Self->ActiveVector) {
             kt::ScopedObjectLock<extVector> lock(Self->ActiveVector);
             if (lock.granted()) send_wheel_event(Self, lock.obj, input);
