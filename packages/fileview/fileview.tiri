@@ -162,9 +162,9 @@ end
 
 function file_to_info(Path:str!):table
    try
-      local fl = obj.new('file', { path=Path })
+      fl = obj.new('file', { path=Path })
 
-      local folder_name, file_name = io.splitPath(fl.path)
+      folder_name, file_name = io.splitPath(fl.path)
 
       info = {
          name        = file_name,
@@ -257,7 +257,7 @@ function getFilters(self):array<str>
 end
 
 function selectedFilters(self:table!)
-   local count = 0
+   count = 0
    for filter in values(self.filterList) do
       if filter.selected then count++ end
    end
@@ -406,6 +406,7 @@ function displayFilters(self)
       self.filterViewport.visibility = VIS_VISIBLE
       list_y += self.filterViewport.height
    end
+
    self.view.frame.y = list_y
    self.view.scrollbar.vbar.viewport.y = list_y
 
@@ -526,7 +527,7 @@ function createFileItem(self, Info)
          freespace   = free_space
       }
    elseif Info.flags has RDF_FOLDER then
-      local display_name:str = self.view.noIcons ? Info.name : rxStripFolder.extract(Info.name)
+      display_name:str = self.view.noIcons ? Info.name : rxStripFolder.extract(Info.name)
 
       if not Info.name.endsWith('/') then
          display_name ..= '/'
@@ -554,7 +555,7 @@ function createFileItem(self, Info)
       if self.hideFiles then return end
 
       if not self._filter or self._filter.test(Info.name) then
-         local filename = self.hideExtensions ? rxStripExtension.extract(Info.name) : Info.name
+         filename = self.hideExtensions ? rxStripExtension.extract(Info.name) : Info.name
 
           new_item = {
             type        = 'file',
@@ -669,7 +670,6 @@ gui.fileview = function(Options)
          flags = RDF_FOLDERS|RDF_PERMISSIONS|RDF_DATE|RDF_SIZE|RDF_TAGS
          if not self.hideFiles then flags = flags|RDF_FILE end
 
-         local err
          err, lDir = mSys.OpenDir(self.path ?? ':', flags)
          if err != ERR_Okay then
             raise 'Failed to resolve path ' .. (self.path ?? ':')
@@ -692,7 +692,6 @@ gui.fileview = function(Options)
                end
 
                if not self.watch and self.path then
-                  local err
                   err, self.timer = mSys.SubscribeTimer(self.refreshRate, incrementalRefresh)
                end
             end
@@ -784,7 +783,7 @@ gui.fileview = function(Options)
       if sort then self.view.sortView() end
    end
 
-   function pathWatch(MonitoredFile, Path:str, Flags:num!)
+   function pathWatch(MonitoredFile:obj!, Path:str, Flags:num!)
       if self.inRefresh then return end
 
       if Flags is 0 then -- No flags means a change has occurred but the host is unable to tell us what happened.
@@ -917,7 +916,7 @@ gui.fileview = function(Options)
 
    function responseRename(Dialog, Response, State)
       if Response.id > 0 then
-         local c = Dialog.var.src.sub(-1)
+         c = Dialog.var.src.sub(-1)
          dir = (c is '/' or c is ':' or c is '\\')
 
          dest = self.path .. State.input
@@ -1001,7 +1000,7 @@ gui.fileview = function(Options)
 
       if Path then
          self.path = io.sanitisePath(Path)
-         local c = self.path.sub(-1)
+         c = self.path.sub(-1)
          if c != '/' and c != ':' and c != '\\' then
             self.path ..= '/'
          end
@@ -1033,7 +1032,6 @@ gui.fileview = function(Options)
             self.watch = obj.new('file', { path = self.path })
             if self.watch.mtWatch(pathWatch, MFF_CREATE|MFF_DELETE|MFF_ATTRIB|MFF_CLOSED|MFF_MOVED) != ERR_Okay then
                self.watch = nil
-               local err
                err, self.timer = mSys.SubscribeTimer(self.refreshRate, incrementalRefresh)
                msg('Timer-based file monitoring is enabled.')
             else
@@ -1042,7 +1040,7 @@ gui.fileview = function(Options)
          end
       end
 
-      self?.pathChanged(self, self.path)
+      self.pathChanged?(self, self.path)
 
       return self.path
    end
@@ -1353,7 +1351,6 @@ gui.fileview = function(Options)
          self.timer = nil
       end
 
-      local err
       if self.deviceInfo and not self.watch and self.path and self.path != ':' then
          if self.deviceInfo.deviceFlags has DEVICE_REMOVABLE then
             if not (self.deviceInfo.deviceFlags has DEVICE_WRITE) then
@@ -1797,15 +1794,26 @@ gui.fileview = function(Options)
    if not self.watch and self.path?? and self.path != ':' then
       try
          self.watch = obj.new('file', { path = self.path })
-         self.watch.mtWatch(pathWatch, MFF_CREATE|MFF_DELETE|MFF_ATTRIB|MFF_CLOSED|MFF_MOVED)
-      except ex -- Some systems don't support path watching
+         if self.watch.mtWatch(pathWatch, MFF_CREATE|MFF_DELETE|MFF_ATTRIB|MFF_CLOSED|MFF_MOVED) != ERR_Okay then
+            self.watch = nil
+         end
+      except ex
          self.watch = nil
+      end
+
+      -- refresh() may have started a timer while no watch was set; replace it so that only one timer is active.
+      if self.timer then
+         mSys.UpdateTimer(self.timer, 0)
+         self.timer = nil
+      end
+
+      if not self.watch then -- Some systems and paths don't support path watching
          err, self.timer = mSys.SubscribeTimer(self.refreshRate, incrementalRefresh)
       end
    end
 
    -- File-system subscriptions belong to the host viewport, which survives view-style recreation.
-   local released = false
+   released = false
    function releaseSubscriptions()
       if released then return end
       released = true
@@ -1815,6 +1823,7 @@ gui.fileview = function(Options)
       self.watch = nil
       drag_clipboard.free()
    end
+
    Options.target.subscribe('free', releaseSubscriptions)
    self.free = function()
       releaseSubscriptions()
