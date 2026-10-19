@@ -86,7 +86,7 @@ function buildScene()
 
    winding = gui.combobox({
       target = glViewport, label = 'Winding:', text = 'Clockwise', x = 16, y = glY,
-      items = array<table> { { item = 'Clockwise' }, { item = 'Anticlockwise' } },
+      items = array<table> { { label = 'Clockwise' }, { label = 'Anticlockwise' } },
       events = {
          activate = function(Text:str)
             glSpiral.clockwise = (Text is 'Clockwise') ? 1 : 0

@@ -125,15 +125,15 @@ gui.button = function(Options)
 
    -- Change the button label.  A nil or empty string removes the label.
 
-   self.setText = function(Text:str)
-      if Text?? then
+   self.setLabel = function(Label:str)
+      if Label?? then
          if self.text then
-            self.text.string = Text
+            self.text.string = Label
          else
             self.text = self._textClip.new('VectorText', table.merge({
                x         = GAP,
                y         = FONT_HEIGHT + math.floor((HEIGHT - FONT_HEIGHT - (theme.bkgd.strokeWidth * 2)) * 0.5),
-               string    = Text,
+               string    = Label,
                lineLimit = 1
             }, theme.text))
          end
@@ -213,7 +213,7 @@ gui.button = function(Options)
       overflow = VOF_HIDDEN
    })
 
-   if Options.text then self.setText(Options.text) end
+   if Options.label then self.setLabel(Options.label) end
    arrange(true)
 
    self.viewport.mtSubscribeFeedback(FM_HAS_FOCUS|FM_CHILD_HAS_FOCUS|FM_LOST_FOCUS, function(Viewport:obj!, Event)

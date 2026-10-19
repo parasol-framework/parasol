@@ -296,11 +296,11 @@ gui.menubar = function(Options:table)
       return true
    end
 
-   self.setItemText = function(ID, Text:str):bool
+   self.setItemLabel = function(ID, Label:str):bool
       item = &_lookup[ID]
       if not item then return false end
-      item.name = Text
-      item.displayName = Text
+      item.name = Label
+      item.displayName = Label
       arrangeItems()
       return true
    end

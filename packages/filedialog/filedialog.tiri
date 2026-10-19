@@ -73,8 +73,8 @@ gui.dialog.file = function(Options)
             confirm = gui.dialog.message({
                target  = self.target,
                modal   = true,
-               options = { { id=-1, text='No', icon='items/cancel' },
-                           { id=1, text='Yes', icon='items/checkmark' } },
+               options = { { id=-1, label='No', icon='items/cancel' },
+                           { id=1, label='Yes', icon='items/checkmark' } },
                title   = 'Confirmation Required',
                type    = 'warning',
                message = msg,
@@ -158,7 +158,7 @@ gui.dialog.file = function(Options)
 
    lCancelButton = gui.button({
       target  = self.viewport,
-      text    = Options.cancelText ?? 'Cancel',
+      label   = Options.cancelLabel ?? 'Cancel',
       xOffset = GAP,
       yOffset = footer,
       icon    = 'items/cancel',
@@ -175,7 +175,7 @@ gui.dialog.file = function(Options)
 
    lOkayButton = gui.button({
       target  = self.viewport,
-      text    = Options.okText ?? 'Okay',
+      label   = Options.okLabel ?? 'Okay',
       xOffset = lCancelButton.viewport.width + (GAP * 2),
       yOffset = footer,
       icon    = 'items/checkmark',
@@ -192,7 +192,7 @@ gui.dialog.file = function(Options)
          x           = 0,
          yOffset     = footer,
          xOffset     = 0,
-         shadowLabel = 'Enter file name',
+         placeholder = 'Enter file name',
          theme       = {
             bkgd = { fill = 'none', stroke = 'none', roundX = 0, roundY = 0 },
             text = { face = gui.fonts.filesys.face }
@@ -254,7 +254,7 @@ gui.dialog.file = function(Options)
       fileSelected  = processFeedback,
       multiSelect   = self.multiSelect,
       style         = 'column', -- column, list, tree
-      toolBar       = { clipboard=true, settings=true },
+      toolbar       = { clipboard=true, settings=true },
       viewOptions   = { },
       pathChanged = function(FileView:table!, Path:str)
          if Path then
@@ -281,8 +281,8 @@ end
       popOver      = arg('popOver'),
       target       = arg('target'),
       modal        = arg('modal'),
-      okText       = arg('okText'),
-      cancelText   = arg('cancelText'),
+      okLabel      = arg('okLabel'),
+      cancelLabel  = arg('cancelLabel'),
       filterList   = arg('filterList'),
       icon         = arg('icon'),
       path         = arg('path'),

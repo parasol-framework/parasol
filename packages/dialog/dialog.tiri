@@ -105,7 +105,7 @@ gui.dialog.message = function(Options)
          &clear()
          processing.collect('defer')
       else
-         print('Document event received')
+         msg('Unhandled document event received')
       end
    end
 
@@ -115,7 +115,7 @@ gui.dialog.message = function(Options)
       -- At minimum, there must be an OK option.
 
       if not ((&options is <table>) and (#&options > 0)) then
-         &options = { { id=1, text='Close Dialog', icon='items/cancel' } }
+         &options = { { id=1, label='Close Dialog', icon='items/cancel' } }
       end
 
       for i, option in ipairs(&options) do
@@ -151,10 +151,10 @@ gui.dialog.message = function(Options)
 
       icon = Options.image ?? defaultIcon()
       icon = rx_sanitise_icon.replace(icon, '$1/$2')
-      local msg:str = &fmtMessage
-      if not msg?? then
-         msg = string.escXML(&message ?? '')
-         msg = msg.replace('\n', '<br/>')
+      m:str = &fmtMessage
+      if not m?? then
+         m = string.escXML(&message ?? '')
+         m = m.replace('\n', '<br/>')
       end
 
       doc ..= [[
@@ -163,16 +163,16 @@ gui.dialog.message = function(Options)
     <row>
       <cell><image src="url(#icon)" width="5em" height="5em" padding="0 8 18 0"/></cell>
       <cell>
-        <p>]] .. msg .. [[</p>
+        <p>]] .. m .. [[</p>
 ]]
 
       if Options.userInput then
          inputOptions = ''
          if Options.secret then inputOptions = 'secret="true"' end
 
-         msg = string.escXML(Options.userInput is <str> ? Options.userInput : '')
+         m = string.escXML(Options.userInput is <str> ? Options.userInput : '')
 
-         doc ..= f'<p><input name="input" {inputOptions} width="16em" value="{msg}"/></p>\n'
+         doc ..= f'<p><input name="input" {inputOptions} width="16em" value="{m}"/></p>\n'
       end
 
       if Options.checkboxLabel then
@@ -192,7 +192,7 @@ gui.dialog.message = function(Options)
             doc ..= f'<image src="url(#{option.icon})" width="16" height="16" padding="0 0 4 0"/>\n'
          end
 
-         doc ..= f'<a @response="{i}">{option.text}</a>\n'
+         doc ..= f'<a @response="{i}">{option.label}</a>\n'
 
          if i < #&options then
             doc ..= '<advance x="30"/>'
@@ -296,10 +296,7 @@ end
 
 gui.dialog.error = function(Title:str!, Message:str!, Options:table):table
    Options ?= { }
-   Options.type = 'error'
-   Options.title = Title
-   Options.message = Message
-   Options.scale   = true
+   Options.{ type = 'error', title = Title, message = Message, scale = true }
    return gui.dialog.message(Options)
 end
 

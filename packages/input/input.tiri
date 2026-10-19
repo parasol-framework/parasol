@@ -89,12 +89,12 @@ gui.input = function(Options)
       &viewport.acDraw()
    end
 
-   function checkShadowLabel()
-      if &shadowLabel then
+   function checkPlaceholder()
+      if &placeholder then
          if &text.string?? then
-            &shadowLabel.visibility = VIS_HIDDEN
+            &placeholder.visibility = VIS_HIDDEN
          else
-            &shadowLabel.visibility = VIS_VISIBLE
+            &placeholder.visibility = VIS_VISIBLE
          end
       end
    end
@@ -105,7 +105,7 @@ gui.input = function(Options)
       &text?.string = Text
       &_currentText = Text
       &_lastGoodInput = Text
-      checkShadowLabel()
+      checkPlaceholder()
       &viewport.acDraw()
    end
 
@@ -152,7 +152,7 @@ gui.input = function(Options)
          &viewport.acDraw()
       end
 
-      checkShadowLabel()
+      checkPlaceholder()
    end
 
    -- Main entry point --
@@ -228,18 +228,18 @@ gui.input = function(Options)
          overflow = VOF_HIDDEN
       })
 
-      if Options.shadowLabel then
-         &shadowLabel = &_textClip.new('VectorText', table.merge({
-            name      = 'vt_shadow',
+      if Options.placeholder then
+         &placeholder = &_textClip.new('VectorText', table.merge({
+            name      = 'vt_placeholder',
             x         = 4,
             y         = math.round(font_height + math.floor((box_height - font_height - (input_theme.bkgd.strokeWidth * 2)) * 0.5)),
             opacity   = 0.5,
-            string    = Options.shadowLabel,
+            string    = Options.placeholder,
             lineLimit = 1
          }, input_theme.text))
 
          if Options.text?? then
-            &shadowLabel.visibility = VIS_HIDDEN
+            &placeholder.visibility = VIS_HIDDEN
          end
       end
 
@@ -294,7 +294,7 @@ gui.input = function(Options)
 
          &events?.keypress({ qualifiers=Qualifiers, value=Value, unicode=Unicode })
 
-         checkShadowLabel()
+         checkPlaceholder()
       end)
 
       if &events.cursorEntry or &events.cursorExit then

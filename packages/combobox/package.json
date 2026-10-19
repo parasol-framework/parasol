@@ -29,14 +29,14 @@
   "files": [
     {
       "path": "combobox.tiri",
-      "size": 11244,
-      "sha256": "844b7845b98d7ac01f9428fdfc6981f526529dd17e1cb683d96655aa41254ad0",
+      "size": 11169,
+      "sha256": "f928f2e3da0a2baec28440c0ff21efe2ad2722ab4975e00f79816c2d649e7e5e",
       "mediaType": "application/vnd.kotuku.tiri"
     },
     {
       "path": "dropdown.tiri",
-      "size": 17119,
-      "sha256": "d8a610f653dc4d793478438e13aa4fccbbbb2fb75388d3448e2263c6f0e26674",
+      "size": 16866,
+      "sha256": "76a40cdd0806544b72ecb7d7b975334fae922ce3e8649c5f28ec6b66fc054539",
       "mediaType": "application/vnd.kotuku.tiri"
     }
   ],

@@ -115,7 +115,7 @@ function findMenuShortcut(Config, Qualifiers:num!, Code:num!, Unicode:num):array
             path.insert(0, item)
             return path
          end
-      elseif item.item and shortcutMatches(item, Qualifiers, Code, Unicode) then
+      elseif item.label and shortcutMatches(item, Qualifiers, Code, Unicode) then
          return array<table> { item }
       end
    end
@@ -180,7 +180,7 @@ gui.menu = function(Options:table!)
          end
       else
          for item in values(&items) do
-            if (item.config.id is Reference) or (item.config.item is Reference) then return item end
+            if (item.config.id is Reference) or (item.config.label is Reference) then return item end
          end
          if Reference is <num> and Reference >= 0 and Reference < #&items then return &items[Reference] end
       end
@@ -233,12 +233,9 @@ gui.menu = function(Options:table!)
          y = VMARGIN
          for source in values(&config) do
             item = source.menu ?? source
-            if source.menu then
-               item.item ?= item.text
-               item.icon ?= source.icon
-            end
+            if source.menu then item.icon ?= source.icon end
 
-            if item.item then
+            if item.label then
                mi = { y=y, config=item, source=source, submenuConfig=item.items }
 
                vText = &content.new('VectorText', table.merge({
@@ -247,7 +244,7 @@ gui.menu = function(Options:table!)
                   fill     = 'black',
                   fontSize = string.format('%.2fpt', gui.fonts.menu.size),
                   align    = 'left',
-                  string   = item['item']
+                  string   = item.label
                }, theme.text))
 
                err, bx, by, bw, bh = vText.mtGetBoundary(0)

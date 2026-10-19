@@ -60,10 +60,10 @@ function buildScene()
       x      = glWindow.margins.left,
       y      = 10,
       items = array<table> {
-         { item = 'Sine' },
-         { item = 'Sawtooth' },
-         { item = 'Triangle' },
-         { item = 'Square' }
+         { label = 'Sine' },
+         { label = 'Sawtooth' },
+         { label = 'Triangle' },
+         { label = 'Square' }
       },
       events = {
          activate = function(Text:str!)
@@ -79,10 +79,10 @@ function buildScene()
       x      = cmbWave.viewport.x + cmbWave.viewport.width + 10,
       y      = 10,
       items = array<table> {
-         { item = 'Linear' },
-         { item = 'Quadratic' },
-         { item = 'Smoothstep' },
-         { item = 'Exponential' }
+         { label = 'Linear' },
+         { label = 'Quadratic' },
+         { label = 'Smoothstep' },
+         { label = 'Exponential' }
       },
       events = {
          activate = function(Text:str!)

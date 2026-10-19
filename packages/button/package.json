@@ -29,8 +29,8 @@
   "files": [
     {
       "path": "button.tiri",
-      "size": 9402,
-      "sha256": "c10f4e12c7110c258778b6ff0d54030fb644e309e04621dd046429722b5dbb84",
+      "size": 9410,
+      "sha256": "5c14735f2e7ee996987ec8c196cc68fe6df89f6ecc70fdfd838f3a161bb74b84",
       "mediaType": "application/vnd.kotuku.tiri"
     }
   ]

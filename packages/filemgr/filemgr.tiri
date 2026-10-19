@@ -30,7 +30,7 @@ function copyFeedback(Size:num!, Position:num!, Path:str!, Dest:str!, User, Feed
          title   = 'File Transfer Progress',
          type    = 'info',
          message = 'Copying...\nPlease wait...',
-         options = { id=-1, text='Cancel', icon='items/cancel' },
+         options = { id=-1, label='Cancel', icon='items/cancel' },
          feedback = function(Dialog, Response, State)
             if Response and Response.id is -1 then
                progress_status = 'cancel'
@@ -147,10 +147,10 @@ io.ui.copy = function(Source:any!, Dest:str!, Move:bool)
             local dlg = gui.dialog.message({
                type    = 'warning',
                image   = 'items/file_alert',
-               options = { { id=-2, text='No to All', icon='items/cancel' },
-                           { id=-1, text='No', icon='items/cancel' },
-                           { id=1, text='Yes', icon='items/checkmark' },
-                           { id=2, text='Yes to All', icon='items/checkmark_many' } },
+               options = { { id=-2, label='No to All', icon='items/cancel' },
+                           { id=-1, label='No', icon='items/cancel' },
+                           { id=1, label='Yes', icon='items/checkmark' },
+                           { id=2, label='Yes to All', icon='items/checkmark_many' } },
                title   = 'Confirmation Required',
                message = 'You are about to overwrite this file.  Should it be replaced?\n\n' .. src_file,
                feedback = function(Dialog, Response, State)
@@ -236,7 +236,7 @@ io.ui.delete = function(Paths)
                type    = 'info',
                title   = 'File Deletion Progress',
                message = 'Deleting...',
-               options = { id=-1, text='Cancel', icon='items/cancel' },
+               options = { id=-1, label='Cancel', icon='items/cancel' },
                feedback = function(Dialog, Response, State)
                   if Response and Response.id is -1 then
                      progress_status = 'cancel'

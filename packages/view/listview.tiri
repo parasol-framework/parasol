@@ -1,6 +1,10 @@
 --[[
 The ListView API is used to display data to the user in the form of a list of items.
 
+Each item is drawn in its own row viewport.  The list owns the row viewports, their layout, scrolling, hit testing,
+selection and keyboard navigation.  Row content and highlighting are drawn by built-in renderers, or by the client
+through the optional constructItem() and constructHighlight() callbacks.
+
 Documentation is available in the Kotuku Wiki.
 --]]
 
@@ -13,239 +17,521 @@ Documentation is available in the Kotuku Wiki.
 VSPACING <const> = 1
 EDGE     <const> = 4
 
-local LINE_HEIGHT:num, FONT_HEIGHT:num, LINE_OFFSET:num, ICON_SIZE:num
+function isFinite(Value:any):bool
+   return Value is <num> and Value > -math.huge and Value < math.huge
+end
 
-extern itemHoverCallback
+function raiseFailure(Exception)
+   raise(Exception.code ?? ERR_Failed, Exception.message)
+end
 
-function rearrangeItems(View)
-   View.zones = { }
-   View._last_y = 0
-   y = 0
-   for item in values(View.items) do
-      item._y = y
-      if item._vectors.viewport then
-         item._vectors.viewport.visibility = item.hidden ? VIS_HIDDEN : VIS_VISIBLE
-         item._vectors.viewport.y = y + EDGE
-      end
+-- Fields that are maintained by the list and cannot be changed through setItem().
 
-      if not item.hidden then
-         View.addZone(0, item._y, nil, LINE_HEIGHT, item)
-         y += LINE_HEIGHT + VSPACING
-      end
-   end
+function isReservedField(Key:any):bool
+   return Key is <str> and (Key.startsWith('_') or Key is 'viewState')
 end
 
 ----------------------------------------------------------------------------------------------------------------------
 
 gui.listView = function(Options:table!):table
-   lTextAttrib = Options.textAttrib ?? 'name'
-   lCompact    = Options.compact ?? 0
+   lTextAttrib    = Options.textAttrib ?? 'name'
+   lContentHook   = Options.constructItem
+   lHighlightHook = Options.constructHighlight
+   lDestroyHook   = Options.destroyItem
+   lCustomRows    = (lContentHook != nil) or (lHighlightHook != nil) -- Rows that receive geometry notifications
 
-   function setListTextFill(Item, Fill)
-      Item._vectors.text?.fill = Fill
+   assert(lContentHook is nil or lContentHook is <func>, 'constructItem must be a function')
+   assert(lHighlightHook is nil or lHighlightHook is <func>, 'constructHighlight must be a function')
+   assert(lDestroyHook is nil or lDestroyHook is <func>, 'destroyItem must be a function')
+   assert(Options.rowHeight is nil or (isFinite(Options.rowHeight) and Options.rowHeight > 0),
+      'rowHeight must be a finite positive number')
+   assert(Options.rowSpacing is nil or (isFinite(Options.rowSpacing) and Options.rowSpacing >= 0),
+      'rowSpacing must be a finite non-negative number')
+
+   -- Client callbacks are dispatched with the view's structural guard set, which is restored on all exit paths.
+
+   function dispatch(View:table!, Hook:func!, Item:table!, Viewport:obj!, Reason:str)
+      local previous = View._dispatching
+      View._dispatching = true
+      defer View._dispatching = previous end
+      Hook(Item, Viewport, Reason)
    end
 
-   -- When an item is hovered, create a highlight for it.
+   -- Row and font metrics are stored per view instance.
 
-   function highlightItem(View, Item:table, Highlighted:bool!)
-      Item._vectors.viewport ?! return
+   function computeMetrics(View:table!)
+      line_height, font_height, ascent = gui.getFontHeight(View.theme.page.text, false)
+      line_height = math.round(line_height)
+      row_height  = Options.rowHeight ?? line_height
+      View._metrics = {
+         lineHeight = line_height,
+         rowHeight  = row_height,
+         rowSpacing = Options.rowSpacing ?? VSPACING,
+         textOffset = math.round((row_height + ascent) * 0.5), -- Baseline that centres capitals in the row
+         iconSize   = font_height,
+         margin     = math.round(line_height * 0.3)
+      }
+   end
 
-      if not Item._vectors.highlight then
-         Item._vectors.highlight = Item._vectors.viewport.new('VectorRectangle', {
+   -------------------------------------------------------------------------------------------------------------------
+   -- Built-in renderers
+
+   function setIconFill(View:table!, Item:table!, Highlighted:bool!)
+      image = Item._vectors.iconImage
+      image ?! return
+      if Highlighted and View.theme.page.iconHighlight and View.hIcons[Item.icon] then
+         image.fill = f'url(#{View.hIcons[Item.icon]})'
+      elseif View.icons[Item.icon] then
+         image.fill = f'url(#{Item.icon})'
+      end
+   end
+
+   -- Draws the icon and text of an item, and measures the width of that content.
+
+   function renderDefaultContent(View:table!, Item:table!)
+      m  = View._metrics
+      vp = Item._vectors.viewport
+
+      icon_margin = 0
+      if not Options.noIcons then icon_margin = m.iconSize + m.margin end
+
+      if Item.icon then
+         try
+            if not View.icons[Item.icon] then
+               gui.createIcon(View.scene, Item.icon, m.iconSize, View.theme.page.icon, Item.icon)
+               View.icons[Item.icon] = true
+            end
+
+            if View.theme.page.iconHighlight and not View.hIcons[Item.icon] then
+               if View.theme.page.iconHighlight is View.theme.page.icon then
+                  View.hIcons[Item.icon] = Item.icon
+               else
+                  gui.createIcon(View.scene, Item.icon, m.iconSize, View.theme.page.iconHighlight, f'_h_{Item.icon}')
+                  View.hIcons[Item.icon] = f'_h_{Item.icon}'
+               end
+            end
+
+            if not Item._vectors.iconImage then
+               Item._vectors.iconImage = vp.new('VectorRectangle', { width = m.iconSize, height = m.iconSize })
+            end
+
+            image = Item._vectors.iconImage
+            image.fill       = f'url(#{Item.icon})'
+            image.x          = math.round(m.lineHeight * 0.2)
+            image.y          = math.round((m.rowHeight - m.iconSize) * 0.5)
+            image.width      = m.iconSize
+            image.height     = m.iconSize
+            image.visibility = VIS_VISIBLE
+         end
+      elseif Item._vectors.iconImage then
+         Item._vectors.iconImage.visibility = VIS_HIDDEN
+      end
+
+      width = m.margin + icon_margin
+      label = Item[lTextAttrib]
+      if label is <table> then label = label.value end
+
+      if label != nil then
+         if not Item._vectors.text then
+            Item._vectors.text = vp.new('VectorText', table.merge({ align = 'left' }, View.theme.page.text))
+         end
+
+         text = Item._vectors.text
+         text.x          = m.margin + icon_margin
+         text.y          = m.textOffset
+         text.string     = tostring(label)
+         text.fill       = Item.fill ?? View.theme.page.text.fill
+         text.visibility = VIS_VISIBLE
+
+         err, bx, by, bw, bh = text.mtGetBoundary(0)
+         width += bw
+      elseif Item._vectors.text then
+         Item._vectors.text.visibility = VIS_HIDDEN
+      end
+
+      Item._contentWidth = width + m.margin
+   end
+
+   -- Draws the selection and hover background.  The text and icon are recoloured only if they were drawn by the
+   -- built-in content renderer.
+
+   function renderDefaultHighlight(View:table!, Item:table!, Reason:str!)
+      vectors = Item._vectors
+      page    = View.theme.page
+      recolour = lContentHook is nil
+
+      if not vectors.highlight then
+         if Reason is 'deselected' then return end
+         vectors.highlight = vectors.viewport.new('VectorRectangle', {
             roundX = 4, roundY = 4, width = '100%', height = '100%', visibility = VIS_HIDDEN
          })
-         Item._vectors.highlight.acMoveToBack()
+         vectors.highlight.acMoveToBack()
       end
 
-      if Item._selected then
-         setListTextFill(Item, View.theme.page.textSelect)
-         Item._vectors.highlight.fill = View.theme.page.textSelectBkgd
-         Item._vectors.highlight.visibility = VIS_VISIBLE
-         if View.theme.page.iconHighlight and View.hIcons[Item.icon] then
-            Item._vectors.iconImage.fill = f'url(#{View.hIcons[Item.icon]})'
+      if Reason is 'selected' then
+         vectors.highlight.fill = page.textSelectBkgd
+         vectors.highlight.visibility = VIS_VISIBLE
+         if recolour then
+            vectors.text?.fill = page.textSelect
+            setIconFill(View, Item, true)
          end
-      elseif Highlighted then
-         Item._vectors.highlight.fill = View.theme.page.textHighlightBkgd
-         setListTextFill(Item, View.theme.page.textHighlight)
-         Item._vectors.highlight.visibility = VIS_VISIBLE
-         if View.theme.page.iconHighlight and View.hIcons[Item.icon] then
-            Item._vectors.iconImage.fill = f'url(#{View.hIcons[Item.icon]})'
+      elseif Reason is 'highlighted' then
+         vectors.highlight.fill = page.textHighlightBkgd
+         vectors.highlight.visibility = VIS_VISIBLE
+         if recolour then
+            vectors.text?.fill = page.textHighlight
+            setIconFill(View, Item, true)
          end
       else
-         setListTextFill(Item, View.theme.page.text.fill)
-         Item._vectors.highlight.visibility = VIS_HIDDEN
-         if View.icons[Item.icon] then
-            Item._vectors.iconImage.fill = f'url(#{Item.icon})'
+         vectors.highlight.visibility = VIS_HIDDEN
+         if recolour then
+            vectors.text?.fill = Item.fill ?? page.text.fill
+            setIconFill(View, Item, false)
          end
       end
    end
 
-   function newItems(View, Items)
-      if #Items is 0 then return end
+   -------------------------------------------------------------------------------------------------------------------
+   -- Row state.  The effective highlight reason gives priority to selection, then highlighting.
 
-      width  = View.frame.width - EDGE - EDGE
-      height = View.frame.height
-      x      = EDGE
-      y      = View._last_y
-      widest_item = 0
+   function highlightReason(Item:table!):str
+      st = Item.viewState
+      if st.selected then return 'selected' end
+      if st.highlighted then return 'highlighted' end
+      return 'deselected'
+   end
 
-      for item in values(Items) do
-         item._vectors ?= { }
-
-         item._x = x
-         item._y = y
-         item._width  = width
-         item._height = LINE_HEIGHT
-
-         -- If the item is hovered, create a highlight for it.  ColBkgdHighlight defines the background colour to use
-         -- when an item is highlighted.  If an item is also marked as selected, then the final colour is interpolated
-         -- with ColSelect.
-
-         item._highlightEvent = highlightItem
-
-         -- Respond to positive item selection by the user (e.g. button click)
-
-         item._selectEvent = function(View, Item)
-            if Item is View.hItem then
-               Item._highlightEvent(View, Item, true)
-            else
-               Item._highlightEvent(View, Item, false)
-            end
-         end
-
-         -- Each item gets its own viewport in the page
-
-         if not item._vectors.viewport then
-            item._vectors.viewport = View.page.new('VectorViewport', {
-               x       = EDGE,
-               y       = y + EDGE,
-               xOffset = EDGE,
-               height  = LINE_HEIGHT
-            })
-         else
-            item._vectors.viewport.y = y + EDGE
-         end
-
-         MARGIN = math.round(LINE_HEIGHT * 0.3)
-         ICON_MARGIN = 0
-
-         if not Options.noIcons then
-            ICON_MARGIN = ICON_SIZE + MARGIN
-         end
-
-         vp = item._vectors.viewport
-
-         if item.icon then
-            try
-               if not View.icons[item.icon] then
-                  gui.createIcon(View.scene, item.icon, ICON_SIZE, View.theme.page.icon, item.icon)
-                  View.icons[item.icon] = true
-               end
-
-               if View.theme.page.iconHighlight then
-                  if View.theme.page.iconHighlight is View.theme.page.icon then
-                     View.hIcons[item.icon] = item.icon
-                  else
-                     gui.createIcon(View.scene, item.icon, ICON_SIZE, View.theme.page.iconHighlight, f'_h_{item.icon}')
-                     View.hIcons[item.icon] = f'_h_{item.icon}'
-                  end
-               end
-
-               if not item._vectors.iconImage then
-                  item._vectors.iconImage = vp.new('VectorRectangle', {
-                     fill   = f'url(#{item.icon})',
-                     x      = math.round(LINE_HEIGHT * 0.2),
-                     y      = math.round((LINE_HEIGHT - ICON_SIZE) * 0.5),
-                     width  = ICON_SIZE,
-                     height = ICON_SIZE
-                  })
-               end
-            end
-         end
-
-         item_name = item[lTextAttrib]
-         if item_name then
-            if not item._vectors.text then
-               item._vectors.text = vp.new('VectorText', table.merge({
-                  align     = 'left',
-                  y         = LINE_OFFSET
-               }, View.theme.page.text))
-            end
-
-            item._vectors.text.x = MARGIN + ICON_MARGIN
-            item._vectors.text.y = LINE_OFFSET
-            if item_name is <table> then
-               item._vectors.text.string = item_name.value
-            else
-               item._vectors.text.string = item_name
-            end
-            --font.wrapEdge = x + item.Width
-
-            err, bx, by, bw, bh = item._vectors.text.mtGetBoundary(0)
-
-            width = MARGIN + ICON_MARGIN + bw + MARGIN
-
-            if item._selected then
-               item._vectors.text.fill = View.theme.page.textSelect
-            elseif item._highlighted then
-               item._vectors.text.fill = View.theme.page.textHighlight
-            else
-               item._vectors.text.fill = item.colour ?? View.theme.page.text.fill
-            end
-         end
-
-         if item.hidden then
-            vp.visibility = VIS_HIDDEN
-         else
-            vp.visibility = VIS_VISIBLE
-            y += LINE_HEIGHT + VSPACING
-         end
-
-         if width > widest_item then widest_item = width end
+   function applyHighlight(View:table!, Item:table!)
+      if lHighlightHook then
+         dispatch(View, lHighlightHook, Item, Item._vectors.viewport, highlightReason(Item))
+      else
+         renderDefaultHighlight(View, Item, highlightReason(Item))
       end
+   end
 
-      View._last_y = y
+   -- Recomputes Item.viewState in place.  Returns true if any value changed.
 
-      -- Item click and hover management
+   function updateState(View:table!, Item:table!):bool
+      st          = Item.viewState
+      selected    = Item._selected is true
+      highlighted = Item is View.hItem
+      focused     = (View.hasFocus is true) and (Item is View.kItem)
+      disabled    = View.disabled is true
+
+      if (st.selected is selected) and (st.highlighted is highlighted) and (st.focused is focused) and
+         (st.disabled is disabled) then return false end
+
+      st.selected    = selected
+      st.highlighted = highlighted
+      st.focused     = focused
+      st.disabled    = disabled
+      return true
+   end
+
+   -- Notifies a row of a change to its state.  Force re-applies the highlight when the state is unchanged.
+
+   function syncState(View:table!, Item:table!, Force:bool)
+      if not Item._rowReady then return end
+      changed = updateState(View, Item)
+      if changed and lContentHook then
+         dispatch(View, lContentHook, Item, Item._vectors.viewport, 'state')
+      end
+      if changed or Force then applyHighlight(View, Item) end
+   end
+
+   -------------------------------------------------------------------------------------------------------------------
+   -- Row layout.  Rows are positioned in display order, hit zones are regenerated and the scrollable extent is
+   -- updated.  The scroll position is retained, but clamped to the new extent.
+
+   function notifyRowGeometry(View:table!)
+      if not lCustomRows then return end
+      for item in values(View.items) do
+         if not item._rowReady then continue end
+         vp = item._vectors.viewport
+         width  = vp.width
+         height = vp.height
+         if (width != item._rowWidth) or (height != item._rowHeight) then
+            item._rowWidth  = width
+            item._rowHeight = height
+            if lContentHook then dispatch(View, lContentHook, item, vp, 'layout') end
+            applyHighlight(View, item)
+         end
+      end
+   end
+
+   function layoutRows(View:table!)
+      m      = View._metrics
+      y      = EDGE
+      widest = 0
+
+      View.zones = { }
 
       for item in values(View.items) do
-         if not item.hidden then
-            if Options.compact is 1 then
-               View.addZone(item._x, item._y, widest_item, item._height, item, itemHoverCallback)
-            else
-               View.addZone(item._x, item._y, nil, item._height, item, itemHoverCallback)
+         vp = item._vectors?.viewport
+         if not vp then continue end
+
+         item._x      = EDGE
+         item._y      = y
+         item._height = m.rowHeight
+
+         if vp.y != y then vp.y = y end
+         if vp.height != m.rowHeight then vp.height = m.rowHeight end
+
+         if item.hidden then
+            if vp.visibility != VIS_HIDDEN then vp.visibility = VIS_HIDDEN end
+         else
+            if vp.visibility != VIS_VISIBLE then vp.visibility = VIS_VISIBLE end
+            if (item._contentWidth ?? 0) > widest then widest = item._contentWidth end
+            y += m.rowHeight + m.rowSpacing
+         end
+      end
+
+      zone_width = nil
+      if Options.compact is 1 and not lContentHook then zone_width = widest end
+
+      for item in values(View.items) do
+         if item._vectors?.viewport and not item.hidden then
+            View.addZone(item._x, item._y, zone_width, item._height, item)
+         end
+      end
+
+      if View.scrollbar then
+         -- Custom rows and vertical-only views fill the available width rather than extending the page.
+         nominal = 0
+         if (View.scrollDirection != 'vertical') and (not lContentHook) and (widest > 0) then
+            nominal = widest + EDGE + EDGE
+         end
+
+         if y > EDGE then
+            View.scrollbar.setDynamicPageSize(nominal, nominal, y - m.rowSpacing + EDGE)
+         else
+            -- An empty page fills the view.  NB: Pointer input does not reach rows that are later added beyond the
+            -- height that a page had when first drawn, so the page is not reduced to its empty extent.
+            View.scrollbar.setDynamicPageSize(0, 0, View.frame.height)
+            View.page.height = '100%'
+         end
+         View.scrollbar.scrollPage(0, 0) -- Clamp the page position to the new extent
+      end
+
+      notifyRowGeometry(View)
+   end
+
+   -------------------------------------------------------------------------------------------------------------------
+   -- Row lifecycle
+
+   -- Creates the row viewport.  Built-in content is drawn immediately because it is measured for the layout.
+
+   function createRow(View:table!, Item:table!)
+      Item._vectors ?= { }
+      Item.viewState = { selected=false, highlighted=false, focused=false, disabled=false }
+
+      vp = View.page.new('VectorViewport', {
+         x = EDGE, xOffset = EDGE, y = EDGE, height = View._metrics.rowHeight,
+         visibility = Item.hidden ? VIS_HIDDEN : VIS_VISIBLE
+      })
+      if lContentHook then vp.overflow = VOF_HIDDEN end
+      Item._vectors.viewport = vp
+
+      Item._highlightEvent = function(View, Item, Highlighted)
+         syncState(View, Item)
+      end
+
+      Item._selectEvent = function(View, Item)
+         syncState(View, Item)
+      end
+
+      if not lContentHook then renderDefaultContent(View, Item) end
+   end
+
+   -- Called once the row is positioned: initialise the state, construct the content, then the highlight.
+
+   function finishRow(View:table!, Item:table!)
+      vp = Item._vectors.viewport
+      updateState(View, Item)
+      Item._rowWidth  = vp.width
+      Item._rowHeight = vp.height
+
+      if lContentHook then
+         dispatch(View, lContentHook, Item, vp, 'create')
+         Item._contentCreated = true
+      end
+
+      Item._rowReady = true
+      applyHighlight(View, Item)
+   end
+
+   -- Creates rows for items that do not have one.  Items whose construction fails are released and removed from the
+   -- view before the first failure is raised.
+
+   function addRows(View:table!, Items:table, ForceLayout:bool)
+      created = array<table>
+      if Items then
+         for item in values(Items) do
+            if not item._vectors?.viewport and not item._freed then
+               createRow(View, item)
+               created.push(item)
             end
          end
       end
 
-      -- Adjust the page dimensions and report to the scrollbar
-
-      if View.scrollbar then
-         widest_item = widest_item + EDGE + EDGE
-         View.scrollbar.setDynamicPageSize(widest_item, widest_item, y + EDGE + VSPACING)
+      if #created is 0 then
+         if ForceLayout then layoutRows(View) end
+         return
       end
+
+      layoutRows(View)
+
+      local failure:any = nil
+      failed = array<table>
+      for item in values(created) do
+         try
+            finishRow(View, item)
+         except e
+            failure ?= e
+            failed.push(item)
+         end
+      end
+
+      if #failed > 0 then
+         for item in values(failed) do
+            for i in {0 to #View.items} do
+               if View.items[i] is item then View.items.remove(i); break end
+            end
+            View.lookup[item._id] = nil
+            item._free(item)
+         end
+         layoutRows(View)
+      end
+
+      if failure then raiseFailure(failure) end
    end
 
-   function constructListView(View)
-      LINE_HEIGHT, FONT_HEIGHT, ascent = gui.getFontHeight(View.theme.page.text, false)
-      LINE_HEIGHT = math.round(LINE_HEIGHT)
-      LINE_OFFSET = math.round((LINE_HEIGHT + ascent) * 0.5) -- Baseline that centres capitals in the line
-      ICON_SIZE   = FONT_HEIGHT
+   function newItems(View:table!, Items)
+      addRows(View, Items, false)
+   end
+
+   -- Refreshes the content of an existing row in place, then its highlight.
+
+   function refreshRow(View:table!, Item:table!)
+      if not Item._rowReady then return end
+      old_width = Item._contentWidth
+      vp = Item._vectors.viewport
+
+      if lContentHook then
+         dispatch(View, lContentHook, Item, vp, 'update')
+      else
+         renderDefaultContent(View, Item)
+      end
+
+      applyHighlight(View, Item)
+      if Item._contentWidth != old_width then layoutRows(View) end
+   end
+
+   -- Callback for constructing the view from scratch.  Can be called multiple times.
+
+   function constructListView(View:table!)
+      computeMetrics(View)
 
       View.icons ?= { }
       View.hIcons ?= { }
 
-      View._last_y = 0
-      if #View.items > 0 then newItems(View, View.items) end
+      for item in values(View.items) do
+         if item._rowReady then refreshRow(View, item) end
+      end
+
+      addRows(View, View.items, true)
 
       processing.collect()
    end
 
-   vw = gui.initView(Options, constructListView, newItems)
+   function prepareView(View:table!)
+      -- Client cleanup: constructItem(..., 'destroy') then destroyItem(), while the viewport is still valid.  Both are
+      -- attempted, and the first failure is returned to the caller for reporting after the row is released.
+
+      View._releaseItem = function(Item:table!, Viewport:obj!):any
+         local failure:any = nil
+         Item._rowReady = nil
+
+         if Item._contentCreated then
+            Item._contentCreated = nil
+            try
+               dispatch(View, lContentHook, Item, Viewport, 'destroy')
+            except e
+               failure = e
+            end
+         end
+
+         if lDestroyHook then
+            try
+               dispatch(View, lDestroyHook, Item, Viewport)
+            except e
+               failure ?= e
+            end
+         end
+
+         return failure
+      end
+   end
+
+   vw = gui.initView(Options, constructListView, newItems, prepareView)
+
+   vw._relayout = function()
+      layoutRows(vw)
+   end
+
+   vw._preserveScroll = true
+
+   vw._stateChanged = function()
+      for item in values(vw.items) do syncState(vw, item) end
+      vw.scene.surface.mtScheduleRedraw()
+   end
+
+   -- Refreshes the content and highlight of an item in place, preserving its row, the selection, the keyboard target
+   -- and the scroll position.
+
+   vw.refreshItem = function(Item:table!)
+      assert(not vw._dispatching, 'Render callbacks must not modify the view structure; defer the change')
+      assert(vw.lookup[Item._id] is Item, 'Item does not belong to this view')
+      refreshRow(vw, Item)
+      vw.scene.surface.mtScheduleRedraw()
+   end
+
+   vw.setItem = function(Item:table!, KV:table!)
+      assert(not vw._dispatching, 'Render callbacks must not modify the view structure; defer the change')
+      assert(vw.lookup[Item._id] is Item, 'Item does not belong to this view')
+      for k in pairs(KV) do
+         assert(not isReservedField(k), f'Item field "{k}" is reserved by the view')
+      end
+
+      was_hidden = Item.hidden is true
+      for k, v in pairs(KV) do
+         Item[k] = v
+      end
+
+      refreshRow(vw, Item)
+      if (Item.hidden is true) != was_hidden then vw._refreshLayout() end
+      vw.scene.surface.mtScheduleRedraw()
+   end
 
    vw.sortView = function(Attrib, Ascending)
+      assert(not vw._dispatching, 'Render callbacks must not modify the view structure; defer the change')
       vw.sortItems(Attrib, Ascending)
-      rearrangeItems(vw)
+      vw._refreshLayout()
+   end
+
+   -- Rows are notified of size changes once the frame geometry has settled, e.g. after a resize causes the vertical
+   -- scrollbar to appear.
+
+   if lCustomRows then
+      vw.frame.mtSubscribeFeedback(FM_PATH_CHANGED, function(Viewport, Event)
+         if vw._geometryPending then return end
+         vw._geometryPending = true
+         processing.delayedCall(function()
+            if not vw.viewport then return end
+            vw._geometryPending = false
+            notifyRowGeometry(vw)
+         end)
+      end)
    end
 
    return vw

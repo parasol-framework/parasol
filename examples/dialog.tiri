@@ -14,8 +14,8 @@
          checkboxLabel = '\'Tis nobler to suffer',
          quit          = true,
          options = {
-            { id=1, text='To be', icon='items/checkmark' },
-            { id=2, text='Not to be', icon='items/cancel' }
+            { id=1, label='To be', icon='items/checkmark' },
+            { id=2, label='Not to be', icon='items/cancel' }
          },
          feedback = function(Dialog, Response, State)
             if Response then

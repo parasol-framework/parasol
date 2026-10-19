@@ -87,7 +87,7 @@ end
 
    for _, rec in list.sortByKeys() do
       if not rec.hidden then
-         items.push({ item=rec.name })
+         items.push({ label=rec.name })
       end
    end
 
@@ -106,7 +106,7 @@ end
 
    glTextY = y
 
-   setFont(items[0].item, glFontSize)
+   setFont(items[0].label, glFontSize)
 
    glWindow.show()
    processing.sleep() -- Will sleep until the window sends MSGID_QUIT
