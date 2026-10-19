@@ -91,8 +91,32 @@ Parameters are addressed by key-paths: `key` for a top-level parameter, or `grou
 
 <header>Changing Parameters</header>
 
-Subclasses that publish typed fields, such as `Threshold` on @AudioCompressor, accept single-parameter changes
-through those fields.  Each write is validated and applied immediately.
+Every top-level parameter of a built-in subclass is also available as a typed field, e.g. @AudioCompressor.Threshold.
+The field name is the upper camel-case form of the schema key, so `max_boost` is `MaxBoost`.  Boolean parameters are
+integer fields that hold 0 or 1, and enumerations are integer lookup fields.  Parameter groups are edited with
+class-specific methods instead, such as @AudioEqualiser.SetBand() and @AudioSplitter.InsertBranch(), which replace,
+insert or remove one entry as a single change.
+
+<pre>
+comp = obj.new('AudioCompressor', { audio=audio, channel=channel, threshold=-24, ratio=3 })
+comp.makeup = 6
+</pre>
+
+Field writes and group methods follow the same validation and commit path as #Batch(), with one parameter or entry per
+change:
+
+<types type="State">
+<type name="Before Init()">The value is checked against its own range and stored.  Rules are not checked;
+`Init()` validates the complete state.</type>
+<type name="After Init()">The value is validated against every rule and committed immediately.  The processor ramps
+to the new value where it supports doing so.</type>
+<type name="Global chain">After initialisation the write fails with `ERR::Immutable`.</type>
+<type name="Disconnected">The write fails with `ERR::NotInitialised`.</type>
+</types>
+
+An out-of-range value or a broken rule fails with `ERR::InvalidValue` and leaves the committed value unchanged.  Field
+reads return the committed value, as #GetKey() does.  Use #Batch() when several parameters must change together, for
+instance where a rule relates one parameter to another.
 
 #Batch() is the generic interface.  It takes an ordered list of commands and applies them as one validated change,
 so related edits, such as switching a band's type together with its Q, never expose the processor to the state between

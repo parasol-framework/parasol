@@ -44,7 +44,20 @@
 <p>The <code>slot</code> attributes describe the meter layout that was current when the schema was read.  A change of processing layout replaces the meter layout; use <method>GetMeterLayout</method> to resolve keys to slots, and repeat the resolution whenever <method>ReadMeters</method> reports a different <code>ID</code>.</p>
 <p>Parameters are addressed by key-paths: <code>key</code> for a top-level parameter, or <code>group[index].key</code> for a group member, e.g. <code>bands[2].frequency</code>.  Values are always in real units, such as hertz or decibels; they are never normalised.</p>
 <header>Changing Parameters</header>
-<p>Subclasses that publish typed fields, such as <code>Threshold</code> on <class name="AudioCompressor">AudioCompressor</class>, accept single-parameter changes through those fields.  Each write is validated and applied immediately.</p>
+<p>Every top-level parameter of a built-in subclass is also available as a typed field, e.g. <class name="AudioCompressor" field="Threshold">AudioCompressor.Threshold</class>. The field name is the upper camel-case form of the schema key, so <code>max_boost</code> is <code>MaxBoost</code>.  Boolean parameters are integer fields that hold 0 or 1, and enumerations are integer lookup fields.  Parameter groups are edited with class-specific methods instead, such as <class name="AudioEqualiser" method="SetBand">AudioEqualiser.SetBand()</class> and <class name="AudioSplitter" method="InsertBranch">AudioSplitter.InsertBranch()</class>, which replace, insert or remove one entry as a single change.</p>
+<pre>comp = obj.new('AudioCompressor', { audio=audio, channel=channel, threshold=-24, ratio=3 })
+comp.makeup = 6
+</pre>
+<p>Field writes and group methods follow the same validation and commit path as <method>Batch</method>, with one parameter or entry per change:</p>
+<types type="State">
+<type name="Before Init()">The value is checked against its own range and stored.  Rules are not checked;
+<code>Init()</code> validates the complete state.</type>
+<type name="After Init()">The value is validated against every rule and committed immediately.  The processor ramps
+to the new value where it supports doing so.</type>
+<type name="Global chain">After initialisation the write fails with <code>ERR::Immutable</code>.</type>
+<type name="Disconnected">The write fails with <code>ERR::NotInitialised</code>.</type>
+</types>
+<p>An out-of-range value or a broken rule fails with <code>ERR::InvalidValue</code> and leaves the committed value unchanged.  Field reads return the committed value, as <action>GetKey</action> does.  Use <method>Batch</method> when several parameters must change together, for instance where a rule relates one parameter to another.</p>
 <p><method>Batch</method> is the generic interface.  It takes an ordered list of commands and applies them as one validated change, so related edits, such as switching a band's type together with its Q, never expose the processor to the state between them.  A command is a sequence of tokens separated by spaces or tabs.  Verbs are lower-case:</p>
 <types type="Command">
 <type name="set KEY VALUE">Sets the parameter at the key-path <code>KEY</code> to <code>VALUE</code>.  The value is a finite number with
