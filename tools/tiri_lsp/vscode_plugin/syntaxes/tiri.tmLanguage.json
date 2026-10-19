@@ -10,6 +10,7 @@
       { "include": "#typetests" },
       { "include": "#choose-type-patterns" },
       { "include": "#weak-bindings" },
+      { "include": "#function-bindings" },
       { "include": "#functions" },
       { "include": "#using-blocks" },
       { "include": "#keywords" },
@@ -59,6 +60,40 @@
                   "2": { "name": "storage.modifier.tiri" },
                   "3": { "name": "punctuation.definition.attribute.end.tiri" }
                }
+            }
+         ]
+      },
+      "function-bindings": {
+         "patterns": [
+            {
+               "name": "meta.function.binding.tiri",
+               "begin": "\\b(function)[ \\t]*(\\[)",
+               "beginCaptures": {
+                  "1": { "name": "storage.type.function.tiri" },
+                  "2": { "name": "punctuation.definition.binding.begin.tiri" }
+               },
+               "end": "(\\])(?:[ \\t]*([A-Za-z_][A-Za-z0-9_]*(?:[.:][A-Za-z_][A-Za-z0-9_]*)*)(?=[ \\t]*\\())?",
+               "endCaptures": {
+                  "1": { "name": "punctuation.definition.binding.end.tiri" },
+                  "2": { "name": "entity.name.function.tiri" }
+               },
+               "patterns": [
+                  {
+                     "name": "meta.function.binding.attribute.tiri",
+                     "match": "(<)[ \\t]*(weak)[ \\t]*(>)",
+                     "captures": {
+                        "1": { "name": "punctuation.definition.attribute.begin.tiri" },
+                        "2": { "name": "storage.modifier.tiri" },
+                        "3": { "name": "punctuation.definition.attribute.end.tiri" }
+                     }
+                  },
+                  {
+                     "begin": "\\[",
+                     "end": "\\]",
+                     "patterns": [ { "include": "$self" } ]
+                  },
+                  { "include": "$self" }
+               ]
             }
          ]
       },
@@ -528,6 +563,18 @@
                   },
                   "2": {
                      "name": "entity.name.type.enum.tiri"
+                  }
+               }
+            },
+            {
+               "name": "meta.function-call.optional.tiri",
+               "match": "(?<=\\.)([A-Za-z_][A-Za-z0-9_]*)(\\?)(?=\\()",
+               "captures": {
+                  "1": {
+                     "name": "entity.name.function.call.tiri"
+                  },
+                  "2": {
+                     "name": "keyword.operator.optional-call.tiri"
                   }
                }
             },

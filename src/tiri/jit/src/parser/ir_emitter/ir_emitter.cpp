@@ -40,7 +40,6 @@ inline const TiriConstant * lookup_constant(const GCstr *Name)
 }
 
 static bool is_named_external_global(GCstr *Name);
-static bool has_runtime_annotations(const std::vector<AnnotationEntry> &Annotations);
 
 // Canonical object methods are callable syntax, not object fields.  A bare lookup must therefore retain ordinary
 // table indexing, which lets the runtime return a real field when present or nil when it is absent.
@@ -94,15 +93,12 @@ static const ExprNode *call_receiver(const CallExprPayload &Payload)
 
 //********************************************************************************************************************
 // Walk the AST for context reads that execute in the current emitter region.  Function bodies and using bodies are
-// separate regions: their child emitter or retained reference supplies their own context source.  Contextual call
-// arguments are likewise excluded when the runtime call will install a receiver before evaluating them.  Runtime
-// built-in dispatch is the exception because its ordinary built-in branch evaluates the same arguments without a
-// contextual activation.
+// separate regions: their child emitter or retained reference supplies their own context source.  Call arguments and
+// piped values belong to the enclosing region, including those of contextual calls, because CTXENTER is emitted only
+// after they have been evaluated.
 
 class ContextUseWalker {
 public:
-   explicit ContextUseWalker(const ParserContext &Context) : context(Context) { }
-
    [[nodiscard]] bool block_uses_context(const BlockStmt &Block)
    {
       for (const StmtNode &statement : Block.view()) {
@@ -111,14 +107,7 @@ public:
       return false;
    }
 
-   [[nodiscard]] bool expression_uses_context(const ExprNode &Expression)
-   {
-      return this->expression_uses_context_impl(Expression);
-   }
-
 private:
-   const ParserContext &context;
-
    [[nodiscard]] bool expressions_use_context(const ExprNodeList &Expressions)
    {
       for (const ExprNodePtr &expression : Expressions) {
@@ -130,6 +119,14 @@ private:
    [[nodiscard]] bool block_uses_context(const std::unique_ptr<BlockStmt> &Block)
    {
       return Block and this->block_uses_context(*Block);
+   }
+
+   // A function body is a separate region, but its context binding is evaluated in this one at closure creation.
+
+   [[nodiscard]] bool binding_uses_context(const FunctionExprPayload *Function)
+   {
+      return Function and Function->context.reference and
+         this->expression_uses_context_impl(*Function->context.reference);
    }
 
    [[nodiscard]] bool statement_uses_context(const StmtNode &Statement)
@@ -148,8 +145,9 @@ private:
             return this->expressions_use_context(payload.values);
          }
          case AstNodeKind::LocalFunctionStmt:
+            return this->binding_uses_context(std::get<LocalFunctionStmtPayload>(Statement.data).function.get());
          case AstNodeKind::FunctionStmt:
-            return false;
+            return this->binding_uses_context(std::get<FunctionStmtPayload>(Statement.data).function.get());
          case AstNodeKind::IfStmt: {
             const auto &payload = std::get<IfStmtPayload>(Statement.data);
             for (const IfClause &clause : payload.clauses) {
@@ -280,25 +278,6 @@ private:
             return this->expression_uses_context_ptr(std::get<PresenceExprPayload>(Expression.data).value);
          case AstNodeKind::PipeExpr: {
             const auto &payload = std::get<PipeExprPayload>(Expression.data);
-            if (payload.rhs_call and
-                (payload.rhs_call->kind IS AstNodeKind::CallExpr or
-                 payload.rhs_call->kind IS AstNodeKind::SafeCallExpr)) {
-               const auto &call = std::get<CallExprPayload>(payload.rhs_call->data);
-               const ExprNode *receiver = call_receiver(call);
-               bool callable_uses_context = false;
-               if (const auto *direct = std::get_if<DirectCallTarget>(&call.target)) {
-                  callable_uses_context = direct->callable and this->expression_uses_context_impl(*direct->callable);
-               }
-               if (call.runtime_builtin_method) {
-                  return callable_uses_context or this->expression_uses_context_ptr(payload.lhs) or
-                     this->expressions_use_context(call.arguments);
-               }
-               if (receiver and receiver_uses_contextual_call(this->context, *receiver)) {
-                  // The contextual pipe path evaluates its piped value and written arguments after CTXENTER.  Only
-                  // the receiver, its key and the callable itself execute under the enclosing source.
-                  return callable_uses_context;
-               }
-            }
             return this->expression_uses_context_ptr(payload.lhs) or
                this->expression_uses_context_ptr(payload.rhs_call);
          }
@@ -309,15 +288,6 @@ private:
             if (const auto *direct = std::get_if<DirectCallTarget>(&payload.target)) {
                result = direct->callable and this->expression_uses_context_impl(*direct->callable);
             }
-
-            // Runtime built-in dispatch emits an ordinary built-in branch and a contextual fallback branch.  Its
-            // arguments therefore need the enclosing source even when the receiver is unresolved.
-            if (payload.runtime_builtin_method or not call_receiver(payload)) {
-               return result or this->expressions_use_context(payload.arguments);
-            }
-
-            const ExprNode *receiver = call_receiver(payload);
-            if (receiver_uses_contextual_call(this->context, *receiver)) return result;
             return result or this->expressions_use_context(payload.arguments);
          }
          case AstNodeKind::MemberExpr:
@@ -346,7 +316,7 @@ private:
             return false;
          }
          case AstNodeKind::FunctionExpr:
-            return false;
+            return this->binding_uses_context(&std::get<FunctionExprPayload>(Expression.data));
          case AstNodeKind::DeferredExpr:
             return this->expression_uses_context_ptr(std::get<DeferredExprPayload>(Expression.data).inner);
          case AstNodeKind::RangeExpr: {
@@ -477,6 +447,8 @@ static bool block_contains_try(const BlockStmt *Block)
    return false;
 }
 
+static BCPOS emit_skipped_call_result(FuncState *State, BCReg ResultBase);  // emit_call.cpp
+
 //********************************************************************************************************************
 // NilShortCircuitGuard - RAII helper for safe navigation nil-check pattern.
 //
@@ -564,9 +536,8 @@ public:
       ControlFlowEdge skip_nil = this->emitter->control_flow.make_unconditional(
          BCPos(bcemit_jmp(&this->emitter->func_state)));
 
-      BCPos nil_path = BCPos(this->emitter->func_state.pc);
-      this->nil_jump.patch_to(nil_path);
-      bcemit_nil(&this->emitter->func_state, CallBase.raw(), 1);
+      this->nil_jump.patch_here();
+      BCPOS nil_init = emit_skipped_call_result(&this->emitter->func_state, CallBase);
 
       skip_nil.patch_to(BCPos(this->emitter->func_state.pc));
 
@@ -576,7 +547,7 @@ public:
       ExpDesc result;
       result.init(ExpKind::Call, CallPc);
       result.u.s.aux = CallBase;
-      result.safe_nil_init = nil_path.raw();
+      result.safe_nil_init = nil_init;
       this->emitter->func_state.freereg = CallBase + 1;
       return ParserResult<ExpDesc>::success(result);
    }
@@ -1021,20 +992,13 @@ static void set_call_result_count(FuncState *State, const ExpDesc &Expression, B
    if (Expression.alternate_call != NO_JMP) {
       setbc_b(&State->bcbase[Expression.alternate_call].ins, EncodedCount);
    }
+   // The skipped path of a safe or optional call is itself a nil-producing call (see emit_skipped_call_result()), so it
+   // takes the present call's result count, including the all-results and no-results modes.
    auto widen_nil_init = [&](BCPOS Position) {
-      if (Position IS NO_JMP or EncodedCount <= BCREG(CallResultMode::NoResults)) return;
+      if (Position IS NO_JMP) return;
       BCIns *nil_init = &State->bcbase[Position].ins;
-      BCREG first = bc_a(*nil_init);
-      lj_assertX(bc_op(*nil_init) IS BC_KPRI or bc_op(*nil_init) IS BC_KNIL,
-         "safe-call nil path does not start with a nil initialiser");
-      BCREG result_count = EncodedCount - BCREG(CallResultMode::NoResults);
-      BCREG required_top = first + result_count;
-      if (State->freereg < required_top) {
-         RegisterAllocator allocator(State);
-         allocator.bump(BCReg(required_top - State->freereg));
-      }
-      *nil_init = EncodedCount IS BCREG(CallResultMode::OneResult) ? BCINS_AD(BC_KPRI, first, ExpKind::Nil) :
-         BCINS_AD(BC_KNIL, first, first + result_count - 1);
+      lj_assertX(bc_op(*nil_init) IS BC_CALL, "skipped call path does not end with a nil-producing call");
+      setbc_b(nil_init, EncodedCount);
    };
    widen_nil_init(Expression.safe_nil_init);
    widen_nil_init(Expression.alternate_safe_nil_init);
@@ -1158,14 +1122,8 @@ void IrEmitter::ContextSourceScope::release()
 
 bool IrEmitter::context_region_uses_context(const BlockStmt &Block) const
 {
-   ContextUseWalker walker(this->ctx);
+   ContextUseWalker walker;
    return walker.block_uses_context(Block);
-}
-
-bool IrEmitter::expression_uses_context(const ExprNode &Expression) const
-{
-   ContextUseWalker walker(this->ctx);
-   return walker.expression_uses_context(Expression);
 }
 
 std::optional<BCReg> IrEmitter::allocate_inherited_context_cache(const BlockStmt &Block)
@@ -1720,6 +1678,16 @@ static bool tail_call_preserves_checkall_boundary(const ParserContext &Context, 
    return Context.descriptors().callable(call.callable).source != StaticCallableSource::NativePrototype;
 }
 
+static bool is_optional_call_expression(const ExprNode &Expression)
+{
+   if (Expression.kind IS AstNodeKind::PipeExpr) {
+      const auto &pipe = std::get<PipeExprPayload>(Expression.data);
+      return pipe.rhs_call and is_optional_call_expression(*pipe.rhs_call);
+   }
+   if (Expression.kind != AstNodeKind::CallExpr) return false;
+   return std::get<CallExprPayload>(Expression.data).dispatch IS CallDispatch::OptionalMemberNamed;
+}
+
 static bool is_safe_call_expression(const ExprNode &Expression)
 {
    // Parsed safe calls currently retain CallExpr and identify the nil short-circuit through their dispatch mode.
@@ -1778,12 +1746,17 @@ ParserResult<IrEmitUnit> IrEmitter::emit_return_stmt(const ReturnStmtPayload &Pa
          bool has_post_call_control_flow = expected_end != this->func_state.pc;
          bool has_user_cleanup = cleanup_temp_regs > 0;
          bool safe_call = is_safe_call_expression(*Payload.values.back());
+         bool optional_call = is_optional_call_expression(*Payload.values.back());
          bool forwards_current_contract = tail_call_forwards_current_contract(
             this->ctx, this->current_callable, *Payload.values.back());
          bool direct_tail_call = call_op IS BC_CALL or call_op IS BC_CALLM;
          bool contextual_tail_call = not this->is_root_chunk and has_context_leave and call_op IS BC_CTXCALL;
+
+         // A bound body (function[X]) leaves its context block before CALLT, so a tail callee would run in the
+         // caller's context.  It keeps CALL + RETM instead, and every callee observes the bound context (D5).
          bool tail_call_eligible = this->func_state.runtime_scopes.empty() and not has_post_call_control_flow and
-            not has_user_cleanup and (direct_tail_call or contextual_tail_call) and
+            not this->context_bound and not has_user_cleanup and not optional_call and not safe_call and
+            (direct_tail_call or contextual_tail_call) and
             tail_call_preserves_checkall_boundary(this->ctx, *Payload.values.back()) and
             (forwards_current_contract or (not truncate_return_results and not has_return_contract));
          if (tail_call_eligible) {
@@ -1816,11 +1789,11 @@ ParserResult<IrEmitUnit> IrEmitter::emit_return_stmt(const ReturnStmtPayload &Pa
                BCINS_AD(BC_RET, last.u.s.aux, result_count + 1) :
                BCINS_AD(BC_RET0, 0, 1);
          }
-         else if (safe_call) {
-            // An unconstrained nil short-circuit has no dynamic MULTRES value, so consolidate it to one result.
-            // Fixed return declarations are handled above and widen the nil path to the declared result count.
-            set_call_result_count(&this->func_state, last, CallResultMode::OneResult);
-            ins = BCINS_AD(BC_RET1, last.u.s.aux, 2);
+         else if (optional_call or safe_call) {
+            // Both paths of a safe or optional call set MULTRES (see emit_skipped_call_result()), so every result of
+            // a present callee is returned.  The skipped branch prevents tail-call conversion.
+            set_call_result_count(&this->func_state, last, CallResultMode::AllResults);
+            ins = BCINS_AD(BC_RETM, return_base, last.u.s.aux - return_base);
          }
          else if (not this->func_state.runtime_scopes.empty()) {
             // DISABLE TAIL-CALL inside try blocks: use CALL + RET instead of CALLT.
@@ -1881,10 +1854,6 @@ ParserResult<IrEmitUnit> IrEmitter::emit_return_stmt(const ReturnStmtPayload &Pa
                ins = result_count > 0 ?
                   BCINS_AD(BC_RET, return_base, result_count + 1) :
                   BCINS_AD(BC_RET0, 0, 1);
-            }
-            else if (is_safe_call_expression(*Payload.values.back())) {
-               set_call_result_count(&this->func_state, last, CallResultMode::OneResult);
-               ins = BCINS_AD(BC_RET, return_base, count + 1);
             }
             else {
                set_call_result_count(&this->func_state, last, CallResultMode::AllResults);
@@ -2151,25 +2120,7 @@ ParserResult<IrEmitUnit> IrEmitter::emit_local_decl_stmt(const LocalDeclStmtPayl
       if (not Payload.names[i.raw()].has_weak) continue;
       BCREG slot = base.raw() + i.raw();
       auto *fs = &this->func_state;
-      BCREG call = fs->freereg;
-      BCREG cell = call + 1 + LJ_FR2;
-      BCREG meta = cell + 1;
-      bcreg_reserve(fs, 3 + LJ_FR2);
-      (void)bcemit_builtin_callable(fs, builtin_callable_id(FastFunc::setmetatable), call);
-      bcemit_AD(fs, BC_TNEW, cell, 1);
-      GCtab *template_table = lj_tab_new(fs->L, 0, 1);
-      template_table->flags |= TAB_WEAK_BINDING;
-      BCREG constant = const_gc(fs, obj2gco(template_table), LJ_TTAB);
-      GCstr *mode = lj_str_newlit(fs->L, "__mode");
-      GCstr *weak = lj_str_newlit(fs->L, "v");
-      setstrV(fs->L, lj_tab_setstr(fs->L, template_table, mode), weak);
-      lj_gc_anybarriert(fs->L, template_table);
-      bcemit_AD(fs, BC_TDUP, meta, constant);
-      bcemit_ABC(fs, BC_CALL, call, 2, 3);
-      bcemit_ABC(fs, BC_TSETB, slot, call, 0);
-      bcemit_AD(fs, BC_MOV, slot, call);
-      // Call arguments can remain in unused frame slots.  Explicitly clear them rather than depending on the next call.
-      bcemit_AD(fs, BC_KNIL, call, meta);
+      bcemit_weak_cell(fs, slot);
       fs->var_get(slot).info |= VarInfoFlag::Weak;
       fs->reset_freereg();
    }
@@ -3105,7 +3056,7 @@ ParserResult<IrEmitUnit> IrEmitter::emit_break_stmt(const BreakStmtPayload&)
       bcemit_AD(&this->func_state, leave, scope.base, BCReg(0));
    }
 
-   loop.break_edge.append(BCPos(bcemit_jmp(&this->func_state)));
+   loop.break_edge.append(this->emit_loop_exit_jump(loop));
    return ParserResult<IrEmitUnit>::success(IrEmitUnit{});
 }
 
@@ -3131,8 +3082,28 @@ ParserResult<IrEmitUnit> IrEmitter::emit_continue_stmt(const ContinueStmtPayload
       bcemit_AD(&this->func_state, leave, scope.base, BCReg(0));
    }
 
-   loop.continue_edge.append(BCPos(bcemit_jmp(&this->func_state)));
+   loop.continue_edge.append(this->emit_loop_exit_jump(loop));
    return ParserResult<IrEmitUnit>::success(IrEmitUnit{});
+}
+
+//********************************************************************************************************************
+// Emit the jump for a break or continue.  Both targets lie outside the loop body, so every local at or above the loop's
+// entry level goes out of scope.  If one of those locals has been captured, the jump must close its upvalue or the
+// closure keeps referencing a stack slot that the next iteration (or later code) overwrites.
+//
+// The scope flags only reflect captures emitted before this point.  That is sufficient because a capture appearing
+// later in the body cannot have executed earlier in the same iteration, and earlier iterations closed their upvalues
+// at the end of the body or through one of these jumps.  A fresh UCLO is emitted rather than fused by bcemit_jmp() so
+// that pending jumps to this point are discharged onto the UCLO instead of bypassing it.
+
+BCPos IrEmitter::emit_loop_exit_jump(const LoopContext &Loop)
+{
+   FuncState *fs = &this->func_state;
+   BCREG level = Loop.defer_base.raw();
+   for (FuncScope *scope = fs->bl; scope and scope->nactvar >= level; scope = scope->prev) {
+      if (has_flag(scope->flags, FuncScopeFlag::Upvalue)) return BCPos(bcemit_AJ(fs, BC_UCLO, level, NO_JMP));
+   }
+   return BCPos(bcemit_jmp(fs));
 }
 
 //********************************************************************************************************************
@@ -3302,7 +3273,7 @@ ParserResult<ExpDesc> IrEmitter::emit_expression(const ExprNode& expr)
       case AstNodeKind::FunctionExpr: {
          const auto &function = std::get<FunctionExprPayload>(expr.data);
          result = this->emit_function_expr(function);
-         if (result.ok() and has_runtime_annotations(function.annotations)) {
+         if (result.ok() and not function.annotations.empty()) {
             this->materialise_to_next_reg(result.value_ref(), "annotated function expression");
             auto registered = this->emit_annotation_registration(
                BCReg(result.value_ref().u.s.info), function.annotations, nullptr);
@@ -3391,10 +3362,7 @@ ParserResult<ExpDesc> IrEmitter::emit_literal_expr(const LiteralValue& literal)
 
 ParserResult<ExpDesc> IrEmitter::emit_current_context_expr()
 {
-   // Argument context follows CTXENTER policy and may differ from the retained call receiver.  Materialise it
-   // into an expression temporary instead of overwriting that receiver, which CTXCALL and CTXCALLT still need.
-   if (not this->context_sources.empty() and
-       this->context_sources.back().kind != ContextSourceKind::DynamicArgument) {
+   if (not this->context_sources.empty()) {
       const ContextSource &source = this->context_sources.back();
       ExpDesc expr(ExpKind::NonReloc, source.slot.raw());
       expr.result_type = TiriType::Table;

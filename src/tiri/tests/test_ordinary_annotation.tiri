@@ -1,12 +1,11 @@
--- Compiler-only ordinary function policy and entity member dispatch.
+-- Empty function bindings and entity member dispatch.
 
 module core as mCore
 
 @Test function ArgumentAndBodyContext()
    local caller = entity { name='caller' }
    local target = entity { name='target' }
-   @Ordinary
-   function target.read(Argument):<table, table>
+   function[] target.read(Argument):<table, table>
       return Argument, &&
    end
    function target.contextual(Argument):<table, table>
@@ -17,7 +16,8 @@ module core as mCore
       local argument:any, body:any = target.read(&&)
       assert(argument is caller and body is caller, 'Ordinary arguments and body must inherit the caller')
       local argument:any, body:any = target.contextual(&&)
-      assert(argument is target and body is target, 'Unannotated arguments and body must retain entity dispatch')
+      assert(argument is caller and body is target,
+         'Unannotated calls must read arguments in the caller and run the body in the entity')
       local key = 'read'
       local argument:any, body:any = target[key](&&)
       assert(argument is caller and body is caller, 'Computed calls must inherit the caller')
@@ -39,8 +39,7 @@ end
    local caller = entity { name='caller' }
    local first = entity { name='first' }
    local second = entity { name='second' }
-   @Ordinary()
-   first.read = function():table return && end
+   first.read = function[]():table return && end
    second.alias = first.read
    local inherited = setmetatable(entity { }, { __index=first })
    using caller do
@@ -58,12 +57,10 @@ end
    local caller = entity { }
    local owner = entity { }
    local explicit = entity { }
-   @Ordinary
-   local function make_function():func
+   local function[] make_function():func
       return function():table return && end
    end
-   @Ordinary
-   owner.read = function():<table, table>
+   owner.read = function[]():<table, table>
       local inner
       using explicit do inner = && end
       return inner, &&
@@ -72,11 +69,10 @@ end
    using caller do
       local inner:any, restored:any = owner.read()
       assert(inner is explicit and restored is caller, 'Explicit using must override and restore ordinary context')
-      assert(owner.nested() is owner, 'Nested functions must not inherit the annotation')
+      assert(owner.nested() is owner, 'Nested functions must not inherit the binding policy')
    end
    -- An entity caller supplies dynamic context; the ordinary callee does not capture its creation context.
-   @Ordinary
-   function owner.identity():table return && end
+   function[] owner.identity():table return && end
    function caller.call():table return owner.identity() end
    assert(caller.call() is caller, 'Tail calls must retain the active entity caller')
 end
@@ -85,8 +81,7 @@ end
    local caller = entity { }
    local owner = entity { }
    local order = ''
-   @Ordinary
-   local function read(Value):num return Value end
+   local function[] read(Value):num return Value end
    setmetatable(owner, { __index=function(Key)
       order ..= 'k'
       return read
@@ -114,8 +109,7 @@ end
    local caller = entity { }
    local owner = entity { }
    local cleaned = 0
-   @Ordinary
-   function owner.read(...):<any, ...>
+   function[] owner.read(...):<any, ...>
       assert(&& is caller, 'Ordinary varargs must inherit caller context')
       defer
          assert(&& is caller, 'Deferred cleanup must inherit caller context')
@@ -140,8 +134,7 @@ end
    local root = &&
    local caller = entity { }
    local target = entity { }
-   @Ordinary
-   function target.fail(Value)
+   function[] target.fail(Value)
       assert(&& is caller, 'An ordinary body must see the caller before raising')
       raise 'ordinary failure'
    end
@@ -169,17 +162,16 @@ end
 end
 
 @Test function CompilerMetadataAndDiagnostics()
-   @Ordinary
-   function ordinary_only():table return && end
+   function[] ordinary_only():table return && end
    assert(debug.anno.get(ordinary_only) is nil, 'Ordinary-only functions must not enter the annotation registry')
-   @Ordinary @Example
-   function mixed():table return && end
+   @Example
+   function[] mixed():table return && end
    local entry = debug.anno.get(mixed)
    assert(#entry.annotations is 1 and entry.annotations[0].name is 'Example',
       'Mixed annotations must register only runtime metadata')
    local assigned = entity { }
-   @Ordinary @Example
-   assigned.read = function():table return && end
+   @Example
+   assigned.read = function[]():table return && end
    local assignment_entry = debug.anno.get(assigned.read)
    assert(#assignment_entry.annotations is 1 and assignment_entry.annotations[0].name is 'Example',
       'Annotated function assignments must register only the other annotations')
@@ -189,32 +181,30 @@ end
       debug.anno.set(ordinary_only, '@Example', '<runtime>', 'ordinary_only')
       assert(owner.read() is caller, 'Runtime metadata changes must not disable the policy')
       owner.read = function():table return && end
-      debug.anno.set(owner.read, '@Ordinary', '<runtime>', 'read')
-      assert(owner.read() is owner, 'Runtime metadata named Ordinary must not enable the policy')
+      debug.anno.set(owner.read, '@Example', '<runtime>', 'read')
+      assert(owner.read() is owner, 'Runtime annotation metadata must not enable the policy')
    end
-   local result = debug.validate('@Ordinary function sample() end', { symbols=true })
-   assert(result.success and result.symbols[0].annotations[0].name is 'Ordinary',
-      'Parser tooling must preserve compiler-only annotations')
+   local result = debug.validate('function[] sample() end', { symbols=true })
+   assert(result.success and #result.symbols[0].annotations is 0,
+      'Empty bindings must not appear as runtime annotations')
    for source in values({
-      '@Ordinary function sample() end',
-      '@Ordinary local function sample() end',
-      '@Ordinary global function glOrdinarySample() end',
-      '@Ordinary global glOrdinarySample = function() end',
-      '@Ordinary local sample = function() end',
-      "local t = {}; @Ordinary t['sample'] = function() end"
+      'function[] sample() end',
+      'local function[] sample() end',
+      'global function[] glOrdinarySample() end',
+      'global glOrdinarySample = function[]() end',
+      'local sample = function[]() end',
+      "local t = {}; t['sample'] = function[]() end"
    }) do
-      assert(debug.validate(source).success, 'Supported annotated declarations must parse')
+      assert(debug.validate(source).success, 'Supported empty-binding declarations must parse')
    end
    for source in values({
-      '@Ordinary(value=true) function sample() end',
-      '@Ordinary @Ordinary function sample() end',
-      '@Ordinary thunk sample() return 1 end',
-      'local f = function() end; @Ordinary local alias = f',
-      '@Ordinary local value = 1',
-      '@Ordinary local f = thunk() return 1 end'
+      'function[][] sample() end',
+      'thunk[] sample() return 1 end',
+      'local f = thunk[]() return 1 end',
+      'function sample[]() end'
    }) do
       local invalid = debug.validate(source)
-      assert(not invalid.success and #invalid.diagnostics > 0, 'Invalid Ordinary targets must be diagnosed')
+      assert(not invalid.success and #invalid.diagnostics > 0, 'Invalid binding syntax must be diagnosed')
       assert(invalid.diagnostics[0].line > 0, 'Diagnostics must carry source locations')
    end
 end
@@ -222,8 +212,7 @@ end
 @Test function BytecodeRoundTrips()
    function factory():table
       local owner = entity { name='restored' }
-      @Ordinary
-      owner.read = function(Value):<table, any> return &&, Value end
+      owner.read = function[](Value):<table, any> return &&, Value end
       function owner.contextual():table return && end
       return owner
    end
@@ -238,24 +227,22 @@ end
    end
 end
 
-@Test function AnnotatedClosureDoesNotRetainOwner()
+@Test function EmptyBindingDoesNotRetainOwner()
    function make_weak():table
       local owner = entity { name='restored' }
-      @Ordinary
-      owner.read = function():table return owner end
+      owner.read = function[]():table return owner end
       return setmetatable({ owner=owner, callback=owner.read }, { __mode='v' })
    end
    local weak = make_weak()
    processing.collect()
    processing.collect()
-   assert(weak.owner is nil and weak.callback is nil, 'Compiler-only annotation must not root a captured owner')
+   assert(weak.owner is nil and weak.callback is nil, 'Empty binding metadata must not root a captured owner')
 end
 
-@Test function JITCalleeReplacementBeforeArguments()
+@Test function JITCalleeReplacementChangesBodyContext()
    local caller = entity { name='caller' }
    local owner = entity { name='owner' }
-   @Ordinary
-   local function ordinary(Argument):<table, table> return Argument, && end
+   local function[] ordinary(Argument):<table, table> return Argument, && end
    local function contextual(Argument):<table, table> return Argument, && end
    owner.read = ordinary
    function workload(Count:num):num
@@ -266,8 +253,8 @@ end
             if i is 128 then owner.read = ordinary end
             local argument:any, body:any = owner.read(&&)
             local expected = (i >= 64 and i < 128) and owner or caller
-            assert(argument is expected and body is expected,
-               f'Hot replacements must change context before arguments (iteration {i})')
+            assert(argument is caller and body is expected,
+               f'Hot replacements must change the body context while arguments read the caller (iteration {i})')
             assert(&& is caller, 'Hot ordinary/contextual calls must restore their caller')
             sum += i
          end
@@ -298,16 +285,14 @@ end
 @Test function ComputedDeclarationsAndBuiltins()
    local owner = entity { }
    local key = 'read'
-   @Ordinary
-   owner[key] = function():table return && end
+   owner[key] = function[]():table return && end
    @ordinary
    owner.lowercase = function():table return && end
-   @Ordinary
-   owner['insert'] = function():table return && end
+   owner['insert'] = function[]():table return && end
    local caller = entity { }
    using caller do
-      assert(owner[key]() is caller, 'Computed annotated assignments must carry policy')
-      assert(owner.lowercase() is owner, 'Ordinary spelling must remain case sensitive')
+      assert(owner[key]() is caller, 'Computed empty-binding assignments must carry policy')
+      assert(owner.lowercase() is owner, 'Runtime annotations must not change dispatch policy')
       assert((owner.insert)() is caller, 'Parentheses must allow ordinary calls to fields named like builtins')
       owner.insert('element')
       assert(owner[0] is 'element', 'Builtin method precedence must remain unchanged')
@@ -320,8 +305,7 @@ end
 @Test function MetamethodAndFinaliserDispatch()
    local caller = entity { name='caller' }
    local observed = { }
-   @Ordinary
-   local function record_context():table
+   local function[] record_context():table
       observed[#observed] = &name
       return &&
    end
@@ -347,8 +331,7 @@ end
    local owner = entity { name='owner' }
    local timer
    local observed
-   @Ordinary
-   owner.register = function()
+   owner.register = function[]()
       local err
       err, timer = mCore.SubscribeTimer(0.01, function()
          observed = &&
@@ -368,16 +351,14 @@ end
 @Test function RecursionTailCallsAndStackGrowth()
    local caller = entity { name='caller' }
    local owner = entity { name='owner' }
-   @Ordinary
-   function owner.recurse(Depth:num):table
+   function[] owner.recurse(Depth:num):table
       assert(&& is caller, 'Recursive ordinary activations must inherit caller context')
       if Depth <= 0 then return && end
       local result = owner.recurse(Depth - 1)
       assert(&& is caller, 'Stack growth and normal returns must preserve caller context')
       return result
    end
-   @Ordinary
-   function owner.tail(Depth:num):table
+   function[] owner.tail(Depth:num):table
       if Depth <= 0 then return && end
       return owner.tail(Depth - 1)
    end
@@ -402,13 +383,11 @@ end
    local helper = entity { name='helper' }
    local timer
    local observed
-   @Ordinary
-   local function callback()
+   local function[] callback()
       observed = &&
       processing.signal()
    end
-   @Ordinary
-   helper.register = function()
+   helper.register = function[]()
       local err
       err, timer = mCore.SubscribeTimer(0.01, callback)
       check err

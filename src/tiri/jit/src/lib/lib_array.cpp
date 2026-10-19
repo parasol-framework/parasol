@@ -362,7 +362,6 @@ LJLIB_CF(array_of)
    // Count number of values provided (all arguments after the type string)
 
    int num_values = lua_gettop(L) - 1;
-   if (num_values < 1) luaL_error(L, ERR::Args, "array.of() requires at least one value");
 
    GCarray *arr;
    if (descriptor.storage IS AET::STRUCT) {
@@ -2990,7 +2989,7 @@ extern "C" int luaopen_array(lua_State *L)
    reg_iface_prototype("array", "new", { TiriType::Array }, { TiriType::Str, TiriType::Num }, FProtoFlags::None,
       FProtoArity::required(2));
    reg_iface_prototype("array", "of", { TiriType::Array }, { TiriType::Str, TiriType::Any }, FProtoFlags::Variadic,
-      FProtoArity::required(2));
+      FProtoArity::required(1));
    // Methods
    reg_iface_method(L, "array", "table", TiriType::Array, builtin_callable_id(FastFunc::array_table),
       { TiriType::Table }, { TiriType::Array });

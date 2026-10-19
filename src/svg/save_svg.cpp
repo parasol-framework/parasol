@@ -120,6 +120,30 @@ static ERR save_svg_clip(extSVG *Self, objXML *XML, objVectorClip *Clip, int Par
 
 //*********************************************************************************************************************
 
+static std::string save_aspect_ratio(ARF AspectRatio)
+{
+   // Alignment without MEET or SLICE is rendered as a stretch, which is equivalent to 'none'.
+   if ((AspectRatio & ARF::NONE) != ARF::NIL) return "none";
+   if ((AspectRatio & (ARF::MEET|ARF::SLICE)) IS ARF::NIL) return "none";
+
+   std::string result;
+
+   if ((AspectRatio & ARF::X_MIN) != ARF::NIL) result = "xMin";
+   else if ((AspectRatio & ARF::X_MAX) != ARF::NIL) result = "xMax";
+   else result = "xMid";
+
+   if ((AspectRatio & ARF::Y_MIN) != ARF::NIL) result += "YMin";
+   else if ((AspectRatio & ARF::Y_MAX) != ARF::NIL) result += "YMax";
+   else result += "YMid";
+
+   if ((AspectRatio & ARF::SLICE) != ARF::NIL) result += " slice";
+   else result += " meet";
+
+   return result;
+}
+
+//*********************************************************************************************************************
+
 static void set_unit_attrib(XTag *Tag, std::string_view Name, VUNIT Units)
 {
    switch(Units) {
@@ -164,6 +188,13 @@ static ERR save_svg_pattern(extSVG *Self, objXML *XML, objVectorPattern *Pattern
       if ((!viewport->getViewX(x)) and (!viewport->getViewY(y)) and
           (!viewport->getViewWidth(width)) and (!viewport->getViewHeight(height)) and (width > 0) and (height > 0)) {
          xml::NewAttrib(tag, "viewBox", std::format("{} {} {} {}", x, y, width, height));
+
+         // The aspect ratio is only effective in the presence of a viewbox.
+
+         ARF aspect_ratio;
+         if ((!Pattern->getAspectRatio(aspect_ratio)) and (aspect_ratio != (ARF::X_MID|ARF::Y_MID|ARF::MEET))) {
+            xml::NewAttrib(tag, "preserveAspectRatio", save_aspect_ratio(aspect_ratio));
+         }
       }
 
       for (auto scan=viewport->Child; (scan) and (!error); scan=scan->Next) {
@@ -172,28 +203,6 @@ static ERR save_svg_pattern(extSVG *Self, objXML *XML, objVectorPattern *Pattern
    }
 
    return error;
-}
-
-//*********************************************************************************************************************
-
-static std::string save_aspect_ratio(ARF AspectRatio)
-{
-   if ((AspectRatio & ARF::NONE) != ARF::NIL) return "none";
-
-   std::string result;
-
-   if ((AspectRatio & ARF::X_MIN) != ARF::NIL) result = "xMin";
-   else if ((AspectRatio & ARF::X_MAX) != ARF::NIL) result = "xMax";
-   else result = "xMid";
-
-   if ((AspectRatio & ARF::Y_MIN) != ARF::NIL) result += "YMin";
-   else if ((AspectRatio & ARF::Y_MAX) != ARF::NIL) result += "YMax";
-   else result += "YMid";
-
-   if ((AspectRatio & ARF::SLICE) != ARF::NIL) result += " slice";
-   else result += " meet";
-
-   return result;
 }
 
 //*********************************************************************************************************************

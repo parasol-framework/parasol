@@ -11,6 +11,21 @@
 
 namespace {
 
+// Clears the ternary true-branch depth for a nested delimiter and restores it on every exit path.  A ':' inside the
+// delimiter cannot close a ternary opened outside it.
+
+class TernaryBranchReset {
+public:
+   explicit TernaryBranchReset(int &Depth) : depth(Depth), saved(std::exchange(Depth, 0)) {}
+   ~TernaryBranchReset() { this->depth = this->saved; }
+   TernaryBranchReset(const TernaryBranchReset &) = delete;
+   TernaryBranchReset & operator=(const TernaryBranchReset &) = delete;
+
+private:
+   int &depth;
+   int saved;
+};
+
 [[nodiscard]] inline bool is_ordering_operator(AstBinaryOperator Operator)
 {
    return Operator IS AstBinaryOperator::LessThan or Operator IS AstBinaryOperator::LessEqual or
@@ -18,7 +33,7 @@ namespace {
 }
 
 ExprNodePtr make_builtin_call(ParserContext &Context, SourceSpan Span, FastFunc Callable,
-   ExprNodeList Arguments, TiriType ResultType)
+   ExprNodeList Arguments, TiriType ResultType, bool ForwardMultret = false)
 {
    std::string_view interface_name;
    std::string_view member_name;
@@ -39,7 +54,7 @@ ExprNodePtr make_builtin_call(ParserContext &Context, SourceSpan Span, FastFunc 
    interface_ref.identifier = Identifier::from_keepstr(Context.lex().keepstr(interface_name), Span);
    ExprNodePtr callable = make_member_expr(Span, make_identifier_expr(Span, interface_ref),
       Identifier::from_keepstr(Context.lex().keepstr(member_name), Span));
-   ExprNodePtr call = make_call_expr(Span, std::move(callable), std::move(Arguments), false,
+   ExprNodePtr call = make_call_expr(Span, std::move(callable), std::move(Arguments), ForwardMultret,
       CallArgumentSyntax::Synthetic);
    auto &payload = std::get<CallExprPayload>(call->data);
    payload.compiler_callable = builtin_callable_id(Callable);
@@ -91,8 +106,21 @@ ParserResult<StmtNodePtr> AstBuilder::make_assignment_statement(const Token &Ope
 
 ParserResult<StmtNodePtr> AstBuilder::parse_expression_stmt()
 {
+   this->field_block_base = nullptr;
    auto first = this->parse_expression();
    if (not first.ok()) return ParserResult<StmtNodePtr>::failure(first.error_ref());
+
+   Token block_token = this->ctx.tokens().current();
+   if ((block_token.kind() IS TokenKind::Dot or block_token.kind() IS TokenKind::SafeField) and
+         this->ctx.tokens().peek(1).kind() IS TokenKind::LeftBrace) {
+      // A base that is not the whole expression, as in `a + b.{ ... }`, is rejected rather than silently grouped.
+      if (first.value_ref().get() != this->field_block_base) {
+         return this->fail<StmtNodePtr>(ParserErrorCode::UnexpectedToken, block_token,
+            "field assignment block base must be a variable, field, call or parenthesised expression");
+      }
+      return this->parse_field_assignment_block(std::move(first.value_ref()),
+         block_token.kind() IS TokenKind::SafeField);
+   }
 
    ExprNodeList targets;
    targets.push_back(std::move(first.value_ref()));
@@ -264,8 +292,11 @@ ParserResult<ExprNodePtr> AstBuilder::parse_expression(uint8_t precedence)
          // complete first (e.g., x > 0 ? ... should parse as (x > 0) ? ...)
 
          if (1 <= precedence) break;
+         if (auto message = this->unsupported_optional_call(*left.value_ref(), next)) {
+            return this->fail<ExprNodePtr>(ParserErrorCode::InvalidOptionalCall, next, std::move(*message));
+         }
          this->ctx.tokens().advance();
-         auto true_branch = this->parse_expression();
+         auto true_branch = this->parse_ternary_true_branch();
          if (not true_branch.ok()) return true_branch;
          auto separator = this->consume_ternary_separator();
          if (not separator.ok()) return ParserResult<ExprNodePtr>::failure(separator.error_ref());
@@ -285,7 +316,7 @@ ParserResult<ExprNodePtr> AstBuilder::parse_expression(uint8_t precedence)
           this->is_extended_ternary_ahead()) {
          if (1 <= precedence) break;
          this->ctx.tokens().advance();
-         auto true_branch = this->parse_expression();
+         auto true_branch = this->parse_ternary_true_branch();
          if (not true_branch.ok()) return true_branch;
          auto separator = this->consume_ternary_separator();
          if (not separator.ok()) return ParserResult<ExprNodePtr>::failure(separator.error_ref());
@@ -667,9 +698,12 @@ ParserResult<ExprNodePtr> AstBuilder::parse_primary()
       case TokenKind::Function: {
          Token function_token = this->ctx.tokens().current();
          this->ctx.tokens().advance();
-         auto fn = this->parse_function_literal(function_token, false);
-         if (not fn.ok()) return fn;
 
+         auto binding = this->parse_function_binding(false);
+         if (not binding.ok()) return ParserResult<ExprNodePtr>::failure(binding.error_ref());
+
+         auto fn = this->parse_function_literal(function_token, false, nullptr, std::move(binding.value_ref()));
+         if (not fn.ok()) return fn;
          node = std::move(fn.value_ref());
          break;
       }
@@ -678,6 +712,8 @@ ParserResult<ExprNodePtr> AstBuilder::parse_primary()
          // Anonymous thunk expression: thunk():type ... end
          Token thunk_token = this->ctx.tokens().current();
          this->ctx.tokens().advance();
+         auto binding = this->parse_function_binding(true);
+         if (not binding.ok()) return ParserResult<ExprNodePtr>::failure(binding.error_ref());
          auto fn = this->parse_function_literal(thunk_token, true);
          if (not fn.ok()) return fn;
 
@@ -747,6 +783,7 @@ ParserResult<ExprNodePtr> AstBuilder::parse_primary()
          this->ctx.tokens().advance();
          ExprNodeList expressions;
          bool parsed_empty = false;
+         TernaryBranchReset ternary_reset(this->ternary_branch_depth);
 
          if (this->ctx.check(TokenKind::RightParen)) {
             parsed_empty = true;
@@ -901,8 +938,9 @@ ParserResult<ExprNodePtr> AstBuilder::parse_primary()
                args.push_back(std::move(val));
             }
 
+            const bool forward_multret = not args.back()->is_grouped;
             ExprNodePtr array_of_call = make_builtin_call(
-               this->ctx, span, FastFunc::array_of, std::move(args), TiriType::Array);
+               this->ctx, span, FastFunc::array_of, std::move(args), TiriType::Array, forward_multret);
 
             // If size was specified (literal or expression) and may be larger than values count, wrap in IIFE to resize
             // For literal sizes, we only wrap if size > values count
@@ -912,18 +950,14 @@ ParserResult<ExprNodePtr> AstBuilder::parse_primary()
                size_t(specified_size.literal) > init_values.size());
 
             if (needs_resize) {
-               // Generate: (function() local _arr = array.of(...); array.resize(_arr, size); return _arr end)()
+               // Evaluate the initialiser in the enclosing function so varargs retain their original scope.
+               // Generate: (function(_arr, _size)
+               //    if #_arr < _size then array.resize(_arr, _size) end; return _arr
+               // end)(array.of(...), size)
 
                // Create local variable name "_arr"
                Identifier arr_id = Identifier::from_keepstr(this->ctx.lex().keepstr("_arr"), span);
-
-               // Statement 1: local _arr = array.of('type', v1, v2, ...)
-
-               std::vector<Identifier> local_names;
-               local_names.push_back(arr_id);
-               ExprNodeList local_values;
-               local_values.push_back(std::move(array_of_call));
-               StmtNodePtr local_stmt = make_local_decl_stmt(span, std::move(local_names), std::move(local_values));
+               Identifier size_id = Identifier::from_keepstr(this->ctx.lex().keepstr("_size"), span);
 
                // Build array.resize(_arr, size_expr_or_literal)
 
@@ -934,19 +968,27 @@ ParserResult<ExprNodePtr> AstBuilder::parse_primary()
                arr_ref.identifier = arr_id;
                resize_args.push_back(make_identifier_expr(span, arr_ref));
 
-               // Use size_expr if available, otherwise use literal
-
-               if (size_expr) resize_args.push_back(std::move(size_expr));
-               else resize_args.push_back(
-                  make_literal_expr(span, LiteralValue::number(double(specified_size.literal))));
+               NameRef size_ref;
+               size_ref.identifier = size_id;
+               resize_args.push_back(make_identifier_expr(span, size_ref));
 
                ExprNodePtr resize_call = make_builtin_call(
                   this->ctx, span, FastFunc::array_resize, std::move(resize_args), TiriType::Array);
 
-               // Statement 2: array.resize(_arr, size)
-               StmtNodePtr resize_stmt = make_expression_stmt(span, std::move(resize_call));
+               // Only pad short arrays: expanded initialisers take precedence over the requested size.
+               StmtNodeList resize_stmts;
+               resize_stmts.push_back(make_expression_stmt(span, std::move(resize_call)));
+               IfClause resize_clause;
+               resize_clause.condition = make_binary_expr(span, AstBinaryOperator::LessThan,
+                  make_unary_expr(span, AstUnaryOperator::Length, make_identifier_expr(span, arr_ref)),
+                  make_identifier_expr(span, size_ref));
+               resize_clause.block = make_block(span, std::move(resize_stmts));
+               std::vector<IfClause> resize_clauses;
+               resize_clauses.push_back(std::move(resize_clause));
+               auto resize_stmt = std::make_unique<StmtNode>(AstNodeKind::IfStmt, span);
+               resize_stmt->data = IfStmtPayload(std::move(resize_clauses));
 
-               // Statement 3: return _arr
+               // Statement 2: return _arr
                ExprNodeList return_values;
                NameRef arr_ref2;
                arr_ref2.identifier = arr_id;
@@ -955,16 +997,30 @@ ParserResult<ExprNodePtr> AstBuilder::parse_primary()
 
                // Build function body block
                StmtNodeList body_stmts;
-               body_stmts.push_back(std::move(local_stmt));
                body_stmts.push_back(std::move(resize_stmt));
                body_stmts.push_back(std::move(return_stmt));
                auto body = make_block(span, std::move(body_stmts));
 
-               // Build anonymous function (no parameters)
-               ExprNodePtr anon_func = make_function_expr(span, {}, false, std::move(body));
+               // Pass the completed array and evaluate the requested size once in the enclosing function.
+               std::vector<FunctionParameter> parameters;
+               FunctionParameter parameter;
+               parameter.name = arr_id;
+               parameter.type = TiriType::Array;
+               parameter.array_element = *element;
+               parameter.type_is_explicit = true;
+               parameters.push_back(std::move(parameter));
+               FunctionParameter size_parameter;
+               size_parameter.name = size_id;
+               size_parameter.type = TiriType::Num;
+               size_parameter.type_is_explicit = true;
+               parameters.push_back(std::move(size_parameter));
+               ExprNodePtr anon_func = make_function_expr(span, std::move(parameters), false, std::move(body));
 
-               // Build immediate call to function (no arguments)
                ExprNodeList call_args;
+               call_args.push_back(std::move(array_of_call));
+               if (size_expr) call_args.push_back(std::move(size_expr));
+               else call_args.push_back(
+                  make_literal_expr(span, LiteralValue::number(double(specified_size.literal))));
                node = make_call_expr(span, std::move(anon_func), std::move(call_args), false);
             }
             else node = std::move(array_of_call);
@@ -1178,6 +1234,15 @@ ParserResult<ExprNodePtr> AstBuilder::parse_suffixed(ExprNodePtr base)
 {
    while (true) {
       Token token = this->ctx.tokens().current();
+
+      // `.{` and `?.{` open a field assignment block.  The chain stops here and parse_expression_stmt() consumes
+      // the block if this base turns out to be the complete statement expression.
+      if ((token.kind() IS TokenKind::Dot or token.kind() IS TokenKind::SafeField) and
+            this->ctx.tokens().peek(1).kind() IS TokenKind::LeftBrace) {
+         this->field_block_base = base.get();
+         break;
+      }
+
       if (token.kind() IS TokenKind::Dot) {
          this->ctx.tokens().advance();
          auto name_token = this->ctx.expect_name(ParserErrorCode::ExpectedIdentifier);
@@ -1217,6 +1282,15 @@ ParserResult<ExprNodePtr> AstBuilder::parse_suffixed(ExprNodePtr base)
          this->ctx.consume(TokenKind::RightBracket, ParserErrorCode::ExpectedToken);
          SourceSpan span = combine_spans(base->span, index.value_ref()->span);
          base = make_safe_index_expr(span, std::move(base), std::move(index.value_ref()));
+         continue;
+      }
+
+      // `member?(` is an optional table call when `?` touches both the member name and the opening parenthesis.
+      // Whitespace or a comment on either side leaves `?` to the ternary operator.
+      if (token.kind() IS TokenKind::Question and this->is_optional_call_marker(*base, token)) {
+         auto call = this->parse_optional_member_call(std::move(base), token);
+         if (not call.ok()) return call;
+         base = std::move(call.value_ref());
          continue;
       }
 
@@ -1331,6 +1405,95 @@ ParserResult<ExprNodePtr> AstBuilder::parse_suffixed(ExprNodePtr base)
       break;
    }
    return ParserResult<ExprNodePtr>::success(std::move(base));
+}
+
+//********************************************************************************************************************
+// Recognises the adjacent `?(` marker of an optional table call.  Only an ungrouped named member qualifies, and the
+// member name, `?` and `(` must be contiguous in the source.  Token offsets are exact for f-string expressions too.
+
+bool AstBuilder::is_optional_call_marker(const ExprNode &Base, const Token &Question) const
+{
+   if (Base.kind != AstNodeKind::MemberExpr or Base.is_grouped) return false;
+   const auto &member = std::get<MemberExprPayload>(Base.data);
+   if (not member.member.symbol) return false;
+
+   size_t member_end = member.member.span.offset + member.member.symbol->len;
+   if (Question.span().offset != member_end) return false;
+   Token open_paren = this->ctx.tokens().peek(1);
+   return open_paren.kind() IS TokenKind::LeftParen and open_paren.span().offset IS Question.span().offset + 1;
+}
+
+//********************************************************************************************************************
+// Explains an optional-call spelling outside the supported `receiver.member?(...)` form.  The spelling remains a
+// ternary when a separator follows on the same line, because `value?(a) : b` was valid before optional calls existed.
+// Without a separator it can only have been intended as an optional call, and the targeted message replaces a
+// misleading missing-separator error.
+
+std::optional<std::string> AstBuilder::unsupported_optional_call(const ExprNode &Base, const Token &Question) const
+{
+   size_t offset = Question.span().offset;
+   bool named_member = Base.kind IS AstNodeKind::MemberExpr and not Base.is_grouped;
+   bool adjacent;
+   if (named_member) {
+      const auto &member = std::get<MemberExprPayload>(Base.data);
+      adjacent = member.member.symbol and offset IS member.member.span.offset + member.member.symbol->len;
+   }
+   else {
+      std::string_view source = this->ctx.lex().source;
+      adjacent = offset > 0 and offset <= source.size() and not std::isspace(uint8_t(source[offset - 1]));
+   }
+   if (not adjacent) return std::nullopt;
+
+   Token next = this->ctx.tokens().peek(1);
+   bool open_paren = next.kind() IS TokenKind::LeftParen and next.span().offset IS offset + 1;
+   bool shorthand = named_member and (next.kind() IS TokenKind::LeftBrace or next.kind() IS TokenKind::String);
+   if (not open_paren and not shorthand) return std::nullopt;
+   if (this->is_extended_ternary_ahead()) return std::nullopt;
+
+   if (shorthand) {
+      return std::string("optional calls require parenthesised arguments, e.g. 'receiver.member?({ ... })'");
+   }
+   return std::string("optional calls are supported only for named table members, e.g. 'receiver.member?(...)'; "
+      "use 'receiver?.member(...)' or a nil test for other callables");
+}
+
+//********************************************************************************************************************
+// Parses `receiver.member?(arguments)` after is_optional_call_marker() has accepted the adjacent `?(` spelling.
+
+ParserResult<ExprNodePtr> AstBuilder::parse_optional_member_call(ExprNodePtr Base, const Token &Question)
+{
+   this->ctx.tokens().advance(); // Consume '?'
+   Token open_paren = this->ctx.tokens().current();
+   bool forwards = false;
+   auto args = this->parse_call_arguments(&forwards);
+   if (not args.ok()) return ParserResult<ExprNodePtr>::failure(args.error_ref());
+
+   // `member?(...) : value` was previously an adjacent ternary.  Outside a ternary true branch the separator cannot
+   // belong to an enclosing expression, so direct the author to the spaced ternary spelling.
+
+   Token next = this->ctx.tokens().current();
+   if ((next.kind() IS TokenKind::Colon or next.kind() IS TokenKind::TernarySep) and
+       this->ternary_branch_depth IS 0) {
+      return this->fail<ExprNodePtr>(ParserErrorCode::InvalidOptionalCall, Question,
+         "'member?(...)' is an optional call; insert whitespace before '?' to write a ternary condition, "
+         "e.g. 'value.member ? (a) : b'");
+   }
+
+   SourceSpan span = combine_spans(Base->span, open_paren.span());
+   return ParserResult<ExprNodePtr>::success(make_optional_member_call_expr(span, std::move(Base),
+      std::move(args.value_ref()), forwards));
+}
+
+//********************************************************************************************************************
+// Parses a ternary true branch.  A ':' that follows an optional call inside the branch closes this ternary rather than
+// indicating the ambiguous `member?(...) : value` spelling.
+
+ParserResult<ExprNodePtr> AstBuilder::parse_ternary_true_branch()
+{
+   this->ternary_branch_depth++;
+   auto branch = this->parse_expression();
+   this->ternary_branch_depth--;
+   return branch;
 }
 
 //********************************************************************************************************************
@@ -1578,8 +1741,8 @@ bool AstBuilder::is_choose_relational_pattern(size_t StartPos) const
 }
 
 //********************************************************************************************************************
-// Checks whether the current `??` token starts an extended ternary expression by scanning ahead for a top-level
-// separator.
+// Checks whether the current `??` or `?` token starts a ternary expression by scanning ahead for a top-level separator
+// on the same line.
 
 bool AstBuilder::is_extended_ternary_ahead() const
 {

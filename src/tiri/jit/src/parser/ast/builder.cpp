@@ -59,6 +59,7 @@ static std::unique_ptr<FunctionExprPayload> move_function_payload(ExprNodePtr &N
    result->parameters        = std::move(payload->parameters);
    result->is_vararg         = payload->is_vararg;
    result->is_thunk          = payload->is_thunk;
+   result->context           = std::move(payload->context);
    result->return_types      = payload->return_types;  // Copy return type information
    result->body              = std::move(payload->body);
    result->annotations = std::move(payload->annotations);
@@ -936,6 +937,14 @@ ParserResult<StmtNodePtr> AstBuilder::parse_statement()
        this->ctx.tokens().peek(1).kind() IS TokenKind::Identifier) {
       return this->fail<StmtNodePtr>(ParserErrorCode::DeprecatedSyntax, current,
          "temporary context blocks use 'using Reference do ... end'");
+   }
+
+   // A statement cannot begin with `.{`; this is the remainder of a block written in a value position, such as
+   // `local v = dec.{ x = 1 }`, where the suffix chain stopped before the block.
+   if ((current.kind() IS TokenKind::Dot or current.kind() IS TokenKind::SafeField) and
+         this->ctx.tokens().peek(1).kind() IS TokenKind::LeftBrace) {
+      return this->fail<StmtNodePtr>(ParserErrorCode::UnexpectedToken, current,
+         "field assignment blocks are statements and cannot be used as values");
    }
 
    if (current.kind() IS TokenKind::Identifier and current.identifier() and

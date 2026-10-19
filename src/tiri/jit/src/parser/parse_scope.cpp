@@ -672,6 +672,7 @@ size_t LexState::fs_prep_var(FuncState* FunctionState, size_t* OffsetVar)
    // Store local variable names and compressed ranges.
 
    for (ve = vs + this->vtop, vs += fs->vbase; vs < ve; vs++) {
+      if (has_flag(vs->info, VarInfoFlag::CaptureOnly)) continue;
       if (!gola_is_jump_or_target(vs)) {
          GCstr* s = strref(vs->name);
          BCPOS startpc;
@@ -931,10 +932,11 @@ GCproto * LexState::fs_finish(BCLine Line)
       // Capture local variables.
       for (MSize i = fs->vbase; i < this->vtop; i++) {
          VarInfo *var = &this->vstack[i];
-         if (gola_is_jump_or_target(var)) continue;
+         if (gola_is_jump_or_target(var) or has_flag(var->info, VarInfoFlag::CaptureOnly)) continue;
          GCstr *name_str = strref(var->name);
          if (uintptr_t(name_str) < VARNAME__MAX) continue;
          if (name_str IS NAME_BLANK) continue;
+         if (name_str->len > 0 and strdata(name_str)[0] IS '\x1f') continue; // Compiler-generated hidden binding
 
          VariableInfo info {
             .line   = var->line,

@@ -470,7 +470,7 @@ module({ name='Vector', copyright='Paul Manias © 2010-2026', version=1.0, times
      "USE-TRANSFORM",
      "SVG-TRANSFORM")
 
-  structdef("FontMetrics", { comment="Font metrics, measured in pixels relative to the display" }, [[
+  structdef("FontMetrics", { comment="Font metrics, measured in the same pixel units as the font size" }, [[
     int Height       # Full font height equivalent to `Ascent (cap-height) + Descent (gutter)`.  Does NOT include accents.
     int LineSpacing  # Vertical advance from one line to the next.  Includes coverage for accents and additional whitespace.
     int Ascent       # Height from the baseline to the top (cap-height) of the font.  Does NOT include accents.
@@ -552,6 +552,7 @@ module({ name='Vector', copyright='Paul Manias © 2010-2026', version=1.0, times
     int(VSPREAD) SpreadMethod     # Behaviour to use when pattern bounds do not match the vector path.
     int(VUNIT) Units              # VUNIT constant
     int(VUNIT) ContentUnits       # VUNIT constant
+    ~int(ARF) AspectRatio         # Fitting of the viewport's viewbox to the pattern tile
   ]],
   [[
    objVectorPattern(objMetaClass *pClass, OBJECTID pUID) noexcept : Object(pClass, pUID) {
@@ -811,7 +812,8 @@ module({ name='Vector', copyright='Paul Manias © 2010-2026', version=1.0, times
   -- VectorText method ID's start high enough to give a cushion from inherited Vector methods.
 
   methods('VectorText', 'VT', {
-    { id=30, name='DeleteLine' }
+    { id=30, name='DeleteLine' },
+    { id=31, name='SelectArea' }
   })
 
   klass('VectorText', { base='Vector', src='vectors/text.cpp', output='vectors/text_def.cpp', references={ 'VTXF' }, extended=true }, [[

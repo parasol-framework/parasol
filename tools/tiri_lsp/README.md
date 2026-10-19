@@ -64,12 +64,16 @@ Context-aware documentation on hover:
 - Module functions (e.g., `mSys.Sleep`, `mNet.AddressToStr`)
 - Links to online documentation
 
+Keys in a field assignment block are treated as fields of the block's base, so hovering `year` in
+`clock.{ year = 2001 }` shows the same documentation as `clock.year`.  Values in the block are ordinary expressions
+in the enclosing scope.
+
 ### Go to Definition
 
 Definitions in the current document and imported scripts resolve to their source.  Kōtuku API symbols resolve to the
 website: classes and module includes open their page on [kotuku.dev](https://kotuku.dev/modules/), and methods,
 actions, fields and module functions open at their entry on that page.  Classes, and members of classes, also resolve
-to the class source on GitHub.
+to the class source on GitHub.  Keys in a field assignment block resolve as members of the block's base.
 
 The VS Code extension opens these web locations in the browser.  Definition previews, such as Ctrl+hover and peek,
 show the URL instead.
@@ -87,6 +91,7 @@ Outline view showing:
 - Global and local functions
 - Function scope (global/local/thunk)
 - Nested function support
+- Field assignment block entries, named `base.key` as the equivalent `base.key = value` statement would be
 
 ### Annotations
 

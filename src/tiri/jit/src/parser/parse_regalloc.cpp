@@ -296,6 +296,34 @@ static void expr_weak_cell(FuncState *Fs, ExpDesc *Expression)
    Expression->weak_variable = variable;
 }
 
+// Replace the value in Slot with a weak cell: setmetatable({ [0]=value }, { __mode='v' }).  Registers at and above
+// freereg are used as scratch and released on return, so this is safe in expression position.  The value remains
+// rooted in Slot until the cell is built; replacing the slot removes the last compiler-owned strong copy.
+
+static void bcemit_weak_cell(FuncState *Fs, BCREG Slot)
+{
+   BCREG call = Fs->freereg;
+   BCREG cell = call + 1 + LJ_FR2;
+   BCREG meta = cell + 1;
+   bcreg_reserve(Fs, 3 + LJ_FR2);
+   (void)bcemit_builtin_callable(Fs, builtin_callable_id(FastFunc::setmetatable), call);
+   bcemit_AD(Fs, BC_TNEW, cell, 1);
+   GCtab *template_table = lj_tab_new(Fs->L, 0, 1);
+   template_table->flags |= TAB_WEAK_BINDING;
+   BCREG constant = const_gc(Fs, obj2gco(template_table), LJ_TTAB);
+   GCstr *mode = lj_str_newlit(Fs->L, "__mode");
+   GCstr *weak = lj_str_newlit(Fs->L, "v");
+   setstrV(Fs->L, lj_tab_setstr(Fs->L, template_table, mode), weak);
+   lj_gc_anybarriert(Fs->L, template_table);
+   bcemit_AD(Fs, BC_TDUP, meta, constant);
+   bcemit_ABC(Fs, BC_CALL, call, 2, 3);
+   bcemit_ABC(Fs, BC_TSETB, Slot, call, 0);
+   bcemit_AD(Fs, BC_MOV, Slot, call);
+   // Call arguments can remain in unused frame slots.  Explicitly clear them rather than depending on the next call.
+   bcemit_AD(Fs, BC_KNIL, call, meta);
+   Fs->freereg = call;
+}
+
 static void expr_discharge(FuncState *fs, ExpDesc *e)
 {
    BCIns ins;

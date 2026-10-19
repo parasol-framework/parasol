@@ -1209,6 +1209,7 @@ static LexToken lex_scan(LexState *State, TValue *tv)
       if (State->had_lex_error) {
          State->had_lex_error = false;
          lj_buf_reset(&State->sb);
+         setnilV(tv); // Discard any synthetic payload from the failed token so it can't leak into the rescanned one
          // Continue to next iteration to scan from new position
          continue;
       }

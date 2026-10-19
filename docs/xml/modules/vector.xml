@@ -313,7 +313,7 @@ Z: Close Path
       <param type="STRVIEW" name="Family">The name of the font family to access.</param>
       <param type="STRVIEW" name="Style">The preferred style to choose from the family.  Use <code>Regular</code> or <code>NULL</code> for the default.</param>
       <param type="INT" name="Weight">Equivalent to CSS font-weight; a value of 400 or 0 will equate to normal.</param>
-      <param type="INT" name="Size">The font-size, measured in pixels @ 72 DPI.</param>
+      <param type="INT" name="Size">The em size of the font in pixels, equivalent to the VectorText FontSize.  Use <code>pt * 96 / 72</code> to convert from points.</param>
       <param type="APTR *" name="Handle">The resulting font handle is returned here.</param>
     </input>
     <description>
@@ -344,7 +344,7 @@ Z: Close Path
       <param type="struct FontMetrics *" name="Info">The font metrics for the <code>Handle</code> will be stored here.</param>
     </input>
     <description>
-<p>Call GetFontMetrics() to retrieve the font height, line spacing, ascent and descent values for a font handle.</p>
+<p>Call GetFontMetrics() to retrieve the font height, line spacing, ascent and descent values for a font handle.  The values are measured in the same pixel units as the <code>Size</code> given to <function>GetFontHandle</function>, and do not account for the display density.</p>
     </description>
     <result type="ERR">
       <error code="Okay">Operation successful.</error>
@@ -828,7 +828,7 @@ Hue (<code>H</code>) is in degrees.  Alpha (<code>A</code>) is optional, precede
       <field name="RightEnd" type="struct FRGB">Colour on the right side at the end of the curve.</field>
     </struct>
 
-    <struct name="FontMetrics" comment="Font metrics, measured in pixels relative to the display">
+    <struct name="FontMetrics" comment="Font metrics, measured in the same pixel units as the font size">
       <field name="Height" type="INT">Full font height equivalent to <code>Ascent (cap-height) + Descent (gutter)</code>.  Does NOT include accents.</field>
       <field name="LineSpacing" type="INT">Vertical advance from one line to the next.  Includes coverage for accents and additional whitespace.</field>
       <field name="Ascent" type="INT">Height from the baseline to the top (cap-height) of the font.  Does NOT include accents.</field>

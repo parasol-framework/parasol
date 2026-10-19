@@ -10,6 +10,7 @@ MP3: Sound class extension
 *********************************************************************************************************************/
 
 #define PRV_MP3
+#define PRV_MP3_MODULE
 #include <kotuku/main.h>
 #include <kotuku/modules/audio.h>
 #include <kotuku/modules/filesystem.h>
@@ -28,6 +29,12 @@ extern "C" {
 #include <limits>
 
 using namespace kt;
+
+static ERR MODInit(OBJECTPTR, struct CoreBase *);
+static ERR MODOpen(OBJECTPTR);
+static ERR MODExpunge(void);
+
+#include "mp3_functions.cpp"
 
 JUMPTABLE_CORE
 JUMPTABLE_AUDIO
@@ -209,21 +216,25 @@ const int XING_STREAM_SIZE  = 2; // The compressed audio stream size in bytes is
 const int XING_TOC          = 4; // TOC entries are defined.
 const int XING_SCALE        = 8; // VBR quality is indicated from 0 (best) to 100 (worst).
 
-static bool check_xing(objMP3 *Self, const uint8_t *Frame)
+struct xing_metadata {
+   int Frames = 0;
+   int Delay = 0;
+   int Padding = 0;
+   int64_t StreamSize = 0;
+   bool TOCLoaded = false;
+   bool QualityDefined = false;
+   uint32_t Quality = 0;
+   std::array<uint8_t, 100> TOC{};
+};
+
+static bool parse_xing(const uint8_t *Frame, const mp3dec_frame_info_t &Info, xing_metadata &Result)
 {
-   kt::Log log;
+   if ((Info.frame_bytes <= HDR_SIZE) or (HDR_GET_LAYER(Frame) != 1)) return false;
 
-   auto prv = (prvMP3 *)Self->DerivedPtr;
-
-   if (prv->XingChecked) return false;
-   else prv->XingChecked = true;
-
-   if ((prv->info.frame_bytes <= HDR_SIZE) or (HDR_GET_LAYER(Frame) != 1)) return false;
-
-   const uint8_t *frame_end = Frame + prv->info.frame_bytes;
+   const uint8_t *frame_end = Frame + Info.frame_bytes;
    bs_t bs[1];
    L3_gr_info_t gr_info[4];
-   bs_init(bs, Frame + HDR_SIZE, prv->info.frame_bytes - HDR_SIZE);
+   bs_init(bs, Frame + HDR_SIZE, Info.frame_bytes - HDR_SIZE);
    if (HDR_IS_CRC(Frame)) get_bits(bs, 16);
    if ((L3_read_side_info(bs, gr_info, Frame) < 0) or (bs->pos > bs->limit)) return false;
 
@@ -249,7 +260,7 @@ static bool check_xing(objMP3 *Self, const uint8_t *Frame)
       tag += 4;
    }
 
-   std::array<uint8_t, 100> toc;
+   std::array<uint8_t, 100> toc{};
    bool toc_loaded = false;
    if (flags & XING_TOC) {
       if (frame_end - tag < std::ssize(toc)) return false;
@@ -277,13 +288,33 @@ static bool check_xing(objMP3 *Self, const uint8_t *Frame)
       padding = (((tag[1] & 0xF) << 8) | tag[2]) - (528 + 1);
    }
 
-   prv->TotalFrames  = int(total_frames);
-   prv->StreamSize   = stream_size;
-   prv->TOCLoaded    = toc_loaded and (stream_size > 0);
-   prv->PaddingEnd   = padding;
-   prv->PaddingStart = delay;
-   if (toc_loaded) prv->TOC = toc;
-   if (quality_defined) acSetKey(Self, "Quality", std::to_string(quality).c_str());
+   Result.Frames = int(total_frames);
+   Result.StreamSize = stream_size;
+   Result.TOCLoaded = toc_loaded and (stream_size > 0);
+   Result.TOC = toc;
+   Result.Delay = delay;
+   Result.Padding = padding;
+   Result.Quality = quality;
+   Result.QualityDefined = quality_defined;
+   return true;
+}
+
+static bool check_xing(objMP3 *Self, const uint8_t *Frame)
+{
+   kt::Log log;
+   auto prv = (prvMP3 *)Self->DerivedPtr;
+   if (prv->XingChecked) return false;
+   prv->XingChecked = true;
+   xing_metadata metadata;
+   if (!parse_xing(Frame, prv->info, metadata)) return false;
+
+   prv->TotalFrames = metadata.Frames;
+   prv->StreamSize = metadata.StreamSize;
+   prv->TOCLoaded = metadata.TOCLoaded;
+   prv->TOC = metadata.TOC;
+   prv->PaddingStart = metadata.Delay;
+   prv->PaddingEnd = metadata.Padding;
+   if (metadata.QualityDefined) acSetKey(Self, "Quality", std::to_string(metadata.Quality).c_str());
 
    // Calculate the total no of samples for the entire stream, adjusted for padding at both the start and end.
 
@@ -760,18 +791,18 @@ static ERR MP3_Seek(objMP3 *Self, struct acSeek *Args)
 // Count all audio frame headers when Xing metadata does not supply the length.  An estimated length must not be
 // used as a hard decoding limit: underestimates truncate the audio and may leave a partial PCM frame.
 
-static ERR calc_length(objMP3 *Self, int ReduceEnd, int64_t *Length)
+static ERR scan_frames(objFile *File, int64_t Offset, int ReduceEnd, int64_t *Length,
+   int &TotalFrames, bool &VBR, int64_t &StreamSize)
 {
    kt::Log log(__FUNCTION__);
    if (!Length) return ERR::NullArgs;
    *Length = 0;
 
-   auto prv = (prvMP3 *)Self->DerivedPtr;
    int64_t filesize = 0;
-   if (auto error = prv->File->getSize(filesize); error != ERR::Okay) return error;
-   const int64_t stream_size = filesize - prv->SeekOffset - ReduceEnd;
+   if (auto error = File->getSize(filesize); error != ERR::Okay) return error;
+   const int64_t stream_size = filesize - Offset - ReduceEnd;
    if (stream_size <= 0) return ERR::NoSupport;
-   if (auto error = prv->File->seekStart(prv->SeekOffset); error != ERR::Okay) return error;
+   if (auto error = File->seekStart(Offset); error != ERR::Okay) return error;
 
    std::array<uint8_t, 16 * 1024> buffer;
    mp3dec_t decoder{};
@@ -781,13 +812,13 @@ static ERR calc_length(objMP3 *Self, int ReduceEnd, int64_t *Length)
    int total_frames = 0;
    int first_bitrate = 0;
    int64_t remaining = stream_size;
-   prv->VBR = false;
+   VBR = false;
 
    while (remaining or filled) {
       if (remaining > 0) {
          const int count = int(std::min<int64_t>(buffer.size() - filled, remaining));
          int result = 0;
-         if (auto error = prv->File->read(std::span<int8_t>((int8_t *)buffer.data() + filled, count), &result);
+         if (auto error = File->read(std::span<int8_t>((int8_t *)buffer.data() + filled, count), &result);
              error != ERR::Okay) return error;
          filled += result;
          remaining = result ? remaining - result : 0;
@@ -802,7 +833,7 @@ static ERR calc_length(objMP3 *Self, int ReduceEnd, int64_t *Length)
             total_frames++;
             *Length += int64_t(samples) * info.channels * sizeof(int16_t);
             if (!first_bitrate) first_bitrate = info.bitrate_kbps;
-            else if (first_bitrate != info.bitrate_kbps) prv->VBR = true;
+            else if (first_bitrate != info.bitrate_kbps) VBR = true;
          }
          if (info.frame_bytes <= 0) break;
          consumed += info.frame_bytes;
@@ -818,10 +849,16 @@ static ERR calc_length(objMP3 *Self, int ReduceEnd, int64_t *Length)
       }
    }
 
-   prv->TotalFrames = total_frames;
-   prv->StreamSize = stream_size;
-   log.detail("Scanned %d frames, decoded length: %" PRId64 ", VBR: %c", total_frames, *Length, prv->VBR ? 'Y' : 'N');
+   TotalFrames = total_frames;
+   StreamSize = stream_size;
+   log.detail("Scanned %d frames, decoded length: %" PRId64 ", VBR: %c", total_frames, *Length, VBR ? 'Y' : 'N');
    return (*Length > 0) ? ERR::Okay : ERR::NoSupport;
+}
+
+static ERR calc_length(objMP3 *Self, int ReduceEnd, int64_t *Length)
+{
+   auto prv = (prvMP3 *)Self->DerivedPtr;
+   return scan_frames(prv->File, prv->SeekOffset, ReduceEnd, Length, prv->TotalFrames, prv->VBR, prv->StreamSize);
 }
 
 //********************************************************************************************************************
@@ -890,6 +927,8 @@ objMP3::~objMP3() {
 
 //********************************************************************************************************************
 
+#include "metadata.cpp"
+
 static ERR MODInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 {
    CoreBase = argCoreBase;
@@ -916,6 +955,12 @@ static ERR MODInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
    return ERR::AddClass;
 }
 
+static ERR MODOpen(OBJECTPTR Module)
+{
+   ((objModule *)Module)->setFunctionList(glFunctions);
+   return ERR::Okay;
+}
+
 static ERR MODExpunge(void)
 {
    if (clMP3) { FreeResource(clMP3); clMP3 = nullptr; }
@@ -925,5 +970,5 @@ static ERR MODExpunge(void)
 
 //********************************************************************************************************************
 
-KOTUKU_MOD(MODInit, nullptr, nullptr, MODExpunge, nullptr, nullptr, nullptr)
+KOTUKU_MOD(MODInit, nullptr, MODOpen, MODExpunge, nullptr, MOD_IDL, nullptr)
 extern "C" struct ModHeader * register_mp3_module() { return &ModHeader; }

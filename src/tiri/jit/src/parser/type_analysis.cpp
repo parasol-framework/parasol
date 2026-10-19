@@ -89,12 +89,21 @@
    return result;
 }
 
+// ResolveClassID() returns nullptr for class names that are not registered (the ID is only a hash of the name), so
+// fall back to the hexadecimal ID when formatting diagnostics.
+
+[[nodiscard]] static std::string class_display_name(CLASSID ClassID)
+{
+   if (auto name = ResolveClassID(ClassID)) return name;
+   return std::format("${:08x}", uint32_t(ClassID));
+}
+
 [[nodiscard]] static std::string global_contract_type_name(const InferredType &Type)
 {
    if (Type.primary IS TiriType::Array) return std::format("array<{}>", array_element_name(Type.array_element));
    if (Type.primary IS TiriType::Struct and Type.struct_def) return std::format("struct<{}>", Type.struct_def->Name);
    if (Type.primary IS TiriType::Object and Type.object_class_id != CLASSID::NIL) {
-      return std::format("obj<{}>", ResolveClassID(Type.object_class_id));
+      return std::format("obj<{}>", class_display_name(Type.object_class_id));
    }
    return std::string(type_name(Type.primary));
 }
@@ -501,6 +510,7 @@ void TypeAnalyser::check_shadowing(GCstr *Name, SourceSpan Location)
    if (not this->should_emit_tip(2)) return;
    if (not Name) return;
    if (Name->len IS 1 and strdata(Name)[0] IS '_') return;
+   if (Name->len > 0 and strdata(Name)[0] IS '\x1f') return; // Compiler-generated hidden binding
 
    // Check all scopes except the current one (outermost to second-to-last)
    // We iterate in reverse (innermost first) but skip the current scope
@@ -909,6 +919,7 @@ void TypeAnalyser::lower_unanalysed_except_clause(ExceptClause &Clause)
 
 void TypeAnalyser::lower_unanalysed_function(const FunctionExprPayload &Function)
 {
+   if (Function.context.reference) this->lower_unanalysed_expression(*Function.context.reference);
    this->unanalysed_depth_++;
    this->push_scope();
    for (const FunctionParameter &param : Function.parameters) {
@@ -1876,7 +1887,8 @@ void TypeAnalyser::analyse_assignment(const AssignmentStmtPayload &Payload)
                   diag.actual = TiriType::Object;
                   diag.code = ParserErrorCode::ObjectClassMismatch;
                   diag.message = std::format("object class mismatch: cannot assign object of different class to {} ({} vs {})",
-                     is_global ? "global" : "variable", ResolveClassID(value_type.object_class_id), ResolveClassID(existing->object_class_id));
+                     is_global ? "global" : "variable", class_display_name(value_type.object_class_id),
+                     class_display_name(existing->object_class_id));
                   this->record_diagnostic(std::move(diag));
                }
             }
@@ -2409,6 +2421,9 @@ void TypeAnalyser::report_dynamic_destination_required(GCstr *Name, SourceSpan L
 
 void TypeAnalyser::analyse_function_payload(const FunctionExprPayload &Function, GCstr *Name)
 {
+   // The context binding is evaluated in the enclosing scope when the closure is created.
+   if (Function.context.reference) this->analyse_expression(*Function.context.reference);
+
    this->push_scope();
    this->enter_function(Function, Name);
 
@@ -2917,6 +2932,8 @@ InferredType TypeAnalyser::infer_expression_type(const ExprNode& Expr)
                   return result;
                }
             }
+            // An optional table call keeps its callee's result type but yields nil when the member is absent.
+            result.is_nullable = payload->dispatch IS CallDispatch::OptionalMemberNamed;
             const FunctionExprPayload* target = this->resolve_call_target(*payload);
             if (target and (target->return_types.is_explicit or target->return_types.is_inferred) and
                 target->return_types.count > 0) {
@@ -3345,6 +3362,7 @@ bool TypeAnalyser::is_variant_expression(const ExprNode &Expr, size_t Position) 
 
    auto *payload = std::get_if<CallExprPayload>(&Expr.data);
    if (not payload) return result;
+   result.is_nullable = payload->dispatch IS CallDispatch::OptionalMemberNamed;
 
    const FunctionExprPayload* target = this->resolve_call_target(*payload);
    if (not target) return result;
@@ -3363,7 +3381,7 @@ bool TypeAnalyser::is_variant_expression(const ExprNode &Expr, size_t Position) 
       const size_t type_position = Position < target->return_types.count ?
          Position : size_t(target->return_types.count - 1);
       result.primary = type;
-      result.is_nullable = not target->return_types.required_at(Position);
+      result.is_nullable = result.is_nullable or not target->return_types.required_at(Position);
       result.object_class_id = target->return_types.object_class_ids[type_position];
       result.struct_def = target->return_types.struct_defs[type_position];
       result.array_element = target->return_types.array_elements[type_position];

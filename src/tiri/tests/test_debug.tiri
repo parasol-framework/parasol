@@ -949,6 +949,39 @@ end
       f"Expected inner end token at column 4, got {symbols.inner.endColumn}")
 end
 
+@Test function ValidateFieldBlockFunctionSymbols()
+   result = debug.validate([[
+target = { inner = {} }
+target.{ first = function(A:num):num return A end, value = 1 }
+target.inner?.{
+   second = function()
+      local function nested()
+      end
+   end
+}
+local function make() return {} end
+make().{ hidden = function() end }
+]], { symbols = true })
+   assert(result.success is true, 'Field assignment blocks should validate')
+
+   symbols = {}
+   for symbol in values(result.symbols) do symbols[symbol.name] = symbol end
+
+   first = symbols['target.first']
+   assert(first, 'A function entry should be published as base.key')
+   assert(first.signature is 'target.first(A: num):num', f'Unexpected signature: {first.signature}')
+   assert(first.line is 2 and first.column is 10, f'Expected target.first at 2:10, got {first.line}:{first.column}')
+   assert(symbols['target.inner.second'], 'A safe block entry should use the dotted base name')
+   assert(symbols['target.inner.second'].line is 4, 'The entry should point at its key')
+   assert(symbols.nested, 'Functions nested in an entry should still be published')
+   assert(not symbols.value, 'Non-function entries should not be published')
+   assert(not symbols.first and not symbols.second, 'Entries should not be published under their bare keys')
+   assert(not symbols.hidden and not symbols['make().hidden'], 'Entries of a call base should not be published')
+   for name in pairs(symbols) do
+      assert(name.sub(0, 1) != '\x1f', 'Hidden block bindings should not surface as symbols')
+   end
+end
+
 @Test function ValidateStructRevalidationIsSideEffectFree()
    -- Validation must not permanently register declared structs: an edited declaration would otherwise conflict
    -- with the version registered by an earlier validation of the same document.

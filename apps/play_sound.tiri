@@ -449,6 +449,10 @@ rx_assignment = regex.new('^([^=]+)=(.*)$')
 
 function configure(Fx:table, Assignments:array<any>, Audio:obj, Channel:num):obj
    local effect = obj.new(Fx.class, { audio=Audio, channel=Channel })
+   local configured = false
+   defer
+      if not configured then effect.free() end
+   end
    local schema = Fx.schema
 
    for assignment in values(Assignments) do
@@ -501,6 +505,7 @@ function configure(Fx:table, Assignments:array<any>, Audio:obj, Channel:num):obj
 
    if not check_rules(effect, schema) then return nil end
    check effect.acFlush()
+   configured = true
    return effect
 end
 

@@ -71,6 +71,35 @@ end
    assert(not hover or not hover.find('Declaration attribute'), 'Strings must not receive weak attribute hover')
 end
 
+@Test function FunctionBindingHover()
+   hover, token = hoverAt('local owner = {}\nlocal f = function[<we|ak> owner]() end\n')
+   assertContains(hover, 'Function context binding attribute', 'Binding attributes must have their own hover')
+   assertContains(hover, 'Resource collected', 'Binding attribute hover must describe the collected-target call')
+   hover, token = hoverAt('local owner = {}\nlocal function[ < we|ak > owner] refresh() end\n')
+   assertContains(hover, 'Function context binding attribute', 'Spaced binding attributes must retain hover')
+   hover, token = hoverAt('local target <we|ak>:table = {}\n')
+   assert(not hover.find('Function context binding'), 'Declaration attributes must keep their own hover')
+
+   hover, token = hoverAt([=[
+local owner = {}
+local function[<weak> owner] refresh(Value:num):num
+   return Value
+end
+
+result = refre|sh(1)
+]=])
+   assert(token and token.text is 'refresh', 'Hover should identify the bound function call.')
+   assertContains(hover, 'refresh(Value: num):num', 'Bound function hover should include the parser signature.')
+   assertContains(hover, 'Context binding: `function[<weak> owner]`', 'Bound function hover should show the binding.')
+
+   hover, token = hoverAt('local function plain():num\n   return 1\nend\n\nresult = pla|in()\n')
+   assertContains(hover, 'plain():num', 'Unbound function hover should include the parser signature.')
+   assert(not hover.find('Context binding'), 'Unbound functions must not report a binding.')
+
+   hover, token = hoverAt('local f = func|tion[]() end\n')
+   assertContains(hover, 'function[<weak> X]', 'Function keyword hover should describe context bindings.')
+end
+
 @Test function HandlerAdvertisesHover()
    server = {
       _handlers = {},
@@ -452,4 +481,43 @@ end
    assert(not hover or not hover.find('Deprecated'), 'A local error function must not have built-in hover.')
    hover = hoverAt("local api = { error=function() end }\napi.err|or()")
    assert(not hover or not hover.find('Deprecated'), 'A member named error must not have built-in hover.')
+end
+
+@Test function LowerCaseObjectFieldHover()
+   hover, token = hoverAt('clock = obj<Time> {}\nclock.ye|ar\n')
+
+   assert(token and token.context is 'field_access', 'Token extraction should identify a lower-case field access.')
+   assertContains(hover, 'Time.Year', 'Lower-case field names should resolve to their documented field.')
+end
+
+@Test function FieldBlockKeyHover()
+   hover, token = hoverAt('clock = obj<Time> {}\nclock.{ ye|ar = 2001, month = 3 }\n')
+
+   assert(token and token.text is 'year' and token.object is 'clock' and token.context is 'field_access',
+      'A field assignment block key should be a field access on the block base.')
+   assertContains(hover, 'Time.Year', 'Field block key hover should resolve through the base object class.')
+
+   hover, token = hoverAt('clock = obj<Time> {}\nclock?.{\n   year = 2001;\n   mon|th = 3\n}\n')
+   assert(token and token.object is 'clock', 'Keys on later lines of a safe block should resolve to the base.')
+   assertContains(hover, 'Time.Month', 'Safe multi-line field block keys should have field hover.')
+end
+
+@Test function FieldBlockValuesKeepCallerScope()
+   _, token = hoverAt('local year = 1\nclock = obj<Time> {}\nclock.{ year = ye|ar, month = year == 1 ? 2 : 3 }\n')
+   assert(token and token.context is 'identifier' and not token.object,
+      'An identifier in a field block value belongs to the caller scope.')
+
+   _, token = hoverAt('t = {}\nt.{ f = function()\n   local a = 1; lo|cal_b = 2\nend }\n')
+   assert(token and token.context is 'identifier', 'Statements in a function value must not be block keys.')
+
+   _, token = hoverAt('t = {}\nt.{ cfg = { de|pth = 1 } }\n')
+   assert(token and token.context is 'identifier', 'Keys of a nested table constructor must not be block keys.')
+
+   _, token = hoverAt('t = {}\nt.{ x = 1 }\nx = 2\nt..{ y| = 1 }\n')
+   assert(token and token.context is 'identifier', 'Concatenation followed by a brace must not open a block.')
+end
+
+@Test function FieldBlockFunctionHover()
+   hover = hoverAt("local t = {}\nt.{\n   f = function(A:num):num return A + 1 end\n}\nt.|f(1)\n")
+   assertContains(hover, 't.f(A: num):num', 'A function assigned in a field block should have a t.f signature.')
 end

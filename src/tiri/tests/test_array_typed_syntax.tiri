@@ -70,6 +70,115 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 -- Typed arrays with initialiser values
 
+@Test function ArrayTypedVarargs()
+   function collect(...):array<any>
+      return array<any> { ... }
+   end
+
+   arr = collect(11, 'text', false, nil, 33, nil)
+   assert(#arr is 6, 'Vararg initialisers should retain every argument, including trailing nil')
+   assert(arr[0] is 11 and arr[1] is 'text' and arr[2] is false, 'Mixed vararg values should be preserved')
+   assert(arr[3] is nil and arr[4] is 33 and arr[5] is nil, 'Nil varargs should retain their positions')
+   assert(#collect() is 0, 'An empty vararg initialiser should produce an empty array')
+end
+
+@Test function ArrayTypedNumericVarargs()
+   function collect(...):array<int>
+      return array<int> { 7, ... }
+   end
+
+   arr = collect(11, 22, 33)
+   assert(#arr is 4, 'A trailing vararg should expand after fixed initialiser values')
+   assert(arr[0] is 7 and arr[1] is 11 and arr[2] is 22 and arr[3] is 33,
+      'Numeric initialisers should preserve the order of fixed values and varargs')
+   assert(#collect() is 1, 'An empty trailing vararg should add no elements after the prefix')
+end
+
+@Test function ArrayTypedTrailingResults()
+   function results():<num, num, num>
+      return 11, 22, 33
+   end
+   function no_results()
+   end
+
+   arr = array<int> { 7, results() }
+   assert(#arr is 4 and arr[0] is 7 and arr[1] is 11 and arr[2] is 22 and arr[3] is 33,
+      'A trailing function call should contribute all of its results')
+   empty = array<any> { no_results() }
+   assert(#empty is 0, 'A trailing call with no results should produce an empty array')
+end
+
+@Test function ArrayTypedSingleValueContexts()
+   function results():<num, num, num>
+      return 11, 22, 33
+   end
+   function collect(...):array<any>
+      return array<any> { ..., 99 }
+   end
+   function parenthesised(...):array<any>
+      return array<any> { (...) }
+   end
+
+   arr = array<int> { results(), 99 }
+   assert(#arr is 2 and arr[0] is 11 and arr[1] is 99, 'Non-final calls should contribute only one result')
+   one = array<int> { (results()) }
+   assert(#one is 1 and one[0] is 11, 'Parentheses should suppress trailing call expansion')
+   args = collect(11, 22, 33)
+   assert(#args is 2 and args[0] is 11 and args[1] is 99, 'Non-final varargs should contribute only one value')
+   single = parenthesised(11, 22, 33)
+   assert(#single is 1 and single[0] is 11, 'Parentheses should suppress trailing vararg expansion')
+end
+
+@Test function ArrayTypedSizedVarargs()
+   function collect(...):array<any>
+      return array<any, 5> { ... }
+   end
+   function dynamic_size(Size:num, ...):array<int>
+      return array<int, Size> { ... }
+   end
+
+   arr = collect(11, 22, 33)
+   assert(#arr is 5 and arr[0] is 11 and arr[1] is 22 and arr[2] is 33,
+      'Sized initialisers should expand varargs in the enclosing function')
+   assert(arr[3] is nil and arr[4] is nil, 'Sized initialisers should pad after the expanded values')
+   empty = collect()
+   assert(#empty is 5 and empty[0] is nil and empty[4] is nil, 'Empty varargs should still honour the size')
+   numeric = dynamic_size(5, 11, 22, 33)
+   assert(#numeric is 5 and numeric[0] is 11 and numeric[2] is 33 and numeric[4] is 0,
+      'Dynamic sizes should preserve expanded values and zero-initialise padding')
+
+   expanded = collect(11, 'text', false, nil, 55, 66, nil)
+   assert(#expanded is 7 and expanded[5] is 66 and expanded[6] is nil,
+      'Literal sizes must not truncate expanded varargs, including trailing nil')
+   exact = collect(11, 22, 33, 44, 55)
+   assert(#exact is 5 and exact[4] is 55, 'Varargs matching the requested size should remain intact')
+   larger = dynamic_size(2, 11, 22, 33)
+   assert(#larger is 3 and larger[2] is 33, 'Dynamic sizes must not truncate expanded varargs')
+end
+
+@Test function ArrayTypedSizedTrailingResults()
+   calls = 0
+   function results():<num, num, num>
+      calls++
+      return 11, 22, 33
+   end
+
+   arr = array<int, 3> { 7, results() }
+   assert(#arr is 4 and arr[0] is 7 and arr[3] is 33,
+      'Literal sizes must not truncate expanded function results after a prefix')
+   size_calls = 0
+   function requested_size():num
+      size_calls++
+      return 2
+   end
+   dynamic = array<int, requested_size()> { results() }
+   assert(#dynamic is 3 and dynamic[2] is 33, 'Dynamic sizes must not truncate expanded function results')
+   assert(size_calls is 1 and calls is 2, 'Size and initialiser expressions should each be evaluated once')
+   size = 1
+   fixed = array<int, size> { 11, 22, 33 }
+   assert(#fixed is 3 and fixed[2] is 33, 'Dynamic sizes must also preserve explicit initialiser values')
+end
+
 @Test function ArrayTypedWithValues()
    arr = array<int> { 10, 20, 30 }
    assert(#arr is 3, "Initialised array should have length 3, got " .. #arr)
@@ -773,15 +882,13 @@ end
    assert(args[2] is 'timeout=5', "Trailing plain string should parse intact")
 end
 
-@Test function ArrayInitialiserTailCallContributesOneValue()
-   -- Unlike a table constructor, a final call contributes exactly one value and must not expand.
+@Test function ArrayInitialiserTailCallExpands()
    local expanded = array<int> { 1, array_init_two_results() }
-   assert(#expanded is 2, "A multi-result tail call should contribute one value, got " .. #expanded)
-   assert(expanded[1] is 7, "The tail call should contribute its first result only")
+   assert(#expanded is 3, "A multi-result tail call should contribute every value, got " .. #expanded)
+   assert(expanded[1] is 7 and expanded[2] is 8, "The tail call should preserve both results")
 
    local empty_tail = array<int> { 1, array_init_no_results() }
-   assert(#empty_tail is 2, "A zero-result tail call should still occupy one slot, got " .. #empty_tail)
-   assert(empty_tail[1] is 0, "A zero-result tail call should default its slot")
+   assert(#empty_tail is 1 and empty_tail[0] is 1, "A zero-result tail call should add no slots")
 end
 
 @Test function ArrayInitialiserNestedRangeExpressionsRemainValid()

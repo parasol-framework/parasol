@@ -1749,13 +1749,14 @@ static void fill_gradient(VectorState &State, const TClipRectangle<double> &Boun
 }
 
 //********************************************************************************************************************
-// Fixed-size patterns can be rendered internally as a separate bitmap for tiling.  That bitmap is copied to the
-// target bitmap with the necessary transforms applied.  USERSPACE patterns are suitable for this method.  If the
-// client needs the pattern to maintain a fixed alignment with the associated vector, they must set the X,Y field
-// values manually when that vector changes position.
+// Patterns are rendered to a tile bitmap that is copied to the target with the necessary transforms applied.  The
+// bitmap is rendered at the display scale of the tile, i.e. the scale of patternTransform combined with the target's
+// fill transform, so that magnified tiles are not blurred.  The bitmap is only redrawn when the definition changes or
+// when the tile's size on the display changes, so a pattern that is shared by consumers at different scales will be
+// redrawn on each switch.  If the client needs a USERSPACE pattern to maintain a fixed alignment with the associated
+// vector, they must set the X,Y field values manually when that vector changes position.
 //
-// Patterns rendered with BOUNDING_BOX require real-time calculation as they have a dependency on the target
-// vector's dimensions.
+// Patterns rendered with BOUNDING_BOX also have a dependency on the target vector's dimensions.
 
 static void fill_pattern(VectorState &State, const TClipRectangle<double> &Bounds, agg::path_storage *Path,
    VSM SampleMethod, const agg::trans_affine &Transform, double ViewWidth, double ViewHeight,
@@ -1763,17 +1764,17 @@ static void fill_pattern(VectorState &State, const TClipRectangle<double> &Bound
    agg::rasterizer_scanline_aa<> &Raster, double Alpha, SceneRenderer *Render)
 {
    constexpr bool SCALE_BITMAP = true; // Should always be true for fidelity, but switch to false if debugging coordinate issues.
+   constexpr double MAX_PAGE_SIZE = 8192;
    const double elem_width  = (Pattern.Units IS VUNIT::USERSPACE) ? ViewWidth : Bounds.width();
    const double elem_height = (Pattern.Units IS VUNIT::USERSPACE) ? ViewHeight : Bounds.height();
    const double x_offset = (Pattern.Units IS VUNIT::USERSPACE) ? 0 : Bounds.left;
    const double y_offset = (Pattern.Units IS VUNIT::USERSPACE) ? 0 : Bounds.top;
-   double dx, dy;
+   double dx, dy, target_width, target_height;
 
    auto t_scale = Transform.scale();
    Path->approximation_scale(t_scale);
 
    if (Pattern.Units IS VUNIT::USERSPACE) { // Use fixed coords in the pattern; equiv. to 'userSpaceOnUse' in SVG
-      double target_width, target_height;
       if (Pattern.Width.scaled()) target_width = elem_width * Pattern.Width;
       else if (Pattern.Width.defined()) target_width = Pattern.Width;
       else target_width = 1;
@@ -1789,29 +1790,10 @@ static void fill_pattern(VectorState &State, const TClipRectangle<double> &Bound
       if (Pattern.Y.scaled()) dy = y_offset + (elem_height * Pattern.Y);
       else if (Pattern.Y.defined()) dy = y_offset + Pattern.Y;
       else dy = y_offset;
-
-      auto page_width = int(target_width);
-      auto page_height = int(target_height);
-
-      if ((page_width != Pattern.Scene->PageWidth) or (page_height != Pattern.Scene->PageHeight)) {
-         Pattern.Scene->PageWidth  = page_width;
-         Pattern.Scene->PageHeight = page_height;
-         mark_dirty(Pattern.Scene->Viewport, RC::DIRTY);
-      }
    }
    else {
-      // BOUNDING_BOX.  The tile size is 1.0x1.0 and member coordinates should range from 0.0 - 1.0.
-      // The tile will be stretched to fit the target Bounds area.  The Pattern Viewport must have
-      // its ViewX/Y/W/H values set to 0/0/1.0/1.0.
-
-      double target_width, target_height;
-
-      ((extVectorViewport *)Pattern.Viewport)->vpAspectRatio = ARF::X_MAX|ARF::Y_MAX; // Stretch the 1x1 viewport to match the PageW/H
-
-      if (Pattern.ContentUnits IS VUNIT::BOUNDING_BOX) {
-         Pattern.Viewport->setViewWidth(double(Pattern.Width));
-         Pattern.Viewport->setViewHeight(double(Pattern.Height));
-      }
+      // BOUNDING_BOX.  Tile coordinates are relative to the target Bounds area.  The tile's content is fitted by
+      // prepare_pattern(), independently of the tile units.
 
       if (Pattern.Width.scaled()) target_width = Pattern.Width * elem_width;
       else target_width = Pattern.Width;
@@ -1819,53 +1801,86 @@ static void fill_pattern(VectorState &State, const TClipRectangle<double> &Bound
       if (Pattern.Height.scaled()) target_height = Pattern.Height * elem_height;
       else target_height = Pattern.Height;
 
-      dx = x_offset + ((elem_width * Pattern.X) * (SCALE_BITMAP ? t_scale : 1.0));
-      dy = y_offset + ((elem_height * Pattern.Y) * (SCALE_BITMAP ? t_scale : 1.0));
-
-      // Scale the bitmap so that it matches the final scale on the display.  This requires a matching inverse
-      // adjustment when computing the final transform.
-
-      auto page_width = int(target_width * (SCALE_BITMAP ? t_scale : 1.0));
-      auto page_height = int(target_height * (SCALE_BITMAP ? t_scale : 1.0));
-
-      // Mark the bitmap for recomputation if needed.
-
-      if ((page_width != Pattern.Scene->PageWidth) or (page_height != Pattern.Scene->PageHeight)) {
-         if ((page_width < 1) or (page_height < 1) or (page_width > 8192) or (page_height > 8192)) {
-            // Dimensions in excess of reasonable values can occur if the user is confused over the application
-            // of bounding-box values that are being scaled.
-            kt::Log log(__FUNCTION__);
-            log.warning("Invalid pattern dimensions of %dx%d detected.", page_width, page_height);
-            page_width  = 1;
-            page_height = 1;
-         }
-         Pattern.Scene->PageWidth  = page_width;
-         Pattern.Scene->PageHeight = page_height;
-         mark_dirty(Pattern.Scene->Viewport, RC::DIRTY);
-      }
+      dx = x_offset + (elem_width * Pattern.X);
+      dy = y_offset + (elem_height * Pattern.Y);
    }
 
-   // The pattern's scene may carry a lingering transform if it was also consumed as a viewport fill
-   // (see draw_vectors()), so restore the identity transform before checking for a redraw.
-   set_render_transform(Pattern.Scene->Viewport, agg::trans_affine());
+   if ((target_width <= 0) or (target_height <= 0) or (not std::isfinite(target_width)) or
+       (not std::isfinite(target_height))) {
+      kt::Log log(__FUNCTION__);
+      log.traceWarning("Invalid pattern tile size of %gx%g.", target_width, target_height);
+      return;
+   }
+
+   agg::trans_affine pattern_matrix;
+   if (not Pattern.Matrices.empty()) { // Client used the 'patternTransform' SVG attribute
+      auto &m = Pattern.Matrices[0];
+      pattern_matrix = agg::trans_affine(m.ScaleX, m.ShearY, m.ShearX, m.ScaleY, m.TranslateX, m.TranslateY);
+   }
+
+   // Render the bitmap at the scale that it will be displayed at, which includes any scaling by patternTransform.
+   // This requires a matching inverse adjustment when computing the final transform.  The content scale is reduced
+   // if necessary to keep the bitmap within the maximum page size.
+
+   double content_scale = 1.0;
+   if (SCALE_BITMAP) {
+      // The largest singular value preserves detail in every direction under nonuniform scaling and shear.
+      // Measuring only the transformed diagonal can underestimate an unchanged or magnified axis.
+
+      const auto display_matrix = pattern_matrix * Transform;
+      content_scale = 0.5 * (std::hypot(display_matrix.sx + display_matrix.sy,
+         display_matrix.shy - display_matrix.shx) + std::hypot(display_matrix.sx - display_matrix.sy,
+         display_matrix.shy + display_matrix.shx));
+      if ((content_scale <= 0) or (not std::isfinite(content_scale))) content_scale = 1.0;
+   }
+
+   const double max_scale = MAX_PAGE_SIZE / std::max(target_width, target_height);
+   if (content_scale > max_scale) content_scale = max_scale;
+
+   // A small tolerance prevents floating point error from truncating an integral page size, e.g. 3.9999999 to 3.
+
+   const int page_width  = std::clamp(int(target_width * content_scale + 1e-6), 1, int(MAX_PAGE_SIZE));
+   const int page_height = std::clamp(int(target_height * content_scale + 1e-6), 1, int(MAX_PAGE_SIZE));
+
+   // Mark the bitmap for recomputation if needed.
+
+   if ((page_width != Pattern.Scene->PageWidth) or (page_height != Pattern.Scene->PageHeight)) {
+      Pattern.Scene->PageWidth  = page_width;
+      Pattern.Scene->PageHeight = page_height;
+      mark_dirty(Pattern.Scene->Viewport, RC::DIRTY);
+   }
+
+   // The content is laid out over the exact tile area at content_scale, then squeezed on each axis to fit the
+   // truncated page size.  The final transform reverses the squeeze, so content keeps its dimensions while the tile
+   // pitch stays exact.  This also replaces any lingering transform and size from consumption as a viewport fill
+   // (see draw_vectors()) before checking for a redraw.
+
+   const double layout_width  = target_width * content_scale;
+   const double layout_height = target_height * content_scale;
+   agg::trans_affine page_fit;
+
+   page_fit.scale(page_width / layout_width, page_height / layout_height);
+
+   set_render_transform(Pattern.Scene->Viewport, page_fit);
+   set_viewport_fixed_size(Pattern.Viewport, layout_width, layout_height);
+
+   // Bounding-box content units are always relative to the consumer, independently of the tile units.
+   prepare_pattern(&Pattern, Bounds.width(), Bounds.height(), content_scale);
 
    // Redraw the pattern source if any part of the definition has been marked dirty.
    if ((((extVectorScene *)Pattern.Scene)->SubtreeDirty) or (!Pattern.Bitmap)) {
-      if (acDraw(&Pattern) != ERR::Okay) return;
+      if (render_pattern(&Pattern) != ERR::Okay) return;
    }
+
+   // Map bitmap pixels to the target's user space, in order: bitmap pixels to tile units (inverting the bitmap
+   // scale and any truncation of the page size), tile units to the pattern coordinate system by offsetting with the
+   // tile origin, then the pattern system to user space with patternTransform.  The tile origin must be transformed
+   // with the tile, per SVG.
 
    agg::trans_affine transform;
-
-   if (not Pattern.Matrices.empty()) { // Client used the 'patternTransform' SVG attribute
-      auto &m = Pattern.Matrices[0];
-      transform.load_all(m.ScaleX, m.ShearY, m.ShearX, m.ScaleY, m.TranslateX + dx, m.TranslateY + dy);
-   }
-   else transform.translate(dx, dy);
-
-   if ((SCALE_BITMAP) and (Pattern.Units != VUNIT::USERSPACE)) {
-      // Invert any prior bitmap scaling
-      transform.scale(1.0 / t_scale, 1.0 / t_scale);
-   }
+   transform.scale(target_width / page_width, target_height / page_height);
+   transform.translate(dx, dy);
+   transform *= pattern_matrix;
 
    // NB: If the Transform multiplication isn't performed, the pattern tile effectively becomes detached
    // from the target vector and is drawn as a static background.  Would it a be a useful feature for this

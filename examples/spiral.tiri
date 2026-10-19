@@ -3,7 +3,7 @@
 Spiral Demonstration
 --]]
 
-   import 'gui', 'gui/window', 'gui/combobox', 'gui/slider', 'gui/checkbox'
+   import 'gui', 'gui/window', 'gui/combobox', 'gui/slider', 'gui/toggle'
 
    local glWindow, glViewport, glSpiralView, glSpiral
    sliders = array<table>

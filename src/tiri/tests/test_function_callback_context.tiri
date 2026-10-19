@@ -269,8 +269,7 @@ end
       __gc=function() finalised = true end
    })
    local weak = setmetatable({ owner=owner }, { __mode='v' })
-   @Ordinary
-   local function callback()
+   local function[] callback()
       observed = &&
       processing.signal()
    end
@@ -292,8 +291,7 @@ end
    local current_task = mSys.CurrentTask()
    local observed
    local owner = entity { name='object callback registration' }
-   @Ordinary
-   local function callback()
+   local function[] callback()
       observed = &&
       processing.signal()
    end
@@ -312,8 +310,7 @@ end
 @Test function OrdinarySynchronousCallbackRestoresInterruptedContext()
    local owner = entity { name='interrupted caller' }
    local observed
-   @Ordinary
-   local function callback()
+   local function[] callback()
       observed = &&
    end
    defer mSys.DeleteFile('temp:function_callback_ordinary.tiri') end

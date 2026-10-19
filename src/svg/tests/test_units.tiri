@@ -1,0 +1,43 @@
+-- $TIRI
+-- SVG lengths must follow the CSS absolute unit ratios (1in = 2.54cm = 25.4mm = 72pt = 6pc = 96px) at a fixed reference
+-- density, independent of the display.  NB: The headless driver always reports 96 DPI, so a high density display is
+-- not reproduced here; the parser no longer reads the display density at all.
+
+   include 'svg'
+   include 'vector'
+
+glInchUnits = array<str> { '1in', '2.54cm', '25.4mm', '72pt', '6pc', '96px', '96' }
+
+function loadScene(Body:str!):obj
+   scene = obj.new('VectorScene', { pageWidth=400, pageHeight=400 })
+   obj.new('svg', { target=scene, statement=f'<svg xmlns="http://www.w3.org/2000/svg">{Body}</svg>' })
+   return scene
+end
+
+@Test function AbsoluteLengthUnitsAreCoherent()
+   body = ''
+   for i, unit in glInchUnits do
+      body ..= f'<rect id="unit{i}" x="0" y="0" width="{unit}" height="10"/>'
+   end
+   scene = loadScene(body)
+
+   for i, unit in glInchUnits do
+      rect = obj.find(f'unit{i}')
+      assert(rect, f'Rectangle for {unit} must exist')
+      assert(math.abs(rect.width - 96) < 0.0001, f'{unit} must equal 96px, got {rect.width}')
+   end
+end
+
+@Test function FontSizeUnitsMatchLengthUnits()
+   body = ''
+   for i, unit in glInchUnits do
+      body ..= f'<text id="text{i}" x="0" y="100" font-family="Noto Sans" font-size="{unit}">H</text>'
+   end
+   scene = loadScene(body)
+
+   for i, unit in glInchUnits do
+      text = obj.find(f'text{i}')
+      assert(text, f'Text for {unit} must exist')
+      assert(tonumber(text.fontSize) is 96, f'font-size {unit} must equal 96px, got {text.fontSize}')
+   end
+end

@@ -72,6 +72,8 @@ Recognise and use these Tiri extensions where they match local code style:
 - Presence check: `value??` (adjacent); default: `value ?? fallback` (whitespace before `??` is significant).
 - Default assignments: `??=` uses extended falsiness; `?=` assigns only for `nil`, preserving `false`, `0`, and `""`.
 - Safe navigation: `obj?.field`, `obj?.method()`, `obj?[key]`
+- Field assignment blocks: `ref.{ x = 1, [key] = 2 }` and `ref?.{ ... }` assign fields in order with `ref` evaluated
+  once; values use the caller's scope (unlike `using`). Statement only; no positional, vararg or compound entries.
 - Deferred cleanup: `defer ... end`
 - To-be-closed variables: `resource <close> = acquire_resource()`
 - Constants: `local name <const> = value`
@@ -117,12 +119,20 @@ search tools, and mixed editor environments.
   pass the receiver automatically; ordinary Tiri table functions do not receive it as an extra argument.
 - Use `entity { ... }` for a table whose methods need receiver context. Inside a contextual call, `&field` accesses
   the receiver's field and `&&` yields the receiver. Ordinary table calls inherit the caller's context.
+- A contextual call evaluates its arguments and piped value in the caller's context; only the callee body runs in the
+  receiver, so `&menu.highlight(&text)` reads `&text` from the caller. A closure passed as an argument reads context
+  when the callee invokes it, so it observes the receiver unless the callee is declared `function[]`.
+- `function[X]` fixes a function's context: every call, including entity, metamethod and native callback dispatch,
+  runs in `X`, and no context is captured at callback registration. `X` is evaluated once at creation and must be a
+  table. `function[<weak> X]` holds `X` weakly; a call after collection raises `ERR_Terminate` ('Resource
+  collected'). Bound bodies make no tail calls. The binding precedes the name: `local function[&&] f()`.
 - `using table_reference do ... end` temporarily activates a table context. It restores the previous context on
   all exit paths and does not make an ordinary table an entity. At top level the root context is `_G`.
 - Extracting `fn = entity.method` loses the receiver; closures also inherit context when called. Keep the member
   call inside a closure when binding a particular receiver is required.
 - Framework callback registrations capture the context active at registration, not the table from which a function
-  was extracted. Establish the intended context before registration; unregistering releases the captured table.
+  was extracted; a callback with a context binding captures nothing. Establish the intended context before
+  registration; unregistering releases the captured table.
 - Built-in methods take precedence over fields in immediate dot calls. Avoid custom table method names such as
   `insert` or `sort`; computed field calls or `(receiver.method)(...)` explicitly select a shadowing field.
 - Separate bitwise `&` from an identifier with whitespace: `mask & flags`; `&flags` is a contextual field read.

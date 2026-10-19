@@ -192,7 +192,7 @@ typedef struct BCInsLine {
 
 // Info for local variables. Only used during bytecode generation.
 
-enum class VarInfoFlag : uint8_t;
+enum class VarInfoFlag : uint16_t;
 enum class TiriType : uint8_t;  // Forward declaration (defined in ast_nodes.h)
 
 typedef struct VarInfo {

@@ -42,7 +42,7 @@ struct SourceSnapshot {
 
 struct CompilationRequest {
    Identity ExpectedIdentity;                        // Identifies the module expected by the caller.
-   std::string CacheDirectory = "temp:tiri/cache/";  // Specifies where compiled modules are cached.
+   std::string CacheDirectory = cache::cache_directory(); // Specifies where compiled modules are cached.
    PERMIT Permissions = PERMIT::USER;                // Specifies permissions for the compilation.
 };
 

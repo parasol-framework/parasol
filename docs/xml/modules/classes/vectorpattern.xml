@@ -15,7 +15,8 @@
     <description>
 <p>The VectorPattern class is used by Vector painting algorithms to fill and stroke vectors with pre-rendered patterns. It is the most efficient way of rendering a common set of graphics multiple times.</p>
 <p>The VectorPattern must be registered with a <class name="VectorScene">VectorScene</class> via the <class name="VectorScene" method="AddDef">VectorScene.AddDef()</class> method. Any vector within the target scene will be able to utilise the pattern for filling or stroking by referencing its name through the <class name="Vector" field="Fill">Vector.Fill</class> and <class name="Vector" field="Stroke">Vector.Stroke</class> fields.  For instance <code>url(#dots)</code>.</p>
-<p>A special use case is made for patterns that are applied as a fill operation in <class name="VectorViewport">VectorViewport</class> objects.  In this case the renderer will dynamically render the pattern as a background within the viewport.  This ensures that the pattern is rendered at maximum fidelity whenever it is used, and not affected by bitmap clipping restrictions.  It should be noted that this means the image caching feature will be disabled.</p>
+<p>A special use case is made for patterns that are applied as a fill operation in <class name="VectorViewport">VectorViewport</class> objects.  If the pattern is a single tile that covers the viewport, which is the default when <fl>Units</fl> is <code>BOUNDING_BOX</code>, <fl>X</fl> and <fl>Y</fl> are zero, <fl>Width</fl> and <fl>Height</fl> are <code>100%</code> and no <fl>Transform</fl> is set, the renderer will dynamically render the pattern as a background within the viewport.  This ensures that the pattern is rendered at maximum fidelity whenever it is used, and not affected by bitmap clipping restrictions.  It should be noted that this means the image caching feature will be disabled.</p>
+<p>Any other configuration is tiled within the viewport in the same way as a vector fill, with the viewport serving as both the bounding box and the user space of the pattern.  User space coordinates are therefore relative to the viewport's top-left corner.</p>
 <p>It is strongly recommended that the VectorPattern is owned by the <class name="VectorScene">VectorScene</class> that is handling the definition.  This will ensure that the VectorPattern is deallocated when the scene is destroyed.</p></description>
     <source>
       <file path="painters/">pattern.cpp</file>
@@ -40,12 +41,26 @@
 
   <fields>
     <field>
+      <name>AspectRatio</name>
+      <comment>Controls how the viewport's viewbox is fitted to the pattern tile.</comment>
+      <access read="G" write="S">Get/Set</access>
+      <type lookup="ARF">ARF</type>
+      <description>
+<p>The AspectRatio determines how the source area defined by the <fl>Viewport</fl>'s <code>ViewX</code>, <code>ViewY</code>, <code>ViewWidth</code> and <code>ViewHeight</code> fields is scaled and aligned within each pattern tile.  It is equivalent to the <code>preserveAspectRatio</code> attribute of SVG patterns.  The default value is <code>MEET|X_MID|Y_MID</code>, which scales the content uniformly so that it fits within the tile and centres it.  Use <code>SLICE</code> to fill the tile while clipping the overflowing content, or <code>NONE</code> to stretch the content independently on each axis.</p>
+<p>The AspectRatio is only effective if a viewbox has been defined for the <fl>Viewport</fl>.  It controls the fitting of content within a tile and has no effect on the tile's dimensions or position, which are determined by <fl>X</fl>, <fl>Y</fl>, <fl>Width</fl>, <fl>Height</fl> and <fl>Units</fl>.</p>
+<p>This field is a convenient alias for the <code>AspectRatio</code> of the pattern's <fl>Viewport</fl>, and the two always report the same value.</p>
+<types lookup="ARF"/>
+      </description>
+    </field>
+
+    <field>
       <name>ContentUnits</name>
-      <comment>Not yet implemented.</comment>
+      <comment>Defines the coordinate system for the content of the pattern.</comment>
       <access read="R" write="W">Read/Write</access>
       <type lookup="VUNIT">VUNIT</type>
       <description>
-<p>In compliance with SVG requirements, the application of ContentUnits is only effective if the Viewport's X, Y, Width and Height fields have been defined.  The default setting is <code>USERSPACE</code>.</p>
+<p>ContentUnits declares the coordinate system of the vectors in the pattern's <fl>Viewport</fl>.  The default setting is <code>USERSPACE</code>, in which content coordinates are expressed in the same units as the pattern tile.  If set to <code>BOUNDING_BOX</code>, content coordinates are expressed as fractions of the bounding box of the vector that is consuming the pattern, e.g. a coordinate of <code>(0.5,0.5)</code> refers to the centre of that bounding box.  In this case the content is stretched independently on each axis and the <fl>AspectRatio</fl> has no effect.  The mapping is always relative to the consumer's bounding box, regardless of the <fl>Units</fl> setting.</p>
+<p>In compliance with SVG, ContentUnits has no effect if a viewbox has been defined in the <fl>Viewport</fl>.  The viewbox determines the content's coordinate system in that case.</p>
 <types lookup="VUNIT"/>
       </description>
     </field>
@@ -128,7 +143,8 @@
       <access read="R" write="W">Read/Write</access>
       <type lookup="VUNIT">VUNIT</type>
       <description>
-<p>This field declares the coordinate system that is used for values in the <fl>X</fl>, <fl>Y</fl>, <fl>Width</fl> and <fl>Height</fl> fields.  The default setting is <code>BOUNDING_BOX</code>, which means the pattern will be drawn to scale in realtime.  The most efficient method is <code>USERSPACE</code>, which allows the pattern image to be persistently cached.</p>
+<p>This field declares the coordinate system that is used for values in the <fl>X</fl>, <fl>Y</fl>, <fl>Width</fl> and <fl>Height</fl> fields.  The default setting is <code>BOUNDING_BOX</code>, which means the pattern tile is sized relative to the bounding box of each vector that uses it.  With <code>USERSPACE</code>, the tile size is independent of the consumer, which makes it the most efficient choice when a pattern is shared by vectors of different sizes.</p>
+<p>In both cases the tile is rendered at its scale on the display, including any scaling from <fl>Transform</fl>, and it is cached until the definition or that display size changes.</p>
 <types lookup="VUNIT"/>
       </description>
     </field>
@@ -140,6 +156,7 @@
       <type class="VectorViewport">*VectorViewport</type>
       <description>
 <p>The Viewport refers to a <class name="VectorViewport">VectorViewport</class> object that is created to host the vectors for the rendered pattern.  If the Viewport does not contain at least one vector that renders an image, the pattern will be ineffective.</p>
+<p>The renderer manages the transform and size of the Viewport so that it matches each pattern tile.  Defining the Viewport's <code>ViewX</code>, <code>ViewY</code>, <code>ViewWidth</code> and <code>ViewHeight</code> fields establishes a viewbox for the pattern content, which is fitted to the tile according to the <fl>AspectRatio</fl>.</p>
       </description>
     </field>
 
@@ -175,6 +192,18 @@
 
   </fields>
   <types>
+    <constants lookup="ARF" comment="Aspect ratios control alignment, scaling and clipping.">
+      <const name="MEET">Aspect ratio is preserved. The entire viewbox will be visible in the viewport.  The viewbox is scaled up as much as possible.</const>
+      <const name="NONE">Scale the viewbox to match the size of the viewport.  Aspect ratio is not preserved.</const>
+      <const name="SLICE">Aspect ratio is preserved. The viewbox can extend beyond the viewport's edges on one axis.  The viewbox is scaled up as much as possible.</const>
+      <const name="X_MAX">Align to the right.</const>
+      <const name="X_MID">Align to the horizontal center.</const>
+      <const name="X_MIN">Align to the left.</const>
+      <const name="Y_MAX">Align to the bottom.</const>
+      <const name="Y_MID">Align to the vertical center.</const>
+      <const name="Y_MIN">Align to the top.</const>
+    </constants>
+
     <constants lookup="VSPREAD" comment="Spread method options define the method to use for tiling filled graphics.">
       <const name="CLIP">Do not scale the graphic.  Clip it if it extends past imposed boundaries.</const>
       <const name="PAD">Scale the graphic to the object bounds.</const>

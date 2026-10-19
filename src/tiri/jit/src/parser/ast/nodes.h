@@ -61,6 +61,11 @@ using StmtNodePtr = std::unique_ptr<StmtNode>;
 using ExprNodeList = std::vector<ExprNodePtr>;
 using StmtNodeList = std::vector<StmtNodePtr>;
 
+// Hidden local that holds the base of a lowered field assignment block.  The leading byte cannot be produced by the
+// lexer, so user code can never name it.
+
+inline constexpr std::string_view FIELD_BLOCK_BINDING_NAME = "\x1f" "fieldblock";
+
 // Function return type declaration for static analysis
 struct FunctionReturnTypes {
    std::array<TiriType, MAX_RETURN_TYPES> types{};  // Return types (Unknown = unused slot)
@@ -236,8 +241,18 @@ enum class CallDispatch : uint8_t {
    MemberComputed,
    SafeMemberNamed,
    SafeMemberComputed,
+   // receiver.member?(...): the receiver must be a table and only a nil member skips the call.
+   OptionalMemberNamed,
    LegacyMethod,
    LegacySafeMethod
+};
+
+// Receiver handling for a statically selected built-in dot method.
+
+enum class MethodReceiverGuard : uint8_t {
+   None,         // receiver.method(...)
+   NilSafe,      // receiver?.method(...): a nil receiver skips the call
+   RequireTable  // receiver.method?(...): a non-table receiver raises before the call
 };
 
 enum class CallArgumentSyntax : uint8_t {
@@ -479,7 +494,7 @@ struct CallExprPayload {
       const fprototype *prototype = nullptr;
       BuiltinCallableID callable = BuiltinCallableID::Invalid;
       TiriType receiver_type = TiriType::Unknown;
-      bool safe = false;
+      MethodReceiverGuard guard = MethodReceiverGuard::None;
       bool arguments_validated = false;
    };
    mutable std::optional<BuiltinMethodCall> builtin_method;
@@ -497,6 +512,7 @@ struct CallExprPayload {
    // leaves this Unknown unless the target was already contextual.
    mutable StaticContextuality contextual_designation_result = StaticContextuality::Unknown;
    mutable bool unresolved_method_reported = false;
+   mutable bool optional_receiver_reported = false;
    mutable TiriType result_type = TiriType::Unknown;  // Inferred return type (e.g., Object for obj.new())
    mutable CLASSID object_class_id = CLASSID::NIL; // CLASSID if result is Object
    mutable struct_record *struct_def = nullptr; // Resolved layout if result is Struct, or callable struct definition
@@ -612,6 +628,27 @@ struct TableExprPayload {
    ~TableExprPayload();
 };
 
+// Context binding declared by `function[...]`.  The reference is evaluated once, in the enclosing scope, when the
+// closure is created.  Every kind other than None carries the ordinary dispatch policy, so entity dispatch does not
+// push the receiver and native callback registration captures no context.
+
+enum class FunctionContextKind : uint8_t {
+   None,     // No binding; entity dispatch pushes the receiver
+   Ordinary, // function[]: inherits the caller's context and binds nothing
+   Strong,   // function[X]: always runs in X, which the closure retains
+   Weak      // function[<weak> X]: always runs in X, which the closure holds weakly
+};
+
+struct FunctionContextBinding {
+   FunctionContextKind kind = FunctionContextKind::None;
+   ExprNodePtr reference;              // X for Strong and Weak; null otherwise
+   mutable bool reported = false;      // A binding diagnostic was issued; suppresses repeats from later passes
+
+   [[nodiscard]] bool is_bound() const {
+      return kind IS FunctionContextKind::Strong or kind IS FunctionContextKind::Weak;
+   }
+};
+
 struct FunctionExprPayload {
    FunctionExprPayload() = default;
    FunctionExprPayload(const FunctionExprPayload&) = delete;
@@ -621,13 +658,24 @@ struct FunctionExprPayload {
    std::vector<FunctionParameter> parameters;
    bool is_vararg = false;
    bool is_thunk = false;              // Marks function as thunk
-   bool is_ordinary = false;           // Inherit caller context during entity member dispatch
+   FunctionContextBinding context;     // function[], function[X] or function[<weak> X]
    mutable FunctionReturnTypes return_types{}; // Declared, validated inferred or advisory result metadata
    mutable StaticCallableHandle callable{};
    std::unique_ptr<BlockStmt> body;
    std::vector<AnnotationEntry> annotations;  // Annotations attached to this function
+
+   // True if the function inherits the caller's context during entity member dispatch.
+   [[nodiscard]] bool is_ordinary() const { return context.kind != FunctionContextKind::None; }
+
    ~FunctionExprPayload();
 };
+
+// Render a function context binding for diagnostics and tooling.  The reference overload returns the reference as
+// written ('a.b', 'a[...]', '&field' or '&&'); the binding overload returns '[]', '[X]' or '[<weak> X]', or an empty
+// string when there is no binding.
+
+[[nodiscard]] std::string context_binding_text(const ExprNode &Reference);
+[[nodiscard]] std::string context_binding_text(const FunctionContextBinding &Binding);
 
 // Deferred expression payload: wraps an expression for lazy evaluation <{ expr }> or <type{ expr }>
 struct DeferredExprPayload {
@@ -1289,6 +1337,8 @@ ExprNodePtr make_presence_expr(SourceSpan span, ExprNodePtr value);
 ExprNodePtr make_pipe_expr(SourceSpan span, ExprNodePtr lhs, ExprNodePtr rhs_call, uint32_t limit);
 ExprNodePtr make_call_expr(SourceSpan span, ExprNodePtr callee, ExprNodeList arguments, bool forwards_multret,
    CallArgumentSyntax argument_syntax = CallArgumentSyntax::Synthetic);
+ExprNodePtr make_optional_member_call_expr(SourceSpan span, ExprNodePtr callee, ExprNodeList arguments,
+   bool forwards_multret);
 ExprNodePtr make_member_expr(SourceSpan span, ExprNodePtr table, Identifier member);
 ExprNodePtr make_module_function_expr(SourceSpan span, Identifier binding, Identifier function,
    StaticModuleHandle module, GCstr *namespace_name);

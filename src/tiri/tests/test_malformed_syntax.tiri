@@ -72,6 +72,46 @@ end
 end
 
 ----------------------------------------------------------------------------------------------------------------------
+-- Field assignment blocks
+
+function assertInvalidMessage(Source, Fragment, Context)
+   local result = debug.validate(Source)
+   assert(result.success is false, Context .. ': malformed source should fail validation')
+   assert(#result.diagnostics > 0, Context .. ': at least one diagnostic should be reported')
+   local message = result.diagnostics[0].message
+   assert(message.find(Fragment) != nil, Context .. ": expected '" .. Fragment .. "' in '" .. message .. "'")
+end
+
+@Test function ValidateMalformedFieldAssignmentBlocks()
+   local entries = "require 'name = value' or '[key] = value' entries"
+   assertInvalidMessage('local t = {} t.{ 1, 2 }', entries, 'positional entries')
+   assertInvalidMessage('local t = {} t.{ x }', entries, 'bare name entry')
+   assertInvalidMessage('local t = {} t.{ f() }', entries, 'call entry')
+   assertInvalidMessage('function f(...) local t = {} t.{ ... } end', 'varargs cannot be used', 'varargs entry')
+   assertInvalidMessage('local t = {} t.{ x += 1 }', 'compound assignment is not supported', 'compound entry')
+   assertInvalidMessage("local t = {} t.{ ['x'] ..= 'a' }", 'compound assignment is not supported',
+      'compound computed entry')
+
+   assertInvalidMessage('local t = {} t.{ x = 1, x = 2 }', "duplicate field 'x'", 'duplicate name')
+   assertInvalidMessage("local t = {} t.{ x = 1, ['x'] = 2 }", "duplicate field 'x'", 'name and literal key')
+   assertInvalidMessage('local t = {} t.{ [1] = 1, [1.0] = 2 }', 'duplicate field 1', 'numeric value keys')
+   assertInvalidMessage('local t = {} t.{ [true] = 1, [true] = 2 }', 'duplicate field true', 'boolean keys')
+
+   local result = debug.validate('local t = {} local k = 1 t.{ [k] = 1, [k] = 2 }')
+   assert(result.success is true, 'Computed keys cannot be proven duplicate and should parse')
+
+   assertInvalidMessage('local a = 1 local b = {} a + b.{ x = 1 }', 'block base must be', 'binary expression base')
+   assertInvalidMessage('local b = {} not b.{ x = 1 }', 'block base must be', 'unary expression base')
+   assertInvalidMessage("'text'.{ x = 1 }", 'block base must be', 'literal base')
+   assertInvalidMessage('local t = {} local v = t.{ x = 1 }', 'cannot be used as values', 'local value')
+   assertInvalidMessage('local t = {} local v = t?.{ x = 1 }', 'cannot be used as values', 'safe local value')
+   assertInvalidMessage('local t = {} print(t.{ x = 1 })', 'expected', 'call argument')
+   assertInvalidMessage('local t = {} t.{ x = 1', "expected ',' or '}'", 'missing closing brace')
+   assertInvalidMessage('local t = {} t.{ x = 1 y = 2 }', "expected ',' or '}'", 'missing separator')
+   assertInvalidMessage('local t = {} t.{ x = }', 'Expected expression', 'missing value')
+end
+
+----------------------------------------------------------------------------------------------------------------------
 -- Removed Lua-style numeric for syntax
 
 @Test function ValidateDeprecatedNumericForDiagnostic()
@@ -782,4 +822,35 @@ end
          source = "enum CLOSE_ENUM <close> { ONE }"
       }
    })
+end
+
+----------------------------------------------------------------------------------------------------------------------
+-- Optional table calls
+
+@Test function ValidateUnsupportedOptionalCallForms()
+   assertInvalidCode('local t = {} local x = t.f?(1) : 2', 'InvalidOptionalCall',
+      'adjacent optional call followed by a ternary separator')
+   assertInvalidCode('local function cb() end cb?(1)', 'InvalidOptionalCall', 'optional direct call')
+   assertInvalidCode("local t = {} local k = 'f' t[k]?(1)", 'InvalidOptionalCall', 'optional computed call')
+   assertInvalidCode('local t = {} local y = (t.f)?(1)', 'InvalidOptionalCall', 'optional grouped call')
+   assertInvalidCode('local t = {} t.f? {}', 'InvalidOptionalCall', 'optional table-constructor shorthand')
+   assertInvalidCode("local t = {} t.f?'x'", 'InvalidOptionalCall', 'optional string shorthand')
+   assertInvalidCode("local s = 'abc' s.len?()", 'InvalidOptionalCall', 'proved non-table receiver')
+end
+
+@Test function ValidateIncompleteOptionalCalls()
+   assertInvalid('local t = {} t.f?(', 'unterminated optional call')
+   assertInvalid('local t = {} t.f?(1', 'missing optional call close')
+   assertInvalid('local t = {} t.f?\n(1)', 'line break between ? and the argument list')
+   assertInvalid('local t = {} t.f--[[gap]]?(1)', 'comment between the member and ?')
+end
+
+@Test function ValidateOptionalCallTernaryDisambiguation()
+   assert(debug.validate('local t = {} t.f?(1)').success, 'An adjacent optional call should validate')
+   assert(debug.validate('local t = {} local n = t.f ? (1) : 2').success,
+      'A spaced ternary after a member should validate')
+   assert(debug.validate('local function cb():num return 1 end local x = cb?(1) : 2').success,
+      'An adjacent ternary after a direct callable should remain valid')
+   assert(debug.validate('local t = {} local c = true local x = c ? t.f?(1) : 2').success,
+      'An optional call inside a ternary true branch should validate')
 end

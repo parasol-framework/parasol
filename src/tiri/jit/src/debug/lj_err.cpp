@@ -579,6 +579,9 @@ extern "C" bool setup_try_handler(lua_State *L)
    unwind_cleanup_all(L, L->base - 1, saved_base);  // Clean nested frames first.
    saved_base = restorestack(L, try_frame->frame_base);
    saved_top = restorestack(L, try_frame->saved_top);
+   // A failed call can install a receiver context before establishing a callee frame.  Remove that activation
+   // before running cleanup in the surviving frame, retaining its own call and block contexts.
+   lj_context_unwind(L, saved_base);
    lj_defer_unwind(L, saved_base);
 
    // Re-read the error after nested cleanup because a handler may have replaced it in place.

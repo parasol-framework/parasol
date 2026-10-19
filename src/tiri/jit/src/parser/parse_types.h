@@ -102,7 +102,7 @@ enum class FuncScopeFlag : uint8_t {
    Continue = 0x20u
 };
 
-enum class VarInfoFlag : uint8_t {
+enum class VarInfoFlag : uint16_t {
    None = 0x00u,
    VarReadWrite = 0x01u,
    Jump = 0x02u,
@@ -111,7 +111,8 @@ enum class VarInfoFlag : uint8_t {
    DeferArg = 0x10u,
    Close = 0x20u,
    Const = 0x40u,  // Variable is const (cannot be reassigned)
-   Weak = 0x80u    // Local register/upvalue contains an internal weak-value cell
+   Weak = 0x80u,   // Local register/upvalue contains an internal weak-value cell
+   CaptureOnly = 0x100u  // The vstack entry exists only to be captured; not a local and absent from varinfo
 };
 
 // Transient parser-side form of a runtime contract.  The raw structure definition is used only while compiling;

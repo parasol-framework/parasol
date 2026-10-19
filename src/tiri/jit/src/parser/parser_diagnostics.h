@@ -46,7 +46,9 @@ enum class ParserErrorCode : uint16_t {
    DeprecatedApi,           // Supported API contract with a pending migration target
    UnresolvedMethodReceiver, // Dot-method receiver type must be classified at runtime
    FunctionSignatureMismatch, // Function definition does not match an earlier forward declaration
-   TooManyExceptionFilters  // More than 4 error codes declared for an except handler
+   TooManyExceptionFilters, // More than 4 error codes declared for an except handler
+   InvalidContextBinding,   // function[X] binding is not a table, or a weak binding is also captured lexically
+   InvalidOptionalCall      // Unsupported or ambiguous `member?(...)` form, or a proved non-table receiver
 };
 
 struct ParserDiagnostic {

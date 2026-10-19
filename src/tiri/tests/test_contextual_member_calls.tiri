@@ -3,6 +3,94 @@
 import 'json'
 module core as mCore
 
+function run_hot_contextual_try(Nested:bool!)
+   jit.on()
+   jit.flush()
+   jit.opt.start('hotloop=56', 'hotexit=10')
+   local handled = 0
+   local cleaned = 0
+   local caller = &&
+   local view = entity {}
+
+   function fail(Item:table!)
+      defer cleaned++ end
+      if Item.fragile then raise 'failed' end
+   end
+
+   view.release = function(Item:table!)
+      try
+         if Nested then
+            fail(Item)
+         elseif Item.fragile then
+            raise 'failed'
+         end
+      except e
+         handled++
+         assert(&& is view, 'A handler must retain the entity receiver established before try entry')
+         assert(e.message.find('failed') != nil, 'The original exception must reach the handler')
+      end
+   end
+
+   local items = {}
+   for i in {0 to 4} do items.insert({ fragile = i is 1 }) end
+   for n in {0 to 300} do
+      for item in values(items) do view.release(item) end
+   end
+   assert(handled is 300, 'Every raising call must run its handler after JIT warm-up')
+   assert(cleaned is (Nested ? 1200 : 0), 'Nested defers must run once on both normal and raising paths')
+   assert(&& is caller, 'Repeated calls and handlers must restore the caller context')
+end
+
+@Test function HotEntityTryPreservesReceiver()
+   run_hot_contextual_try(false)
+end
+
+@Test function HotEntityTryUnwindsNestedDefers()
+   run_hot_contextual_try(true)
+end
+
+@Test function MissingMemberCallRestoresContextBeforeHandler()
+   local caller = entity { name = 'caller' }
+   local target = entity { name = 'target' }
+   local caught = false
+
+   using caller do
+      try
+         target.missing()
+      except e
+         caught = true
+         assert(&& is caller, 'A failed member call must restore the caller context before its handler')
+         assert(e.message.find('nil') != nil, 'A missing member should report the original nil call error')
+      end
+      assert(&& is caller, 'The enclosing using context must survive a failed member call')
+   end
+   assert(caught, 'A missing entity member must raise a catchable exception')
+end
+
+@Test function NonCallableMemberRestoresContextBeforeCleanup()
+   local caller = entity { name = 'caller' }
+   local block = entity { name = 'block' }
+   local target = entity { name = 'target', invalid = 42 }
+   local cleaned = false
+   local caught = false
+
+   using caller do
+      try
+         using block do
+            defer
+               assert(&& is block, 'Cleanup must run in its owning block after a call fails')
+               cleaned = true
+            end
+            target.invalid()
+         end
+      except e
+         caught = true
+         assert(&& is caller, 'The handler must restore the context saved at try entry')
+      end
+   end
+   assert(caught and cleaned, 'A non-callable entity member must unwind cleanup and reach its handler')
+end
+
 @Test function UnannotatedFactoryResultSurvivesCapturedNilAssignment()
    local factory = {
       create = function()
@@ -91,11 +179,11 @@ end
    end
 end
 
-@Test function NestedArgumentContextsRestoreBeforeLaterArguments()
+@Test function NestedArgumentCallsCompleteBeforeOuterEntry()
    local caller = entity { value = 100 }
    local inner = entity { value = 3 }
-   function inner.read(Value:num):num return Value end
-   local target:any = {
+   function inner.read(Value:num):num return Value * 10 + &value end
+   local target:any = entity {
       consume = function(First:num, Second:num, Third:num):<num, num, num, table>
          return First, Second, Third, &&
       end
@@ -107,8 +195,10 @@ end
 
    using caller do
       local first, second, third, context = invoke()
-      assert(first is 100 and second is 3 and third is 100 and context is caller,
-         'Nested argument calls must restore context without overwriting the outer receiver')
+      assert(first is 100 and third is 100, 'Arguments around a nested contextual call must read the caller context')
+      assert(second is 1003, 'A nested call must read the caller in its arguments and its receiver in its body')
+      assert(context is target, 'The outer body must run in its receiver after the nested call has restored context')
+      assert(&& is caller, 'Both calls must restore the caller context')
    end
 end
 
@@ -186,6 +276,40 @@ end
       'A computed contextual call should compact table and multiple results into the expression destination')
 end
 
+-- A computed-key call retains an extra receiver copy, so its results land two slots below the callable.  Multiple
+-- assignment to existing targets must read them from the compacted result base rather than one slot below the callable.
+
+@Test function ComputedCallResultsReassignInOrder()
+   local target = entity { name = 'target' }
+
+   function target.read(Value:str):<str, str>
+      return Value, &name
+   end
+
+   local key = 'read'
+   local first:any, second:any, third:any
+   first, second = target[key]('x')
+   assert(first is 'x' and second is 'target',
+      f'A computed contextual call should reassign its results in order (got {first}, {second})')
+
+   first, second = target?[key]('y')
+   assert(first is 'y' and second is 'target',
+      f'A safe computed contextual call should reassign its results in order (got {first}, {second})')
+
+   local fields = {}
+   fields.first, fields.second = target[key]('z')
+   assert(fields.first is 'z' and fields.second is 'target',
+      'A computed contextual call should assign its results to table fields in order')
+
+   first, second, third = 1, target[key]('w')
+   assert(first is 1 and second is 'w' and third is 'target',
+      f'A computed contextual call should keep its results after a leading value (got {first}, {second}, {third})')
+
+   first, second = 'p' |> target[key]()
+   assert(first is 'p' and second is 'target',
+      f'A computed contextual pipe should reassign its results in order (got {first}, {second})')
+end
+
 @Test function DirectCallsInheritAndNestedTableCallsRestoreContext()
    local outer = entity { name = 'outer' }
    local inner = entity { name = 'inner' }
@@ -259,11 +383,15 @@ end
       'A contextual pipe destination should preserve forwarded multiple results')
 end
 
-@Test function RuntimeDependentPipesSelectTheActiveArgumentContext()
+@Test function RuntimeDependentPipesReadTheCallerOperand()
    local outer = entity { value = 100 }
    local ordinary = {
       value = 7,
       consume = function(Value:num):num return Value end
+   }
+   local contextual = entity {
+      value = 9,
+      consume = function(Value:num):num return Value + &value end
    }
 
    function outer.pipe_to(Target:any):num
@@ -271,10 +399,12 @@ end
    end
 
    assert(outer.pipe_to(ordinary) is 200,
-      'A runtime ordinary pipe receiver should retain the caller context for its piped operand')
+      'A runtime ordinary pipe receiver should evaluate its piped operand in the caller context')
+   assert(outer.pipe_to(contextual) is 209,
+      'A runtime contextual pipe receiver should evaluate its piped operand in the caller context')
 end
 
-@Test function RuntimeBuiltinPipeFallbackUsesReceiverContext()
+@Test function RuntimeBuiltinPipeFallbackReadsTheCallerOperand()
    local outer = entity { value = 100, target = entity { value = 7 } }
 
    function outer.target.add(Value:num):num
@@ -286,8 +416,269 @@ end
       return &value + &value |> &&.target.add()
    end
 
-   assert(outer.pipe_to_target() is 21,
-      'A runtime built-in fallback should evaluate its piped operand in the contextual receiver')
+   assert(outer.pipe_to_target() is 207,
+      'A runtime built-in fallback should read its piped operand in the caller and run its body in the receiver')
+end
+
+@Test function ContextualCallArgumentsReadTheCallerContext()
+   local caller = entity { name = 'caller' }
+   local target = entity { name = 'target' }
+
+   function target.read(Value:any):<any, str> return Value, &name end
+
+   function context_name():str return &name end
+
+   using caller do
+      local value:any, body:any = target.read(&name)
+      assert(value is 'caller' and body is 'target', 'A context field argument must read the caller')
+      value, body = target.read(&&)
+      assert(value is caller and body is 'target', 'A current-context argument must yield the caller')
+      value, body = target.read(context_name())
+      assert(value is 'caller' and body is 'target', 'Functions called from arguments must observe the caller')
+      local key = 'read'
+      local computed_value:any, computed_body:any = target[key](&name)
+      assert(computed_value is 'caller' and computed_body is 'target',
+         'Computed contextual calls must read arguments in the caller')
+      assert(&& is caller, 'Contextual calls must restore the caller context')
+   end
+
+   -- An entity method calling another entity passes its own fields without copying them to locals first.
+   local source = entity { name = 'source' }
+   function source.forward():<any, str> return target.read(&name) end
+   local value:any, body:any = source.forward()
+   assert(value is 'source' and body is 'target', 'An entity method must pass its own context to another entity')
+end
+
+@Test function PipedValuesReadTheCallerContext()
+   local caller = entity { value = 100 }
+   local receiver = entity { value = 7 }
+
+   function receiver.add(Value:num):num return Value + &value end
+   function receiver.sum(First:num, Second:num):num return First + Second + &value end
+
+   function pair():<num, num> return &value, 1 end
+
+   using caller do
+      assert(&value |> receiver.add() is 107, 'A piped context value must be read in the caller')
+      assert(&value |> receiver['add']() is 107, 'A computed pipe destination must read its operand in the caller')
+      assert(&value |> receiver?.add() is 107, 'A safe pipe destination must read its operand in the caller')
+      assert(pair() |> receiver.sum() is 108, 'Forwarded multiple results must be produced in the caller')
+      assert(&value |> receiver.sum(&value) is 207, 'Written arguments after a piped value must read the caller')
+      assert(&& is caller, 'Pipe destinations must restore the caller context')
+   end
+end
+
+@Test function SafeContextualCallsReadTheCallerOnlyWhenCalled()
+   local caller = entity { name = 'caller' }
+   local target = entity { name = 'target' }
+   local evaluated = 0
+
+   function target.read(Value:any):<any, str> return Value, &name end
+
+   function counted_name():str
+      evaluated++
+      return &name
+   end
+
+   using caller do
+      local missing:any = nil
+      assert(missing?.read(counted_name()) is nil and evaluated is 0,
+         'A nil safe receiver must skip argument evaluation')
+      local empty:any = entity { }
+      assert(empty?.read(counted_name()) is nil and evaluated is 0, 'A nil safe member must skip argument evaluation')
+      local present:any = target
+      local value:any, body:any = present?.read(counted_name())
+      assert(value is 'caller' and body is 'target' and evaluated is 1,
+         'A non-nil safe call must read its arguments in the caller')
+      assert(&& is caller, 'Safe calls must restore the caller context')
+   end
+end
+
+@Test function ContextualTailCallArgumentsReadTheCallerContext()
+   local caller = entity { name = 'caller' }
+   local target = entity { name = 'target' }
+   local relay = entity { name = 'relay' }
+
+   function target.read(Value:any):<any, str> return Value, &name end
+   function relay.forward():<any, ...> return target.read(&name) end
+
+   function forward():<any, ...> return target.read(&name) end
+
+   using caller do
+      local value:any, body:any = forward()
+      assert(value is 'caller' and body is 'target', 'A tail call must read its arguments before contextual entry')
+      value, body = relay.forward()
+      assert(value is 'relay' and body is 'target', 'A tail call from an entity must pass the entity context')
+      assert(&& is caller, 'Tail calls must restore the caller context')
+   end
+end
+
+@Test function ArgumentErrorsLeaveTheCallerContextActive()
+   local caller = entity { name = 'caller' }
+   local target = entity { name = 'target' }
+   local raised_in = nil
+
+   function target.read(Value:any):any return Value end
+
+   function fail():any
+      raised_in = &name
+      raise 'argument failed'
+   end
+
+   using caller do
+      for i in {0 to 200} do
+         try
+            target.read(i % 50 is 0 ? fail() : &name)
+         except e
+            assert(e.message.find('argument failed') != nil, 'The argument error must reach the handler')
+            assert(&& is caller, 'An argument error must leave the caller context active in its handler')
+         end
+      end
+      assert(raised_in is 'caller', 'An argument raising an error must run in the caller context')
+      assert(&& is caller, 'Argument errors must not leave a receiver activation behind')
+   end
+end
+
+@Test function ClosureArgumentsInheritTheReceiverWhenInvoked()
+   local caller = entity { name = 'caller' }
+   local view = entity { name = 'view' }
+
+   function view.apply(Callback:func):any return Callback() end
+
+   function[] view.applyOrdinary(Callback:func):any return Callback() end
+
+   using caller do
+      assert(view.apply(function():str return &name end) is 'view',
+         'A closure argument reads context when it is invoked, inside the receiver activation')
+      assert(view.applyOrdinary(function():str return &name end) is 'caller',
+         'An ordinary method lets a closure argument inherit the caller context')
+      local name = &name
+      assert(view.apply(function():str return name end) is 'caller',
+         'A closure argument can capture caller context values through a local')
+   end
+end
+
+function compare_jit_workload(Workload:func):<num, num, num>
+   jit.off()
+   local interpreted = Workload()
+   jit.on()
+   jit.flush()
+   jit.opt.start('hotloop=1', 'hotexit=1', 'minstitch=0')
+   local recorded = Workload()
+   local traces = 0
+   for number in {1 into 100} do
+      if jit.util.traceInfo(number) != nil then traces++ end
+   end
+   jit.opt.start()
+   return interpreted, recorded, traces
+end
+
+@Test(hotpath=3) function HotDirectAndComputedCallsReadCallerArguments()
+   local caller = entity { value = 100 }
+   local target = entity { value = 7 }
+   function target.read(Value:num):num return Value + &value end
+   function[] target.plain(Value:num):num return Value + &value end
+
+   function workload():num
+      local sum = 0
+      local keys = { 'read', 'plain' }
+      using caller do
+         for i in {0 to 300} do
+            sum += target.read(&value + i)
+            sum += target[keys[i % 2]](&value)
+            assert(&& is caller, 'Each call must restore the caller')
+         end
+      end
+      return sum
+   end
+
+   local interpreted, recorded, traces = compare_jit_workload(workload)
+   local expected = 0
+   for i in {0 to 300} do expected += 107 + i + ((i % 2 is 0) ? 107 : 200) end
+   assert(interpreted is expected, f'Interpreted result {interpreted} must match {expected}')
+   assert(recorded is expected and traces > 0, f'Recorded result {recorded} must match with traces ({traces})')
+end
+
+@Test(hotpath=3) function HotPipesAndTailCallsReadCallerArguments()
+   local caller = entity { value = 100 }
+   local target = entity { value = 7 }
+   function target.read(Value:num):num return Value + &value end
+
+   function tail(I:num):<any, ...>
+      return target.read(&value + I)
+   end
+
+   function workload():num
+      local sum = 0
+      using caller do
+         for i in {0 to 300} do
+            sum += (&value + i) |> target.read()
+            sum += tail(i)
+         end
+      end
+      return sum
+   end
+
+   local interpreted, recorded, traces = compare_jit_workload(workload)
+   local expected = 0
+   for i in {0 to 300} do expected += 2 * (107 + i) end
+   assert(interpreted is expected, f'Interpreted result {interpreted} must match {expected}')
+   assert(recorded is expected and traces > 0, f'Recorded result {recorded} must match with traces ({traces})')
+end
+
+@Test(hotpath=3) function HotNestedContextualArgumentsCompleteBeforeOuterEntry()
+   local caller = entity { value = 100 }
+   local inner = entity { value = 3 }
+   local outer = entity { value = 7 }
+   function inner.read(Value:num):num return Value * 1000 + &value end
+   function outer.combine(First:num, Second:num, Third:num):num return First + Second + Third + &value end
+
+   function workload():num
+      local sum = 0
+      using caller do
+         for i in {0 to 300} do
+            sum += outer.combine(&value, inner.read(&value + i), &value)
+         end
+      end
+      return sum
+   end
+
+   local interpreted, recorded, traces = compare_jit_workload(workload)
+   local expected = 0
+   for i in {0 to 300} do expected += 100 + ((100 + i) * 1000 + 3) + 100 + 7 end
+   assert(interpreted is expected, f'Interpreted result {interpreted} must match {expected}')
+   assert(recorded is expected and traces > 0, f'Recorded result {recorded} must match with traces ({traces})')
+end
+
+@Test(hotpath=3) function HotMultipleResultArgumentsSurviveCalleeReplacement()
+   local caller = entity { value = 100 }
+   local target = entity { value = 7 }
+   local function sum_a(A:num, B:num, C:num):num return A + B + C + &value end
+   local function sum_b(A:num, B:num, C:num):num return A + B + C + &value * 2 end
+   local callees = { [0] = sum_a, [1] = sum_b, [2] = sum_a }
+
+   function triple(I:num):<num, num, num>
+      return &value, I, 1
+   end
+
+   function workload():num
+      local sum = 0
+      using caller do
+         for i in {0 to 300} do
+            -- Replacing the callee without a branch fails its CTXENTER specialisation guard while the multiple
+            -- results of triple() are pending for CTXCALLM.
+            target.sum = callees[math.floor(i / 100)]
+            sum += target.sum(triple(i))
+         end
+      end
+      return sum
+   end
+
+   local interpreted, recorded, traces = compare_jit_workload(workload)
+   local expected = 0
+   for i in {0 to 300} do expected += 100 + i + 1 + ((i >= 100 and i < 200) ? 14 : 7) end
+   assert(interpreted is expected, f'Interpreted result {interpreted} must match {expected}')
+   assert(recorded is expected and traces > 0, f'Recorded result {recorded} must match with traces ({traces})')
 end
 
 @Test function DynamicFallbackObjectReadsSurviveStackGrowth()
@@ -726,6 +1117,7 @@ end
 
 @Test function ReceiverKeyAndArgumentsPreserveEvaluationOrder()
    local events = {}
+   local caller = entity { name = 'caller' }
    local target = entity { name = 'ordered' }
 
    function target.invoke(Value:num):num
@@ -746,12 +1138,14 @@ end
 
    function evaluate_argument():num
       events[#events] = 'argument'
-      assert(&name is 'ordered', 'Arguments should be evaluated after contextual entry')
+      assert(&name is 'caller', 'Arguments should be evaluated in the caller context before contextual entry')
       return 23
    end
 
-   assert(evaluate_receiver()[evaluate_key()](evaluate_argument()) is 23,
-      'A computed contextual call should return the callable result')
+   using caller do
+      assert(evaluate_receiver()[evaluate_key()](evaluate_argument()) is 23,
+         'A computed contextual call should return the callable result')
+   end
    assert(#events is 4, 'Receiver, key, argument and callable should each be evaluated exactly once')
    assert(events[0] is 'receiver' and events[1] is 'key' and events[2] is 'argument' and events[3] is 'call',
       'Contextual calls should preserve receiver, key, argument and invocation order')
@@ -1549,4 +1943,41 @@ end
       f'The contextual workload should exercise the recorder blacklisting abort path ' ..
       f'(aborted={aborted}, reason={last_reason})')
    assert(&name is nil, 'A blacklisted contextual callee should restore the root context')
+end
+
+@Test function OptionalCallsEstablishEntityContext()
+   local caller = entity { name = 'caller' }
+   local target = entity { name = 'target' }
+   local evaluated = 0
+
+   function target.read(Value:any):<any, str> return Value, &name end
+
+   function optional_name():str
+      evaluated++
+      return &name
+   end
+
+   local plain = { read = function():any return &name end }
+
+   using caller do
+      local value:any, body:any = target.read?(optional_name())
+      assert(value is 'caller' and body is 'target' and evaluated is 1,
+         'An optional entity call must read its arguments in the caller and run its body in the receiver')
+      assert(target.missing?(optional_name()) is nil and evaluated is 1,
+         'A missing optional entity member must skip argument evaluation')
+
+      local dynamic:any = target
+      value, body = dynamic.read?(optional_name())
+      assert(value is 'caller' and body is 'target' and evaluated is 2,
+         'An unproved optional receiver must establish entity context at runtime')
+      assert(dynamic.missing?(optional_name()) is nil and evaluated is 2,
+         'An unproved missing member must skip argument evaluation')
+
+      value, body = optional_name() |> target.read?()
+      assert(value is 'caller' and body is 'target' and evaluated is 3,
+         'An optional pipe destination must read its operand in the caller')
+
+      assert(plain.read?() is 'caller', 'An ordinary table member must inherit the caller context')
+      assert(&& is caller, 'Optional calls must restore the caller context on called and skipped paths')
+   end
 end

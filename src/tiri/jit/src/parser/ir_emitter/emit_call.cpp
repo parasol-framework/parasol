@@ -59,6 +59,97 @@ static BCReg prepare_builtin_method_frame(
    return bcemit_builtin_call_frame(State, Callable, CallBase, Receiver);
 }
 
+// Return the member selected by an optional table call, or nullptr for every other call form.
+
+static GCstr * optional_call_member(const CallExprPayload &Payload)
+{
+   if (Payload.dispatch != CallDispatch::OptionalMemberNamed) return nullptr;
+   const auto *direct = std::get_if<DirectCallTarget>(&Payload.target);
+   if (not direct or not direct->callable or direct->callable->kind != AstNodeKind::MemberExpr) return nullptr;
+   return std::get<MemberExprPayload>(direct->callable->data).member.symbol;
+}
+
+//********************************************************************************************************************
+// Emit the skipped path of a safe or optional call, leaving its result frame at ResultBase.
+//
+// Writing nil directly would leave MULTRES stale for a consumer that forwards every result, such as a trailing
+// argument, `return` or a table constructor tail.  The path therefore calls the canonical tonumber(nil), which yields
+// exactly one nil and is recorded by the JIT as a constant.  The returned CALL position is published as the
+// expression's safe_nil_init, and set_call_result_count() gives it the same result count as the present call, so fixed
+// requests are nil-filled too.
+
+static BCPOS emit_skipped_call_result(FuncState *State, BCReg ResultBase)
+{
+   BCREG argument = ResultBase.raw() + 1 + LJ_FR2;
+   BCREG saved_free = State->freereg;
+   if (State->freereg < argument + 1) bcreg_reserve(State, argument + 1 - State->freereg);
+   (void)bcemit_builtin_callable(State, builtin_callable_id(FastFunc::tonumber), ResultBase.raw());
+   bcemit_nil(State, argument, 1);
+   BCPOS call = bcemit_INS(State, BCINS_ABC(BC_CALL, ResultBase.raw(), BCREG(CallResultMode::OneResult),
+      argument + 1 - ResultBase.raw() - LJ_FR2));
+   State->freereg = saved_free;
+   return call;
+}
+
+//********************************************************************************************************************
+// An optional table call requires a table receiver before member lookup.  Any other value, including nil, raises
+// ERR_TypeMismatch so that only a nil member can skip the call.  A dominating non-nullable table proof elides the
+// check.
+
+ParserResult<BCReg> IrEmitter::emit_optional_receiver_check(BCReg Receiver, const ExprNode &ReceiverNode,
+   GCstr *Member)
+{
+   if (can_use_static_receiver(this->ctx.descriptors(), ReceiverNode.static_value, TiriType::Table)) {
+      return ParserResult<BCReg>::success(Receiver);
+   }
+
+   FuncState *fs = &this->func_state;
+   BCREG saved_free = fs->freereg;
+   BCREG test = fs->freereg;
+   bcreg_reserve(fs, 2);
+   bcemit_AD(fs, BC_MOV, test, Receiver.raw());
+   auto type_test = this->emit_type_test_descriptor(TypeTestDescriptor{ .type = TiriType::Table }, false,
+      BCReg(test));
+   if (not type_test.ok()) return ParserResult<BCReg>::failure(type_test.error_ref());
+   bcemit_INS(fs, BCINS_AD(BC_IST, 0, test));
+   ControlFlowEdge valid = this->control_flow.make_unconditional(BCPos(bcemit_jmp(fs)));
+   std::string message = std::format("optional call '{}?()' requires a table receiver",
+      Member ? std::string_view(strdata(Member), Member->len) : std::string_view("?"));
+   bcemit_AD(fs, BC_KSHORT, test, BCREG(ERR::TypeMismatch));
+   bcemit_AD(fs, BC_KSTR, test + 1, const_gc(fs, obj2gco(this->lex_state.keepstr(message)), LJ_TSTR));
+   bcemit_AD(fs, BC_RAISE, test, test + 1);
+   valid.patch_here();
+   fs->freereg = saved_free;
+   return ParserResult<BCReg>::success(Receiver);
+}
+
+//********************************************************************************************************************
+// Emit the callee of an optional field call: the receiver is evaluated once, checked, and then indexed by the member
+// name through the ordinary table lookup path, which preserves __index behaviour.  The returned expression is the
+// indexed lookup; the caller materialises it as the call base and tests it for nil.
+
+ParserResult<ExpDesc> IrEmitter::emit_optional_member_callee(const MemberExprPayload &Member)
+{
+   if (not Member.table or not Member.member.symbol) {
+      return this->unsupported_expr(AstNodeKind::MemberExpr, Member.member.span);
+   }
+
+   auto receiver_result = this->emit_expression(*Member.table);
+   if (not receiver_result.ok() or receiver_result.value_ref().is_unreachable()) return receiver_result;
+
+   RegisterAllocator allocator(&this->func_state);
+   ExpressionValue receiver_value(&this->func_state, receiver_result.value_ref());
+   BCReg receiver_reg = receiver_value.discharge_to_any_reg(allocator);
+   ExpDesc receiver = receiver_value.legacy();
+   auto checked = this->emit_optional_receiver_check(receiver_reg, *Member.table, Member.member.symbol);
+   if (not checked.ok()) return ParserResult<ExpDesc>::failure(checked.error_ref());
+
+   ExpDesc key(Member.member.symbol);
+   expr_index(&this->func_state, &receiver, &key);
+   receiver.result_type = TiriType::Unknown;
+   return ParserResult<ExpDesc>::success(receiver);
+}
+
 //********************************************************************************************************************
 // Emit an unresolved built-in method used as a pipe destination.  The selected branch owns the pipe operand and the
 // written arguments, so their expressions execute once with the call-frame layout selected at runtime.
@@ -152,6 +243,7 @@ ParserResult<ExpDesc> IrEmitter::emit_runtime_builtin_method_pipe(
             branch_base.raw(), 2, state->freereg - branch_base.raw() - 1);
       }
       this->lex_state.lastline = call_line;
+      if (not BuiltinBranch and contextual_field) bcemit_INS(state, BCINS_AD(BC_CTXENTER, branch_base.raw(), 0));
       return ParserResult<BCPos>::success(BCPos(bcemit_INS(state, instruction)));
    };
 
@@ -177,23 +269,6 @@ ParserResult<ExpDesc> IrEmitter::emit_runtime_builtin_method_pipe(
    if (contextual_field) {
       bcemit_AD(state, BC_MOV, field_call_base.raw(), call_base.raw());
       bcemit_AD(state, BC_MOV, call_base.raw(), receiver_slot);
-      bcemit_INS(state, BCINS_AD(BC_CTXENTER, field_call_base.raw(), 0));
-   }
-
-   ContextSourceScope argument_context_scope;
-   if (contextual_field) {
-      // CTXENTER resolves the function policy before argument context is read.
-      bool arguments_use_context = this->expression_uses_context(*Payload.lhs);
-      for (const ExprNodePtr &argument : Call.arguments) {
-         if (argument and this->expression_uses_context(*argument)) {
-            arguments_use_context = true;
-            break;
-         }
-      }
-      if (arguments_use_context) {
-         argument_context_scope.activate(this,
-            ContextSource{ .kind = ContextSourceKind::DynamicArgument });
-      }
    }
 
    auto field_result = emit_branch(false);
@@ -207,8 +282,7 @@ ParserResult<ExpDesc> IrEmitter::emit_runtime_builtin_method_pipe(
       // the synthetic nil-result block; skip_nil carries both successful paths around it to the common continuation.
       ControlFlowEdge skip_nil = this->control_flow.make_unconditional(BCPos(bcemit_jmp(state)));
       field_nil_jump.patch_to(state->current_pc());
-      field_nil_init = state->pc;
-      bcemit_nil(state, call_base.raw(), 1);
+      field_nil_init = emit_skipped_call_result(state, call_base);
       skip_nil.patch_here();
    }
 
@@ -269,6 +343,10 @@ ParserResult<ExpDesc> IrEmitter::emit_pipe_expr(const PipeExprPayload &Payload)
    bool safe_callable = direct and direct->callable and
       (direct->callable->kind IS AstNodeKind::SafeMemberExpr or
        direct->callable->kind IS AstNodeKind::SafeIndexExpr);
+   GCstr *optional_member = optional_call_member(call_payload);
+   bool optional_call = optional_member != nullptr;
+   // A table built-in selected for an optional call is always present and takes the canonical callable path below.
+   if (optional_call and call_payload.builtin_method) contextual_call = false;
 
    if (contextual_call) {
       if (not direct or not direct->callable) return this->unsupported_expr(AstNodeKind::PipeExpr, SourceSpan{});
@@ -279,6 +357,12 @@ ParserResult<ExpDesc> IrEmitter::emit_pipe_expr(const PipeExprPayload &Payload)
       ExpDesc receiver = receiver_result.value_ref();
       this->materialise_to_next_reg(receiver, "contextual pipe receiver");
       context_result_base = BCReg(receiver.u.s.info);
+
+      if (optional_call) {
+         auto checked = this->emit_optional_receiver_check(context_result_base, *context_receiver_node,
+            optional_member);
+         if (not checked.ok()) return ParserResult<ExpDesc>::failure(checked.error_ref());
+      }
 
       ControlFlowEdge receiver_nil_jump;
       if (safe_callable) {
@@ -328,29 +412,18 @@ ParserResult<ExpDesc> IrEmitter::emit_pipe_expr(const PipeExprPayload &Payload)
       context_allocator.reserve(BCReg(1));
 
       ControlFlowEdge nil_jump;
-      if (safe_callable) {
+      if (safe_callable or optional_call) {
          ExpDesc nil_value(ExpKind::Nil);
          bcemit_INS(fs, BCINS_AD(BC_ISEQP, base, const_pri(&nil_value)));
          nil_jump = this->control_flow.make_unconditional(BCPos(bcemit_jmp(fs)));
       }
 
-      bcemit_INS(fs, BCINS_AD(BC_CTXENTER, base, 0));
-      ContextSourceScope context_scope;
-      // CTXENTER resolves the function policy before argument context is read.
-      bool arguments_use_context = this->expression_uses_context(*Payload.lhs);
-      for (const ExprNodePtr &argument : call_payload.arguments) {
-         if (argument and this->expression_uses_context(*argument)) {
-            arguments_use_context = true;
-            break;
-         }
-      }
-      if (arguments_use_context) {
-         context_scope.activate(this,
-            ContextSource{ .kind = ContextSourceKind::DynamicArgument });
-      }
+      // The piped value and written arguments are evaluated in the caller's context; CTXENTER follows them.
 
       auto finish_unreachable = [&]() -> ParserResult<ExpDesc> {
-         if (not safe_callable) return ParserResult<ExpDesc>::success(ExpDesc(ExpKind::Unreachable));
+         if (not safe_callable and not optional_call) {
+            return ParserResult<ExpDesc>::success(ExpDesc(ExpKind::Unreachable));
+         }
          if (not receiver_nil_jump.empty()) receiver_nil_jump.patch_here();
          nil_jump.patch_here();
          bcemit_nil(fs, context_result_base.raw(), 1);
@@ -393,19 +466,22 @@ ParserResult<ExpDesc> IrEmitter::emit_pipe_expr(const PipeExprPayload &Payload)
          instruction = BCINS_ABC(BC_CTXCALL, base, 2, fs->freereg - base - 1);
       }
       this->lex_state.lastline = call_line;
+      bcemit_INS(fs, BCINS_AD(BC_CTXENTER, base, 0));
       BCPos call_pc = BCPos(bcemit_INS(fs, instruction));
       bcemit_INS(fs, BCINS_AD(BC_CTXLEAVE, base, BCREG(base.raw() - context_result_base.raw())));
 
-      if (safe_callable) {
+      BCPOS skipped_result = NO_JMP;
+      if (safe_callable or optional_call) {
          ControlFlowEdge skip_nil = this->control_flow.make_unconditional(BCPos(bcemit_jmp(fs)));
          BCPos nil_path = BCPos(fs->pc);
          if (not receiver_nil_jump.empty()) receiver_nil_jump.patch_to(nil_path);
          nil_jump.patch_to(nil_path);
-         bcemit_nil(fs, context_result_base.raw(), 1);
+         skipped_result = emit_skipped_call_result(fs, context_result_base);
          skip_nil.patch_to(BCPos(fs->pc));
       }
 
       ExpDesc result(ExpKind::Call, call_pc);
+      result.safe_nil_init = skipped_result;
       result.u.s.aux = context_result_base.raw();
       result.static_results = call_payload.results;
       if (call_payload.results) {
@@ -414,7 +490,7 @@ ParserResult<ExpDesc> IrEmitter::emit_pipe_expr(const PipeExprPayload &Payload)
          result.object_class_id = descriptor.object_class_id;
          result.struct_def = descriptor.struct_def;
       }
-      fs->freereg = base;
+      fs->freereg = context_result_base + 1; // Results start at context_result_base after CTXLEAVE
       return ParserResult<ExpDesc>::success(result);
    }
 
@@ -436,7 +512,7 @@ ParserResult<ExpDesc> IrEmitter::emit_pipe_expr(const PipeExprPayload &Payload)
       ExpDesc receiver = receiver_result.value_ref();
       RegisterAllocator allocator(fs);
       BCReg receiver_reg(0);
-      if (call_payload.builtin_method->safe) {
+      if (call_payload.builtin_method->guard IS MethodReceiverGuard::NilSafe) {
          nil_guard = std::make_unique<NilShortCircuitGuard>(this, receiver);
          if (not nil_guard->ok()) return nil_guard->error<ExpDesc>();
          receiver = nil_guard->base_expression();
@@ -445,13 +521,19 @@ ParserResult<ExpDesc> IrEmitter::emit_pipe_expr(const PipeExprPayload &Payload)
       else {
          ExpressionValue receiver_value(fs, receiver);
          receiver_reg = receiver_value.discharge_to_any_reg(allocator);
+         if (call_payload.builtin_method->guard IS MethodReceiverGuard::RequireTable) {
+            auto checked = this->emit_optional_receiver_check(receiver_reg, *receiver_node, optional_member);
+            if (not checked.ok()) return ParserResult<ExpDesc>::failure(checked.error_ref());
+         }
       }
 
       prepare_builtin_method_frame(fs, call_payload.builtin_method->callable, receiver_reg, base);
    }
    else if (const auto* direct = std::get_if<DirectCallTarget>(&call_payload.target)) {
       if (not direct->callable) return this->unsupported_expr(AstNodeKind::PipeExpr, SourceSpan{});
-      auto callee_result = this->emit_expression(*direct->callable);
+      auto callee_result = optional_call ?
+         this->emit_optional_member_callee(std::get<MemberExprPayload>(direct->callable->data)) :
+         this->emit_expression(*direct->callable);
       if (not callee_result.ok() or callee_result.value_ref().is_unreachable()) return callee_result;
       callee = callee_result.value_ref();
       this->materialise_to_next_reg(callee, "pipe call callee");
@@ -461,12 +543,31 @@ ParserResult<ExpDesc> IrEmitter::emit_pipe_expr(const PipeExprPayload &Payload)
    }
    else return this->unsupported_expr(AstNodeKind::PipeExpr, SourceSpan{});
 
+   // A missing optional field skips the piped operand and the written arguments.  A built-in table method always
+   // exists, so only the field path needs the guard.
+
+   bool guards_optional_field = optional_call and not call_payload.builtin_method;
+   ControlFlowEdge optional_nil_jump;
+   if (guards_optional_field) {
+      ExpDesc nil_value(ExpKind::Nil);
+      bcemit_INS(fs, BCINS_AD(BC_ISEQP, base, const_pri(&nil_value)));
+      optional_nil_jump = this->control_flow.make_unconditional(BCPos(bcemit_jmp(fs)));
+   }
+
+   auto finish_optional_unreachable = [&]() -> ParserResult<ExpDesc> {
+      optional_nil_jump.patch_here();
+      bcemit_nil(fs, base.raw(), 1);
+      fs->freereg = base.raw() + 1;
+      return ParserResult<ExpDesc>::success(ExpDesc(ExpKind::NonReloc, base.raw()));
+   };
+
    // Emit LHS expression as the first argument(s)
 
    auto lhs_result = this->emit_expression(*Payload.lhs);
    if (not lhs_result.ok()) return lhs_result;
    if (lhs_result.value_ref().is_unreachable()) {
       if (nil_guard) return nil_guard->complete_unreachable(base);
+      if (guards_optional_field) return finish_optional_unreachable();
       return lhs_result;
    }
    ExpDesc lhs = lhs_result.value_ref();
@@ -511,6 +612,7 @@ ParserResult<ExpDesc> IrEmitter::emit_pipe_expr(const PipeExprPayload &Payload)
       args = args_result.value_ref();
       if (args.is_unreachable()) {
          if (nil_guard) return nil_guard->complete_unreachable(base);
+         if (guards_optional_field) return finish_optional_unreachable();
          return args_result;
       }
    }
@@ -538,6 +640,13 @@ ParserResult<ExpDesc> IrEmitter::emit_pipe_expr(const PipeExprPayload &Payload)
       result = completed.value_ref();
    }
    else result.init(ExpKind::Call, call_pc);
+
+   if (guards_optional_field) {
+      ControlFlowEdge skip_nil = this->control_flow.make_unconditional(BCPos(bcemit_jmp(fs)));
+      optional_nil_jump.patch_here();
+      result.safe_nil_init = emit_skipped_call_result(fs, base);
+      skip_nil.patch_here();
+   }
    result.u.s.aux = base;
    result.static_results = call_payload.results;
    if (call_payload.results) {
@@ -576,7 +685,7 @@ ParserResult<ExpDesc> IrEmitter::emit_builtin_method_call(const CallExprPayload 
    ExpDesc receiver = receiver_result.value_ref();
    RegisterAllocator allocator(&this->func_state);
    BCReg receiver_reg(0);
-   if (Payload.builtin_method->safe) {
+   if (Payload.builtin_method->guard IS MethodReceiverGuard::NilSafe) {
       nil_guard = std::make_unique<NilShortCircuitGuard>(this, receiver);
       if (not nil_guard->ok()) return nil_guard->error<ExpDesc>();
       receiver = nil_guard->base_expression();
@@ -586,6 +695,10 @@ ParserResult<ExpDesc> IrEmitter::emit_builtin_method_call(const CallExprPayload 
       ExpressionValue receiver_value(&this->func_state, receiver);
       receiver_reg = receiver_value.discharge_to_any_reg(allocator);
       receiver = receiver_value.legacy();
+      if (Payload.builtin_method->guard IS MethodReceiverGuard::RequireTable) {
+         auto checked = this->emit_optional_receiver_check(receiver_reg, *receiver_node, optional_call_member(Payload));
+         if (not checked.ok()) return ParserResult<ExpDesc>::failure(checked.error_ref());
+      }
    }
 
    prepare_builtin_method_frame(
@@ -714,6 +827,7 @@ ParserResult<ExpDesc> IrEmitter::emit_runtime_builtin_method_call(const CallExpr
             branch_base.raw(), 2, state->freereg - branch_base.raw() - 1);
       }
       this->lex_state.lastline = call_line;
+      if (not BuiltinBranch and contextual_field) bcemit_INS(state, BCINS_AD(BC_CTXENTER, branch_base.raw(), 0));
       return ParserResult<BCPos>::success(BCPos(bcemit_INS(state, instruction)));
    };
 
@@ -742,23 +856,6 @@ ParserResult<ExpDesc> IrEmitter::emit_runtime_builtin_method_call(const CallExpr
    if (contextual_field) {
       bcemit_AD(state, BC_MOV, field_call_base.raw(), call_base.raw());
       bcemit_AD(state, BC_MOV, call_base.raw(), receiver_slot);
-      bcemit_INS(state, BCINS_AD(BC_CTXENTER, field_call_base.raw(), 0));
-   }
-
-   ContextSourceScope argument_context_scope;
-   if (contextual_field) {
-      // CTXENTER resolves the function policy before argument context is read.
-      bool arguments_use_context = false;
-      for (const ExprNodePtr &argument : Payload.arguments) {
-         if (argument and this->expression_uses_context(*argument)) {
-            arguments_use_context = true;
-            break;
-         }
-      }
-      if (arguments_use_context) {
-         argument_context_scope.activate(this,
-            ContextSource{ .kind = ContextSourceKind::DynamicArgument });
-      }
    }
 
    auto field_call_result = emit_branch_call(false);
@@ -772,8 +869,7 @@ ParserResult<ExpDesc> IrEmitter::emit_runtime_builtin_method_call(const CallExpr
       // into call_base before all paths rejoin for the existing receiver nil guard and result metadata handling.
       ControlFlowEdge skip_nil = this->control_flow.make_unconditional(BCPos(bcemit_jmp(state)));
       field_nil_jump.patch_to(state->current_pc());
-      field_nil_init = state->pc;
-      bcemit_nil(state, call_base.raw(), 1);
+      field_nil_init = emit_skipped_call_result(state, call_base);
       skip_nil.patch_here();
    }
 
@@ -839,6 +935,7 @@ ParserResult<ExpDesc> IrEmitter::emit_call_expr(const CallExprPayload &Payload)
    auto base = BCReg(0);
    auto context_result_base = BCReg(0);
    bool is_safe_callable = false;
+   bool is_optional_call = Payload.dispatch IS CallDispatch::OptionalMemberNamed;
    bool is_contextual_call = false;
    bool uses_specialised_member_dispatch = false;
    const ExprNode *context_receiver_node = nullptr;
@@ -916,6 +1013,11 @@ ParserResult<ExpDesc> IrEmitter::emit_call_expr(const CallExprPayload &Payload)
          auto receiver_reg = BCReg(receiver.u.s.info);
          context_result_base = receiver_reg;
 
+         if (is_optional_call) {
+            auto checked = this->emit_optional_receiver_check(receiver_reg, *receiver_node, member_name);
+            if (not checked.ok()) return ParserResult<ExpDesc>::failure(checked.error_ref());
+         }
+
          if (is_safe_callable) {
             ExpDesc nil_value(ExpKind::Nil);
             bcemit_INS(&this->func_state, BCINS_AD(BC_ISEQP, receiver_reg, const_pri(&nil_value)));
@@ -968,6 +1070,12 @@ ParserResult<ExpDesc> IrEmitter::emit_call_expr(const CallExprPayload &Payload)
             builtin_callable_id(FastFunc::__setmetatable_ctx), call_base.raw());
          bcreg_reserve(&this->func_state, 1);
       }
+      else if (is_optional_call) {
+         auto callee_result = this->emit_optional_member_callee(
+            std::get<MemberExprPayload>(direct->callable->data));
+         if (not callee_result.ok() or callee_result.value_ref().is_unreachable()) return callee_result;
+         callee = callee_result.value_ref();
+      }
       else {
          auto callee_result = this->emit_expression(*direct->callable);
          if (not callee_result.ok() or callee_result.value_ref().is_unreachable()) return callee_result;
@@ -1018,7 +1126,8 @@ ParserResult<ExpDesc> IrEmitter::emit_call_expr(const CallExprPayload &Payload)
                            member_payload->member.symbol->hash)) {
                         callee_return_type = proto->first_result();
                      }
-                     else if (is_known_c_interface(iface->identifier.symbol->hash)) {
+                     else if (not is_optional_call and is_known_c_interface(iface->identifier.symbol->hash)) {
+                        // An optional call anticipates an absent member and is exempt from this warning.
                         log.warning("No prototype registered for method: %s.%s",
                            strdata(iface->identifier.symbol), strdata(member_payload->member.symbol));
                      }
@@ -1038,34 +1147,19 @@ ParserResult<ExpDesc> IrEmitter::emit_call_expr(const CallExprPayload &Payload)
    }
    else return this->unsupported_expr(AstNodeKind::CallExpr, SourceSpan{});
 
-   // For safe callable expressions (obj?.method()), emit a nil check on the callable.
-   // If the callable is nil, skip the call (including argument evaluation) and return nil instead.
+   // For safe callable expressions (obj?.method()) and optional table calls (obj.method?()), emit a nil check on the
+   // callable.  If the callable is nil, skip the call (including argument evaluation) and return nil instead.
 
+   bool guards_callable = is_safe_callable or is_optional_call;
    ControlFlowEdge nil_jump;
-   if (is_safe_callable) {
+   if (guards_callable) {
       ExpDesc nilv(ExpKind::Nil);
       bcemit_INS(&this->func_state, BCINS_AD(BC_ISEQP, base, const_pri(&nilv)));
       nil_jump = this->control_flow.make_unconditional(BCPos(bcemit_jmp(&this->func_state)));
    }
 
-   ContextSourceScope argument_context_scope;
-   if (is_contextual_call) {
-      bcemit_INS(&this->func_state, BCINS_AD(BC_CTXENTER, base, 0));
-      // CTXENTER resolves the function policy before argument context is read.
-      bool arguments_use_context = false;
-      for (const ExprNodePtr &argument : Payload.arguments) {
-         if (argument and this->expression_uses_context(*argument)) {
-            arguments_use_context = true;
-            break;
-         }
-      }
-      if (arguments_use_context) {
-         argument_context_scope.activate(this,
-            ContextSource{ .kind = ContextSourceKind::DynamicArgument });
-      }
-   }
-
-   // Evaluate arguments only after the nil check, so if callable is nil we skip argument evaluation
+   // Evaluate arguments only after the nil check, so if callable is nil we skip argument evaluation.  Arguments of a
+   // contextual call are evaluated in the caller's context; CTXENTER is emitted after them.
    auto arg_count = BCReg(0);
    ExpDesc args(ExpKind::Void);
    if (not Payload.arguments.empty()) {
@@ -1075,7 +1169,7 @@ ParserResult<ExpDesc> IrEmitter::emit_call_expr(const CallExprPayload &Payload)
    }
 
    if (args.is_unreachable()) {
-      if (not is_safe_callable) return ParserResult<ExpDesc>::success(args);
+      if (not guards_callable) return ParserResult<ExpDesc>::success(args);
       BCReg result_reg = is_contextual_call ? context_result_base : base;
       nil_jump.patch_here();
       if (not receiver_nil_jump.empty()) receiver_nil_jump.patch_here();
@@ -1101,6 +1195,7 @@ ParserResult<ExpDesc> IrEmitter::emit_call_expr(const CallExprPayload &Payload)
 
    this->lex_state.lastline = call_line;
 
+   if (is_contextual_call) bcemit_INS(&this->func_state, BCINS_AD(BC_CTXENTER, base, 0));
    auto call_pc = BCPos(bcemit_INS(&this->func_state, ins));
    if (is_contextual_call) {
       bcemit_INS(&this->func_state,
@@ -1110,14 +1205,14 @@ ParserResult<ExpDesc> IrEmitter::emit_call_expr(const CallExprPayload &Payload)
    // For safe callable: emit the nil path and patch jumps
 
    BCPos safe_nil_init = BCPos(NO_JMP);
-   if (is_safe_callable) {
+   if (guards_callable) {
       ControlFlowEdge skip_nil = this->control_flow.make_unconditional(BCPos(bcemit_jmp(&this->func_state)));
 
       BCPos nil_path = BCPos(this->func_state.pc);
       nil_jump.patch_to(nil_path);
       if (not receiver_nil_jump.empty()) receiver_nil_jump.patch_to(nil_path);
-      safe_nil_init = nil_path;
-      bcemit_nil(&this->func_state, is_contextual_call ? context_result_base.raw() : base.raw(), 1);
+      BCReg result_reg = is_contextual_call ? context_result_base : base;
+      safe_nil_init = BCPos(emit_skipped_call_result(&this->func_state, result_reg));
 
       skip_nil.patch_to(BCPos(this->func_state.pc));
    }
@@ -1130,7 +1225,9 @@ ParserResult<ExpDesc> IrEmitter::emit_call_expr(const CallExprPayload &Payload)
    result.object_class_id = callee_object_class_id;  // Propagate object class ID for Object types
    result.struct_def = callee_struct_def;
    result.static_results = Payload.results;
-   this->func_state.freereg = is_contextual_call ? base : base + 1;
+   // CTXLEAVE moves the results down to context_result_base, so the first result slot is the last reserved register.
+   // A computed-key call retains an extra receiver copy, so base is not always context_result_base + 1.
+   this->func_state.freereg = is_contextual_call ? context_result_base + 1 : base + 1;
    return ParserResult<ExpDesc>::success(result);
 }
 
@@ -1242,9 +1339,11 @@ ParserResult<ExpDesc> IrEmitter::emit_result_filter_expr(const ResultFilterPaylo
 
    // Emit CALLM to call __filter with variable arguments from the inner call
    // CALLM: base = function, C+1 = fixed args before vararg (3: mask, count, trailing)
-   // The varargs come from the inner call's multiple returns
+   // The varargs come from the inner call's multiple returns.  Like any other call, the filter initially requests one
+   // result so that a single-value consumer receives nil when nothing is kept; consumers that forward every result
+   // widen it through set_call_result_count().
 
-   BCIns ins = BCINS_ABC(BC_CALLM, base, 0, 3);  // 3 fixed args before vararg
+   BCIns ins = BCINS_ABC(BC_CALLM, base, BCREG(CallResultMode::OneResult), 3);  // 3 fixed args before vararg
 
    ExpDesc result;
    result.init(ExpKind::Call, bcemit_INS(fs, ins));

@@ -31,6 +31,9 @@ ParserResult<StmtNodePtr> AstBuilder::parse_explicit_local_declaration()
    if (this->ctx.check(TokenKind::Function) or is_thunk) {
       if (not is_thunk) this->ctx.tokens().advance();
 
+      auto binding = this->parse_function_binding(is_thunk);
+      if (not binding.ok()) return ParserResult<StmtNodePtr>::failure(binding.error_ref());
+
       Token function_token = local_token;  // Use local_token as span start
       auto name_token = this->ctx.expect_identifier(ParserErrorCode::ExpectedIdentifier);
       if (not name_token.ok()) return ParserResult<StmtNodePtr>::failure(name_token.error_ref());
@@ -40,7 +43,7 @@ ParserResult<StmtNodePtr> AstBuilder::parse_explicit_local_declaration()
       }
 
       GCstr *funcname = name_token.value_ref().identifier();
-      auto fn = this->parse_function_literal(function_token, is_thunk, funcname);
+      auto fn = this->parse_function_literal(function_token, is_thunk, funcname, std::move(binding.value_ref()));
       if (not fn.ok()) return ParserResult<StmtNodePtr>::failure(fn.error_ref());
 
       ExprNodePtr function_expr = std::move(fn.value_ref());
@@ -197,6 +200,9 @@ ParserResult<StmtNodePtr> AstBuilder::parse_global()
    if (this->ctx.check(TokenKind::Function) or is_thunk) {
       if (not is_thunk) this->ctx.tokens().advance();
 
+      auto binding = this->parse_function_binding(is_thunk);
+      if (not binding.ok()) return ParserResult<StmtNodePtr>::failure(binding.error_ref());
+
       Token function_token = global_token;
       auto name_token = this->ctx.expect_identifier(ParserErrorCode::ExpectedIdentifier);
       if (not name_token.ok()) return ParserResult<StmtNodePtr>::failure(name_token.error_ref());
@@ -205,7 +211,7 @@ ParserResult<StmtNodePtr> AstBuilder::parse_global()
             "Module namespaces cannot be declared as functions");
       }
       GCstr *funcname = name_token.value_ref().identifier();
-      auto fn = this->parse_function_literal(function_token, is_thunk, funcname);
+      auto fn = this->parse_function_literal(function_token, is_thunk, funcname, std::move(binding.value_ref()));
       if (not fn.ok()) return ParserResult<StmtNodePtr>::failure(fn.error_ref());
       ExprNodePtr function_expr = std::move(fn.value_ref());
 
@@ -931,13 +937,17 @@ ParserResult<StmtNodePtr> AstBuilder::parse_enum(const Token &StartToken)
 }
 
 //********************************************************************************************************************
-// Parses function declarations, including dot-qualified paths and thunk functions.
+// Parses function declarations, including context bindings, dot-qualified paths and thunk functions.
 
 ParserResult<StmtNodePtr> AstBuilder::parse_function_stmt()
 {
    Token func_token = this->ctx.tokens().current();
    bool is_thunk = (func_token.kind() IS TokenKind::ThunkToken);
    this->ctx.tokens().advance();
+
+   auto binding = this->parse_function_binding(is_thunk);
+   if (not binding.ok()) return ParserResult<StmtNodePtr>::failure(binding.error_ref());
+
    FunctionNamePath path;
    auto name_token = this->ctx.expect_identifier(ParserErrorCode::ExpectedIdentifier);
    if (not name_token.ok()) return ParserResult<StmtNodePtr>::failure(name_token.error_ref());
@@ -956,7 +966,7 @@ ParserResult<StmtNodePtr> AstBuilder::parse_function_stmt()
    GCstr *funcname = nullptr;
    if (not path.segments.empty()) funcname = path.segments.back().symbol;
 
-   auto fn = this->parse_function_literal(func_token, is_thunk, funcname);
+   auto fn = this->parse_function_literal(func_token, is_thunk, funcname, std::move(binding.value_ref()));
    if (not fn.ok()) return ParserResult<StmtNodePtr>::failure(fn.error_ref());
    ExprNodePtr function_expr = std::move(fn.value_ref());
 

@@ -11,7 +11,7 @@
    assert(peer.mtCreateWebChannel('', '', 1, 0, 65535, -1, -1) is ERR_OutOfRange, 'Invalid ID accepted')
    assert(peer.mtCreateWebChannel('\255', '', 1, 0, -1, -1, -1) is ERR_InvalidData, 'Invalid label UTF-8 accepted')
    local channel = channelTest.create(peer, 'pending', '', true, true, 10)
-   assert(channel.id is 10, 'Explicit ID was not reserved immediately')
+   assert(channel.streamID is 10, 'Explicit ID was not reserved immediately')
    assert(peer.mtCreateWebChannel('', '', 1, 1, 10, -1, -1) is ERR_InvalidValue, 'Pending ID collision accepted')
    assert(channel.mtSend('', WCM_TEXT) is ERR_InvalidState, 'Send before OPEN accepted')
    local closed = 0
@@ -125,7 +125,7 @@ end
    local explicit = channelTest.create(first, 'explicit', '', true, false, 0)
    channelTest.connect(first, second)
    channelTest.waitFor(function() return automatic.state is WCS_OPEN and explicit.state is WCS_OPEN end)
-   assert(explicit.id is 0 and automatic.id is 2, 'Automatic allocation stole an explicit ID reservation')
+   assert(explicit.streamID is 0 and automatic.streamID is 2, 'Automatic allocation stole an explicit ID reservation')
 end
 
 @Test function ZeroLifetimeAndTerminalFree()
@@ -243,7 +243,7 @@ end
    local current:obj = channelTest.create(first, 'initial')
    channelTest.connect(first, second)
    channelTest.waitFor(function() return current.state is WCS_OPEN and remote.initial != nil end)
-   local stream_id = current.id
+   local stream_id = current.streamID
    for cycle in {0 to 4} do
       local receiver = remote[current.label]
       current.onClose = function() closes += 1 end
@@ -275,7 +275,7 @@ end
       if cycle < 3 then
          current = channelTest.create(first, 'reuse-' .. cycle, '', true, false, stream_id)
          channelTest.waitFor(function() return current.state is WCS_OPEN and remote[current.label] != nil end)
-         assert(current.id is stream_id, 'Explicit stream reuse changed ID')
+         assert(current.streamID is stream_id, 'Explicit stream reuse changed ID')
       end
    end
    assert(closes is 8, 'Retired channels received duplicate close notifications')

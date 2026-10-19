@@ -56,12 +56,14 @@ end
 
 function selectionTransaction(View:table!, Wanted:table!, Lead:table, Anchor:table, Reason:str!,
    Active:table, BeforeNotify:func, Removed:table):bool
-   selected = array<table>
+   selected   = array<table>
    deselected = array<table>
-   first:table = nil
-   snapshot = array<table>
+   snapshot   = array<table>
+   first:table
 
-   for item in values(View.items) do snapshot.push(item) end
+   for item in values(View.items) do
+      snapshot.push(item)
+   end
    View._selectionVersion = (View._selectionVersion ?? 0) + 1
    version = View._selectionVersion
    old_active = View.activeItem
@@ -188,6 +190,10 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 
 gui.initView = function(Options:table!, BuildUI, NewItems)
+   local scroll_direction = Options.scrollDirection ?? 'all'
+   assert(scroll_direction is 'all' or scroll_direction is 'vertical' or scroll_direction is 'horizontal',
+      'scrollDirection must be all, vertical or horizontal')
+
    vw = entity {
       lookup     = { }, -- Lookup items by ID
       activeZone = nil,
@@ -198,7 +204,8 @@ gui.initView = function(Options:table!, BuildUI, NewItems)
       multiSelect = Options.multiSelect is true,
       _selectionVersion = 0,
       _contentsVersion = 0,
-      hItem      = nil, -- Highlighted item
+      hItem      = nil, -- Highlighted item (pointer hover or keyboard navigation)
+      kItem      = nil, -- Keyboard target; not affected by pointer hover
       sItem      = nil, -- Selected item
       selectionAnchor = nil,
       qualifiers = 0,
@@ -213,25 +220,36 @@ gui.initView = function(Options:table!, BuildUI, NewItems)
       events          = Options.events ?? {},
       top             = { },
       totalTop        = 0,
+      scrollDirection = scroll_direction,
       _built          = false
    }
+
+   -- Render callbacks run with _dispatching set.  They may update their own vectors but must not change the structure
+   -- of the view.
+
+   function assertStructural()
+      assert(not vw._dispatching, 'Render callbacks must not modify the view structure; defer the change')
+   end
 
    -- Shift replaces the visible range; Ctrl+Shift adds it to the existing selection.
    function selectUserItem(Item:table!, Qualifiers:num!, Toggle:bool)
       if not selectionEligible(vw, Item) then return end
-      local wanted = {}
-      local anchor = Item
+
+      wanted = {}
+      anchor = Item
       if vw.multiSelect and (Qualifiers has KQ_SHIFT) then
          anchor = selectionEligible(vw, vw.selectionAnchor) ? vw.selectionAnchor :
             (selectionEligible(vw, vw.sItem) ? vw.sItem : Item)
-         local range_start:num = nil
-         local range_end:num = nil
+
+         range_start:num, range_end:num
          for i in {0 to #vw.items} do
             if vw.items[i] is anchor then range_start = i end
             if vw.items[i] is Item then range_end = i end
          end
+
          if range_start > range_end then range_start, range_end = range_end, range_start end
          if Qualifiers has KQ_CTRL then wanted = currentSelection(vw) end
+
          for i in {range_start into range_end} do
             local item = vw.items[i]
             if not item.hidden then wanted[item._id] = true end
@@ -242,6 +260,7 @@ gui.initView = function(Options:table!, BuildUI, NewItems)
       else
          wanted[Item._id] = true
       end
+
       selectionTransaction(vw, wanted, Item, anchor, 'user', vw.activeItem)
    end
 
@@ -526,8 +545,7 @@ gui.initView = function(Options:table!, BuildUI, NewItems)
 
    -- Add visible matches in multiple mode, or replace with the first match in single mode.
 
-   @Ordinary -- Ensures callback runs in caller's context
-   vw.selectItems = function(Conditional:func)
+   vw.selectItems = function[](Conditional:func)
       local wanted = vw.multiSelect ? currentSelection(vw) : {}
       local lead:table = nil
 
@@ -662,7 +680,7 @@ gui.initView = function(Options:table!, BuildUI, NewItems)
       vw.top[ID] = { y=vw.totalTop, height=Height }
       vw.totalTop = vw.totalTop + Height
       vw.frame?.y = vw.totalTop
-      vw.scrollbar?.vbar.viewport.y = vw.totalTop
+      vw.scrollbar?.vbar?.viewport.y = vw.totalTop
    end
 
    -- Initialisation --
@@ -714,8 +732,8 @@ gui.initView = function(Options:table!, BuildUI, NewItems)
    })
 
    if not Options.borderless and vw.scrollbar then
-      vw.scrollbar.hbar.viewport.x = 1
-      vw.scrollbar.vbar.viewport.y = 1
+      vw.scrollbar.hbar?.viewport.x = 1
+      vw.scrollbar.vbar?.viewport.y = 1
    end
 
    vw.viewport.mtSubscribeFeedback((FM_HAS_FOCUS | FM_CHILD_HAS_FOCUS | FM_LOST_FOCUS), function(Viewport, Event)

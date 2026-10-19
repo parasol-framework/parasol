@@ -3,6 +3,7 @@
 #include "lj_def.h"
 #include <kotuku/strings.hpp>
 
+#include <format>
 #include <unordered_map>
 
 TiriType parse_type_name(std::string_view Name)
@@ -972,6 +973,19 @@ ExprNodePtr make_call_expr(SourceSpan Span, ExprNodePtr callee, ExprNodeList arg
    return node;
 }
 
+// Build `receiver.member?(...)`.  The callee remains an ordinary MemberExpr because only the selected member is
+// optional; the receiver itself must be a table.
+
+ExprNodePtr make_optional_member_call_expr(SourceSpan Span, ExprNodePtr callee, ExprNodeList arguments,
+   bool forwards_multret)
+{
+   assert_node(callee and callee->kind IS AstNodeKind::MemberExpr, "optional call requires a named member callee");
+   ExprNodePtr node = make_call_expr(Span, std::move(callee), std::move(arguments), forwards_multret,
+      CallArgumentSyntax::Parenthesised);
+   std::get<CallExprPayload>(node->data).dispatch = CallDispatch::OptionalMemberNamed;
+   return node;
+}
+
 ExprNodePtr make_member_expr(SourceSpan Span, ExprNodePtr Table, Identifier member)
 {
    assert_node(ensure_operand(Table), "member expression requires table value");
@@ -1217,6 +1231,53 @@ size_t ast_statement_child_count(const StmtNode &Node)
 size_t ast_expression_child_count(const ExprNode &Node)
 {
    return std::visit(ExpressionChildCounter{}, Node.data);
+}
+
+//********************************************************************************************************************
+// Render a function context binding reference as written, e.g. 'self.owner' or '&viewport'.
+
+std::string context_binding_text(const ExprNode &Reference)
+{
+   switch (Reference.kind) {
+      case AstNodeKind::CurrentContextExpr: return "&&";
+
+      case AstNodeKind::IdentifierExpr: {
+         const auto &name = std::get<NameRef>(Reference.data);
+         if (name.identifier.symbol) return std::string(strdata(name.identifier.symbol), name.identifier.symbol->len);
+         return "?";
+      }
+
+      case AstNodeKind::MemberExpr: {
+         const auto &member = std::get<MemberExprPayload>(Reference.data);
+         std::string_view field = member.member.symbol ?
+            std::string_view(strdata(member.member.symbol), member.member.symbol->len) : std::string_view("?");
+         if (member.table and member.table->kind IS AstNodeKind::CurrentContextExpr) return std::format("&{}", field);
+         return std::format("{}.{}", member.table ? context_binding_text(*member.table) : "?", field);
+      }
+
+      case AstNodeKind::IndexExpr: {
+         const auto &index = std::get<IndexExprPayload>(Reference.data);
+         return std::format("{}[...]", index.table ? context_binding_text(*index.table) : "?");
+      }
+
+      default: return "?";
+   }
+}
+
+//********************************************************************************************************************
+// Render a complete function context binding, e.g. '[]', '[owner]' or '[<weak> &&]'.
+
+std::string context_binding_text(const FunctionContextBinding &Binding)
+{
+   switch (Binding.kind) {
+      case FunctionContextKind::None:     return {};
+      case FunctionContextKind::Ordinary: return "[]";
+      case FunctionContextKind::Strong:
+         return std::format("[{}]", Binding.reference ? context_binding_text(*Binding.reference) : "?");
+      case FunctionContextKind::Weak:
+         return std::format("[<weak> {}]", Binding.reference ? context_binding_text(*Binding.reference) : "?");
+   }
+   return {};
 }
 
 //********************************************************************************************************************

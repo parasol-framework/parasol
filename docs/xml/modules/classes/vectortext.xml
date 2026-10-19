@@ -47,6 +47,31 @@
       <tags>mutates-object</tags>
     </method>
 
+    <method>
+      <name>SelectArea</name>
+      <comment>Selects an area of text.</comment>
+      <prototype>ERR vt::SelectArea(OBJECTPTR Object, INT Row, INT Column, INT EndRow, INT EndColumn)</prototype>
+      <tiriPrototype>err = SelectArea(Row:num, Column:num, EndRow:num, EndColumn:num)</tiriPrototype>
+      <input>
+        <param type="INT" name="Row">The line at which the selection starts.</param>
+        <param type="INT" name="Column">The character column at which the selection starts.</param>
+        <param type="INT" name="EndRow">The line at which the selection ends.  If negative, the last line is used.</param>
+        <param type="INT" name="EndColumn">The character column at which the selection ends.  If negative, the end of the line is used.</param>
+      </input>
+      <description>
+<p>SelectArea() marks a region of text as selected, starting at the position given by <code>Row</code> and <code>Column</code>.  The cursor is moved to the end of the region at <code>EndRow</code> and <code>EndColumn</code>, which may come before the start for a reversed selection. Columns are character positions, so UTF-8 sequences count as one column each.  A negative <code>EndRow</code> refers to the last line and a negative <code>EndColumn</code> refers to the end of its line, so <code>SelectArea(0, 0, -1, -1)</code> selects all of the text.  Positions beyond the text are clamped to its limits.</p>
+<p>While an area is selected the <code>AREA_SELECTED</code> bit is set in <fl>TextFlags</fl>.  The next character typed, or a press of Backspace, Delete, Clear or Enter, will replace or delete the selected text.  Moving the cursor deselects the area.</p>
+<p>The selected area is not highlighted when the text is drawn.</p>
+<p>If the start and end positions are identical, the cursor is moved and no area is selected.</p>
+      </description>
+      <result>
+        <error code="Okay">The area was selected.</error>
+        <error code="NoData">The object contains no text.</error>
+        <error code="NullArgs">No arguments were provided.</error>
+      </result>
+      <tags>mutates-object</tags>
+    </method>
+
   </methods>
 
   <fields>
@@ -111,31 +136,32 @@
 
     <field>
       <name>Descent</name>
-      <comment>The font descent measured in pixels, after DPI conversion.</comment>
+      <comment>The font descent measured in pixels.</comment>
       <access read="G">Get</access>
       <type>INT</type>
       <description>
-<p>Use Descent to retrieve the height of the font descent region in actual display pixels, after DPI conversion has been taken into account.</p>
+<p>Use Descent to retrieve the height of the font descent region, which is the space reserved below the baseline.  The value is measured in the same pixel units as <fl>FontSize</fl>, so it is unaffected by the display density and is subject to the same transforms as the text.</p>
       </description>
     </field>
 
     <field>
       <name>DisplayHeight</name>
-      <comment>The font height measured in pixels, after DPI conversion.</comment>
+      <comment>The font height measured in pixels.</comment>
       <access read="G">Get</access>
       <type>INT</type>
       <description>
-<p>Use DisplayHeight to retrieve the font height in actual display pixels, after DPI conversion has been taken into account.  The height includes the top region reserved for accents, but excludes the descent value.</p>
+<p>Use DisplayHeight to retrieve the height of the font, measured in the same pixel units as <fl>FontSize</fl>.  For scalable fonts the value is the sum of the ascent and <fl>Descent</fl>.  The value does not account for the display density or for transforms applied to the text.</p>
       </description>
     </field>
 
     <field>
       <name>DisplaySize</name>
-      <comment>The FontSize measured in pixels, after DPI conversion.</comment>
+      <comment>The FontSize converted to points.</comment>
       <access read="G">Get</access>
       <type>INT</type>
       <description>
-<p>Use DisplaySize to retrieve the <fl>FontSize</fl> in actual display pixels, after DPI conversion has been taken into account. For example, if <fl>FontSize</fl> is set to <code>16</code> in a 96 DPI environment, the resulting value is <code>12</code> after performing the calculation <code>16 * 72 / 96</code>.</p>
+<p>DisplaySize returns the <fl>FontSize</fl> converted from pixels to points at the fixed reference density of 96 DPI, calculated as <code>FontSize * 72 / 96</code> and truncated to an integer.  For example, a <fl>FontSize</fl> of <code>16</code> returns <code>12</code>.  The display density is not taken into account.</p>
+<p>This value matches <fl>Point</fl>, except that <fl>Point</fl> is rounded to the nearest integer rather than truncated.</p>
       </description>
     </field>
 
@@ -189,9 +215,9 @@
       <type>STRING</type>
       <description>
 <p>The FontSize is equivalent to the SVG <code>font-size</code> attribute and refers to the height of the font from the dominant baseline to the hanging baseline.  This would mean that a capitalised letter without accents should fill the entire vertical space defined by FontSize.</p>
-<p>The default unit value of FontSize is in pixels at a resolution of 72 DPI.  This means that if the display is configured to a more common 96 DPI for instance, the actual pixel size on the display will be <code>FontSize * 72 / 96</code>. Point sizes are also measured at a constant ratio of <code>1/72</code> irrespective of display settings, and this may need to factor into precise size calculations.</p>
-<p>Standard unit measurements such as <code>px</code>, <code>em</code> and <code>pt</code> are supported by appending them after the numeric value. 1em is equivalent to the 'default font size', which is typically 16px unless modified.</p>
-<p>When retrieving the font size, the resulting string must be freed by the client when no longer in use.</p>
+<p>The default unit of FontSize is the pixel, and the value defines the em size of the font.  A FontSize of <code>16</code> produces an em that is 16 pixels high in the text's coordinate space, which matches the behaviour of CSS and SVG.  The display density is not applied, so the size on the display only changes if the text is transformed.</p>
+<p>Standard unit measurements such as <code>px</code>, <code>pt</code>, <code>pc</code>, <code>in</code>, <code>cm</code>, <code>mm</code> and <code>em</code> are supported by appending them after the numeric value.  Physical units are converted to pixels at a fixed reference density of 96 DPI, irrespective of the display, so <code>12pt</code> is equivalent to <code>16px</code>.  Clients that need a physical size on a high density display must scale the value themselves, for example by multiplying a point size by <code>DisplayDPI / 96</code>.  The <code>em</code> unit is fixed at 16 pixels.  The final value is rounded to the nearest whole pixel, so <code>11pt</code> (14.67px) becomes <code>15px</code>.  A size that rounds to less than one pixel is rejected with <code>ERR::OutOfRange</code>.</p>
+<p>Reading FontSize returns the pixel size as a numeric string without a unit suffix.</p>
 <p>NOTE: The FontSize is derived from information defined by the font author.  Due to opinionated views on how font height is determined, the value is not transferrable between fonts.  The primary difference is that some fonts will include the space for accents in the FontSize value, while others will not.</p>
       </description>
     </field>
@@ -233,7 +259,7 @@
       <access read="G">Get</access>
       <type>INT</type>
       <description>
-<p>This field can be queried for the amount of space between each line, measured in display pixels.</p>
+<p>This field can be queried for the vertical advance between each line of text.  The value is measured in the same pixel units as <fl>FontSize</fl>, so it is unaffected by the display density and is subject to the same transforms as the text.</p>
       </description>
     </field>
 
@@ -254,7 +280,7 @@
       <access read="G">Get</access>
       <type>INT</type>
       <description>
-<p>Reading the Point value will return the point-size of the font, calculated as <code>FontSize * 72 / DisplayDPI</code>.</p>
+<p>Reading the Point value will return the point-size of the font, calculated as <code>FontSize * 72 / 96</code> and rounded to the nearest integer.  The conversion uses the fixed reference density of 96 DPI that applies to all <fl>FontSize</fl> units, not the density of the display.</p>
       </description>
     </field>
 

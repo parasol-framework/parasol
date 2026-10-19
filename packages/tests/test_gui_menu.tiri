@@ -126,7 +126,7 @@ end
    local dropdown = gui.dropdown({
       relative = target, x = 20, y = 20,
       config = array<table> { { item='First' }, { item='Second' } },
-      feedback = function(Menu, Item)
+      feedback = function(Item)
          if Item.item is 'Second' then hits++ end
       end
    })
@@ -281,6 +281,7 @@ end
    local menu = bar._lookup.file.menu
    assert(menu?.visible and bar._currentItem is bar._lookup.file,
       'Down must open the selected menu without advancing to the next menubar item')
+   assert(surface.flags has RNF_HAS_FOCUS, 'Opening a menubar menu must preserve its host window focus')
    sendKey(KEY_DOWN)
    sendKey(KEY_DOWN)
    assert(bar._currentItem is bar._lookup.file, 'Down must not switch top-level menus')
@@ -335,6 +336,7 @@ end
    surface.acShow()
    menu.show()
    surface.acFocus()
+   check target.acFocus()
    processing.sleep(0)
    sendKey(KEY_DOWN)
    local child = menu.currentMenu
@@ -418,6 +420,7 @@ end
    surface.acShow()
    menu.show()
    surface.acFocus()
+   check target.acFocus()
    processing.sleep(0)
 
    sendKey(KEY_DOWN)

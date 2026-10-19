@@ -1059,6 +1059,8 @@ static CSTRING diagnostic_code_name(ParserErrorCode Code)
       case ParserErrorCode::InvalidAssignment:      return "InvalidAssignment";
       case ParserErrorCode::UnresolvedMethodReceiver: return "UnresolvedMethodReceiver";
       case ParserErrorCode::TooManyExceptionFilters: return "TooManyExceptionFilters";
+      case ParserErrorCode::InvalidContextBinding: return "InvalidContextBinding";
+      case ParserErrorCode::InvalidOptionalCall: return "InvalidOptionalCall";
       default: return "Unknown";
    }
 }
@@ -1195,6 +1197,7 @@ static void push_symbol_metadata(lua_State *L, const ParserSymbolCollection *Sym
       set_table_string(L, "name", symbol.name);
       set_table_string(L, "kind", symbol.kind);
       set_table_string(L, "signature", symbol.signature);
+      if (not symbol.binding.empty()) set_table_string(L, "binding", symbol.binding);
       set_table_int(L, "line", source_position(symbol.span.line));
       set_table_int(L, "column", source_position(symbol.span.column));
       set_table_int(L, "endLine", source_position(symbol.end_span.line));

@@ -233,6 +233,7 @@ private:
       if (this->validation_only_) return;
       if (expected_upvalue) binding.captured = true;
       binding.immutable = false;
+      this->note_binding_use(Reference.binding_id, Reference.identifier.span);
    }
 
    void reference(NameRef &Reference, bool Write = false)
@@ -250,10 +251,51 @@ private:
 
       auto &binding = this->catalogue_.binding(id);
       if (binding.function_depth < this->function_depth_) binding.captured = true;
+      this->note_binding_use(id, Reference.identifier.span);
+   }
+
+   void report_context_binding(const FunctionExprPayload &Function, SourceSpan Span, std::string Message)
+   {
+      if (Function.context.reported) return;
+      Function.context.reported = true;
+
+      ParserDiagnostic diagnostic;
+      diagnostic.severity = ParserDiagnosticSeverity::Error;
+      diagnostic.code = ParserErrorCode::InvalidContextBinding;
+      diagnostic.message = std::move(Message);
+      diagnostic.token = Token::from_span(Span, TokenKind::Identifier);
+      this->report_diagnostic(diagnostic);
+   }
+
+   // Decision D3: a weak context binding is defeated if the function body, or any function nested in it, refers to
+   // the bound identifier, because the upvalue retains the target strongly.  Member and index references are not
+   // checked.  Uses are recorded by note_binding_use() while the body is discovered.
+
+   void note_binding_use(StaticBindingID Binding, SourceSpan Span)
+   {
+      for (auto &check : this->weak_binding_checks_) {
+         if (check.binding IS Binding and not check.used) {
+            check.used = true;
+            check.use = Span;
+         }
+      }
+   }
+
+   [[nodiscard]] static StaticBindingID weak_binding_identifier(const FunctionExprPayload &Function)
+   {
+      if (Function.context.kind != FunctionContextKind::Weak or not Function.context.reference) return {};
+      if (Function.context.reference->kind != AstNodeKind::IdentifierExpr) return {};
+      return std::get<NameRef>(Function.context.reference->data).binding_id;
    }
 
    void discover_function(FunctionExprPayload &Function)
    {
+      // The context binding is evaluated by the enclosing function when the closure is created.
+      if (Function.context.reference) this->discover_expression(*Function.context.reference);
+
+      StaticBindingID weak_binding = this->validation_only_ ? StaticBindingID{} : weak_binding_identifier(Function);
+      if (weak_binding) this->weak_binding_checks_.push_back(WeakBindingCheck{ .binding = weak_binding });
+
       this->function_depth_++;
       this->scopes_.push_back(BindingScope{});
       for (auto &parameter : Function.parameters) {
@@ -262,6 +304,18 @@ private:
       if (Function.body) this->discover_block(*Function.body, false);
       this->scopes_.pop_back();
       this->function_depth_--;
+
+      if (weak_binding) {
+         WeakBindingCheck check = this->weak_binding_checks_.back();
+         this->weak_binding_checks_.pop_back();
+         if (check.used) {
+            const NameRef &reference = std::get<NameRef>(Function.context.reference->data);
+            GCstr *name = reference.identifier.symbol;
+            this->report_context_binding(Function, check.use, std::format(
+               "'{}' is held weakly by the function context binding, but the function body also captures it, which "
+               "retains it strongly", std::string_view(strdata(name), name->len)));
+         }
+      }
    }
 
    void discover_import_initialiser(BlockStmt &Body)
@@ -508,6 +562,11 @@ private:
             else if (payload.name.is_explicit_global and not payload.name.segments.empty() and
                      payload.name.segments.front().symbol) {
                this->global_names_.push_back(payload.name.segments.front().symbol);
+            }
+            else if (not payload.name.segments.empty() and payload.name.segments.front().binding_id and
+                     not this->validation_only_) {
+               // `function a.b()` reads `a`, which counts as a use for the weak binding check.
+               this->note_binding_use(payload.name.segments.front().binding_id, payload.name.segments.front().span);
             }
             if (payload.function) this->discover_function(*payload.function);
             break;
@@ -1251,6 +1310,10 @@ private:
             Call.builtin_method.reset();
             return;
          }
+         if (Call.dispatch IS CallDispatch::OptionalMemberNamed) {
+            this->resolve_optional_table_method(Call, *receiver, member);
+            return;
+         }
          if (reference.binding_id and this->catalogue_.binding(reference.binding_id).is_variant) {
             Call.builtin_method.reset();
             Call.runtime_builtin_method = CallExprPayload::RuntimeBuiltinMethodCall{ member, safe };
@@ -1258,6 +1321,11 @@ private:
             return;
          }
       }
+      if (Call.dispatch IS CallDispatch::OptionalMemberNamed) {
+         this->resolve_optional_table_method(Call, *receiver, member);
+         return;
+      }
+
       const StaticValueDescriptor descriptor = this->descriptor_of(*receiver);
       TiriType receiver_type = descriptor.primary;
       if (Call.argument_syntax IS CallArgumentSyntax::Synthetic and receiver->kind IS AstNodeKind::CallExpr) {
@@ -1296,7 +1364,45 @@ private:
          .prototype = prototype,
          .callable = prototype->builtin_callable_id,
          .receiver_type = receiver_type,
-         .safe = safe,
+         .guard = safe ? MethodReceiverGuard::NilSafe : MethodReceiverGuard::None,
+         .arguments_validated = already_validated
+      };
+      this->validate_builtin_method_arguments(Call);
+   }
+
+   // An optional table call checks that its receiver is a table before member lookup, so the table interface is the
+   // only built-in interface it can select, even for variant or unresolved receivers.  A registered table method
+   // always exists and takes the canonical callable path; any other name is an ordinary field call.
+
+   void resolve_optional_table_method(CallExprPayload &Call, const ExprNode &Receiver, GCstr *Member)
+   {
+      const StaticValueDescriptor descriptor = this->descriptor_of(Receiver);
+      if (descriptor.proved() and not descriptor.nullable and descriptor.primary != TiriType::Table and
+          descriptor.primary != TiriType::Any and descriptor.primary != TiriType::Unknown and
+          not Call.optional_receiver_reported) {
+         Call.optional_receiver_reported = true;
+         ParserDiagnostic diagnostic;
+         diagnostic.severity = ParserDiagnosticSeverity::Error;
+         diagnostic.code = ParserErrorCode::InvalidOptionalCall;
+         diagnostic.message = std::format("optional call '{}?()' requires a table receiver, got {}",
+            std::string_view(strdata(Member), Member->len), type_name(descriptor.primary));
+         diagnostic.token = Token::from_span(Receiver.span, TokenKind::Identifier);
+         this->report_diagnostic(diagnostic);
+      }
+
+      const fprototype *prototype = get_method_prototype_by_hash(TiriType::Table, Member->hash);
+      if (not prototype) {
+         Call.builtin_method.reset();
+         return;
+      }
+
+      bool already_validated = Call.builtin_method and Call.builtin_method->prototype IS prototype and
+         Call.builtin_method->arguments_validated;
+      Call.builtin_method = CallExprPayload::BuiltinMethodCall{
+         .prototype = prototype,
+         .callable = prototype->builtin_callable_id,
+         .receiver_type = TiriType::Table,
+         .guard = MethodReceiverGuard::RequireTable,
          .arguments_validated = already_validated
       };
       this->validate_builtin_method_arguments(Call);
@@ -1417,7 +1523,7 @@ private:
       if (Call.builtin_method) {
          Call.results = this->catalogue_.add_results(
             describe_native_prototype_results(Call.builtin_method->prototype));
-         Safe = Safe or Call.builtin_method->safe;
+         Safe = Safe or Call.builtin_method->guard IS MethodReceiverGuard::NilSafe;
       }
       else if (this->native_calls_only_) {
          if (not Call.results) Call.results = this->native_call_results(Call);
@@ -2064,7 +2170,8 @@ private:
          case AstNodeKind::SafeCallExpr: {
             auto &call = std::get<CallExprPayload>(Expression.data);
             if (Expression.kind IS AstNodeKind::CallExpr) this->analyse_contextual_designation(call);
-            value = this->call_descriptor(call, Expression.kind IS AstNodeKind::SafeCallExpr);
+            value = this->call_descriptor(call, Expression.kind IS AstNodeKind::SafeCallExpr or
+               call.dispatch IS CallDispatch::OptionalMemberNamed);
             StaticValueDescriptor mapped = this->mapped_array_descriptor(call);
             if (mapped.primary != TiriType::Unknown) {
                this->update_call_result_descriptor(call, mapped);
@@ -2377,6 +2484,12 @@ private:
    void propagate_function(
       FunctionExprPayload &Function, std::span<const StaticValueDescriptor> ContextParameters = {})
    {
+      if (Function.context.reference) {
+         // The context binding is evaluated by the enclosing function, so it is described at the enclosing depth.
+         this->propagate_expression(*Function.context.reference);
+         this->validate_context_binding_type(Function);
+      }
+
       for (size_t i = 0; i < Function.parameters.size(); ++i) {
          auto &parameter = Function.parameters[i];
          if (not parameter.name.binding_id) continue;
@@ -2434,6 +2547,20 @@ private:
             this->catalogue_.callable(Function.callable).results = this->catalogue_.add_results(inferred);
          }
       }
+   }
+
+   // The bound context must be a table.  Only a proven non-table is rejected here; a value that is nil or of unknown
+   // type is checked at runtime when the closure is created.
+
+   void validate_context_binding_type(const FunctionExprPayload &Function)
+   {
+      const ExprNode &reference = *Function.context.reference;
+      StaticValueDescriptor value = this->descriptor_of(reference);
+      if (not value.proved() or value.primary IS TiriType::Table or value.primary IS TiriType::Unknown or
+          value.primary IS TiriType::Any) return;
+
+      this->report_context_binding(Function, reference.span,
+         std::format("function context binding requires a table, got {}", type_name(value.primary)));
    }
 
    void collect_return_descriptors(
@@ -2925,6 +3052,13 @@ private:
    std::vector<GCstr *> global_names_;
    std::unordered_map<GCstr *, std::pair<const InstalledImportInterface *,
       const tiri::import_cache::ExportDescriptor *>> interface_globals_;
+   struct WeakBindingCheck {
+      StaticBindingID binding;
+      SourceSpan use{};
+      bool used = false;
+   };
+
+   std::vector<WeakBindingCheck> weak_binding_checks_;
    const BlockStmt *enclosing_body_ = nullptr;
    uint16_t function_depth_ = 0;
    bool native_calls_only_ = false;

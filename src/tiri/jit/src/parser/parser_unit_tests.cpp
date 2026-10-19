@@ -2930,6 +2930,114 @@ static std::optional<BytecodeSnapshot> compile_snapshot(lua_State* L, std::strin
    return snapshot;
 }
 
+//********************************************************************************************************************
+// A field assignment block lowers to `do local <hidden> = base; <hidden>.field = value ... end`, with each synthesised
+// assignment carrying the span of its source entry, and emits the same bytecode as the hand-written equivalent.
+
+static bool test_field_assignment_block_lowering(kt::Log &Log)
+{
+   constexpr const char *source = "local dec = {}\nlocal k = 'k'\ndec.{\n   x = 1,\n   [k] = 2\n}\ndec?.{ y = 3 }\n";
+
+   auto result = build_ast_from_source(source);
+   if (not result.chunk.ok()) {
+      Log.error("failed to parse field assignment blocks");
+      log_diagnostics(result.diagnostics, Log);
+      return false;
+   }
+
+   StatementListView statements = result.chunk.value_ref()->view();
+   if (statements.size() != 4 or statements[2].kind != AstNodeKind::DoStmt or
+       statements[3].kind != AstNodeKind::DoStmt) {
+      Log.error("expected two locals followed by two lowered do blocks");
+      log_block_outline(*result.chunk.value_ref(), Log);
+      return false;
+   }
+
+   auto hidden_name = [](const ExprNode &Expression) {
+      const auto *name = std::get_if<NameRef>(&Expression.data);
+      return Expression.kind IS AstNodeKind::IdentifierExpr and name and name->identifier.symbol and
+         name->identifier.symbol->len > 0 and strdata(name->identifier.symbol)[0] IS '\x1f';
+   };
+
+   auto valid_hidden_decl = [&](const StmtNode &Statement) {
+      const auto *decl = std::get_if<LocalDeclStmtPayload>(&Statement.data);
+      if (Statement.kind != AstNodeKind::LocalDeclStmt or not decl or decl->names.size() != 1 or
+          decl->values.size() != 1 or not decl->names[0].symbol) return false;
+      if (strdata(decl->names[0].symbol)[0] != '\x1f') return false;
+      return decl->values[0] and decl->values[0]->kind IS AstNodeKind::IdentifierExpr;
+   };
+
+   auto valid_entry = [&](const StmtNode &Statement, AstNodeKind TargetKind, BCLine Line) {
+      const auto *assignment = std::get_if<AssignmentStmtPayload>(&Statement.data);
+      if (Statement.kind != AstNodeKind::AssignmentStmt or not assignment or
+          assignment->op != AssignmentOperator::Plain or assignment->targets.size() != 1 or
+          assignment->values.size() != 1) return false;
+      const ExprNodePtr &target = assignment->targets[0];
+      if (not target or target->kind != TargetKind or Statement.span.line != Line or target->span.line != Line) {
+         return false;
+      }
+      if (TargetKind IS AstNodeKind::MemberExpr) {
+         const auto &member = std::get<MemberExprPayload>(target->data);
+         return member.table and hidden_name(*member.table);
+      }
+      const auto &index = std::get<IndexExprPayload>(target->data);
+      return index.table and hidden_name(*index.table);
+   };
+
+   const auto &plain = std::get<DoStmtPayload>(statements[2].data);
+   StatementListView plain_body = plain.block->view();
+   if (plain_body.size() != 3 or not valid_hidden_decl(plain_body[0]) or
+       not valid_entry(plain_body[1], AstNodeKind::MemberExpr, 4) or
+       not valid_entry(plain_body[2], AstNodeKind::IndexExpr, 5)) {
+      Log.error("plain field block should lower to a hidden local and per-entry assignments with entry spans");
+      log_block_outline(*plain.block, Log);
+      return false;
+   }
+
+   const auto &safe = std::get<DoStmtPayload>(statements[3].data);
+   StatementListView safe_body = safe.block->view();
+   if (safe_body.size() != 2 or not valid_hidden_decl(safe_body[0]) or safe_body[1].kind != AstNodeKind::IfStmt) {
+      Log.error("safe field block should lower to a hidden local and a nil guard");
+      log_block_outline(*safe.block, Log);
+      return false;
+   }
+
+   const auto &guard = std::get<IfStmtPayload>(safe_body[1].data);
+   if (guard.clauses.size() != 1 or not guard.clauses[0].condition or not guard.clauses[0].block) {
+      Log.error("safe field block guard should have a single conditional clause");
+      return false;
+   }
+   const auto *condition = std::get_if<BinaryExprPayload>(&guard.clauses[0].condition->data);
+   StatementListView guarded = guard.clauses[0].block->view();
+   if (not condition or condition->op != AstBinaryOperator::NotEqual or guarded.size() != 1 or
+       not valid_entry(guarded[0], AstNodeKind::MemberExpr, 7)) {
+      Log.error("safe field block guard should test '!= nil' and contain the entry assignment");
+      return false;
+   }
+
+   LuaStateHolder holder;
+   lua_State *L = holder.get();
+   std::string error;
+   auto block = compile_snapshot(L, "local dec = {}\ndec.{ x = 1, y = 2 }\n", true, error);
+   if (not block) {
+      Log.error("failed to compile field block bytecode: %s", error.c_str());
+      return false;
+   }
+   auto manual = compile_snapshot(L, "local dec = {}\ndo local t = dec t.x = 1 t.y = 2 end\n", true, error);
+   if (not manual) {
+      Log.error("failed to compile hand-written bytecode: %s", error.c_str());
+      return false;
+   }
+   if (not exact_snapshot_match(*block, *manual)) {
+      log_snapshot(*block, "field block");
+      log_snapshot(*manual, "hand-written");
+      Log.error("field block bytecode should match the hand-written hidden-local form");
+      return false;
+   }
+
+   return true;
+}
+
 static int bytecode_writer(lua_State *, const void *Data, size_t Size, void *Context)
 {
    auto *dump = (std::string *)Context;
@@ -3388,7 +3496,7 @@ static bool test_ordinary_function_policy(kt::Log &Log)
    LuaStateHolder state;
    lua_State *lua = state.get();
    constexpr std::string_view source =
-      "@Ordinary local function ordinary() return function() end end\nreturn ordinary";
+      "local function[] ordinary() return function() end end\nreturn ordinary";
    if (lua_load(lua, source, "ordinary-policy") or lua_pcall(lua, 0, 1, 0)) {
       Log.error("failed to compile an ordinary closure: %s", lua_tostring(lua, -1));
       return false;
@@ -3449,6 +3557,134 @@ static bool test_ordinary_function_policy(kt::Log &Log)
       return false;
    }
    lua_pop(lua, 1);
+   return true;
+}
+
+static bool test_function_context_binding_syntax(kt::Log &Log)
+{
+   constexpr std::string_view prefix =
+      "local owner = { child={} }\nlocal target = {}\nlocal key = 'child'\n";
+   constexpr std::string_view accepted[] = {
+      "local callback = function[]() end",
+      "local callback = function[owner]() end",
+      "local callback = function[<weak> owner]() end",
+      "local callback = function[owner.child]() end",
+      "local callback = function[owner[key]]() end",
+      "local callback = function[<weak> owner.child]() return owner end",
+      "local callback = function[owner.child[key]]() end",
+      "local callback = function[&&]() end",
+      "using owner do local callback = function[&child]() end end",
+      "function[] named() end",
+      "local function[] named() end",
+      "global function[] named() end",
+      "function[<weak> owner] named() end",
+      "local function[<weak> owner] named() end",
+      "global function[<weak> owner] named() end",
+      "global assigned = function[owner]() end",
+      "function[owner] named() end",
+      "local function[owner] named() end",
+      "global function[owner] named() end",
+      "function[owner] target.named() end",
+      "target[key] = function[owner]() end",
+      "local callbacks = { function[owner]() end, callback=function[<weak> owner]() end }",
+      "local function[owner] recur(Count:num):num if Count > 0 then return recur(Count-1) end return 0 end",
+      "local callback = function[owner](...):<table, ...> return &&, ... end",
+      "local function accept(Value:func) end",
+      "local function factory(Owner:table):func "
+      "return function[<weak> Owner](Owner:any):any return Owner end end",
+      "local callback = function[<weak> owner]() local owner = {} return owner end"
+   };
+   for (std::string_view source : accepted) {
+      LuaStateHolder state;
+      lua_State *lua = state.get();
+      luaL_openlibs(lua);
+      std::string program(prefix);
+      program.append(source);
+      if (lua_load(lua, program, "binding-syntax")) {
+         Log.error("valid binding failed: %.*s: %s", int(source.size()), source.data(), lua_tostring(lua, -1));
+         return false;
+      }
+   }
+
+   struct RejectedCase {
+      std::string_view source;
+      std::string_view diagnostic;
+   };
+   constexpr RejectedCase rejected[] = {
+      { "local callback = thunk[owner]() return 1 end", {} },
+      { "thunk[] named() return 1 end", {} },
+      { "local callback = function[owner()]() end", {} },
+      { "local callback = function[owner + target]() end", {} },
+      { "local callback = function[-owner]() end", {} },
+      { "local callback = function[owner?.child]() end", {} },
+      { "local callback = function[{}]() end", {} },
+      { "local callback = function[<const> owner]() end", {} },
+      { "local callback = function[<close> owner]() end", {} },
+      { "local callback = function[<weak>]() end", {} },
+      { "function named[owner]() end", {} },
+      { "local function named[owner]() end", {} },
+      { "local callback = function[<weak> owner]() return owner end", "retains it strongly" },
+      { "local callback = function[<weak> owner]() return function() return owner end end",
+         "retains it strongly" },
+      { "local callback = function[<weak> owner]() owner = {} end", "retains it strongly" },
+      { "local value = 42 local callback = function[value]() end", "requires a table" },
+      { "local value = 'text' local callback = function[<weak> value]() end", "requires a table" },
+      { "local value = false local callback = function[value]() end", "requires a table" }
+   };
+   for (const RejectedCase &test_case : rejected) {
+      LuaStateHolder state;
+      lua_State *lua = state.get();
+      luaL_openlibs(lua);
+      std::string program(prefix);
+      program.append(test_case.source);
+      if (lua_load(lua, program, "binding-rejected") IS 0) {
+         Log.error("invalid binding accepted: %.*s", int(test_case.source.size()), test_case.source.data());
+         return false;
+      }
+      const char *message = lua_tostring(lua, -1);
+      if (not message or std::string_view(message).find(test_case.diagnostic) IS std::string_view::npos) {
+         Log.error("binding diagnostic mismatch for %.*s: %s", int(test_case.source.size()),
+            test_case.source.data(), message ? message : "<none>");
+         return false;
+      }
+   }
+   return true;
+}
+
+static bool test_bound_function_policy_roundtrip(kt::Log &Log)
+{
+   constexpr std::string_view source =
+      "local owner = { value=42 }\n"
+      "local strong = function[owner]():num return &value end\n"
+      "local weak = function[<weak> owner]():num return &value end\n"
+      "return strong, weak, owner";
+   for (int strip : { 0, 1 }) {
+      LuaStateHolder state;
+      lua_State *lua = state.get();
+      luaL_openlibs(lua);
+      if (lua_load(lua, source, "bound-policy")) return false;
+      GCproto *prototype = funcproto(funcV(lua->top - 1));
+      std::string dump;
+      if (lj_bcwrite(lua, prototype, bytecode_writer, &dump, strip) != 0) return false;
+      lua_pop(lua, 1);
+      if (lua_load(lua, dump, "bound-policy-restored") or lua_pcall(lua, 0, 3, 0)) {
+         Log.error("bound closure bytecode failed: %s", lua_tostring(lua, -1));
+         return false;
+      }
+      for (int index : { -3, -2 }) {
+         GCfunc *function = funcV(lua->top + index);
+         if (not func_is_ordinary(function)) {
+            Log.error("bound closure lost its ordinary policy");
+            return false;
+         }
+         lua_pushvalue(lua, index);
+         if (lua_pcall(lua, 0, 1, 0) or lua_tointeger(lua, -1) != 42) {
+            Log.error("restored bound closure lost its context");
+            return false;
+         }
+         lua_pop(lua, 1);
+      }
+   }
    return true;
 }
 
@@ -6889,6 +7125,25 @@ static bool test_static_result_set_model(kt::Log &Log)
 static size_t count_opcode_tree(const BytecodeSnapshot &, BCOp);
 static size_t count_opcode(const BytecodeSnapshot &, BCOp);
 
+// Contextual call arguments are evaluated in the caller's context, so CTXENTER must be the instruction immediately
+// before its CTXCALL, CTXCALLM or CTXCALLT, on the same call base.
+
+static bool contextual_entries_precede_calls(const BytecodeSnapshot &Snapshot)
+{
+   const std::vector<BCIns> &code = Snapshot.instructions;
+   for (size_t i = 0; i < code.size(); ++i) {
+      if (bc_op(code[i]) != BC_CTXENTER) continue;
+      if (i + 1 >= code.size()) return false;
+      BCOp next = bc_op(code[i + 1]);
+      if (next != BC_CTXCALL and next != BC_CTXCALLM and next != BC_CTXCALLT) return false;
+      if (bc_a(code[i + 1]) != bc_a(code[i])) return false;
+   }
+   for (const auto &child : Snapshot.children) {
+      if (not contextual_entries_precede_calls(child)) return false;
+   }
+   return true;
+}
+
 static bool test_current_context_materialisation_bytecode(kt::Log &Log)
 {
    LuaStateHolder state;
@@ -6964,7 +7219,8 @@ static bool test_current_context_materialisation_bytecode(kt::Log &Log)
    if (not runtime_context_pipe or count_opcode_tree(*runtime_context_pipe, BC_CTXGET) != 1 or
        count_opcode_tree(*runtime_context_pipe, BC_CTXENTER) != 1 or
        count_opcode_tree(*runtime_context_pipe, BC_CTXCALL) != 1) {
-      Log.error("a runtime-dependent contextual pipe did not acquire its argument context: %s", error.c_str());
+      Log.error("a runtime-dependent contextual pipe did not read its piped operand through the inherited cache: %s",
+         error.c_str());
       return false;
    }
 
@@ -6974,10 +7230,37 @@ static bool test_current_context_materialisation_bytecode(kt::Log &Log)
       "   local inherited = &value\n"
       "   return &value |> Target.add()\n"
       "end\n", true, error);
-   if (not runtime_builtin_pipe or count_opcode_tree(*runtime_builtin_pipe, BC_CTXGET) != 2 or
+   if (not runtime_builtin_pipe or count_opcode_tree(*runtime_builtin_pipe, BC_CTXGET) != 1 or
        count_opcode_tree(*runtime_builtin_pipe, BC_BMETH) != 1 or
        count_opcode_tree(*runtime_builtin_pipe, BC_CTXENTER) != 1) {
-      Log.error("a runtime built-in pipe did not separate inherited and fallback contexts: %s", error.c_str());
+      Log.error("a runtime built-in pipe operand did not reuse the inherited context cache: %s", error.c_str());
+      return false;
+   }
+
+   // Arguments of contextual calls, written or piped, read the caller's context through its inherited cache.  The
+   // receiver body, invoke() and forward() each acquire one cache; no argument needs a separate dynamic read.
+
+   error.clear();
+   auto argument_context = compile_snapshot(L,
+      "local receiver = entity { value = 1 }\n"
+      "function receiver.add(Value:num):num return &value + Value end\n"
+      "function invoke():num\n"
+      "   local key = 'add'\n"
+      "   return receiver.add(&value) + receiver[key](&value) + (&value |> receiver.add()) + receiver?.add(&&.value)\n"
+      "end\n"
+      "function forward():<any, ...> return receiver.add(&value) end\n", true, error);
+   if (not argument_context or count_opcode_tree(*argument_context, BC_CTXGET) != 3 or
+       count_opcode_tree(*argument_context, BC_CTXENTER) != 5 or
+       count_opcode_tree(*argument_context, BC_CTXCALLT) != 1) {
+      Log.error("contextual call arguments did not read the caller's inherited cache: %s", error.c_str());
+      return false;
+   }
+
+   if (not contextual_entries_precede_calls(*argument_context) or
+       not contextual_entries_precede_calls(*contextual_pipe) or
+       not contextual_entries_precede_calls(*runtime_context_pipe) or
+       not contextual_entries_precede_calls(*runtime_builtin_pipe)) {
+      Log.error("CTXENTER was not emitted immediately before its contextual call");
       return false;
    }
 
@@ -7830,7 +8113,7 @@ static bool test_builtin_method_static_classification(kt::Log &Log)
       Log.error("proved dot calls did not resolve the representative built-in methods");
       return false;
    }
-   if (not safe_call->builtin_method or not safe_call->builtin_method->safe or
+   if (not safe_call->builtin_method or safe_call->builtin_method->guard != MethodReceiverGuard::NilSafe or
        safe_call->builtin_method->receiver_type != TiriType::Table) {
       Log.error("nullable safe receiver did not resolve table.insert");
       return false;
@@ -8114,6 +8397,28 @@ static const BCIns * find_builtin_callable_opcode(const BytecodeSnapshot &Snapsh
    return nullptr;
 }
 
+static std::optional<size_t> opcode_position(const BytecodeSnapshot &Snapshot, BCOp Opcode, size_t Start = 0)
+{
+   for (size_t i = Start; i < Snapshot.instructions.size(); ++i) {
+      if (bc_op(Snapshot.instructions[i]) IS Opcode) return i;
+   }
+   return std::nullopt;
+}
+
+// Locate the skipped-path CALL of a safe or optional call: the call that immediately follows the canonical tonumber
+// load and its nil argument.
+
+static const BCIns * skipped_call_result(const BytecodeSnapshot &Snapshot)
+{
+   BCREG tonumber = builtin_callable_index(builtin_callable_id(FastFunc::tonumber));
+   for (auto load = opcode_position(Snapshot, BC_BFUNC); load; load = opcode_position(Snapshot, BC_BFUNC, *load + 1)) {
+      if (bc_d(Snapshot.instructions[*load]) != tonumber or *load + 2 >= Snapshot.instructions.size()) continue;
+      const BCIns &call = Snapshot.instructions[*load + 2];
+      if (bc_op(call) IS BC_CALL and bc_a(call) IS bc_a(Snapshot.instructions[*load])) return &call;
+   }
+   return nullptr;
+}
+
 static bool test_builtin_method_bytecode_emission(kt::Log &Log)
 {
    LuaStateHolder state;
@@ -8172,9 +8477,10 @@ static bool test_builtin_method_bytecode_emission(kt::Log &Log)
    error.clear();
    auto safe = compile_snapshot(L,
       "local maybe:table = nil\nmaybe?.insert(1)\nreturn maybe\n", true, error);
-   if (not safe or count_opcode(*safe, BC_BFUNC) != 1 or count_opcode(*safe, BC_ISEQP) != 1 or
-       count_opcode(*safe, BC_CALL) != 1 or count_opcode(*safe, BC_TGETS) != 0 or
-       count_opcode(*safe, BC_TGETV) != 0) {
+   // The second BFUNC and CALL are the skipped path's tonumber(nil), which keeps MULTRES valid.
+   if (not safe or count_opcode(*safe, BC_BFUNC) != 2 or count_opcode(*safe, BC_ISEQP) != 1 or
+       count_opcode(*safe, BC_CALL) != 2 or count_opcode(*safe, BC_TGETS) != 0 or
+       count_opcode(*safe, BC_TGETV) != 0 or not skipped_call_result(*safe)) {
       Log.error("safe built-in method call lost canonical nil-short-circuit lowering: %s", error.c_str());
       return false;
    }
@@ -8263,10 +8569,11 @@ static bool test_builtin_method_bytecode_emission(kt::Log &Log)
    }
 
    error.clear();
+   // The second and third CALL are the tonumber(nil) skipped paths for a nil field and a nil receiver.
    auto dynamic_safe = compile_snapshot(L,
       "local function use(Maybe:any) Maybe?.insert(1) end\n", true, error);
    if (not dynamic_safe or count_opcode_tree(*dynamic_safe, BC_BMETH) != 1 or
-       count_opcode_tree(*dynamic_safe, BC_ISEQP) != 2 or count_opcode_tree(*dynamic_safe, BC_CALL) != 1 or
+       count_opcode_tree(*dynamic_safe, BC_ISEQP) != 2 or count_opcode_tree(*dynamic_safe, BC_CALL) != 3 or
        count_opcode_tree(*dynamic_safe, BC_CTXCALL) != 1) {
       Log.error("unproved safe dot call lost runtime dispatch or nil short-circuiting: %s", error.c_str());
       return false;
@@ -9606,9 +9913,10 @@ static bool test_tail_call_eligibility(kt::Log &Log)
       "end\n"
       "return checked_safe\n";
    auto checked_safe = compile_snapshot(L, checked_safe_source, true, error);
-   if (not checked_safe or count_opcode_tree(*checked_safe, BC_RET1) IS 0 or
-       count_opcode_tree(*checked_safe, BC_RETM) != 0) {
-      Log.error("a checked safe-call return did not lower to one fixed result: %s", error.c_str());
+   // Both paths of a safe call set MULTRES, so a checked safe-call return forwards every result without a tail call.
+   if (not checked_safe or count_opcode_tree(*checked_safe, BC_RETM) IS 0 or
+       count_opcode_tree(*checked_safe, BC_CALLT) != 0) {
+      Log.error("a checked safe-call return did not forward every result: %s", error.c_str());
       return false;
    }
 
@@ -9622,9 +9930,10 @@ static bool test_tail_call_eligibility(kt::Log &Log)
       "end\n"
       "return checked_safe_try\n";
    auto checked_safe_try = compile_snapshot(L, checked_safe_try_source, true, error);
-   if (not checked_safe_try or count_opcode_tree(*checked_safe_try, BC_RET1) IS 0 or
-       count_opcode_tree(*checked_safe_try, BC_RETM) != 0) {
-      Log.error("a checked safe-call return inside try did not lower to one fixed result: %s", error.c_str());
+   // Leaving the try scope must preserve the forwarded result count across TRYLEAVE.
+   if (not checked_safe_try or count_opcode_tree(*checked_safe_try, BC_RETM) IS 0 or
+       count_opcode_tree(*checked_safe_try, BC_MRSAVE) IS 0 or count_opcode_tree(*checked_safe_try, BC_CALLT) != 0) {
+      Log.error("a checked safe-call return inside try did not forward every result: %s", error.c_str());
       return false;
    }
 
@@ -9663,9 +9972,8 @@ static bool test_tail_call_eligibility(kt::Log &Log)
       "end\n"
       "return checked_safe_list\n";
    auto checked_safe_list = compile_snapshot(L, checked_safe_list_source, true, error);
-   if (not checked_safe_list or count_opcode_tree(*checked_safe_list, BC_RET) IS 0 or
-       count_opcode_tree(*checked_safe_list, BC_RETM) != 0) {
-      Log.error("a trailing checked safe-call return did not lower to fixed results: %s", error.c_str());
+   if (not checked_safe_list or count_opcode_tree(*checked_safe_list, BC_RETM) IS 0) {
+      Log.error("a trailing checked safe-call return did not forward every result: %s", error.c_str());
       return false;
    }
 
@@ -11004,6 +11312,305 @@ static bool test_contextual_metatable_designation(kt::Log &Log)
    }
    lua_pop(L, 1);
 
+   return true;
+}
+
+//********************************************************************************************************************
+// `receiver.member?(...)` records optional dispatch on an ordinary MemberExpr callee.  A spaced `?` remains a ternary,
+// a separator inside an enclosing ternary closes that ternary, and unsupported spellings report InvalidOptionalCall.
+
+static const CallExprPayload * optional_call_statement(const BlockStmt &Block, size_t Index)
+{
+   if (Index >= Block.statements.size()) return nullptr;
+   const auto *statement = std::get_if<ExpressionStmtPayload>(&Block.statements[Index]->data);
+   if (not statement or not statement->expression) return nullptr;
+   return std::get_if<CallExprPayload>(&statement->expression->data);
+}
+
+static bool test_optional_table_call_ast(kt::Log &Log)
+{
+   constexpr std::string_view source =
+      "local thing = {}\n"
+      "thing.call?(1)\n"
+      "thing.child.call?()\n"
+      "local spaced = thing.call ? (1) : 2\n"
+      "local flag = true\n"
+      "local nested = flag ? thing.call?(1) : 2\n"
+      "thing.call(3)\n"
+      "thing?.call(4)\n";
+
+   auto result = build_ast_from_source(source, false, false);
+   if (not result.chunk.ok() or result.chunk.value_ref()->statements.size() != 8 or
+       not result.diagnostics.empty()) {
+      Log.error("optional table call fixture did not parse cleanly");
+      log_diagnostics(result.diagnostics, Log);
+      return false;
+   }
+
+   const BlockStmt &block = *result.chunk.value_ref();
+   const CallExprPayload *simple = optional_call_statement(block, 1);
+   const auto *simple_target = simple ? std::get_if<DirectCallTarget>(&simple->target) : nullptr;
+   const auto *simple_member = simple_target and simple_target->callable ?
+      std::get_if<MemberExprPayload>(&simple_target->callable->data) : nullptr;
+   if (not simple or simple->dispatch != CallDispatch::OptionalMemberNamed or simple->arguments.size() != 1 or
+       simple->argument_syntax != CallArgumentSyntax::Parenthesised or not simple_member or
+       not simple_member->is_call_target or not simple_member->table or
+       simple_member->table->kind != AstNodeKind::IdentifierExpr) {
+      Log.error("optional call did not retain an ordinary named-member callee with optional dispatch");
+      return false;
+   }
+
+   const CallExprPayload *chained = optional_call_statement(block, 2);
+   const auto *chained_target = chained ? std::get_if<DirectCallTarget>(&chained->target) : nullptr;
+   const auto *chained_member = chained_target and chained_target->callable ?
+      std::get_if<MemberExprPayload>(&chained_target->callable->data) : nullptr;
+   if (not chained or chained->dispatch != CallDispatch::OptionalMemberNamed or not chained->arguments.empty() or
+       not chained_member or not chained_member->table or
+       chained_member->table->kind != AstNodeKind::MemberExpr) {
+      Log.error("optional call on a nested receiver lost the complete receiver expression");
+      return false;
+   }
+
+   const auto &spaced = std::get<LocalDeclStmtPayload>(block.statements[3]->data);
+   if (spaced.values.empty() or spaced.values[0]->kind != AstNodeKind::TernaryExpr) {
+      Log.error("a spaced '?' after a member did not remain a ternary condition");
+      return false;
+   }
+
+   const auto &nested = std::get<LocalDeclStmtPayload>(block.statements[5]->data);
+   const auto *ternary = nested.values.empty() ? nullptr : std::get_if<TernaryExprPayload>(&nested.values[0]->data);
+   const auto *branch = ternary and ternary->if_true ? std::get_if<CallExprPayload>(&ternary->if_true->data) : nullptr;
+   if (not branch or branch->dispatch != CallDispatch::OptionalMemberNamed) {
+      Log.error("an optional call inside a ternary true branch did not yield the separator to the ternary");
+      return false;
+   }
+
+   const CallExprPayload *ordinary = optional_call_statement(block, 6);
+   const CallExprPayload *safe = optional_call_statement(block, 7);
+   if (not ordinary or ordinary->dispatch != CallDispatch::MemberNamed or not safe or
+       safe->dispatch != CallDispatch::SafeMemberNamed) {
+      Log.error("ordinary and safe member calls did not retain their dispatch modes");
+      return false;
+   }
+
+   struct InvalidCase {
+      std::string_view source;
+      std::string_view label;
+   };
+   constexpr std::array<InvalidCase, 9> invalid_cases = { {
+      { "local thing = {}\nlocal value = thing.call?(1) : 2\n", "adjacent ternary migration" },
+      { "local function callback() end\ncallback?(1)\n", "direct callable" },
+      { "local thing = {}\nlocal key = 'call'\nthing[key]?(1)\n", "computed member" },
+      { "local thing = {}\nlocal value = (thing.call)?(1)\n", "grouped member" },
+      { "local thing = {}\nthing.call? {}\n", "table constructor shorthand" },
+      { "local thing = {}\nthing.call?'text'\n", "string shorthand" },
+      { "local thing = {}\nthing.call?(\n", "incomplete argument list" },
+      { "local thing = {}\nthing.call?\n(1)\n", "line break before the argument list" },
+      { "local thing = {}\nthing.call--[[gap]]?(1)\n", "comment before the marker" }
+   } };
+
+   for (const InvalidCase &invalid : invalid_cases) {
+      auto parsed = build_ast_from_source(invalid.source, true, false);
+      if (parsed.diagnostics.empty()) {
+         Log.error("unsupported optional-call spelling was accepted: %.*s", int(invalid.label.size()),
+            invalid.label.data());
+         return false;
+      }
+   }
+
+   constexpr std::array<size_t, 6> focused = { 0, 1, 2, 3, 4, 5 };
+   for (size_t index : focused) {
+      auto parsed = build_ast_from_source(invalid_cases[index].source, true, false);
+      bool found = false;
+      for (const ParserDiagnostic &diagnostic : parsed.diagnostics) {
+         if (diagnostic.code IS ParserErrorCode::InvalidOptionalCall) found = true;
+      }
+      if (not found) {
+         Log.error("optional-call spelling '%.*s' did not report InvalidOptionalCall",
+            int(invalid_cases[index].label.size()), invalid_cases[index].label.data());
+         log_diagnostics(parsed.diagnostics, Log);
+         return false;
+      }
+   }
+
+   auto legacy_ternary = build_ast_from_source(
+      "local function callback():num return 1 end\nlocal value = callback?(1) : 2\n", false, false);
+   if (not legacy_ternary.chunk.ok() or not legacy_ternary.diagnostics.empty()) {
+      Log.error("an adjacent ternary on a direct callable was rejected");
+      log_diagnostics(legacy_ternary.diagnostics, Log);
+      return false;
+   }
+
+   LuaStateHolder state;
+   lua_State *L = state.get();
+   luaL_openlibs(L);
+   if (lua_load(L, std::string_view("local text = 'abc'\ntext.len?()\n"), "parser-unit") IS 0) {
+      L->top--;
+      Log.error("an optional call on a proved string receiver compiled");
+      return false;
+   }
+   const char *message = lua_tostring(L, -1);
+   bool expected_message = message and std::string_view(message).find("requires a table receiver") !=
+      std::string_view::npos;
+   lua_pop(L, 1);
+   if (not expected_message) {
+      Log.error("proved non-table receiver diagnostic was not reported: %s", message ? message : "(none)");
+      return false;
+   }
+   return true;
+}
+
+//********************************************************************************************************************
+// Optional table calls lower to a receiver table check, an ordinary lookup, a nil guard ahead of the arguments and a
+// skipped path whose nil-producing CALL tracks the requested result count.
+
+static bool test_optional_table_call_bytecode(kt::Log &Log)
+{
+   LuaStateHolder state;
+   lua_State *L = state.get();
+   luaL_openlibs(L);
+   std::string error;
+
+   auto proved = compile_snapshot(L, "local thing = {}\nthing.call?(7)\n", true, error);
+   auto guard = proved ? opcode_position(*proved, BC_ISEQP) : std::nullopt;
+   auto argument = proved ? opcode_position(*proved, BC_KSHORT) : std::nullopt;
+   if (not proved or count_opcode(*proved, BC_TYPETEST) != 0 or count_opcode(*proved, BC_RAISE) != 0 or
+       count_opcode(*proved, BC_TGETS) != 1 or count_opcode(*proved, BC_ISEQP) != 1 or
+       count_opcode(*proved, BC_CALL) != 2 or not guard or not argument or *guard > *argument or
+       not skipped_call_result(*proved)) {
+      Log.error("proved table optional call did not emit lookup, nil guard and skipped call: %s", error.c_str());
+      return false;
+   }
+
+   error.clear();
+   auto dynamic = compile_snapshot(L, "local function use(Receiver:any)\nReceiver.call?(1)\nend\n", true, error);
+   const BytecodeSnapshot *body = dynamic and not dynamic->children.empty() ? &dynamic->children[0] : nullptr;
+   auto type_test = body ? opcode_position(*body, BC_TYPETEST) : std::nullopt;
+   auto lookup = body ? opcode_position(*body, BC_TGETS) : std::nullopt;
+   auto nil_test = body ? opcode_position(*body, BC_ISEQP) : std::nullopt;
+   auto entry = body ? opcode_position(*body, BC_CTXENTER) : std::nullopt;
+   auto leave = body ? opcode_position(*body, BC_CTXLEAVE) : std::nullopt;
+   auto skip_load = body ? opcode_position(*body, BC_BFUNC) : std::nullopt;
+   if (not body or count_opcode(*body, BC_RAISE) != 1 or count_opcode(*body, BC_BMETH) != 0 or not type_test or
+       not lookup or not nil_test or not entry or not leave or not skip_load or
+       count_opcode(*body, BC_CTXENTER) != 1 or count_opcode(*body, BC_CTXLEAVE) != 1 or
+       count_opcode(*body, BC_CTXCALL) != 1 or not (*type_test < *lookup and *lookup < *nil_test and
+       *nil_test < *entry and *entry < *leave and *leave < *skip_load) or not skipped_call_result(*body)) {
+      Log.error("unproved optional call did not check the table before a balanced contextual call: %s",
+         error.c_str());
+      return false;
+   }
+
+   error.clear();
+   auto fixed = compile_snapshot(L, "local thing = {}\nlocal a, b, c = thing.call?()\nreturn a, b, c\n", true, error);
+   const BCIns *fixed_skip = fixed ? skipped_call_result(*fixed) : nullptr;
+   auto fixed_call = fixed ? opcode_position(*fixed, BC_CALL) : std::nullopt;
+   if (not fixed or not fixed_skip or not fixed_call or bc_b(*fixed_skip) != 4 or
+       bc_b(fixed->instructions[*fixed_call]) != 4) {
+      Log.error("fixed multi-result request did not widen both optional-call paths: %s", error.c_str());
+      return false;
+   }
+
+   error.clear();
+   auto forwarded = compile_snapshot(L, "local thing = {}\nreturn thing.call?()\n", true, error);
+   const BCIns *forwarded_skip = forwarded ? skipped_call_result(*forwarded) : nullptr;
+   if (not forwarded or not forwarded_skip or bc_b(*forwarded_skip) != 0 or count_opcode(*forwarded, BC_CALLT) != 0 or
+       count_opcode(*forwarded, BC_RETM) != 1) {
+      Log.error("returned optional call was tail-called or did not forward every result: %s", error.c_str());
+      return false;
+   }
+
+   error.clear();
+   auto method = compile_snapshot(L, "local values = {}\nvalues.insert?(1)\nreturn values\n", true, error);
+   const BCIns *method_load = method ? find_opcode(*method, BC_BFUNC) : nullptr;
+   if (not method or not method_load or count_opcode(*method, BC_BFUNC) != 1 or
+       bc_d(*method_load) != builtin_callable_index(builtin_callable_id(FastFunc::table_insert)) or
+       count_opcode(*method, BC_ISEQP) != 0 or count_opcode(*method, BC_TGETS) != 0 or
+       count_opcode(*method, BC_TYPETEST) != 0) {
+      Log.error("registered table method lost canonical optional-call lowering: %s", error.c_str());
+      return false;
+   }
+
+   error.clear();
+   auto dynamic_method = compile_snapshot(L,
+      "local function use(Receiver:any):<any, ...>\nreturn Receiver.insert?(1)\nend\n", true, error);
+   const BytecodeSnapshot *method_body = dynamic_method and not dynamic_method->children.empty() ?
+      &dynamic_method->children[0] : nullptr;
+   if (not method_body or count_opcode(*method_body, BC_TYPETEST) != 1 or count_opcode(*method_body, BC_BMETH) != 0 or
+       count_opcode(*method_body, BC_BFUNC) != 1 or count_opcode(*method_body, BC_ISEQP) != 0 or
+       count_opcode(*method_body, BC_CALLT) != 0) {
+      Log.error("unproved optional table method did not constrain dispatch to the table interface: %s",
+         error.c_str());
+      return false;
+   }
+
+   error.clear();
+   auto piped = compile_snapshot(L,
+      "local thing = {}\nlocal function operand():num return 1 end\nreturn operand() |> thing.call?()\n", true, error);
+   auto pipe_guard = piped ? opcode_position(*piped, BC_ISEQP) : std::nullopt;
+   auto operand_call = piped ? opcode_position(*piped, BC_CALL) : std::nullopt;
+   if (not piped or not pipe_guard or not operand_call or *operand_call < *pipe_guard or
+       not skipped_call_result(*piped)) {
+      Log.error("piped optional call did not guard the callable before its operand: %s", error.c_str());
+      return false;
+   }
+   return true;
+}
+
+//********************************************************************************************************************
+// A skipped safe call ends with a nil-producing CALL so that consumers forwarding every result observe a valid MULTRES,
+// and a result filter requests one result unless its consumer forwards every result.
+
+static bool test_skipped_call_multret_bytecode(kt::Log &Log)
+{
+   LuaStateHolder state;
+   lua_State *L = state.get();
+   luaL_openlibs(L);
+   std::string error;
+
+   auto argument = compile_snapshot(L, "local function f(...) end\nlocal t:any = {}\nf(t?.g())\n", true, error);
+   const BCIns *argument_skip = argument ? skipped_call_result(*argument) : nullptr;
+   if (not argument_skip or bc_b(*argument_skip) != 0 or count_opcode(*argument, BC_CALLM) != 1) {
+      Log.error("trailing safe-call argument did not forward a nil-producing skipped call: %s", error.c_str());
+      return false;
+   }
+
+   error.clear();
+   auto constructor = compile_snapshot(L, "local t:any = {}\nreturn { t?.g() }\n", true, error);
+   const BCIns *constructor_skip = constructor ? skipped_call_result(*constructor) : nullptr;
+   if (not constructor_skip or bc_b(*constructor_skip) != 0 or count_opcode(*constructor, BC_TSETM) != 1) {
+      Log.error("safe-call table constructor tail did not widen its skipped call: %s", error.c_str());
+      return false;
+   }
+
+   error.clear();
+   auto returned = compile_snapshot(L, "local t:any = {}\nreturn t?.g()\n", true, error);
+   const BCIns *returned_skip = returned ? skipped_call_result(*returned) : nullptr;
+   if (not returned_skip or bc_b(*returned_skip) != 0 or count_opcode(*returned, BC_RETM) != 1 or
+       count_opcode(*returned, BC_CALLT) != 0) {
+      Log.error("safe-call return did not forward every result without a tail call: %s", error.c_str());
+      return false;
+   }
+
+   error.clear();
+   auto fixed_filter = compile_snapshot(L,
+      "local function one():num return 1 end\nlocal function f(...) end\nf([_*]one(), 2)\n", true, error);
+   auto filter_call = fixed_filter ? opcode_position(*fixed_filter, BC_CALLM) : std::nullopt;
+   if (not filter_call or count_opcode(*fixed_filter, BC_CALLM) != 1 or
+       bc_b(fixed_filter->instructions[*filter_call]) != 2) {
+      Log.error("non-trailing result filter did not request exactly one result: %s", error.c_str());
+      return false;
+   }
+
+   error.clear();
+   auto forwarded_filter = compile_snapshot(L,
+      "local function one():num return 1 end\nlocal function f(...) end\nf([_*]one())\n", true, error);
+   auto inner_filter = forwarded_filter ? opcode_position(*forwarded_filter, BC_CALLM) : std::nullopt;
+   if (not inner_filter or count_opcode(*forwarded_filter, BC_CALLM) != 2 or
+       bc_b(forwarded_filter->instructions[*inner_filter]) != 0) {
+      Log.error("trailing result filter did not forward every kept value: %s", error.c_str());
+      return false;
+   }
    return true;
 }
 
@@ -12397,9 +13004,11 @@ static bool test_import_module_relocation_transaction(kt::Log &Log)
 
 extern void parser_unit_tests(int &Passed, int &Total)
 {
-   constexpr std::array<TestCase, 109> tests = { {
+   constexpr std::array<TestCase, 115> tests = { {
       { "nested_function_failure_after_bytecode_growth", test_nested_function_failure_after_bytecode_growth },
       { "ordinary_function_policy", test_ordinary_function_policy },
+      { "function_context_binding_syntax", test_function_context_binding_syntax },
+      { "bound_function_policy_roundtrip", test_bound_function_policy_roundtrip },
       { "package_annotation_metadata", test_package_annotation_metadata },
       { "versioned_import_syntax", test_versioned_import_syntax },
       { "bytecode_load_metadata_transaction", test_bytecode_load_metadata_transaction },
@@ -12427,6 +13036,7 @@ extern void parser_unit_tests(int &Passed, int &Total)
       { "immutable_global_contract_analysis", test_immutable_global_contract_analysis },
       { "loop_ast", test_loop_ast },
       { "if_stmt_with_elseif_ast", test_if_stmt_with_elseif_ast },
+      { "field_assignment_block_lowering", test_field_assignment_block_lowering },
       { "local_function_table_ast", test_local_function_table_ast },
       { "ast_statement_matrix", test_ast_statement_matrix },
       { "checkall_syntax_and_bytecode", test_checkall_syntax_and_bytecode },
@@ -12506,7 +13116,10 @@ extern void parser_unit_tests(int &Passed, int &Total)
       { "contextual_runtime_semantics", test_contextual_runtime_semantics },
       { "contextual_designation_syntax", test_contextual_designation_syntax },
       { "contextual_metatable_designation", test_contextual_metatable_designation },
-      { "temporary_context_blocks", test_temporary_context_blocks }
+      { "temporary_context_blocks", test_temporary_context_blocks },
+      { "optional_table_call_ast", test_optional_table_call_ast },
+      { "optional_table_call_bytecode", test_optional_table_call_bytecode },
+      { "skipped_call_multret_bytecode", test_skipped_call_multret_bytecode }
    } };
 
    // A dummy object is required to manage state.

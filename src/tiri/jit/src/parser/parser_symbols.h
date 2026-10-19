@@ -54,6 +54,7 @@ struct ParserSymbolMetadata {
    std::string name;
    std::string kind;
    std::string signature;
+   std::string binding;   // Function context binding as written, e.g. '[<weak> &&]'; empty if there is none
    SourceSpan span{};
    SourceSpan end_span{};
    std::vector<ParserAnnotationMetadata> annotations;

@@ -5,7 +5,7 @@ A demonstration of standard widgets
 
    import 'gui', 'gui/toolbar', 'gui/menubar', 'gui/colourdialog', 'gui/fontdialog'
    import 'gui/dialog', 'gui/filedialog', 'gui/icon', 'gui/input', 'gui/button'
-   import 'gui/checkbox', 'gui/combobox', 'gui/slider', 'gui/window', 'vfx'
+   import 'gui/toggle', 'gui/combobox', 'gui/slider', 'gui/window', 'vfx'
 
    glSelf = <obj{ obj.find('self') }>
    glPath = <str{ glSelf.workingPath }>
@@ -371,7 +371,7 @@ end
 
    y += msgButton.viewport.height + 12
 
-   checkbox = gui.checkbox({
+   checkbox = gui.toggle({
       target = viewport,
       label  = 'Checkbox',
       align  = 'left',
@@ -423,7 +423,7 @@ end
    combobox = gui.combobox({
       target = viewport,
       label  = 'Combobox:',
-      string = 'Your text here',
+      text   = 'Your text here',
       x      = win.margins.left, y = y,
       allowCustom = true,
       items = {

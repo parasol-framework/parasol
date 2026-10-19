@@ -237,7 +237,7 @@ static void peer_report_channels(extPeerConnection *Self)
 
    for (auto &[handle, child] : Self->Channels) {
       if (auto record = Self->Connection->channel(handle)) {
-         child->ID = record->id;
+         child->StreamID = record->id;
          child->BufferedAmount = int64_t(record->buffered);
          child->MaxMessageSize = int64_t(Self->Connection->max_message_size());
          if (record->state IS rtc::SctpChannelState::CLOSING) child->State = WCS::CLOSING;

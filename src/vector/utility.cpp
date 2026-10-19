@@ -106,6 +106,9 @@ CSTRING get_name(OBJECTPTR Vector)
 }
 
 //********************************************************************************************************************
+// Records the density of the display.  Vector units, including font sizes and font metrics, are converted at the fixed
+// DISPLAY_DPI so that rendering is independent of the display.  These values must not be used to scale font metrics,
+// because the glyph outlines do not account for the display density.
 
 static void update_dpi(void)
 {

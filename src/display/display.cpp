@@ -124,6 +124,7 @@ std::unique_ptr<std::array<uint16_t, 256 * 256>> glDemultiply;
 std::atomic<int> glLastPort = -1;
 std::vector<OBJECTID> glFocusList;
 std::recursive_mutex glFocusLock;
+thread_local OBJECTID glHostFocusDisplay = 0; // Display whose focus state is being reported by the host
 std::recursive_mutex glSurfaceLock;
 
 namespace display {

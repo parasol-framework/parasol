@@ -190,7 +190,7 @@ class extVectorText : public extVector {
    double txInlineSize; // Enables word-wrapping
    Unit txX = Unit(0), txY = Unit(0);
    double txTextLength;
-   double txFontSize;  // Font size measured in pixels @ 72 DPI.  Should always be a whole number.
+   double txFontSize;  // Em size in pixels (CSS px; FreeType runs at 72 DPI so 1pt = 1px).  Always a whole number.
    double txLetterSpacing; // SVG: Acts as a multiplier or fixed unit addition to the spacing of each glyph
    double txWidth; // Width of the text computed by path generation.  Not for client use as GetBoundary() can be used for that.
    double txStartOffset; // TODO
@@ -223,7 +223,7 @@ class extVectorText : public extVector {
       GeneratePath    = (void (*)(extVector *, agg::path_storage &))&generate_text;
       StrokeWidth     = 0.0;
       txWeight        = DEFAULT_WEIGHT;
-      txFontSize      = 16; // Pixel units @ 72 DPI
+      txFontSize      = 16; // Pixel units, equivalent to 12pt
       txCharLimit     = 0x7fffffff;
       txFamily        = "Noto Sans";
       Fill[0].Colour  = FRGB(1, 1, 1, 1);
@@ -379,6 +379,65 @@ static ERR VECTORTEXT_DeleteLine(extVectorText *Self, struct vt::DeleteLine *Arg
    return ERR::Okay;
 }
 
+/*********************************************************************************************************************
+
+-METHOD-
+SelectArea: Selects an area of text.
+
+SelectArea() marks a region of text as selected, starting at the position given by `Row` and `Column`.  The cursor is
+moved to the end of the region at `EndRow` and `EndColumn`, which may come before the start for a reversed selection.
+Columns are character positions, so UTF-8 sequences count as one column each.  A negative `EndRow` refers to the
+last line and a negative `EndColumn` refers to the end of its line, so `SelectArea(0, 0, -1, -1)` selects all of the
+text.  Positions beyond the text are clamped to its limits.
+
+While an area is selected the `AREA_SELECTED` bit is set in #TextFlags.  The next character typed, or a press of
+Backspace, Delete, Clear or Enter, will replace or delete the selected text.  Moving the cursor deselects the area.
+
+The selected area is not highlighted when the text is drawn.
+
+If the start and end positions are identical, the cursor is moved and no area is selected.
+
+-INPUT-
+int Row: The line at which the selection starts.
+int Column: The character column at which the selection starts.
+int EndRow: The line at which the selection ends.  If negative, the last line is used.
+int EndColumn: The character column at which the selection ends.  If negative, the end of the line is used.
+
+-ERRORS-
+Okay: The area was selected.
+NullArgs: No arguments were provided.
+NoData: The object contains no text.
+
+-TAGS-
+mutates-object
+-END-
+
+*********************************************************************************************************************/
+
+static ERR VECTORTEXT_SelectArea(extVectorText *Self, struct vt::SelectArea *Args)
+{
+   if (not Args) return ERR::NullArgs;
+   if (Self->txLines.empty()) return ERR::NoData;
+
+   auto last_row = int(Self->txLines.size()) - 1;
+
+   auto row = std::clamp(Args->Row, 0, last_row);
+   auto column = std::clamp(Args->Column, 0, Self->txLines[row].utf8Length());
+
+   auto end_row = (Args->EndRow < 0) ? last_row : std::min(Args->EndRow, last_row);
+   auto end_length = Self->txLines[end_row].utf8Length();
+   auto end_column = (Args->EndColumn < 0) ? end_length : std::min(Args->EndColumn, end_length);
+
+   Self->txCursor.move(Self, end_row, end_column); // Clears AREA_SELECTED
+
+   Self->txCursor.selectRow    = row;
+   Self->txCursor.selectColumn = column;
+
+   if ((row != end_row) or (column != end_column)) Self->txFlags |= VTXF::AREA_SELECTED;
+
+   return ERR::Okay;
+}
+
 //********************************************************************************************************************
 
 static ERR VECTORTEXT_Init(extVectorText *Self)
@@ -510,10 +569,11 @@ static ERR TEXT_SET_CursorRow(extVectorText *Self, int Value)
 
 /*********************************************************************************************************************
 -FIELD-
-Descent: The font descent measured in pixels, after DPI conversion.
+Descent: The font descent measured in pixels.
 
-Use Descent to retrieve the height of the font descent region in actual display pixels, after DPI conversion has been
-taken into account.
+Use Descent to retrieve the height of the font descent region, which is the space reserved below the baseline.  The
+value is measured in the same pixel units as #FontSize, so it is unaffected by the display density and is subject to
+the same transforms as the text.
 
 *********************************************************************************************************************/
 
@@ -533,10 +593,11 @@ static ERR TEXT_GET_Descent(extVectorText *Self, int *Value)
 
 /*********************************************************************************************************************
 -FIELD-
-DisplayHeight: The font height measured in pixels, after DPI conversion.
+DisplayHeight: The font height measured in pixels.
 
-Use DisplayHeight to retrieve the font height in actual display pixels, after DPI conversion has been taken into
-account.  The height includes the top region reserved for accents, but excludes the descent value.
+Use DisplayHeight to retrieve the height of the font, measured in the same pixel units as #FontSize.  For scalable
+fonts the value is the sum of the ascent and #Descent.  The value does not account for the display density or for
+transforms applied to the text.
 
 *********************************************************************************************************************/
 
@@ -556,11 +617,13 @@ static ERR TEXT_GET_DisplayHeight(extVectorText *Self, int *Value)
 
 /*********************************************************************************************************************
 -FIELD-
-DisplaySize: The FontSize measured in pixels, after DPI conversion.
+DisplaySize: The FontSize converted to points.
 
-Use DisplaySize to retrieve the #FontSize in actual display pixels, after DPI conversion has been taken into account.
-For example, if #FontSize is set to `16` in a 96 DPI environment, the resulting value is `12` after performing the
-calculation `16 * 72 / 96`.
+DisplaySize returns the #FontSize converted from pixels to points at the fixed reference density of 96 DPI, calculated
+as `FontSize * 72 / 96` and truncated to an integer.  For example, a #FontSize of `16` returns `12`.  The display
+density is not taken into account.
+
+This value matches #Point, except that #Point is rounded to the nearest integer rather than truncated.
 
 *********************************************************************************************************************/
 
@@ -738,7 +801,7 @@ static ERR TEXT_SET_Font(extVectorText *Self, OBJECTPTR Value)
       auto other = (objFont *)Value;
 
       Self->txFamily         = other->Face.empty() ? "Noto Sans" : other->Face;
-      Self->txFontSize       = std::trunc(other->Point * (96.0 / 72.0));
+      Self->txFontSize       = std::max(1.0, std::round(other->Point * (96.0 / 72.0)));
       Self->txScaledFontSize = false;
       Self->txFontStyle      = other->Style.empty() ? "Regular" : other->Style;
 
@@ -820,15 +883,18 @@ The FontSize is equivalent to the SVG `font-size` attribute and refers to the he
 baseline to the hanging baseline.  This would mean that a capitalised letter without accents should fill the entire
 vertical space defined by FontSize.
 
-The default unit value of FontSize is in pixels at a resolution of 72 DPI.  This means that if the display
-is configured to a more common 96 DPI for instance, the actual pixel size on the display will be `FontSize * 72 / 96`.
-Point sizes are also measured at a constant ratio of `1/72` irrespective of display settings, and this may need to
-factor into precise size calculations.
+The default unit of FontSize is the pixel, and the value defines the em size of the font.  A FontSize of `16` produces
+an em that is 16 pixels high in the text's coordinate space, which matches the behaviour of CSS and SVG.  The display
+density is not applied, so the size on the display only changes if the text is transformed.
 
-Standard unit measurements such as `px`, `em` and `pt` are supported by appending them after the numeric value.
-1em is equivalent to the 'default font size', which is typically 16px unless modified.
+Standard unit measurements such as `px`, `pt`, `pc`, `in`, `cm`, `mm` and `em` are supported by appending them after
+the numeric value.  Physical units are converted to pixels at a fixed reference density of 96 DPI, irrespective of the
+display, so `12pt` is equivalent to `16px`.  Clients that need a physical size on a high density display must scale
+the value themselves, for example by multiplying a point size by `DisplayDPI / 96`.  The `em` unit is fixed at 16
+pixels.  The final value is rounded to the nearest whole pixel, so `11pt` (14.67px) becomes `15px`.  A size that
+rounds to less than one pixel is rejected with `ERR::OutOfRange`.
 
-When retrieving the font size, the resulting string must be freed by the client when no longer in use.
+Reading FontSize returns the pixel size as a numeric string without a unit suffix.
 
 NOTE: The FontSize is derived from information defined by the font author.  Due to opinionated views on how font
 height is determined, the value is not transferrable between fonts.  The primary difference is that some fonts will
@@ -854,8 +920,9 @@ static ERR TEXT_SET_FontSize(extVectorText *Self, const std::string_view &Value)
    // at pre-determined point sizes (4,6,8,10,12,14,20,30,40,50,60,...) and then use scaling to cater to other
    // 'non-standard' sizes.  This would allow for hinting to remain effective when regular point sizes are being chosen.
 
-   if (size > 0) {
-      auto new_size = std::trunc(size);
+   // Rounding ensures that physical units resolve to the nearest pixel, e.g. 11pt is 14.67px and becomes 15px.
+
+   if (auto new_size = std::round(size); new_size >= 1) {
       if (Self->txFontSize IS new_size) return ERR::Okay;
       Self->txFontSize = new_size;
       Self->txScaledFontSize = pct;
@@ -961,7 +1028,8 @@ static ERR TEXT_SET_LineLimit(extVectorText *Self, int Value)
 -FIELD-
 LineSpacing: The number of pixels from one line to the next.
 
-This field can be queried for the amount of space between each line, measured in display pixels.
+This field can be queried for the vertical advance between each line of text.  The value is measured in the same pixel
+units as #FontSize, so it is unaffected by the display density and is subject to the same transforms as the text.
 
 *********************************************************************************************************************/
 
@@ -989,7 +1057,9 @@ static ERR TEXT_GET_LineSpacing(extVectorText *Self, int *Value)
 -FIELD-
 Point: Returns the point-size of the font.
 
-Reading the Point value will return the point-size of the font, calculated as `FontSize * 72 / DisplayDPI`.
+Reading the Point value will return the point-size of the font, calculated as `FontSize * 72 / 96` and rounded to the
+nearest integer.  The conversion uses the fixed reference density of 96 DPI that applies to all #FontSize units, not
+the density of the display.
 
 *********************************************************************************************************************/
 
@@ -1844,24 +1914,20 @@ static void delete_selection(extVectorText *Self)
 
    int row, column, end_row, end_column;
    Self->txCursor.selectedArea(Self, &row, &column, &end_row, &end_column);
-   column = Self->txLines[row].utf8CharOffset(column);
-   end_column = Self->txLines[end_row].utf8CharOffset(end_column);
+   auto start_offset = Self->txLines[row].utf8CharOffset(column);
+   auto end_offset = Self->txLines[end_row].utf8CharOffset(end_column);
 
    if (row IS end_row) { // Selection limited to one line
-      Self->txLines[row].replace(column, end_column - column, "");
-      Self->txCursor.move(Self, row, column);
+      Self->txLines[row].erase(start_offset, end_offset - start_offset);
    }
    else {
-      Self->txLines[row].resize(column); // Truncate to end of the first line
-      Self->txCursor.move(Self, row, column);
-
-      row++;
-      if (row < end_row) Self->txLines.erase(Self->txLines.begin() + row, Self->txLines.begin() + end_row);
-
-      if (end_column > 0) Self->txLines[row].replace(0, end_column, "");
+      Self->txLines[row].resize(start_offset);
+      Self->txLines[row].append(Self->txLines[end_row], end_offset, std::string::npos);
+      Self->txLines.erase(Self->txLines.begin() + row + 1, Self->txLines.begin() + end_row + 1);
    }
 
    mark_dirty(Self, RC::BASE_PATH);
+   Self->txCursor.move(Self, row, column);
 }
 
 //********************************************************************************************************************

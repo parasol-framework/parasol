@@ -44,8 +44,7 @@ gui.icon = function(Options:table!)
       end
    })
 
-   -- Ordinary callbacks use a weak widget reference instead of retaining self or a registration context.
-   weak_self <weak> = self
+   -- Weak bindings retain the widget only for the duration of each callback.
 
    local text_words:array<str>
    local text_group:obj
@@ -60,11 +59,8 @@ gui.icon = function(Options:table!)
    margin       = 0
    line_height  = 0
 
-   @Ordinary
-   function inputFeedback(Viewport:obj!, Msg)
-      local icon = weak_self
-      if not icon then return ERR_Terminate end
-      if icon.disabled then return end
+   function[<weak> self] inputFeedback(Viewport:obj!, Msg)
+      if &disabled then return end
 
       repeat
          local activation:str
@@ -90,12 +86,10 @@ gui.icon = function(Options:table!)
          end
 
          if activation then
-            using icon do
-               &events?.activate({ name=activation })
-            end
+            &events?.activate({ name=activation })
          end
 
-         if icon.disabled then return end
+         if &disabled then return end
 
          Msg = Msg.next
       until not Msg
@@ -303,10 +297,8 @@ gui.icon = function(Options:table!)
 
       local viewport = &viewport
       if Options.draggable then
-         @Ordinary
-         viewport.dragCallback = function(Viewport:obj!, X:num!, Y:num!)
-            local icon = weak_self
-            if not icon or icon.disabled then return end
+         viewport.dragCallback = function[<weak> self](Viewport:obj!, X:num!, Y:num!)
+            if &disabled then return end
             Viewport.x = X
             Viewport.y = Y
             Viewport.acDraw()

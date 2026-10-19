@@ -72,7 +72,13 @@ end
 -- Resolve the function or method name attached to an opening parenthesis.
 
 function signatureReadCallName(Content:str, ParenPos:num):table
-   name_info = signatureReadIdentifierBefore(Content, ParenPos - 1)
+   -- An optional table call writes `member?(` with the `?` touching both the member and the parenthesis.
+   name_end = ParenPos - 1
+   if ParenPos > 1 and Content.sub(ParenPos - 1, ParenPos) is '?' and
+         signatureIsIdentChar(Content.sub(ParenPos - 2, ParenPos - 1)) then
+      name_end = ParenPos - 2
+   end
+   name_info = signatureReadIdentifierBefore(Content, name_end)
    name_info ?! return nil
 
    object_name = nil

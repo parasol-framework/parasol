@@ -10,7 +10,7 @@ rx_struct_new  = <{ regex.new("([\\w]+)\\s*=\\s*struct\\.new\\s*\\(\\s*['\"]([\\
 rx_struct_anno = <{ regex.new([[([A-Za-z_]\w*)\s*:\s*struct<\s*([A-Za-z_]\w*)\s*>]]) }>
 rx_struct_ctor = <{ regex.new([[([A-Za-z_]\w*)\s*=\s*struct<\s*([A-Za-z_]\w*)\s*>]]) }>
 
-extern lspUriToPath, maskNonCode, modulePrefixesForDocument, tokenizeTiri
+extern lspUriToPath, maskNonCode, modulePrefixesForDocument, tokenizeTiri, fieldBlockAssignmentEnd, fieldBlockEntryAt
 
 ----------------------------------------------------------------------------------------------------------------------
 
@@ -91,6 +91,16 @@ global function getTokenAtPosition(Doc:table, Line:num, Character:num):table
                context = 'field_access'
             end
          end
+      end
+   end
+
+   -- A key in a field assignment block (`base.{ key = value }`) is a field access on the block's base.  The cheap
+   -- assignment test avoids scanning the document for ordinary identifiers.
+   if context is 'identifier' and fieldBlockAssignmentEnd(lineText, endCol) then
+      entry = fieldBlockEntryAt(Doc, Line, startCol)
+      if entry then
+         context = 'field_access'
+         precedingIdent = entry.block.object
       end
    end
 
@@ -268,6 +278,26 @@ function formatParserAnnotationHover(AnnotationName, AnnotationDoc):str
    return md
 end
 
+-- True when the token sits inside the attribute of a function context binding, as in `function[<weak> X]`.
+function isFunctionBindingAttributeAt(TokenInfo:table, Doc:table):bool
+   text = getLine(Doc, TokenInfo.line)
+   function skipBack(Pos:num):num
+      while Pos >= 0 and (text.sub(Pos, Pos + 1) is ' ' or text.sub(Pos, Pos + 1) is '\t') do Pos -= 1 end
+      return Pos
+   end
+   pos = skipBack(TokenInfo.startCol - 1)
+   if pos < 0 or text.sub(pos, pos + 1) != '<' then return false end
+   pos = skipBack(pos - 1)
+   if pos < 0 or text.sub(pos, pos + 1) != '[' then return false end
+   word_end = skipBack(pos - 1) + 1
+   word_start = word_end - 8
+   if word_start < 0 or text.sub(word_start, word_end) != 'function' then return false end
+   if word_start is 0 then return true end
+   prior = text.sub(word_start - 1, word_start)
+   return not ((prior >= 'a' and prior <= 'z') or (prior >= 'A' and prior <= 'Z') or
+      (prior >= '0' and prior <= '9') or prior is '_')
+end
+
 function isContextualKeywordAt(TokenInfo:table, Doc:table):bool
    for semantic_token in values(tokenizeTiri(Doc.content, modulePrefixesForDocument(Doc))) do
       if semantic_token.line is TokenInfo.line and semantic_token.char is TokenInfo.startCol and
@@ -405,6 +435,9 @@ function formatDocumentSymbolHover(Symbol:table):str
    if not hoverTextHasContent(signature) and not hoverTextHasContent(doc_text) then return nil end
 
    md = f'**{signature}**'
+   if hoverTextHasContent(Symbol.binding) then
+      md ..= f'\n\nContext binding: `function{Symbol.binding}`'
+   end
    if hoverTextHasContent(doc_text) then
       md ..= '\n\n' .. doc_text
    end
@@ -483,6 +516,14 @@ global function resolveHoverContent(TokenInfo, Doc, Position):str
    context = TokenInfo.context
 
    -- Declaration attributes remain ordinary identifiers outside their angle-delimited syntax.
+   if token is 'weak' and context is 'identifier' and isFunctionBindingAttributeAt(TokenInfo, Doc) and
+         isContextualKeywordAt(TokenInfo, Doc) then
+      return '**<weak>** _(Function context binding attribute)_\n\n' ..
+         'Holds the bound context table weakly, so the function does not keep it alive. Each call acquires the ' ..
+         'table strongly for its duration. After collection, a call raises ERR_Terminate with the message ' ..
+         '"Resource collected" without running the body. The body must not also reference a bound identifier.'
+   end
+
    if token is 'weak' and context is 'identifier' and isContextualKeywordAt(TokenInfo, Doc) then
       return '**<weak>** _(Declaration attribute)_\n\n' ..
          'Creates a local weak-value binding. Collectible targets become nil when their last strong owner ' ..
@@ -582,7 +623,7 @@ global function resolveHoverContent(TokenInfo, Doc, Position):str
                      return formatFieldHover(className, token, classDoc.fields[token])
                   end
                   -- Try capitalized (Tiri uses lowercase, XML uses TitleCase)
-                  capitalizedToken = token.sub(1,1).upper() .. token.sub(2)
+                  capitalizedToken = token.sub(0, 1).upper() .. token.sub(1)
                   if classDoc.fields[capitalizedToken] then
                      return formatFieldHover(className, capitalizedToken, classDoc.fields[capitalizedToken])
                   end

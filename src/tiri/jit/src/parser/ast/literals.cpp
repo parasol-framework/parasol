@@ -14,12 +14,94 @@
 #include <unordered_map>
 
 //********************************************************************************************************************
+// Parses the optional context binding that immediately follows the function keyword: `[]`, `[X]` or `[<weak> X]`.
+// The current token must be the one after the keyword.  The reference grammar matches `using` (identifier, member
+// and index chains) plus `&&` and `&field`, so that X is a stable path that can be evaluated once at closure creation.
+// Calls, operators, literals and safe navigation are rejected.  A kind of None is returned if no binding is present.
+
+ParserResult<FunctionContextBinding> AstBuilder::parse_function_binding(bool IsThunk)
+{
+   FunctionContextBinding binding;
+   if (not this->ctx.check(TokenKind::LeftBracket)) {
+      return ParserResult<FunctionContextBinding>::success(std::move(binding));
+   }
+
+   Token open_token = this->ctx.tokens().current();
+   if (IsThunk) {
+      return this->fail<FunctionContextBinding>(ParserErrorCode::UnexpectedToken, open_token,
+         "context binding is not supported on thunks");
+   }
+
+   this->ctx.tokens().advance();
+
+   bool weak = false;
+   if (this->ctx.tokens().current().raw() IS '<') {
+      this->ctx.tokens().advance();
+      auto attribute = this->ctx.expect_identifier(ParserErrorCode::ExpectedIdentifier);
+      if (not attribute.ok()) return ParserResult<FunctionContextBinding>::failure(attribute.error_ref());
+
+      GCstr *name = attribute.value_ref().identifier();
+      if (not name or std::string_view(strdata(name), name->len) != "weak") {
+         return this->fail<FunctionContextBinding>(ParserErrorCode::UnexpectedToken, attribute.value_ref(),
+            "function context binding accepts only the <weak> attribute");
+      }
+
+      if (not this->ctx.lex_opt('>')) {
+         return this->fail<FunctionContextBinding>(ParserErrorCode::ExpectedToken, this->ctx.tokens().current(),
+            "expected '>' after attribute");
+      }
+      weak = true;
+   }
+
+   if (this->ctx.check(TokenKind::RightBracket)) {
+      if (weak) {
+         return this->fail<FunctionContextBinding>(ParserErrorCode::ExpectedIdentifier, this->ctx.tokens().current(),
+            "<weak> function context binding requires a reference");
+      }
+      binding.kind = FunctionContextKind::Ordinary;
+   }
+   else {
+      Token reference_token = this->ctx.tokens().current();
+      auto reference = this->parse_primary();
+      if (not reference.ok()) return ParserResult<FunctionContextBinding>::failure(reference.error_ref());
+
+      auto is_reference = [](const ExprNode *Node, const auto &Self) -> bool {
+         if (not Node) return false;
+         if (Node->kind IS AstNodeKind::IdentifierExpr) return true;
+         if (Node->kind IS AstNodeKind::CurrentContextExpr) return true;
+         if (Node->kind IS AstNodeKind::MemberExpr) {
+            const auto &payload = std::get<MemberExprPayload>(Node->data);
+            return Self(payload.table.get(), Self);
+         }
+         if (Node->kind IS AstNodeKind::IndexExpr) {
+            const auto &payload = std::get<IndexExprPayload>(Node->data);
+            return Self(payload.table.get(), Self);
+         }
+         return false;
+      };
+
+      if (not is_reference(reference.value_ref().get(), is_reference)) {
+         return this->fail<FunctionContextBinding>(ParserErrorCode::UnexpectedToken, reference_token,
+            "function context binding requires an identifier, member, index or context reference");
+      }
+
+      binding.kind = weak ? FunctionContextKind::Weak : FunctionContextKind::Strong;
+      binding.reference = std::move(reference.value_ref());
+   }
+
+   auto close = this->ctx.consume(TokenKind::RightBracket, ParserErrorCode::ExpectedToken);
+   if (not close.ok()) return ParserResult<FunctionContextBinding>::failure(close.error_ref());
+   return ParserResult<FunctionContextBinding>::success(std::move(binding));
+}
+
+//********************************************************************************************************************
 // Parses function literals (anonymous functions) with parameters and body.
 // Parses optional return type annotation after parameters for all functions.
-// If is_thunk is true, validates thunk-specific constraints.
+// If is_thunk is true, validates thunk-specific constraints.  Binding is the context binding parsed by
+// parse_function_binding(), if any.
 
 ParserResult<ExprNodePtr> AstBuilder::parse_function_literal(
-   const Token &FunctionToken, bool IsThunk, GCstr *FunctionName)
+   const Token &FunctionToken, bool IsThunk, GCstr *FunctionName, FunctionContextBinding Binding)
 {
    auto params = this->parse_parameter_list(false);
    if (not params.ok()) return ParserResult<ExprNodePtr>::failure(params.error_ref());
@@ -44,6 +126,7 @@ ParserResult<ExprNodePtr> AstBuilder::parse_function_literal(
    this->ctx.consume(TokenKind::EndToken, ParserErrorCode::ExpectedToken);
    ExprNodePtr node = make_function_expr(FunctionToken.span(), std::move(params.value_ref().parameters),
       params.value_ref().is_vararg, std::move(body.value_ref()), IsThunk, return_types);
+   std::get<FunctionExprPayload>(node->data).context = std::move(Binding);
    return ParserResult<ExprNodePtr>::success(std::move(node));
 }
 
@@ -669,29 +752,23 @@ struct ConstantKeyHash {
       Expression.kind IS AstNodeKind::ResultFilterExpr;
 }
 
-// Extract the canonical key of a field, if the parser can prove it without evaluating user code.
+// The canonical key of a `name =` entry.
 
-[[nodiscard]] std::optional<ConstantKey> constant_key_of(const TableField &Field, int32_t &NextArrayIndex)
+[[nodiscard]] std::optional<ConstantKey> name_constant_key(const Identifier &Name)
 {
-   if (Field.kind IS TableFieldKind::Record) {
-      if (not Field.name or not Field.name->symbol) return std::nullopt;
-      ConstantKey key;
-      key.kind = ConstantKey::Kind::String;
-      key.text.assign(strdata(Field.name->symbol), Field.name->symbol->len);
-      return key;
-   }
+   if (not Name.symbol) return std::nullopt;
+   ConstantKey key;
+   key.kind = ConstantKey::Kind::String;
+   key.text.assign(strdata(Name.symbol), Name.symbol->len);
+   return key;
+}
 
-   if (Field.kind IS TableFieldKind::Array) {
-      // Positional entries occupy consecutive indices from zero, so they collide with equivalent explicit keys.
-      ConstantKey key;
-      key.kind = ConstantKey::Kind::Number;
-      key.number = (lua_Number)NextArrayIndex++;
-      return key;
-   }
+// The canonical key of a `[key] =` entry.  Only a literal key is statically provable.
 
-   // Computed: only a literal key is statically provable.
-   if (not Field.key or Field.key->kind != AstNodeKind::LiteralExpr) return std::nullopt;
-   const auto *literal = std::get_if<LiteralValue>(&Field.key->data);
+[[nodiscard]] std::optional<ConstantKey> computed_constant_key(const ExprNode *Key)
+{
+   if (not Key or Key->kind != AstNodeKind::LiteralExpr) return std::nullopt;
+   const auto *literal = std::get_if<LiteralValue>(&Key->data);
    if (not literal) return std::nullopt;
 
    ConstantKey key;
@@ -712,6 +789,26 @@ struct ConstantKeyHash {
       default:
          return std::nullopt;  //  A nil key is rejected at runtime, not here.
    }
+}
+
+// Extract the canonical key of a field, if the parser can prove it without evaluating user code.
+
+[[nodiscard]] std::optional<ConstantKey> constant_key_of(const TableField &Field, int32_t &NextArrayIndex)
+{
+   if (Field.kind IS TableFieldKind::Record) {
+      if (not Field.name) return std::nullopt;
+      return name_constant_key(*Field.name);
+   }
+
+   if (Field.kind IS TableFieldKind::Array) {
+      // Positional entries occupy consecutive indices from zero, so they collide with equivalent explicit keys.
+      ConstantKey key;
+      key.kind = ConstantKey::Kind::Number;
+      key.number = (lua_Number)NextArrayIndex++;
+      return key;
+   }
+
+   return computed_constant_key(Field.key.get());
 }
 
 } // namespace
@@ -777,7 +874,7 @@ ParserResult<std::vector<TableField>> AstBuilder::parse_table_fields(bool *has_a
             if (not inserted) {
                return this->fail<std::vector<TableField>>(ParserErrorCode::UnexpectedToken, current,
                   std::format("Duplicate key {} in table constructor; first defined at line {}",
-                     key->describe(), entry->second.span().line + 1));
+                     key->describe(), entry->second.span().line));
             }
          }
       }
@@ -787,6 +884,159 @@ ParserResult<std::vector<TableField>> AstBuilder::parse_table_fields(bool *has_a
    }
    if (has_array_part) *has_array_part = array;
    return ParserResult<std::vector<TableField>>::success(std::move(fields));
+}
+
+//********************************************************************************************************************
+// Parses a field assignment block `ref.{ name = value, [key] = value }` or `ref?.{ ... }` and lowers it to existing
+// statements:
+//
+//   do
+//      local <hidden> = ref
+//      if <hidden> != nil then   -- `?.{` only
+//         <hidden>.name = value
+//         <hidden>[key] = value
+//      end
+//   end
+//
+// The base is evaluated once and held in a hidden local whose name the lexer cannot produce.  The local is used even
+// for a plain local base so that a value which reassigns the base cannot redirect later entries.  Each entry is an
+// ordinary store, evaluated and assigned in source order.  Values are parsed in the enclosing scope.
+
+ParserResult<StmtNodePtr> AstBuilder::parse_field_assignment_block(ExprNodePtr Base, bool Safe)
+{
+   const bool valid_base = Base->is_grouped or Base->kind IS AstNodeKind::IdentifierExpr or
+      Base->kind IS AstNodeKind::MemberExpr or Base->kind IS AstNodeKind::IndexExpr or
+      Base->kind IS AstNodeKind::SafeMemberExpr or Base->kind IS AstNodeKind::SafeIndexExpr or
+      Base->kind IS AstNodeKind::CallExpr or Base->kind IS AstNodeKind::SafeCallExpr or
+      Base->kind IS AstNodeKind::CurrentContextExpr;
+
+   Token block_token = this->ctx.tokens().current();
+   if (not valid_base) {
+      return this->fail<StmtNodePtr>(ParserErrorCode::UnexpectedToken, block_token,
+         "field assignment block base must be a variable, field, call or parenthesised expression");
+   }
+
+   this->ctx.tokens().advance(); // Consume '.' or '?.'
+   this->ctx.tokens().advance(); // Consume '{'
+
+   const SourceSpan base_span = Base->span;
+   NameRef hidden;
+   hidden.identifier = Identifier::from_keepstr(this->ctx.lex().keepstr(FIELD_BLOCK_BINDING_NAME), base_span);
+
+   StmtNodeList assignments;
+   std::unordered_map<ConstantKey, Token, ConstantKeyHash> seen_keys;
+
+   while (not this->ctx.check(TokenKind::RightBrace)) {
+      Token current = this->ctx.tokens().current();
+      ExprNodePtr target;
+      std::optional<ConstantKey> key;
+
+      if (current.kind() IS TokenKind::LeftBracket) {
+         this->ctx.tokens().advance();
+         auto index = this->parse_expression();
+         if (not index.ok()) return ParserResult<StmtNodePtr>::failure(index.error_ref());
+         this->ctx.consume(TokenKind::RightBracket, ParserErrorCode::ExpectedToken);
+
+         if (this->ctx.tokens().current().has_flag(TKF_COMPOUND_ASSIGNMENT)) {
+            return this->fail<StmtNodePtr>(ParserErrorCode::UnexpectedToken, this->ctx.tokens().current(),
+               "compound assignment is not supported in field assignment blocks; use '[key] = value'");
+         }
+
+         key = computed_constant_key(index.value_ref().get());
+         target = make_index_expr(current.span(), make_identifier_expr(current.span(), hidden),
+            std::move(index.value_ref()));
+      }
+      else if (current.is_identifier() or current.has_flag(TKF_RESERVED)) {
+         Token next = this->ctx.tokens().peek(1);
+         if (next.has_flag(TKF_COMPOUND_ASSIGNMENT)) {
+            return this->fail<StmtNodePtr>(ParserErrorCode::UnexpectedToken, next,
+               "compound assignment is not supported in field assignment blocks; use 'name = value'");
+         }
+
+         if (next.kind() != TokenKind::Equals) {
+            return this->fail<StmtNodePtr>(ParserErrorCode::UnexpectedToken, current,
+               "field assignment blocks require 'name = value' or '[key] = value' entries");
+         }
+
+         this->ctx.tokens().advance();
+         Identifier member = make_identifier(current);
+         key = name_constant_key(member);
+         target = make_member_expr(current.span(), make_identifier_expr(current.span(), hidden), member);
+      }
+      else if (current.kind() IS TokenKind::Dots) {
+         return this->fail<StmtNodePtr>(ParserErrorCode::UnexpectedToken, current,
+            "varargs cannot be used in field assignment blocks");
+      }
+      else {
+         return this->fail<StmtNodePtr>(ParserErrorCode::UnexpectedToken, current,
+            "field assignment blocks require 'name = value' or '[key] = value' entries");
+      }
+
+      if (key) {
+         auto [entry, inserted] = seen_keys.emplace(*key, current);
+         if (not inserted) {
+            return this->fail<StmtNodePtr>(ParserErrorCode::UnexpectedToken, current,
+               std::format("duplicate field {} in field assignment block; first assigned at line {}",
+                  key->describe(), entry->second.span().line));
+         }
+      }
+
+      Token equals = this->ctx.tokens().current();
+      if (not this->ctx.match(TokenKind::Equals).ok()) {
+         return this->fail<StmtNodePtr>(ParserErrorCode::ExpectedToken, equals,
+            "expected '=' after field assignment block key");
+      }
+
+      auto value = this->parse_expression();
+      if (not value.ok()) return ParserResult<StmtNodePtr>::failure(value.error_ref());
+
+      ExprNodeList targets;
+      targets.push_back(std::move(target));
+      ExprNodeList values;
+      values.push_back(std::move(value.value_ref()));
+      assignments.push_back(make_assignment_stmt(current.span(), AssignmentOperator::Plain, std::move(targets),
+         std::move(values)));
+
+      const bool has_separator = this->ctx.match(TokenKind::Comma).ok() or
+         this->ctx.match(TokenKind::Semicolon).ok();
+      if (not has_separator) break;
+   }
+
+   Token close_token = this->ctx.tokens().current();
+   if (not this->ctx.match(TokenKind::RightBrace).ok()) {
+      return this->fail<StmtNodePtr>(ParserErrorCode::ExpectedToken, close_token,
+         "expected ',' or '}' in field assignment block");
+   }
+
+   const SourceSpan span = span_from(block_token, close_token);
+
+   std::vector<Identifier> names;
+   names.push_back(hidden.identifier);
+   ExprNodeList base_values;
+   base_values.push_back(std::move(Base));
+
+   StmtNodeList statements;
+   statements.push_back(make_local_decl_stmt(base_span, std::move(names), std::move(base_values)));
+
+   if (Safe) {
+      // Mirrors `?.`: only nil short-circuits, and no value is evaluated when it does.
+      IfClause clause;
+      clause.condition = make_binary_expr(block_token.span(), AstBinaryOperator::NotEqual,
+         make_identifier_expr(block_token.span(), hidden), make_literal_expr(block_token.span(), LiteralValue::nil()));
+      clause.block = make_block(span, std::move(assignments));
+      std::vector<IfClause> clauses;
+      clauses.push_back(std::move(clause));
+      auto if_stmt = std::make_unique<StmtNode>(AstNodeKind::IfStmt, block_token.span());
+      if_stmt->data = IfStmtPayload(std::move(clauses));
+      statements.push_back(std::move(if_stmt));
+   }
+   else {
+      for (auto &assignment : assignments) statements.push_back(std::move(assignment));
+   }
+
+   auto stmt = std::make_unique<StmtNode>(AstNodeKind::DoStmt, base_span);
+   stmt->data = DoStmtPayload(make_block(span, std::move(statements)));
+   return ParserResult<StmtNodePtr>::success(std::move(stmt));
 }
 
 //********************************************************************************************************************
@@ -805,8 +1055,10 @@ ParserResult<ExprNodeList> AstBuilder::parse_call_arguments(bool *ForwardsMultre
 
          args = std::move(parsed.value_ref());
          if (not args.empty()) {
+            // A trailing call, vararg or result filter forwards every value it produces.
             const ExprNodePtr& tail = args.back();
-            if (tail and (tail->kind IS AstNodeKind::CallExpr or tail->kind IS AstNodeKind::VarArgExpr)) {
+            if (tail and (tail->kind IS AstNodeKind::CallExpr or tail->kind IS AstNodeKind::VarArgExpr or
+                tail->kind IS AstNodeKind::ResultFilterExpr)) {
                *ForwardsMultret = true;
             }
          }

@@ -39,8 +39,7 @@ struct BlockBinding {
 enum class ContextSourceKind : uint8_t {
    Inherited,
    UsingReference,
-   MethodArgument,
-   DynamicArgument // Resolve at the point of use; slot is unused.
+   MethodArgument
 };
 
 struct ContextSource {
@@ -194,7 +193,17 @@ private:
    ConstantEvaluator constant_evaluator;
    StaticCallableHandle current_callable{};
    bool is_root_chunk = true;
+   bool context_bound = false; // This function is function[X] or function[<weak> X]; tail calls are not converted
    std::vector<ContextSource> context_sources;
+
+   // A function[X] capture prepared by emit_bound_function() for the next emit_function_body().
+   struct PendingContextBinding {
+      VarIndex vidx;
+      bool weak;
+   };
+   std::optional<PendingContextBinding> pending_context_binding;
+
+   ParserResult<ExpDesc> emit_bound_function(const FunctionExprPayload& payload, GCstr* funcname);
 
    ParserResult<IrEmitUnit> emit_block(const BlockStmt& block, FuncScopeFlag flags = FuncScopeFlag::None);
    ParserResult<IrEmitUnit> emit_block_with_bindings(const BlockStmt& block, FuncScopeFlag flags, std::span<const BlockBinding> bindings);
@@ -258,6 +267,8 @@ private:
    ParserResult<ExpDesc> emit_safe_member_expr(const SafeMemberExprPayload& payload);
    ParserResult<ExpDesc> emit_safe_index_expr(const SafeIndexExprPayload& payload);
    ParserResult<ExpDesc> emit_call_expr(const CallExprPayload& payload);
+   ParserResult<BCReg> emit_optional_receiver_check(BCReg Receiver, const ExprNode& ReceiverNode, GCstr* Member);
+   ParserResult<ExpDesc> emit_optional_member_callee(const MemberExprPayload& Member);
    ParserResult<ExpDesc> emit_builtin_method_call(const CallExprPayload& payload);
    ParserResult<ExpDesc> emit_runtime_builtin_method_call(const CallExprPayload& payload);
    ParserResult<ExpDesc> emit_runtime_builtin_method_pipe(
@@ -300,7 +311,6 @@ private:
 
    [[nodiscard]] std::optional<CompileTimeValue> resolve_compile_time_value(const NameRef &Reference) const;
    [[nodiscard]] bool context_region_uses_context(const BlockStmt &Block) const;
-   [[nodiscard]] bool expression_uses_context(const ExprNode &Expression) const;
    [[nodiscard]] std::optional<BCReg> allocate_inherited_context_cache(const BlockStmt &Block);
    void push_context_source(ContextSource Source);
    void pop_context_source();
@@ -333,5 +343,6 @@ private:
    };
 
    LoopStackGuard push_loop_context(BCPos continue_target);
+   [[nodiscard]] BCPos emit_loop_exit_jump(const LoopContext &Loop);
    std::vector<LoopContext> loop_stack;
 };

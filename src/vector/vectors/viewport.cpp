@@ -323,7 +323,9 @@ area.
 
 static ERR VIEW_SET_AspectRatio(extVectorViewport *Self, ARF Value)
 {
+   if (Self->vpAspectRatio IS Value) return ERR::Okay;
    Self->vpAspectRatio = Value;
+   mark_dirty((extVector *)Self, RC::DIRTY);
    return ERR::Okay;
 }
 

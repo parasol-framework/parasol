@@ -77,6 +77,7 @@ public:
 
 #ifdef X11_DRIVER_TESTS
    void processEvents();
+   unsigned long clipboardWindow() const;
 #endif
 
 private:
@@ -85,6 +86,7 @@ private:
 
 #ifdef X11_DRIVER_TESTS
 extern "C" DISPLAY_DRIVER_EXPORT void x11_process_driver_events(DisplayDriver *Driver);
+extern "C" DISPLAY_DRIVER_EXPORT unsigned long x11_driver_clipboard_window(DisplayDriver *Driver);
 #endif
 
 }

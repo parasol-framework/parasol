@@ -63,6 +63,19 @@ static void set_viewport_fixed_size(objVectorViewport *Viewport, double Width, d
    }
 }
 
+//********************************************************************************************************************
+// Returns true if a pattern applied as a viewport fill describes a single untransformed tile that covers the viewport.
+// This is the default configuration for a VectorPattern.
+
+static bool pattern_covers_viewport(const extVectorPattern &Pattern)
+{
+   return (Pattern.Units IS VUNIT::BOUNDING_BOX) and
+      (double(Pattern.X) IS 0) and (double(Pattern.Y) IS 0) and
+      Pattern.Width.scaled() and (double(Pattern.Width) IS 1.0) and
+      Pattern.Height.scaled() and (double(Pattern.Height) IS 1.0) and
+      Pattern.Matrices.empty();
+}
+
 static bool viewport_has_fixed_bounds(const objVectorViewport *Viewport, double X, double Y, double Width,
    double Height)
 {
@@ -147,13 +160,11 @@ private:
    std::stack<ClipBuffer> mClipStack;
 
    double view_width() {
-      if (mView->vpViewWidth > 0) return mView->vpViewWidth;
-      else return viewport_coordinate_width(mView);
+      return viewport_coordinate_width(mView);
    }
 
    double view_height() {
-      if (mView->vpViewHeight > 0) return mView->vpViewHeight;
-      else return viewport_coordinate_height(mView);
+      return viewport_coordinate_height(mView);
    }
 
    void render_fill(VectorState &, extVector &, agg::rasterizer_scanline_aa<> &, extPainter &);
@@ -219,84 +230,19 @@ public:
 //********************************************************************************************************************
 
 namespace agg {
-class span_reflect_y
+// Span source that tiles a bitmap with independent wrap modes for each axis.
+
+template <class WrapX, class WrapY> class span_wrap
 {
 private:
-   span_reflect_y();
+   span_wrap();
 public:
    typedef typename agg::rgba8::value_type value_type;
    typedef agg::rgba8 color_type;
 
-   span_reflect_y(agg::pixfmt_psl & pixf, int offset_x, int offset_y) :
-       m_src(&pixf),
-       m_wrap_x(pixf.mWidth),
-       m_wrap_y(pixf.mHeight),
-       m_offset_x(offset_x),
-       m_offset_y(offset_y)
-   {
-      m_bk_buf[0] = m_bk_buf[1] = m_bk_buf[2] = m_bk_buf[3] = 0;
-   }
-
-   void prepare() {}
-
-   void generate(agg::rgba8 *s, int x, int y, unsigned len) {
-      x += m_offset_x;
-      y += m_offset_y;
-      const value_type* p = (const value_type*)span(x, y, len);
-      do {
-         s->r = p[m_src->mPixelOrder.Red];
-         s->g = p[m_src->mPixelOrder.Green];
-         s->b = p[m_src->mPixelOrder.Blue];
-         s->a = p[m_src->mPixelOrder.Alpha];
-         p = (const value_type*)next_x();
-         ++s;
-      } while(--len);
-   }
-
-   uint8_t * span(int x, int y, unsigned) {
-       m_x = x;
-       m_row_ptr = m_src->row_ptr(m_wrap_y(y));
-       return m_row_ptr + m_wrap_x(x) * 4;
-   }
-
-   uint8_t * next_x() {
-       int x = ++m_wrap_x;
-       return m_row_ptr + x * 4;
-   }
-
-   uint8_t * next_y() {
-       m_row_ptr = m_src->row_ptr(++m_wrap_y);
-       return m_row_ptr + m_wrap_x(m_x) * 4;
-   }
-
-   agg::pixfmt_psl *m_src;
-
-private:
-   wrap_mode_repeat_auto_pow2 m_wrap_x;
-   wrap_mode_reflect_auto_pow2 m_wrap_y;
-   uint8_t *m_row_ptr;
-   int m_offset_x;
-   int m_offset_y;
-   uint8_t m_bk_buf[4];
-   int m_x;
-};
-
-//********************************************************************************************************************
-
-class span_reflect_x
-{
-private:
-   span_reflect_x();
-public:
-   typedef typename agg::rgba8::value_type value_type;
-   typedef agg::rgba8 color_type;
-
-   span_reflect_x(agg::pixfmt_psl & pixf, int offset_x, int offset_y) :
+   span_wrap(agg::pixfmt_psl & pixf, int offset_x, int offset_y) :
        m_src(&pixf), m_wrap_x(pixf.mWidth), m_wrap_y(pixf.mHeight),
-       m_offset_x(offset_x), m_offset_y(offset_y)
-   {
-      m_bk_buf[0] = m_bk_buf[1] = m_bk_buf[2] = m_bk_buf[3] = 0;
-   }
+       m_offset_x(offset_x), m_offset_y(offset_y) { }
 
    void prepare() {}
 
@@ -333,72 +279,17 @@ public:
    agg::pixfmt_psl *m_src;
 
 private:
-   wrap_mode_reflect_auto_pow2 m_wrap_x;
-   wrap_mode_repeat_auto_pow2 m_wrap_y;
-   uint8_t *m_row_ptr;
-   int m_offset_x;
-   int m_offset_y;
-   uint8_t m_bk_buf[4];
-   int m_x;
-};
-
-//********************************************************************************************************************
-
-class span_repeat_pf
-{
-private:
-   span_repeat_pf();
-public:
-   typedef typename agg::rgba8::value_type value_type;
-   typedef agg::rgba8 color_type;
-
-   span_repeat_pf(agg::pixfmt_psl & pixf, int offset_x, int offset_y) :
-       m_src(&pixf), m_wrap_x(pixf.mWidth), m_wrap_y(pixf.mHeight),
-       m_offset_x(offset_x), m_offset_y(offset_y) {
-      m_bk_buf[0] = m_bk_buf[1] = m_bk_buf[2] = m_bk_buf[3] = 0;
-   }
-
-   void prepare() {}
-
-   void generate(agg::rgba8 *s, int x, int y, unsigned len) {
-      x += m_offset_x;
-      y += m_offset_y;
-      const value_type* p = (const value_type*)span(x, y, len);
-      do {
-         s->r = p[m_src->mPixelOrder.Red];
-         s->g = p[m_src->mPixelOrder.Green];
-         s->b = p[m_src->mPixelOrder.Blue];
-         s->a = p[m_src->mPixelOrder.Alpha];
-         p = (const value_type*)next_x();
-         ++s;
-      } while(--len);
-   }
-
-   uint8_t * span(int x, int y, unsigned) {
-      m_x = x;
-      m_row_ptr = m_src->row_ptr(m_wrap_y(y));
-      return m_row_ptr + m_wrap_x(x) * 4;
-   }
-
-   uint8_t * next_x() {
-      int x = ++m_wrap_x;
-      return m_row_ptr + x * 4;
-   }
-
-   uint8_t * next_y() {
-      m_row_ptr = m_src->row_ptr(++m_wrap_y);
-      return m_row_ptr + m_wrap_x(m_x) * 4;
-   }
-
-   agg::pixfmt_psl *m_src;
-
-private:
-   wrap_mode_repeat_auto_pow2 m_wrap_x, m_wrap_y;
+   WrapX m_wrap_x;
+   WrapY m_wrap_y;
    uint8_t *m_row_ptr;
    int m_offset_x, m_offset_y;
-   uint8_t m_bk_buf[4];
    int m_x;
 };
+
+using span_repeat_pf  = span_wrap<wrap_mode_repeat_auto_pow2, wrap_mode_repeat_auto_pow2>;
+using span_reflect_x  = span_wrap<wrap_mode_reflect_auto_pow2, wrap_mode_repeat_auto_pow2>;
+using span_reflect_y  = span_wrap<wrap_mode_repeat_auto_pow2, wrap_mode_reflect_auto_pow2>;
+using span_reflect_xy = span_wrap<wrap_mode_reflect_auto_pow2, wrap_mode_reflect_auto_pow2>;
 } // namespace
 
 // Return the correct transformation matrix for a fill operation.  Requires that the vector's path has been generated.
@@ -487,7 +378,11 @@ template <class T> void drawBitmap(T &Scanline, VSM SampleMethod, agg::renderer_
          }
       };
 
-      if (SpreadMethod IS VSPREAD::REFLECT_X) {
+      if (SpreadMethod IS VSPREAD::REFLECT) {
+         agg::span_reflect_xy source(pixels, XOffset, YOffset);
+         render_source(source);
+      }
+      else if (SpreadMethod IS VSPREAD::REFLECT_X) {
          agg::span_reflect_x source(pixels, XOffset, YOffset);
          render_source(source);
       }
@@ -515,7 +410,11 @@ template <class T> void drawBitmap(T &Scanline, VSM SampleMethod, agg::renderer_
       const int x_offset = int(XOffset);
       const int y_offset = int(YOffset);
 
-      if (SpreadMethod IS VSPREAD::REFLECT_X) {
+      if (SpreadMethod IS VSPREAD::REFLECT) {
+         agg::span_reflect_xy source(pixels, x_offset, y_offset);
+         drawBitmapRender(Scanline, RenderBase, Raster, source, Opacity);
+      }
+      else if (SpreadMethod IS VSPREAD::REFLECT_X) {
          agg::span_reflect_x source(pixels, x_offset, y_offset);
          drawBitmapRender(Scanline, RenderBase, Raster, source, Opacity);
       }
@@ -999,12 +898,16 @@ void SceneRenderer::draw_vectors(extVector *CurrentVector, VectorState &ParentSt
             auto save_clip = state.mClip;
             auto clip = state.mClip;
 
-            if ((state.mOverflowX IS VOF::HIDDEN) or (state.mOverflowX IS VOF::SCROLL) or ((view->vpAspectRatio & ARF::SLICE) != ARF::NIL)) {
+            auto source = viewport_source(view);
+
+            if ((state.mOverflowX IS VOF::HIDDEN) or (state.mOverflowX IS VOF::SCROLL) or
+                ((source.AspectRatio & ARF::SLICE) != ARF::NIL)) {
                if (view->vpBounds.left > state.mClip.left) state.mClip.left = view->vpBounds.left;
                if (view->vpBounds.right < state.mClip.right) state.mClip.right = view->vpBounds.right;
             }
 
-            if ((state.mOverflowY IS VOF::HIDDEN) or (state.mOverflowY IS VOF::SCROLL) or ((view->vpAspectRatio & ARF::SLICE) != ARF::NIL)) {
+            if ((state.mOverflowY IS VOF::HIDDEN) or (state.mOverflowY IS VOF::SCROLL) or
+                ((source.AspectRatio & ARF::SLICE) != ARF::NIL)) {
                if (view->vpBounds.top > state.mClip.top) state.mClip.top = view->vpBounds.top;
                if (view->vpBounds.bottom < state.mClip.bottom) state.mClip.bottom = view->vpBounds.bottom;
             }
@@ -1032,7 +935,7 @@ void SceneRenderer::draw_vectors(extVector *CurrentVector, VectorState &ParentSt
                if (state.mClip.bottom < save_rb_clip.y2) mRenderBase.m_clip_box.y2 = state.mClip.bottom;
 
                log.trace("ViewBox (%g %g %g %g) Scale (%g %g) Fix (%g %g %g %g)",
-                  view->vpViewX, view->vpViewY, view->vpViewWidth, view->vpViewHeight,
+                  source.X, source.Y, source.Width, source.Height,
                   view->vpXScale, view->vpYScale,
                   view->FinalX, view->FinalY, view->vpFixedWidth, view->vpFixedHeight);
 
@@ -1065,34 +968,41 @@ void SceneRenderer::draw_vectors(extVector *CurrentVector, VectorState &ParentSt
                   // the current viewport.  NB: There is a performance penalty in that transforms will be
                   // applied in realtime.
 
-                  // Use transforms for the purpose of placing the pattern correctly
+                  // Use transforms for the purpose of placing the pattern correctly.  Bounding-box content units
+                  // are relative to this viewport.
+                  //
+                  // Live rendering is limited to a single untransformed tile that covers the viewport, which is
+                  // the configuration used for icons.  Any other tile layout is delegated to the bitmap tiler so
+                  // that the tile position, size, patternTransform and spread method are honoured as they are for
+                  // vector fills.  The viewport serves as both the bounding box and the user space of the fill.
 
-                  auto &t = view->Transform;
-                  if (set_render_transform(view->Fill[0].Pattern->Scene->Viewport, t)) {
-
-                     if (view->Fill[0].Pattern->Units IS VUNIT::BOUNDING_BOX) {
-                        view->Fill[0].Pattern->Scene->setPageWidth(view->Scene->PageWidth);
-                        view->Fill[0].Pattern->Scene->setPageHeight(view->Scene->PageHeight);
-                        set_viewport_fixed_size(view->Fill[0].Pattern->Scene->Viewport, view->vpFixedWidth,
-                           view->vpFixedHeight);
+                  auto draw_pattern = [&](extVectorPattern *Pattern) {
+                     if (not pattern_covers_viewport(*Pattern)) {
+                        const TClipRectangle<double> bounds(0, 0, view->vpFixedWidth, view->vpFixedHeight);
+                        agg::rasterizer_scanline_aa<> raster;
+                        raster.add_path(view->BasePath);
+                        fill_pattern(state, bounds, &view->BasePath, view->Scene->SampleMethod, view->Transform,
+                           view->vpFixedWidth, view->vpFixedHeight, *Pattern, mRenderBase, raster,
+                           state.mOpacity * view->FillOpacity, this);
+                        return;
                      }
 
-                     draw_vectors((extVectorViewport *)((extVectorPattern *)view->Fill[0].Pattern)->Viewport, state);
-                  }
+                     if (not set_render_transform(Pattern->Scene->Viewport, view->Transform)) return;
 
-                  if ((view->FGFill) and (view->Fill[1].Pattern)) {
-                     // Support for foreground fill patterns
-                     if (set_render_transform(view->Fill[1].Pattern->Scene->Viewport, t)) {
-
-                        if (view->Fill[1].Pattern->Units IS VUNIT::BOUNDING_BOX) {
-                           view->Fill[1].Pattern->Scene->setPageWidth(view->Scene->PageWidth);
-                           view->Fill[1].Pattern->Scene->setPageHeight(view->Scene->PageHeight);
-                           set_viewport_fixed_size(view->Fill[1].Pattern->Scene->Viewport, view->vpFixedWidth,
-                              view->vpFixedHeight);
-                        }
-
-                        draw_vectors((extVectorViewport *)((extVectorPattern *)view->Fill[1].Pattern)->Viewport, state);
+                     if (Pattern->Units IS VUNIT::BOUNDING_BOX) {
+                        Pattern->Scene->setPageWidth(view->Scene->PageWidth);
+                        Pattern->Scene->setPageHeight(view->Scene->PageHeight);
+                        set_viewport_fixed_size(Pattern->Scene->Viewport, view->vpFixedWidth, view->vpFixedHeight);
                      }
+
+                     prepare_pattern(Pattern, view->vpFixedWidth, view->vpFixedHeight, 1.0);
+                     draw_vectors((extVectorViewport *)Pattern->Viewport, state);
+                  };
+
+                  draw_pattern((extVectorPattern *)view->Fill[0].Pattern);
+
+                  if ((view->FGFill) and (view->Fill[1].Pattern)) { // Support for foreground fill patterns
+                     draw_pattern((extVectorPattern *)view->Fill[1].Pattern);
                   }
                }
 

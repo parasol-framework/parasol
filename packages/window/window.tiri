@@ -68,10 +68,9 @@ gui.window = function(Options:table!)
    weak_self <weak> = self
    quit_on_free <const> = self.quit
 
-   -- Use @Ordinary so that function callbacks pass-through with the original client context
+   -- Use function[] so that function callbacks pass through with the original client context
 
-   @Ordinary
-   self.clientViewport = function(Options:table):obj
+   self.clientViewport = function[](Options:table):obj
       if self._clientViewport then return self._clientViewport end
       Options ?= { }
       Options.aspectRatio ?= 'XMid|YMid|Meet'
@@ -350,76 +349,54 @@ gui.window = function(Options:table!)
       end
    end -- using self
 
-   -- Ordinary callbacks omit registration context capture. Restore window context while dispatching events.
+   -- Weak bindings activate the window while dispatching events without retaining it.
 
    if self.events.lostFocus or self.events.focus then
-      @Ordinary
-      function focusFeedback(Viewport, Event)
-         local window = weak_self
-         window ?! return ERR_Terminate
-
-         using window do
-            if Event is FM_LOST_FOCUS then
-               &events?.lostFocus()
-            elseif not &disabled then
-               &events?.focus()
-            end
+      function[<weak> self] focusFeedback(Viewport, Event)
+         if Event is FM_LOST_FOCUS then
+            &events?.lostFocus()
+         elseif not &disabled then
+            &events?.focus()
          end
       end
       self.viewport.mtSubscribeFeedback(FM_HAS_FOCUS | FM_CHILD_HAS_FOCUS | FM_LOST_FOCUS, focusFeedback)
    end
 
    if self.events.close then
-      @Ordinary
-      function closeFeedback()
-         local window = weak_self
-         window ?! return ERR_Terminate
-
-         using window do
-            result = &events?.close()
-            if result then
-               msg('Client requested that the window stay open.')
-               raise ERR_Cancelled
-            end
+      function[<weak> self] closeFeedback()
+         if &events?.close() then
+            msg('Client requested that the window stay open.')
+            raise ERR_Cancelled
          end
          processing.collect('defer')
       end
       mGfx.WindowHook(self.surface.id, WH_CLOSE, closeFeedback)
    end
 
-   @Ordinary
-   function surfaceFocus(Surface, Args)
-      local window = weak_self
-      window ?! return
-
+   function[<weak> self] surfaceFocus(Surface, Args)
       Surface.acMoveToFront()
-      if window.visible and not (Surface.flags has RNF_VISIBLE) then
+      if &visible and not (Surface.flags has RNF_VISIBLE) then
          Surface.acShow()
       end
 
-      using window do &events?.focus() end
+      &events?.focus()
    end
 
    self.surface.subscribe('focus', surfaceFocus)
 
    if self.events.lostFocus then
-      @Ordinary
-      function surfaceLostFocus(Surface, Args)
-         local window = weak_self
-         window ?! return
-         using window do &events?.lostFocus() end
+      function[<weak> self] surfaceLostFocus(Surface, Args)
+         &events?.lostFocus()
       end
       self.surface.subscribe('lostfocus', surfaceLostFocus)
    end
 
-   @Ordinary
-   function surfaceFree(Surface, Args)
-      local window = weak_self
+   function[] surfaceFree(Surface, Args)
       if quit_on_free then
          mSys.SendMessage(MSGID_QUIT)
       end
 
-      window?.clear()
+      weak_self?.clear()
    end
 
    self.surface.subscribe('free', surfaceFree)

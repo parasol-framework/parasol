@@ -74,6 +74,9 @@
       <comment>Move a vector to the back of its stack.</comment>
       <prototype>ERR acMoveToBack(*Object)</prototype>
       <tiriPrototype>err = Object.acMoveToBack()</tiriPrototype>
+      <description>
+<p>The vector will not be moved behind any sibling marked with <code>VF::STICK_TO_BACK</code>.</p>
+      </description>
     </action>
 
     <action>
@@ -208,6 +211,7 @@
       <description>
 <p>This method moves the position of a vector within its branch of the vector stack.  Repositioning is relative to the current position of the vector.  Every unit specified in the Position parameter will move the vector by one index in the stack frame.  Negative values will move the vector backwards; positive values move it forward.</p>
 <p>It is not possible for an vector to move outside of its branch, i.e. it cannot change its parent.  If the vector reaches the edge of its branch with excess units remaining, the method will return immediately with an <code>ERR::Okay</code> error code.</p>
+<p>When moving backwards, the scan will stop if it encounters a sibling marked with <code>VF::STICK_TO_BACK</code>.  The vector will not move behind that sibling, which allows backgrounds and other priority vectors to keep their place at the back of the stack.</p>
       </description>
       <result>
         <error code="Okay">Operation successful.</error>
@@ -836,6 +840,7 @@ Z: Close Path
       <const name="HAS_FOCUS">The vector holds the user's input focus.</const>
       <const name="ISOLATED">Enables isolation mode, which results in a bitmap buffer being allocated for the vector and its children while drawing.</const>
       <const name="JOIN_PATHS">When appending a new path, use a join operation to connect the tail end to the head.</const>
+      <const name="STICK_TO_BACK">Keeps the vector at the back of the Z-order.</const>
     </constants>
 
     <constants lookup="VFR" comment="Vector fill rules for the FillRule field in the Vector class.">

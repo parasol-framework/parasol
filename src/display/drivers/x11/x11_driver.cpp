@@ -314,6 +314,16 @@ extern "C" DISPLAY_DRIVER_EXPORT void x11_process_driver_events(DisplayDriver *D
 }
 
 void X11Driver::processEvents() { x11_process_events(Data); }
+
+// Returns the window that the driver uses to own and request selections, so that tests sharing a display with other
+// clients can distinguish the driver's selection traffic from theirs.
+
+extern "C" DISPLAY_DRIVER_EXPORT unsigned long x11_driver_clipboard_window(DisplayDriver *Driver)
+{
+   return Driver ? ((X11Driver *)Driver)->clipboardWindow() : 0;
+}
+
+unsigned long X11Driver::clipboardWindow() const { return Data->ClipboardWindow; }
 #endif
 
 //********************************************************************************************************************
@@ -645,11 +655,10 @@ static ERR create_window_record(X11Driver::State *State, extDisplay *DisplayObje
    attributes.win_gravity = CenterGravity;
    attributes.cursor = State->Cursors[0];
 
-   // Presence controls whether the window manager participates.
-   // override_redirect explicitly prevents the window manager from decorating or managing the window.
-   // Also see _MOTIF_WM_HINTS and _NET_WM_STATE_SKIP_TASKBAR
+   // Decorations and taskbar presence are controlled by _MOTIF_WM_HINTS and _NET_WM_STATE_SKIP_TASKBAR.
+   // Exception: temporary surfaces like menus and tooltips do not participate in the WM processes
 
-   attributes.override_redirect = not State->TaskBar;
+   attributes.override_redirect = State->StickToFront and not State->TaskBar;
    attributes.event_mask = ExposureMask|EnterWindowMask|LeaveWindowMask|PointerMotionMask|StructureNotifyMask|
       KeyPressMask|KeyReleaseMask|ButtonPressMask|ButtonReleaseMask|FocusChangeMask;
    int flags = CWEventMask|CWOverrideRedirect|CWCursor|CWBitGravity;
@@ -728,8 +737,14 @@ static ERR create_window_record(X11Driver::State *State, extDisplay *DisplayObje
 
    XSizeHints hints = { .flags = USPosition|USSize };
    XSetWMNormalHints(State->Connection, native, &hints);
+
+   // Accepting input while advertising WM_TAKE_FOCUS follows the ICCCM 'locally active' focus model.
+
+   XWMHints wm_hints = { .flags = InputHint, .input = True };
+   XSetWMHints(State->Connection, native, &wm_hints);
+
    set_motif_hints(State, record);
-   if ((not attributes.override_redirect) and (not State->TaskBar)) hide_window_from_taskbar(State, native);
+   if (not State->TaskBar) hide_window_from_taskbar(State, native);
    Record = record;
    return ERR::Okay;
 }
@@ -899,6 +914,12 @@ ERR X11Driver::hideWindow(HOSTWINDOW WindowHandle)
 ERR X11Driver::focusWindow(HOSTWINDOW WindowHandle)
 {
    auto window = x11_window(Data, WindowHandle); if (not window) return ERR::NoSupport;
+
+   // Programmatic requests have no causal event to take a timestamp from.  The last observed event time cannot be used
+   // in its place: FocusIn and FocusOut carry no timestamp, so after another client changes the focus that time can
+   // predate the server's last-focus-change time and the request would be silently discarded.  Event-driven requests
+   // (button release, WM_TAKE_FOCUS) pass the timestamp of the event that triggered them.
+
    XSetInputFocus(Data->Connection, window->Native, RevertToNone, CurrentTime); return ERR::Okay;
 }
 

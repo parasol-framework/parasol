@@ -1,5 +1,6 @@
 
 #include <kotuku/main.h>
+#include <kotuku/modules/core.h>
 
 #include "cache_manifest.h"
 #include "../bytecode_storage.h"
@@ -17,6 +18,19 @@ std::vector<CompilationOption> effective_compilation_options()
 {
    return {};
 }
+
+const std::string & cache_directory()
+{
+   static const std::string directory = []() -> std::string {
+#ifdef __linux__
+      LOC type = LOC::NIL;
+      if ((AnalysePath("home:.cache/", &type) IS ERR::Okay) and (type IS LOC::DIRECTORY)) return "home:.cache/tiri/";
+#endif
+      return "temp:tiri/cache/";
+   }();
+   return directory;
+}
+
 namespace {
 
 constexpr std::array<uint8_t, 8> CACHE_MAGIC = { 'T', 'I', 'R', 'I', 'C', 'A', 'C', 'H' };

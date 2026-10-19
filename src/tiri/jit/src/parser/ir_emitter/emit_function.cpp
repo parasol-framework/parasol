@@ -2,16 +2,6 @@
 // IR emitter implementation: function expression and declaration emission
 // This file is #included from ir_emitter.cpp
 
-static bool has_runtime_annotations(const std::vector<AnnotationEntry> &Annotations)
-{
-   for (const auto &annotation : Annotations) {
-      if (not annotation.name or std::string_view(strdata(annotation.name), annotation.name->len) != "Ordinary") {
-         return true;
-      }
-   }
-   return false;
-}
-
 //********************************************************************************************************************
 // Emit bytecode for a function expression (function(...) ... end), creating a child function prototype.
 // For thunk functions, transforms into a wrapper that returns thunk userdata via AST transformation.
@@ -100,7 +90,97 @@ ParserResult<ExpDesc> IrEmitter::emit_function_expr(const FunctionExprPayload &P
       return result;
    }
 
+   if (Payload.context.is_bound()) return this->emit_bound_function(Payload, funcname);
    return this->emit_function_body(Payload, *Payload.body, funcname);
+}
+
+//********************************************************************************************************************
+// Emit function[X] or function[<weak> X] in any expression position.
+//
+//   R(closure) reserved     -- result register
+//   R(hidden)  = X          -- raises if X is not a table, unless that is statically proved
+//                           -- weak: replaced by a weak cell
+//   FNEW R(closure)         -- child captures R(hidden) through a vstack entry that is not a parent local
+//   UCLO R(hidden), ->next  -- close the open upvalue before R(hidden) can be reused
+//
+// No parent local is declared, so live temporaries above the local floor (call arguments, table constructors) are
+// never disturbed.
+
+ParserResult<ExpDesc> IrEmitter::emit_bound_function(const FunctionExprPayload &Payload, GCstr *funcname)
+{
+   FuncState *fs = &this->func_state;
+   LexState &lex = this->lex_state;
+   bool weak = Payload.context.kind IS FunctionContextKind::Weak;
+
+   BCREG closure = fs->freereg;
+   bcreg_reserve(fs, 1);
+   BCREG hidden = fs->freereg;
+
+   auto reference = this->emit_expression(*Payload.context.reference);
+   if (not reference.ok()) return reference;
+   ExpDesc value = reference.value_ref();
+   this->materialise_to_reg(value, BCReg(hidden), "function context binding");
+   bool proved_table = can_use_static_receiver(this->ctx.descriptors(), value.static_value, TiriType::Table);
+   fs->freereg = hidden;
+   bcreg_reserve(fs, 1); // Must also raise framesize when nothing else touches R(hidden)
+
+   if (not proved_table) {
+      // Creation-time type check.  CTXBEGIN would otherwise fail at the first call, far from the binding.
+
+      BCREG test = fs->freereg;
+      bcreg_reserve(fs, 2);
+      bcemit_AD(fs, BC_MOV, test, hidden);
+      auto type_test = this->emit_type_test_descriptor(TypeTestDescriptor{ .type = TiriType::Table }, false,
+         BCReg(test));
+      if (not type_test.ok()) return ParserResult<ExpDesc>::failure(type_test.error_ref());
+      bcemit_INS(fs, BCINS_AD(BC_IST, 0, test));
+      ControlFlowEdge valid = this->control_flow.make_unconditional(BCPos(bcemit_jmp(fs)));
+      std::string message = std::format("function context binding '{}' requires a table",
+         context_binding_text(*Payload.context.reference));
+      bcemit_AD(fs, BC_KSHORT, test, BCREG(ERR::TypeMismatch));
+      bcemit_AD(fs, BC_KSTR, test + 1, const_gc(fs, obj2gco(this->lex_state.keepstr(message)), LJ_TSTR));
+      bcemit_AD(fs, BC_RAISE, test, test + 1);
+      valid.patch_here();
+      fs->freereg = test;
+   }
+
+   if (weak) bcemit_weak_cell(fs, hidden);
+
+   // A capture-only vstack entry: the child resolves it as a parent capture and fs_fixup_uv2() maps it to R(hidden).
+   // It is never in varmap and fs_prep_var() omits it, because its startpc can precede that of a pending local
+   // declared earlier in vstack (`local f = function[X]...`), which would break the monotonic varinfo encoding.
+
+   if (lex.vtop >= lex.size_vstack) [[unlikely]] {
+      if (lex.size_vstack >= LJ_MAX_VSTACK) lj_lex_error(&lex, 0, ErrMsg::XLIMC, LJ_MAX_VSTACK);
+      lj_mem_growvec(lex.L, lex.vstack, lex.size_vstack, LJ_MAX_VSTACK, VarInfo);
+   }
+   GCstr *name = lj_str_newlit(lex.L, "(context binding)");
+   TValue *anchor = lj_tab_setstr(lex.L, fs->kt, name);
+   if (tvisnil(anchor)) setboolV(anchor, 1);
+   VarIndex vidx = VarIndex(lex.vtop++);
+   VarInfo &entry = lex.vstack[vidx];
+   entry = VarInfo{};
+   setgcrefp(entry.name, obj2gco(name));
+   entry.startpc = fs->pc;
+   entry.endpc = fs->pc;
+   entry.slot = uint8_t(hidden);
+   entry.info = VarInfoFlag::CaptureOnly;
+   if (weak) entry.info |= VarInfoFlag::Weak;
+   entry.fixed_type = TiriType::Unknown;
+
+   this->pending_context_binding = PendingContextBinding{ .vidx = vidx, .weak = weak };
+   auto function = this->emit_function_body(Payload, *Payload.body, funcname);
+   this->pending_context_binding.reset();
+   if (not function.ok()) return function;
+
+   ExpDesc closure_expr = function.value_ref();
+   expr_toreg(fs, &closure_expr, closure);
+   bcemit_AJ(fs, BC_UCLO, hidden, 0);
+   fs->freereg = hidden;
+
+   ExpDesc result;
+   result.init(ExpKind::NonReloc, closure);
+   return ParserResult<ExpDesc>::success(result);
 }
 
 //********************************************************************************************************************
@@ -113,6 +193,8 @@ ParserResult<ExpDesc> IrEmitter::emit_function_body(
 {
 
    // Regular function emission
+   auto context_binding = this->pending_context_binding;
+   this->pending_context_binding.reset();
    FuncState *parent_state = &this->func_state;
    ptrdiff_t oldbase = parent_state->bcbase - this->lex_state.bc_stack;
 
@@ -336,8 +418,52 @@ ParserResult<ExpDesc> IrEmitter::emit_function_body(
       }
    }
 
-   auto inherited_cache = child_emitter.allocate_inherited_context_cache(Body);
    IrEmitter::ContextSourceScope child_context_scope;
+   std::optional<BCReg> inherited_cache;
+   if (context_binding) {
+      // Bound prologue.  The function scope itself becomes the context block, so every exit path (fall-through,
+      // return, error unwinding) runs the existing CTXEND cleanup.  A collected weak target raises before CTXBEGIN,
+      // so no context is entered.  Return emission never converts a call to a tail call here (D5), so callees in
+      // tail position also observe the bound context.
+
+      ExpDesc capture;
+      capture.init(ExpKind::Local, 0);
+      MSize upvalue = var_lookup_uv(&child_state, context_binding->vidx, &capture);
+      this->lex_state.var_new(0, lj_str_newlit(this->lex_state.L, "(context)"));
+      BCREG slot = BCREG(child_state.varmap.size());
+      bcemit_AD(&child_state, BC_UGET, slot, upvalue);
+      bcreg_reserve(&child_state, 1);
+      if (context_binding->weak) {
+         bcemit_ABC(&child_state, BC_TGETB, slot, slot, 0);
+         ExpDesc nil_value(ExpKind::Nil);
+         bcemit_INS(&child_state, BCINS_AD(BC_ISNEP, slot, const_pri(&nil_value)));
+         ControlFlowEdge alive = child_emitter.control_flow.make_unconditional(BCPos(bcemit_jmp(&child_state)));
+         BCREG code = child_state.freereg;
+         bcreg_reserve(&child_state, 2);
+         GCstr *message = lj_str_newlit(this->lex_state.L, "Resource collected");
+         bcemit_AD(&child_state, BC_KSHORT, code, BCREG(ERR::Terminate));
+         bcemit_AD(&child_state, BC_KSTR, code + 1, const_gc(&child_state, obj2gco(message), LJ_TSTR));
+         bcemit_AD(&child_state, BC_RAISE, code, code + 1);
+         child_state.freereg = code;
+         alive.patch_here();
+      }
+      this->lex_state.var_add(1);
+      child_state.reset_freereg();
+      child_emitter.context_bound = true;
+
+      uint16_t block_index = uint16_t(child_state.context_blocks.size());
+      child_state.context_blocks.push_back(ProtoContextBlockDesc{
+         .begin_pc = child_state.pc,
+         .end_pc = 0,
+         .entry_slots = BCREG(slot + 1)
+      });
+      scope.context_block = block_index;
+      bcemit_AD(&child_state, BC_CTXBEGIN, slot, block_index);
+      child_context_scope.activate(&child_emitter,
+         ContextSource{ .slot = BCReg(slot), .kind = ContextSourceKind::UsingReference });
+   }
+   else inherited_cache = child_emitter.allocate_inherited_context_cache(Body);
+
    if (inherited_cache) {
       child_context_scope.activate(&child_emitter, ContextSource{ .slot = inherited_cache.value(),
          .kind = ContextSourceKind::Inherited });
@@ -367,7 +493,7 @@ ParserResult<ExpDesc> IrEmitter::emit_function_body(
 
    fs_guard.disarm();  // fs_finish will handle cleanup
    GCproto *pt = this->lex_state.fs_finish(Body.span.line);
-   pt->ordinary = Payload.is_ordinary ? 1 : 0;
+   pt->ordinary = Payload.is_ordinary() ? 1 : 0;
    if (Prototype) *Prototype = pt;
    scope_guard.disarm();
    parent_state->bcbase = this->lex_state.bc_stack + oldbase;
@@ -838,7 +964,7 @@ ParserResult<IrEmitUnit> IrEmitter::emit_local_function_stmt(const LocalFunction
 
    // Register annotations if present
 
-   if (has_runtime_annotations(Payload.function->annotations)) {
+   if (not Payload.function->annotations.empty()) {
       auto anno_result = this->emit_annotation_registration(slot, Payload.function->annotations, Payload.name.symbol);
       if (not anno_result.ok()) return anno_result;
    }
@@ -931,7 +1057,7 @@ ParserResult<IrEmitUnit> IrEmitter::emit_function_stmt(const FunctionStmtPayload
       }
 
       // Register annotations if present
-      if (has_runtime_annotations(Payload.function->annotations)) {
+      if (not Payload.function->annotations.empty()) {
          auto anno_result = this->emit_annotation_registration(slot, Payload.function->annotations, funcname);
          if (not anno_result.ok()) return anno_result;
       }
@@ -958,10 +1084,11 @@ ParserResult<IrEmitUnit> IrEmitter::emit_function_stmt(const FunctionStmtPayload
    // For annotation registration, we need the function in a register
    // Materialise the function value to a register before the store
    BCReg func_reg = BCReg(BCREG(0));
-   bool has_annotations = has_runtime_annotations(Payload.function->annotations);
+   bool has_annotations = not Payload.function->annotations.empty();
    if (has_annotations) {
-      func_reg = BCReg(this->func_state.freereg);
+      // A bound function arrives as NonReloc, so the register is read after materialisation rather than predicted.
       this->materialise_to_next_reg(value, "annotated function");
+      func_reg = BCReg(value.u.s.info);
       // Reserve the function register so emit_annotation_registration doesn't overwrite it
       bcreg_reserve(&this->func_state, 1);
    }
@@ -1046,7 +1173,7 @@ static bool annotation_entry_name_is(const AnnotationEntry &Annotation, std::str
 
 ParserResult<IrEmitUnit> IrEmitter::emit_annotation_registration(BCReg FuncReg, const std::vector<AnnotationEntry>& Annotations, GCstr* Funcname)
 {
-   if (not has_runtime_annotations(Annotations)) return ParserResult<IrEmitUnit>::success(IrEmitUnit{});
+   if (Annotations.empty()) return ParserResult<IrEmitUnit>::success(IrEmitUnit{});
 
    FuncState* fs = &this->func_state;
    lua_State* L = fs->L;
@@ -1056,7 +1183,6 @@ ParserResult<IrEmitUnit> IrEmitter::emit_annotation_registration(BCReg FuncReg, 
    // Format: @Name(key=value, ...); @Name2; ...
    std::string anno_str;
    for (const auto& anno : Annotations) {
-      if (annotation_entry_name_is(anno, "Ordinary")) continue;
       if (not anno_str.empty()) anno_str += "; ";
       anno_str += "@";
       if (anno.name) anno_str.append(strdata(anno.name), anno.name->len);

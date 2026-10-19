@@ -69,7 +69,7 @@ int exercise(int Mode, size_t Size) {
        Mode IS 2 or Mode IS 4 ? 0 : -1, Mode IS 3 or Mode IS 5 ? 5000 : -1, &channel) != ERR::Okay) return 4;
    if (callbacks(channel, a) != ERR::Okay) return 5;
    int stream_id = -2;
-   if (channel->getID(stream_id) != ERR::Okay or stream_id != (negotiated ? 42 : -1)) return 26;
+   if (channel->getStream(stream_id) != ERR::Okay or stream_id != (negotiated ? 42 : -1)) return 26;
    if (negotiated) {
       if (second->createWebChannel("native", "test", true, true, 42, -1, -1, &b.remote) != ERR::Okay or
           callbacks(b.remote, b) != ERR::Okay) return 6;
@@ -79,7 +79,7 @@ int exercise(int Mode, size_t Size) {
        second->setLocalDescription(second->LocalDescription) != ERR::Okay or
        first->setRemoteDescription(second->LocalDescription) != ERR::Okay) return 7;
    if (not wait_for([&]() { return a.opens IS 1 and b.opens IS 1; })) return 8;
-   if (channel->getID(stream_id) != ERR::Okay or
+   if (channel->getStream(stream_id) != ERR::Okay or
        (negotiated ? stream_id != 42 : (stream_id < 0 or stream_id % 2 != 0))) return 27;
    int64_t limit = 0;
    if (channel->getMaxMessageSize(limit) != ERR::Okay or limit != 16777216) return 9;

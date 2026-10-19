@@ -186,6 +186,10 @@ private:
 
    void resolve_function(FunctionExprPayload &Function)
    {
+      // A context binding is evaluated by the enclosing function when the closure is created, so it must resolve
+      // before the function's own parameters come into scope.
+      if (Function.context.reference) this->resolve_expression(*Function.context.reference);
+
       const size_t inherited_global_count = this->global_names_.size();
       ++this->function_depth_;
       this->scopes_.push_back(AssignmentScope{});
