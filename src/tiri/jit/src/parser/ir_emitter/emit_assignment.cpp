@@ -271,8 +271,10 @@ ParserResult<IrEmitUnit> IrEmitter::emit_plain_assignment(std::vector<PreparedAs
 
    if (nvars IS BCReg(1) and targets.front().safe_nav_skip.valid()) {
       PreparedAssignment& target = targets.front();
+
       // Single-target safe-nav assignment keeps the stronger short-circuit semantics: if the guarded
       // target failed during preparation, execution jumps past both RHS evaluation and the final store.
+
       ExpDesc tail(ExpKind::Void);
       auto nexps = BCReg(0);
       if (not values.empty()) {
@@ -313,15 +315,18 @@ ParserResult<IrEmitUnit> IrEmitter::emit_plain_assignment(std::vector<PreparedAs
    }
 
    // Count pending locals that need to be created after expression evaluation
+
    BCReg pending_locals = BCReg(0);
    for (const PreparedAssignment& target : targets) {
       if (target.needs_var_add) ++pending_locals;
    }
 
    // If ALL targets are new locals (undeclared), use a simpler approach similar to local declarations
+
    bool has_explicit_type = std::ranges::any_of(targets, [](const PreparedAssignment &Target) {
       return Target.pending_type != TiriType::Unknown;
    });
+
    if (pending_locals IS nvars and not has_explicit_type) {
       // Register all new variable names with var_new
       BCReg idx = BCReg(0);
@@ -377,38 +382,21 @@ ParserResult<IrEmitUnit> IrEmitter::emit_plain_assignment(std::vector<PreparedAs
 
    // For mixed assignments with pending locals, we need special handling
    // regardless of whether nexps == nvars (for multi-return calls, nexps=1 but nvars>1)
-   if (pending_locals > BCReg(0)) {
-      // Handle call results - adjust for multi-return
-      if (tail.k IS ExpKind::Call) {
-         if (bc_op(*ir_bcptr(&this->func_state, &tail)) IS BC_VARG) {
-            set_call_result_count(&this->func_state, tail, nvars.raw() + 1);
-            this->func_state.freereg--;
-            allocator.reserve(BCReg(nvars.raw() - 1));
-         }
-         else {
-            // Fixup call result count
-            set_call_result_count(&this->func_state, tail, nvars.raw() + 1);
-            if (nvars > BCReg(1)) {
-               allocator.reserve(BCReg(nvars.raw() - 1));
-            }
-         }
-      }
-      else {
-         // Non-call: use assign_adjust to pad with nils if needed
-         this->lex_state.assign_adjust(nvars.raw(), nexps.raw(), &tail);
-      }
 
-      // Values are in consecutive registers starting at (freereg - nvars) for non-calls
-      // For calls, tail.u.s.aux contains the base register
-      BCReg value_base = (tail.k IS ExpKind::Call) ? BCReg(tail.u.s.aux)
-                                                   : BCReg(this->func_state.freereg - nvars.raw());
+   if (pending_locals > BCReg(0)) {
+      // Adjust the complete RHS list, including expressions preceding a final call or vararg.
+
+      this->lex_state.assign_adjust(nvars.raw(), nexps.raw(), &tail);
+      BCReg value_base = BCReg(this->func_state.freereg - nvars.raw());
 
       // Process targets from first to last
+
       for (size_t i = 0; i < targets.size(); ++i) {
          PreparedAssignment& target = targets[i];
          BCReg value_slot = value_base + BCReg(i);
 
          // Skip blank identifiers - the value is discarded
+
          if (is_blank_target(target.storage)) {
             release_prepared_assignment(allocator, this->func_state, target);
             continue;
@@ -416,9 +404,11 @@ ParserResult<IrEmitUnit> IrEmitter::emit_plain_assignment(std::vector<PreparedAs
 
          if (target.needs_var_add and target.pending_symbol) {
             // Create new local for this undeclared variable
+
             BCReg local_slot = this->finalise_pending_local_assignment(target);
 
             // Retain expression inference only when semantic analysis did not publish a binding result.
+
             if (this->func_state.var_get(local_slot.raw()).fixed_type IS TiriType::Unknown and
                 i < values.size()) {
                this->apply_inferred_local_type(local_slot, *values[i]);
@@ -434,6 +424,7 @@ ParserResult<IrEmitUnit> IrEmitter::emit_plain_assignment(std::vector<PreparedAs
             value_expr.init(ExpKind::NonReloc, value_slot);
             bcemit_store(&this->func_state, &target.storage, &value_expr);
          }
+
          release_prepared_assignment(allocator, this->func_state, target);
       }
 
@@ -455,6 +446,7 @@ ParserResult<IrEmitUnit> IrEmitter::emit_plain_assignment(std::vector<PreparedAs
             // Discard the value's register so earlier targets retain their result positions.
             expr_free(&this->func_state, &stack_value);
          }
+
          release_prepared_assignment(allocator, this->func_state, *first);
       }
    };
@@ -470,23 +462,29 @@ ParserResult<IrEmitUnit> IrEmitter::emit_plain_assignment(std::vector<PreparedAs
             tail.k = ExpKind::NonReloc;
          }
       }
+
       // Skip blank identifiers for the last target
+
       if (not is_blank_target(targets.back().storage)) {
          bcemit_store(&this->func_state, &targets.back().storage, &tail);
       }
       else {
          // Discard the value only after forcing deferred reads and their observable effects.
+
          ExpressionValue value(&this->func_state, tail);
          value.to_any_reg(allocator);
          tail = value.legacy();
          expr_free(&this->func_state, &tail);
       }
+
       release_prepared_assignment(allocator, this->func_state, targets.back());
+
       if (targets.size() > 1) {
          auto begin = targets.rbegin();
          ++begin;
          assign_from_stack(begin, targets.rend());
       }
+
       this->func_state.reset_freereg();
       return ParserResult<IrEmitUnit>::success(IrEmitUnit{});
    }
@@ -751,16 +749,19 @@ ParserResult<IrEmitUnit> IrEmitter::emit_if_nil_assignment(PreparedAssignment ta
    RegisterGuard register_guard(&this->func_state);
 
    // Use RegisterAllocator::duplicate_table_operands()
+
    RegisterAllocator allocator(&this->func_state);
    TableOperandCopies copies = allocator.duplicate_table_operands(target.storage);
    ExpDesc working = copies.duplicated;
 
    // Use ExpressionValue for discharge operations
+
    ExpressionValue lhs_value(&this->func_state, working);
    auto lhs_reg = lhs_value.discharge_to_any_reg(allocator);
 
    // Only check for nil (simpler and faster than ??= which checks nil, false, 0, empty strings, and empty
    // collections).
+
    FalseyJumpOptions nil_only;
    nil_only.include_false = false;
    nil_only.include_zero = false;
@@ -770,6 +771,7 @@ ParserResult<IrEmitUnit> IrEmitter::emit_if_nil_assignment(PreparedAssignment ta
 
    // As with ??= above, any safe-nav skip edge lands after this emitter's store path. The nil check here
    // runs only when target preparation proved that the guarded chain itself was non-nil.
+
    ControlFlowEdge skip_assign = this->control_flow.make_unconditional(BCPos(bcemit_jmp(&this->func_state)));
    BCPos assign_pos = BCPos(this->func_state.pc);
 
@@ -807,6 +809,23 @@ ParserResult<std::vector<PreparedAssignment>> IrEmitter::prepare_assignment_targ
    std::vector<PreparedAssignment> lhs;
    lhs.reserve(Targets.size());
    RegisterAllocator allocator(&this->func_state);
+
+   // Mixed assignments create locals only after evaluating the RHS.  Keep their future slots below all
+   // saved target operands and RHS values, without making the new names visible during evaluation.
+   // Untyped, all-new assignments already place initialisers directly into their local slots.
+
+   if (AllocNewLocal) {
+      BCReg pending_locals = BCReg(0);
+      bool has_explicit_type = false;
+      for (const ExprNodePtr &node : Targets) {
+         if (not node or node->kind != AstNodeKind::IdentifierExpr) continue;
+         const auto &reference = std::get<NameRef>(node->data);
+         if (reference.assignment_resolution != AssignmentTargetResolution::NewLocal) continue;
+         ++pending_locals;
+         if (reference.identifier.type != TiriType::Unknown) has_explicit_type = true;
+      }
+      if (pending_locals.raw() < Targets.size() or has_explicit_type) allocator.reserve(pending_locals);
+   }
 
    auto script = this->func_state.ls->L->script;
    bool trace_assignments = (script->JitOptions & JOF::TRACE_ASSIGNMENTS) != JOF::NIL;
@@ -849,6 +868,7 @@ ParserResult<std::vector<PreparedAssignment>> IrEmitter::prepare_assignment_targ
          }
          prepared.pending_line   = node->span.line;
          prepared.pending_column = node->span.column;
+
          // Don't convert to Local yet - keep as Unscoped for now
          // The actual local slot will be determined later in emit_plain_assignment
       }
