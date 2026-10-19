@@ -363,7 +363,7 @@ static ERR VECTORSCENE_AddDef(extVectorScene *Self, struct sc::AddDef *Args)
 {
    kt::Log log;
 
-   if ((!Args) or (!Args->Def)) return log.warning(ERR::NullArgs);
+   if ((not Args) or (not Args->Def)) return log.warning(ERR::NullArgs);
 
    if (Self->HostScene) { // Forward all definitions if a hosting scene is active.
       return Self->HostScene->addDef(Args->Name, Args->Def);
@@ -375,8 +375,7 @@ static ERR VECTORSCENE_AddDef(extVectorScene *Self, struct sc::AddDef *Args)
    if (def->baseClassID() IS CLASSID::GRADIENT) {
       ((extGradient *)def)->HostScene = Self;
    }
-   else
-   switch(def->classID()) {
+   else switch(def->classID()) {
       case CLASSID::VECTORIMAGE:      ((extVectorImage *)def)->HostScene = Self; break;
       case CLASSID::VECTORPATH:       ((extVectorPath*)def)->HostScene = Self; break;
       case CLASSID::VECTORPATTERN:    ((extVectorPattern*)def)->HostScene = Self; break;

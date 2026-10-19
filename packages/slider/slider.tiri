@@ -13,15 +13,15 @@ Documentation is available in the Kotuku Wiki.
 
 FONT_MAX_HEIGHT, FONT_HEIGHT = gui.getFontHeight(gui.fonts.widget)
 DEFAULT_THICKNESS <const> = math.floor(FONT_MAX_HEIGHT * 1.35) + 1
-MARGIN <const> = math.floor(FONT_HEIGHT * 0.5) + 1
-VALUE_INSET <const> = 2 -- Minimum space between vertical value text and the track's sides
-DIGITS <const> = r'[0-9]'
-MAX_PLACES <const> = 10 -- Maximum decimal places in the value readout
-TEXT_METRICS <const> = { } -- Cache of line spacing and cap height, keyed by font
-TICK_LENGTH <const> = math.floor(FONT_HEIGHT * 0.5) -- Length of major ticks
+MARGIN <const>            = math.floor(FONT_HEIGHT * 0.5) + 1
+VALUE_INSET <const>       = 2 -- Minimum space between vertical value text and the track's sides
+DIGITS <const>            = r'[0-9]'
+MAX_PLACES <const>        = 10 -- Maximum decimal places in the value readout
+TEXT_METRICS <const>      = { } -- Cache of line spacing and cap height, keyed by font
+TICK_LENGTH <const>       = math.floor(FONT_HEIGHT * 0.5) -- Length of major ticks
 TICK_MINOR_LENGTH <const> = math.round(TICK_LENGTH * 0.6)
-TICK_GAP <const> = math.floor(FONT_HEIGHT * 0.25) -- Space between the track's host and its ticks
-TICK_MIN_SPACING <const> = 4 -- Minimum distance between adjacent ticks, in pixels, before ticks are thinned
+TICK_GAP <const>          = math.floor(FONT_HEIGHT * 0.25) -- Space between the track's host and its ticks
+TICK_MIN_SPACING <const>  = 4 -- Minimum distance between adjacent ticks, in pixels, before ticks are thinned
 
 -- Count the decimal places needed to write a value exactly, or nil if it does not terminate within MAX_PLACES.
 
@@ -87,14 +87,14 @@ function thinTicks(List:array<double>!, Scale:num!):array<double>
 end
 
 gui.slider = function(Options:table!)
-   min = (Options.min != nil) ? Options.min : 0
-   max = (Options.max != nil) ? Options.max : 1
+   min = Options.min or 0
+   max = Options.max or 1
 
    self = setmetatable(entity {
       min        = min,
       max        = max,
-      step       = (Options.step != nil) ? Options.step : 0,
-      value      = (Options.value != nil) ? Options.value : min + ((max - min) * 0.5),
+      step       = Options.step or 0,
+      value      = Options.value or (min + ((max - min) * 0.5)),
       label      = Options.label,
       valuePos   = Options.valuePos,
       labelPos   = Options.labelPos ?? 'left',
@@ -867,11 +867,16 @@ gui.slider = function(Options:table!)
 
          -- Upward rotation is reported as a negative value and increases the slider.  Display drivers scale the value
          -- inconsistently (a notch can be 3 or 9 units), so each wheel event moves one increment regardless of size.
+         -- Shift redirects rotation to JET_WHEEL_X with JTYPE_ALT set, which is treated as ordinary rotation.  Native
+         -- horizontal movement only applies to horizontal sliders, where movement to the right increases the value.
 
          repeat
-            if ((Msg.type is JET_WHEEL) or
-               ((Msg.type is JET_WHEEL_X) and (Msg.flags has JTYPE_ALT))) and (Msg.value != 0) then
-               &prvAdjust((Msg.value < 0) ? 1 : -1)
+            if Msg.value != 0 then
+               if (Msg.type is JET_WHEEL) or ((Msg.type is JET_WHEEL_X) and (Msg.flags has JTYPE_ALT)) then
+                  &prvAdjust((Msg.value < 0) ? 1 : -1)
+               elseif (Msg.type is JET_WHEEL_X) and (&orientation is 'H') then
+                  &prvAdjust((Msg.value > 0) ? 1 : -1)
+               end
             end
             Msg = Msg.next
          until not Msg

@@ -4,6 +4,8 @@ include 'core'
 
 local glRoot
 local glCacheFolder
+local glXdgCache
+local glRestoreXdg = false
 local glSerial = 0
 
 @BeforeAll function setup()
@@ -12,11 +14,14 @@ local glSerial = 0
    glRoot = temp .. f'/automatic_cache.tests_{processing.task().id}_{mSys.PreciseTime()}/'
    local folder <close> = obj.new('file', { path=glRoot, flags=FL_NEW|FL_FOLDER })
 
-   -- Linux prefers home:.cache/tiri/ when home:.cache/ exists.  Children prepend glRoot to home:, so a local .cache/
-   -- folder takes priority over the user's real one and keeps every child cache under glRoot.
+   -- Linux prefers $XDG_CACHE_HOME/tiri/ over temp:.  Children inherit an XDG_CACHE_HOME that points into glRoot so
+   -- that the user's real cache is never touched.
 
    if mSys.GetSystemState().platform is 'Linux' then
       local cache <close> = obj.new('file', { path=glRoot .. '.cache/', flags=FL_NEW|FL_FOLDER })
+      _, glXdgCache = processing.task().mtGetEnv('XDG_CACHE_HOME')
+      check processing.task().mtSetEnv('XDG_CACHE_HOME', glRoot .. '.cache')
+      glRestoreXdg = true
       glCacheFolder = glRoot .. '.cache/tiri/'
    else
       glCacheFolder = glRoot .. 'tiri/cache/'
@@ -24,6 +29,7 @@ local glSerial = 0
 end
 
 @AfterAll function cleanup()
+   if glRestoreXdg then processing.task().mtSetEnv('XDG_CACHE_HOME', glXdgCache ?? '') end
    if glRoot then check mSys.DeleteFile(glRoot) end
 end
 
@@ -59,7 +65,7 @@ end
 function run(Runner:str, Source:str, Mode:str, Cache:str, Jit:str):<num, str>
    local arguments = array<str> {
       Runner, 'source=' .. Source, 'mode=' .. Mode, 'cache=' .. Cache, '--log-trace', '--gfx-driver=headless',
-      '--set-volume', 'temp=' .. glRoot, '--set-volume', 'home=' .. glRoot
+      '--set-volume', 'temp=' .. glRoot
    }
    if Jit != '' then
       arguments.push('--jit-options')
@@ -76,7 +82,7 @@ end
 function package_import(Packages:str, Statement:str):<num, str>
    return child(array<str> {
       '--statement', Statement, '--log-trace', '--gfx-driver=headless',
-      '--set-volume', 'packages=' .. Packages, '--set-volume', 'temp=' .. glRoot, '--set-volume', 'home=' .. glRoot
+      '--set-volume', 'packages=' .. Packages, '--set-volume', 'temp=' .. glRoot
    })
 end
 
@@ -220,7 +226,7 @@ end
    local arguments = array<str> {
       '--statement', "import 'declared-package'; print('PACKAGE_CACHE_VALUE:' .. declared_package.value)",
       '--log-trace', '--gfx-driver=headless', '--set-volume', 'packages=' .. packages,
-      '--set-volume', 'temp=' .. glRoot, '--set-volume', 'home=' .. glRoot
+      '--set-volume', 'temp=' .. glRoot
    }
 
    for version in {1 into 2} do

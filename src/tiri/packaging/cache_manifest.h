@@ -44,8 +44,9 @@ struct CompilationOption {
 
 [[nodiscard]] std::vector<CompilationOption> effective_compilation_options();
 
-// Automatic cache files are stored in `temp:tiri/cache/`.  Linux systems prefer `home:.cache/tiri/` when the user's
-// `home:.cache/` folder already exists.  The selection is made once per process.
+// Automatic cache files are stored in `temp:tiri/cache/`.  Linux systems prefer `$XDG_CACHE_HOME/tiri/` when that
+// variable names an existing absolute folder, then `home:.cache/tiri/` when the user's `home:.cache/` folder exists.
+// The selection is made once per process.
 
 [[nodiscard]] const std::string & cache_directory();
 

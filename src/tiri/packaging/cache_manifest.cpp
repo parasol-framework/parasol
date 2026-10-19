@@ -7,6 +7,7 @@
 
 #include <algorithm>
 #include <bit>
+#include <cstdlib>
 #include <cstring>
 #include <limits>
 #include <ranges>
@@ -23,7 +24,16 @@ const std::string & cache_directory()
 {
    static const std::string directory = []() -> std::string {
 #ifdef __linux__
+      // The XDG specification requires $XDG_CACHE_HOME to be absolute; relative values are ignored.
+
       LOC type = LOC::NIL;
+      if (auto xdg = getenv("XDG_CACHE_HOME"); xdg and (xdg[0] IS '/')) {
+         std::string path(xdg);
+         if (not path.ends_with('/')) path.push_back('/');
+         if ((AnalysePath(path, &type) IS ERR::Okay) and (type IS LOC::DIRECTORY)) return path + "tiri/";
+      }
+
+      type = LOC::NIL;
       if ((AnalysePath("home:.cache/", &type) IS ERR::Okay) and (type IS LOC::DIRECTORY)) return "home:.cache/tiri/";
 #endif
       return "temp:tiri/cache/";

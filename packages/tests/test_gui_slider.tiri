@@ -245,6 +245,28 @@ end
    end
 end
 
+-- Shift-redirected rotation (JET_WHEEL_X with JTYPE_ALT) behaves as ordinary rotation on either orientation.  Native
+-- horizontal movement only adjusts horizontal sliders, where movement to the right increases the value.
+
+@Test function HorizontalWheelFollowsOrientation()
+   for orientation in values(array<str> { 'horizontal', 'vertical' }) do
+      local surface <close>, slider = newSlider({ orientation=orientation, min=0, max=100, step=1, value=50 })
+      pointAtSlider(surface, slider, false)
+      feed(JET_WHEEL_X, WHEEL_UP, 0, JTYPE_ALT)
+      assert(slider.value is 51, f'Shift with upward rotation must increase a {orientation} slider, got {slider.value}')
+      feed(JET_WHEEL_X, WHEEL_DOWN, 0, JTYPE_ALT)
+      assert(slider.value is 50, f'Shift with downward rotation must decrease a {orientation} slider')
+      feed(JET_WHEEL_X, 9, 0)
+      if orientation is 'horizontal' then
+         assert(slider.value is 51, 'Rightward movement must increase a horizontal slider')
+         feed(JET_WHEEL_X, -9, 0)
+         assert(slider.value is 50, 'Leftward movement must decrease a horizontal slider')
+      else
+         assert(slider.value is 50, 'Native horizontal movement must not adjust a vertical slider')
+      end
+   end
+end
+
 @Test function ContinuousWheelFollowsRangeAndEnableState()
    for orientation in values(array<str> { 'horizontal', 'vertical' }) do
       local hits = 0

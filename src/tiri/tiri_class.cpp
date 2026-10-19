@@ -8,7 +8,8 @@ The Tiri class provides functionality for running scripts written in the Tiri pr
 <header>Automatic Caching</>
 
 Setting `SCF::AUTO_CACHE` automatically caches eligible file-backed scripts under `temp:tiri/cache/`.  On Linux,
-`home:.cache/tiri/` is used instead if the user's `home:.cache/` folder exists.  A non-empty @Script.CacheFile remains
+`$XDG_CACHE_HOME/tiri/` is used instead if `XDG_CACHE_HOME` names an existing absolute folder, otherwise
+`home:.cache/tiri/` is used if the user's `home:.cache/` folder exists.  A non-empty @Script.CacheFile remains
 authoritative and selects an explicit destination even when automatic caching is enabled.
 Automatic caching is disabled by default.  Without `SCF::AUTO_CACHE`, a script uses a cache only when
 @Script.CacheFile is set explicitly.  Direct byte-code input, statement input and overrides, string paths,

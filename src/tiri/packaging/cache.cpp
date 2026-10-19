@@ -3,10 +3,10 @@
 // The automatic cache directory is created lazily with user-private permissions.  Entries are published from uniquely
 // owned sibling files through the Core filesystem's move operation after the file is flushed and closed.  Publication
 // is best-effort; unsupported destinations may decline it.  Failed publication does not prevent source execution.
-// The directory is `temp:tiri/cache/`, or `home:.cache/tiri/` on Linux when `home:.cache/` exists (see
-// `tiri::cache::cache_directory()`).  Cache files for deleted sources, obsolete configurations and older builds may
-// accumulate; users may clear the cache directory at any time.  Size limits and crash-orphan cleanup are not currently
-// provided, and cache publication is not crash-durable.
+// The directory is `temp:tiri/cache/`, or a user cache folder on Linux (see `tiri::cache::cache_directory()`).
+// Cache files for deleted sources, obsolete configurations and older builds may accumulate; users may clear the cache
+// directory at any time.  Size limits and crash-orphan cleanup are not currently provided, and cache publication is
+// not crash-durable.
 //
 // Non-local Tiri libraries selected through the package index use a separate imported-module cache under the same
 // cache directory.  This cache is always enabled and does not set or require `SCF::AUTO_CACHE`; the flag
