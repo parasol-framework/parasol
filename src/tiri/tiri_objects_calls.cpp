@@ -225,7 +225,22 @@ static void release_callback_reference(lua_State *Lua, int Reference)
          lua_pushnil(Lua);
          lua_rawseti(Lua, references, Reference);
       }
-      // References created through GetProcedureID() are not interned and retain their original release behaviour.
+      else {
+         // References created through GetProcedureID() are not interned and retain their original release behaviour.
+         // A released registry slot holds the next freelist index, so a number here means that the reference was
+         // already released.  Unreferencing it again would add it to the freelist twice, and two later callbacks
+         // would then share the same procedure ID.
+
+         lua_rawgeti(Lua, LUA_REGISTRYINDEX, Reference);
+         bool released = lua_type(Lua, -1) IS LUA_TNUMBER;
+         lua_pop(Lua, 1);
+         if (released) {
+            kt::Log log(__FUNCTION__);
+            log.warning("Callback reference #%d has already been released.", Reference);
+            lua_pop(Lua, 1);
+            return;
+         }
+      }
       luaL_unref(Lua, LUA_REGISTRYINDEX, Reference);
    }
    lua_pop(Lua, 1);

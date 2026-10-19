@@ -846,3 +846,32 @@ function ResolveNoFollowWithLinkedParent()
    assert(mSys.AnalysePath(actual_victim, nil) != ERR_Okay, 'DeleteFile() did not remove the link-resolved path.')
    assert(readFile(lexical_victim) is 'Lexical victim', 'DeleteFile() removed the lexically normalised path.')
 end
+
+-- A failed Watch() must release the callback reference exactly once.  A double release put the reference on the
+-- registry freelist twice, so the next two callbacks shared a procedure ID and one timer ran the other's function.
+
+@Test function FailedWatchReleasesCallbackOnce()
+   watch_path = glTempRoot .. 'watch_deleted/'
+   ensureFolder(watch_path)
+   folder = obj.new('file', { path=watch_path })
+   mSys.DeleteFile(watch_path)
+
+   err = folder.mtWatch(function() end, MFF_CREATE|MFF_DELETE)
+   folder.free()
+   if err is ERR_Okay then return 'Host platform accepted a watch on a deleted folder.' end
+   if err is ERR_NoSupport then return 'Host platform does not support path monitoring.' end
+
+   hits = { }
+   err, timer_a = mSys.SubscribeTimer(0.01, function() hits.a = (hits.a ?? 0) + 1 end)
+   assert(err is ERR_Okay, 'SubscribeTimer() failed for timer A: ' .. mSys.GetErrorMsg(err))
+   err, timer_b = mSys.SubscribeTimer(0.01, function() hits.b = (hits.b ?? 0) + 1 end)
+   assert(err is ERR_Okay, 'SubscribeTimer() failed for timer B: ' .. mSys.GetErrorMsg(err))
+
+   processing.sleep(0.1)
+
+   mSys.UpdateTimer(timer_a, 0)
+   mSys.UpdateTimer(timer_b, 0)
+
+   assert(hits.a, 'Timer A never ran its own callback; it shares a procedure ID with timer B.')
+   assert(hits.b, 'Timer B never ran its own callback.')
+end
