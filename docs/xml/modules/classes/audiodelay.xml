@@ -15,25 +15,24 @@
     <description>
 <p>The delay repeats its input after a fixed interval.  Each repeat is fed back into the delay at a reduced level, so the echoes fade away over time, and a low-pass filter in the feedback path softens each repeat in turn.</p>
 <p>Create new delay objects as a child of an <class name="Audio">Audio</class> object or set the inherited <class name="AudioEffect" field="Audio">AudioEffect.Audio</class> field.  Use <class name="AudioEffect" field="Channel">AudioEffect.Channel</class> to process one channel set, or leave it at zero to process the global mix.  Application delays accept live changes; global delays become immutable after initialisation.</p>
-<p>Parameters are published through the inherited <class name="AudioEffect">AudioEffect</class> schema and are changed with <class name="AudioEffect" method="SetKey">AudioEffect.SetKey()</class> followed by <class name="AudioEffect" method="Flush">AudioEffect.Flush()</class>:</p>
+<p>Each parameter is available as a field, such as <fl>Time</fl> and <fl>Feedback</fl>.  Field writes before initialisation are range-checked and stored; after initialisation each write is validated and applied immediately.  The same parameters are published through the inherited <class name="AudioEffect">AudioEffect</class> schema under lower-case keys, where they can be changed together with <class name="AudioEffect" method="Batch">AudioEffect.Batch()</class>:</p>
 <list type="bullet">
 <li><code>time</code>: the interval between echoes, from 1 to 2000 milliseconds.  Fractions of a millisecond are honoured.</li>
 <li><code>feedback</code>: the level of each repeat relative to the previous one, from 0 to 95 percent.  Zero produces a single
 echo.</li>
 <li><code>damping</code>: the high-frequency loss applied to every repeat, from 0 to 100 percent.  The first echo is never
 filtered.</li>
-<li><code>mode</code>: <code>normal</code> (0) delays each channel independently; <code>ping_pong</code> (1) bounces the echoes between the left and
-right channels.</li>
+<li><code>mode</code>: <code>normal</code> (<code>DLM::NORMAL</code>) delays each channel independently; <code>ping_pong</code> (<code>DLM::PING_PONG</code>) bounces
+the echoes between the left and right channels.</li>
 <li><code>mix</code>: the linear blend of dry and wet signals.  Zero passes the input unchanged and 100 percent outputs only the
 echoes.</li>
 </list>
-<p>The following adds a ping-pong echo of 375 ms with gently darkening repeats to a playing channel set, as a single change:</p>
-<pre>delay = obj.new('AudioDelay', { audio=audio, channel=channel })
-delay.acSetKey('time', 375)
-delay.acSetKey('feedback', 45)
-delay.acSetKey('damping', 40)
-delay.acSetKey('mode', 1)
-delay.acFlush()
+<p>The following adds a ping-pong echo of 375 ms with gently darkening repeats to a playing channel set:</p>
+<pre>delay = obj.new('AudioDelay', { audio=audio, channel=channel, time=375, feedback=45, damping=40,
+   mode=DLM_PING_PONG })
+</pre>
+<p>Every field write after initialisation is a separate change.  To change several parameters in a single step, apply them together with <class name="AudioEffect" method="Batch">AudioEffect.Batch()</class>:</p>
+<pre>delay.mtBatch(array&lt;str&gt; { 'set time 500', 'set mode normal' })
 </pre>
 <header>Routing</header>
 <p>In normal mode every channel has its own delay line, so a stereo image is preserved in the echoes and a mono output is processed as a single channel.  With feedback <code>g</code>, an impulse produces echoes at one, two and three times the delay, at levels of 1, g and g² before damping and the wet mix are applied.</p>
@@ -54,6 +53,67 @@ delay.acFlush()
       <file>class_audiodelay.cpp</file>
     </source>
   </info>
+
+  <fields>
+    <field>
+      <name>Damping</name>
+      <comment>The high-frequency loss applied to every repeat, as a percentage.</comment>
+      <access read="G" write="S">Get/Set</access>
+      <type>DOUBLE</type>
+      <description>
+<p>The range is 0 to 100% and the default is 25%.  The first echo is never filtered.  This field mirrors the <code>damping</code> schema key.  To change it together with other parameters in a single step, use <class name="AudioEffect" method="Batch">AudioEffect.Batch()</class>.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>Feedback</name>
+      <comment>The level of each repeat relative to the previous one, as a percentage.</comment>
+      <access read="G" write="S">Get/Set</access>
+      <type>DOUBLE</type>
+      <description>
+<p>The range is 0 to 95% and the default is 30%.  Zero produces a single echo.  This field mirrors the <code>feedback</code> schema key.  To change it together with other parameters in a single step, use <class name="AudioEffect" method="Batch">AudioEffect.Batch()</class>.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>Mix</name>
+      <comment>The proportion of echoes in the output, as a percentage.</comment>
+      <access read="G" write="S">Get/Set</access>
+      <type>DOUBLE</type>
+      <description>
+<p>The range is 0 to 100% and the default is 25%.  Zero leaves the input unchanged.  This field mirrors the <code>mix</code> schema key.  To change it together with other parameters in a single step, use <class name="AudioEffect" method="Batch">AudioEffect.Batch()</class>.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>Mode</name>
+      <comment>Selects independent or alternating stereo echoes.</comment>
+      <access read="G" write="S">Get/Set</access>
+      <type lookup="DLM">DLM</type>
+      <description>
+<p>The default is <code>DLM::NORMAL</code>.  Mono output always uses normal routing.  This field mirrors the <code>mode</code> schema key, which also accepts the option names <code>normal</code> and <code>ping_pong</code>.  To change it together with other parameters in a single step, use <class name="AudioEffect" method="Batch">AudioEffect.Batch()</class>.</p>
+<types lookup="DLM"/>
+      </description>
+    </field>
+
+    <field>
+      <name>Time</name>
+      <comment>The interval between echoes, in milliseconds.</comment>
+      <access read="G" write="S">Get/Set</access>
+      <type>DOUBLE</type>
+      <description>
+<p>The range is 1 to 2000 ms and the default is 250 ms.  Fractions of a millisecond are honoured.  This field mirrors the <code>time</code> schema key.  To change it together with other parameters in a single step, use <class name="AudioEffect" method="Batch">AudioEffect.Batch()</class>.</p>
+      </description>
+    </field>
+
+  </fields>
+  <types>
+    <constants lookup="DLM" comment="AudioDelay stereo routing modes.">
+      <const name="NORMAL">Every channel is delayed independently, preserving the stereo image.</const>
+      <const name="PING_PONG">The echoes alternate between the left and right channels, starting on the left.</const>
+    </constants>
+
+  </types>
   <structs>
   </structs>
 </book>

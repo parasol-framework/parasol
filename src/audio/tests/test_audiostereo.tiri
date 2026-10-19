@@ -1,10 +1,11 @@
--- AudioStereo: schema, validation, staged changes, live processing measured through the peak meters, mono, global
+-- AudioStereo: schema, validation, batch changes, live processing measured through the peak meters, mono, global
 -- immutability, tail draining and unsupported rates.  The null device is unpaced, so live tests play a looping tone
 -- and poll until a reading reflects the latest settings.
 
 @if(exists='modules:audio')
 
    module audio as mAudio
+   import './effect_fields'
 
 @BeforeAll function init(State)
    global glFolder = State.folder
@@ -66,8 +67,9 @@ function get_number(Effect:obj, Key:str):<num>
 end
 
 function configure(Effect:obj, Values:table)
-   for key, value in pairs(Values) do check Effect.acSetKey(key, value) end
-   check Effect.acFlush()
+   commands = array<str>
+   for key, value in pairs(Values) do commands.push(f'set {key} {value}') end
+   check Effect.mtBatch(commands)
 end
 
 -- Poll until a valid meter reading has the expected output levels relative to the left input peak, within Tolerance
@@ -144,35 +146,36 @@ end
    assert(stereo.mtGetOutput('response') is ERR_Search)
 end
 
-@Test function StagedChangesAndValidation()
+@Test function ChangesAndValidation()
    audio <close> = obj.new('Audio', { device='null', outputRate=48000 })
    stereo <close> = new_stereo(audio)
    assert(stereo.mutable is 1)
 
    for p in values(PARAMS) do
-      check stereo.acSetKey(p.key, p.min)
-      check stereo.acSetKey(p.key, p.max)
-      assert(stereo.acSetKey(p.key, p.min - 0.001) is ERR_InvalidValue, f'{p.key} below {p.min} must fail')
-      assert(stereo.acSetKey(p.key, p.max + 0.001) is ERR_InvalidValue, f'{p.key} above {p.max} must fail')
-      assert(stereo.acSetKey(p.key, math.huge) is ERR_InvalidValue, f'{p.key} must reject infinity')
-      assert(stereo.acSetKey(p.key, math.sqrt(-1)) is ERR_InvalidValue, f'{p.key} must reject NaN')
+      check stereo.mtBatch(array<str> { f'set {p.key} {p.min}', f'set {p.key} {p.max}' })
+      assert(stereo.mtBatch(array<str> { f'set {p.key} {p.min - 0.001}' }) is ERR_InvalidValue,
+         f'{p.key} below {p.min} must fail')
+      assert(stereo.mtBatch(array<str> { f'set {p.key} {p.max + 0.001}' }) is ERR_InvalidValue,
+         f'{p.key} above {p.max} must fail')
+      assert(stereo.mtBatch(array<str> { f'set {p.key} {math.huge}' }) is ERR_InvalidValue,
+         f'{p.key} must reject infinity')
+      assert(stereo.mtBatch(array<str> { f'set {p.key} {math.sqrt(-1)}' }) is ERR_InvalidValue,
+         f'{p.key} must reject NaN')
    end
-   assert(stereo.acSetKey('swap', 0.5) is ERR_InvalidValue, 'Boolean parameters reject fractions')
-   assert(stereo.acSetKey('unknown', 1) is ERR_Search)
-   check stereo.acFlush()
+   assert(stereo.mtBatch(array<str> { 'set swap 0.5' }) is ERR_InvalidValue, 'Boolean parameters reject fractions')
+   assert(stereo.mtBatch(array<str> { 'set unknown 1' }) is ERR_Search)
 
-   -- Staged values are readable before Flush(); a rejected value leaves earlier staged changes intact.
+   -- A rejected value fails the whole batch and names its command; a valid batch commits every value together.
 
-   check stereo.acSetKey('width', 137.5)
-   check stereo.acSetKey('balance', -42.25)
-   check stereo.acSetKey('split', 1)
-   assert(stereo.acSetKey('crossover', 39) is ERR_InvalidValue)
-   check stereo.acSetKey('crossover', 85.5)
-   assert(get_number(stereo, 'crossover') is 85.5, 'Staged values must be readable')
-   check stereo.acFlush()
+   err, failed = stereo.mtBatch(array<str> {
+      'set width 137.5', 'set balance -42.25', 'set split 1', 'set crossover 39'
+   })
+   assert(err is ERR_InvalidValue and failed is 3, f'The last command must fail, got {err} at {failed}')
+   assert(get_number(stereo, 'width') != 137.5, 'A rejected batch must change nothing')
+   check stereo.mtBatch(array<str> { 'set width 137.5', 'set balance -42.25', 'set split 1', 'set crossover 85.5' })
    for key, expected in pairs({ width=137.5, balance=-42.25, split=1, crossover=85.5, swap=1, gain=12 }) do
       value = get_number(stereo, key)
-      assert(value is expected, f'{key} should be {expected} after Flush(), got {value}')
+      assert(value is expected, f'{key} should be {expected} after Batch(), got {value}')
    end
 end
 
@@ -183,10 +186,8 @@ end
    stereo <close> = obj.new('AudioStereo')
    stereo.audio = audio
    stereo.channel = channel
-   check stereo.acSetKey('width', 60)
-   check stereo.acSetKey('split', 1)
-   check stereo.acSetKey('bass_width', 0)
-   assert(stereo.acSetKey('gain', 13) is ERR_InvalidValue)
+   check stereo.mtBatch(array<str> { 'set width 60', 'set split 1', 'set bass_width 0' })
+   assert(stereo.mtBatch(array<str> { 'set gain 13' }) is ERR_InvalidValue)
    stereo.init()
    for key, expected in pairs({ width=60, split=1, bass_width=0, gain=0 }) do
       value = get_number(stereo, key)
@@ -245,18 +246,17 @@ end
    check audio.mtCloseChannels(channel)
    err, reading = stereo.mtReadMeters()
    assert(err is ERR_Okay and reading.flags is AMF_DISCONNECTED)
-   assert(stereo.acSetKey('width', 50) is ERR_NotInitialised)
+   assert(stereo.mtBatch(array<str> { 'set width 50' }) is ERR_NotInitialised)
    stereo.free()
 end
 
 @Test function MonoAndGlobalImmutability()
    audio <close> = obj.new('Audio', { device='null', outputRate=44100, outputLayout=array<int> { SPK_CENTRE } })
    stereo = audio.new('AudioStereo')
-   check stereo.acSetKey('width', 0)
-   check stereo.acSetKey('gain', -3)
+   check stereo.mtBatch(array<str> { 'set width 0', 'set gain -3' })
    stereo.init()
    assert(stereo.mutable is 0)
-   assert(stereo.acSetKey('width', 50) is ERR_Immutable)
+   assert(stereo.mtBatch(array<str> { 'set width 50' }) is ERR_Immutable)
    assert(get_number(stereo, 'width') is 0, 'Global settings are retained')
    check audio.acActivate()
    err, layout = stereo.mtGetMeterLayout()
@@ -316,6 +316,12 @@ end
    success
       raise 'An output rate below 8000 Hz must be rejected'
    end
+end
+
+-- Every schema parameter has a typed field that follows the shared field semantics.
+
+@Test function TypedFields()
+   effect_fields.checkFields('AudioStereo')
 end
 
 @end

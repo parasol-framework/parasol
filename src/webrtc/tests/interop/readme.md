@@ -14,8 +14,8 @@ Install the pinned Playwright dependency with `npm ci --prefix src/webrtc/tests/
 | `public_turn.cjs` | `turn_signalling.tiri` | Relay-only channels and ICE restart; launched by the TURN fixture |
 
 ```sh
-ctest --build-config Debug --test-dir build/agents --output-on-failure -L webrtc_interop
-ctest --build-config Debug --test-dir build/agents --output-on-failure -L webrtc_mdns_interop
+ctest --preset agents -L webrtc_interop
+ctest --preset agents -L webrtc_mdns_interop
 ```
 
 ## TURN and stream tests
@@ -23,7 +23,7 @@ ctest --build-config Debug --test-dir build/agents --output-on-failure -L webrtc
 `run_turn_fixture.py` creates an ephemeral coturn server, certificates and credentials.  It exercises UDP, TCP and TLS, with optional native and browser relay checks.  Configure `WEBRTC_TURN_SERVER` and `WEBRTC_TURN_UCLIENT` with the coturn executable paths; the registered fixture also requires `BUILD_TESTS`, `UNIT_TESTS`, and the OpenSSL CLI.  `WEBRTC_REQUIRE_TURN=ON` additionally requires the browser prerequisites.
 
 ```sh
-ctest --build-config Debug --test-dir build/agents --output-on-failure -L webrtc_turn_integration
+ctest --preset agents -L webrtc_turn_integration
 python3 src/webrtc/tests/interop/run_turn_fixture.py --help
 ```
 

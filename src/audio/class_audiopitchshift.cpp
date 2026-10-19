@@ -11,8 +11,10 @@ Create new pitch shift objects as a child of an @Audio object or set the inherit
 #AudioEffect.Channel to process one channel set, or leave it at zero to process the global mix.  Application effects
 accept live changes; global effects become immutable after initialisation.
 
-Parameters are published through the inherited @AudioEffect schema and are changed with @AudioEffect.SetKey()
-followed by @AudioEffect.Flush():
+Each parameter is available as a field, such as #Semitones and #Mix.  Field writes before initialisation are
+range-checked and stored; after initialisation each write is validated and applied immediately.  The same parameters are
+published through the inherited @AudioEffect schema under lower-case keys, where they can be changed together with
+@AudioEffect.Batch():
 
 <list type="bullet">
 <li>`semitones`: the pitch offset, from -12 to 12 semitones.  Fractional values are accepted, so 0.1 detunes by ten
@@ -22,13 +24,17 @@ shifted signal.</li>
 <li>`gain`: the output trim, from -24 to 12 dB, applied to the blended signal.</li>
 </list>
 
-The following adds a fifth above a playing channel set, blended equally with the original, as a single change:
+The following adds a fifth above a playing channel set, blended equally with the original:
 
 <pre>
-shifter = obj.new('AudioPitchShift', { audio=audio, channel=channel })
-shifter.acSetKey('semitones', 7)
-shifter.acSetKey('mix', 50)
-shifter.acFlush()
+shifter = obj.new('AudioPitchShift', { audio=audio, channel=channel, semitones=7, mix=50 })
+</pre>
+
+Every field write after initialisation is a separate change.  To change several parameters in a single step, apply them
+together with @AudioEffect.Batch():
+
+<pre>
+shifter.mtBatch(array&lt;str&gt; { 'set semitones -12', 'set mix 100' })
 </pre>
 
 Other useful combinations include a one-octave drop with `semitones` -12 and `mix` 100, and a light doubling effect
@@ -81,7 +87,7 @@ contract and are treated as silence.
 <header>Live Changes</header>
 
 A change to `semitones` applies from the next analysis window, within 5.3 ms at 48 kHz, and the new pitch blends in
-over the overlapping windows.  Changes to `mix` and `gain` ramp linearly over 10 ms from their current values.  Flush
+over the overlapping windows.  Changes to `mix` and `gain` ramp linearly over 10 ms from their current values.  A commit
 preserves the analysis history and the dry delay.
 
 Device reactivation, rate or layout changes and leaving bypass discard the history and apply the latest parameters
@@ -233,9 +239,40 @@ static ERR AUDIOPITCHSHIFT_Init(extAudioPitchShift *Self)
    return error;
 }
 
-//********************************************************************************************************************
+/*********************************************************************************************************************
+
+-FIELD-
+Gain: The output trim, in decibels.
+
+The range is -24 to 12 dB and the default is 0 dB.  This field mirrors the `gain` schema key.  To change it together
+with other parameters in a single step, use @AudioEffect.Batch().
+
+-FIELD-
+Mix: The blend of the latency-aligned dry input and the shifted signal, as a percentage.
+
+The range is 0 to 100% and the default is 100%.  100% outputs only the shifted signal.  This field mirrors the `mix`
+schema key.  To change it together with other parameters in a single step, use @AudioEffect.Batch().
+
+-FIELD-
+Semitones: The pitch offset in semitones.
+
+The range is -12 to 12 and the default is 0.  Fractional values detune by cents, so 0.1 detunes by ten cents.  Zero
+leaves the pitch unchanged.  This field mirrors the `semitones` schema key.  To change it together with other parameters
+in a single step, use @AudioEffect.Batch().
+
+*********************************************************************************************************************/
 
 #include "class_audiopitchshift_def.c"
+
+static const FieldArray clAudioPitchShiftFields[] = {
+   { "Semitones",  FDF_VIRTUAL|FDF_DOUBLE|FDF_RW|FDF_PURE,
+     effect_settings_get<extAudioPitchShift, &PitchShiftSettings::Semitones>, effect_param_set<PS_SEMITONES> },
+   { "Mix",        FDF_VIRTUAL|FDF_DOUBLE|FDF_RW|FDF_PURE,
+     effect_settings_get<extAudioPitchShift, &PitchShiftSettings::Mix>, effect_param_set<PS_MIX> },
+   { "Gain",       FDF_VIRTUAL|FDF_DOUBLE|FDF_RW|FDF_PURE,
+     effect_settings_get<extAudioPitchShift, &PitchShiftSettings::Gain>, effect_param_set<PS_GAIN> },
+   END_FIELD
+};
 
 //********************************************************************************************************************
 
@@ -247,6 +284,7 @@ static ERR add_audiopitchshift_class()
       fl::Name("AudioPitchShift"),
       fl::Category(CCF::AUDIO),
       fl::Actions(clAudioPitchShiftActions),
+      fl::Fields(clAudioPitchShiftFields),
       fl::Size(sizeof(extAudioPitchShift)),
       fl::Path(MOD_PATH));
    return clAudioPitchShift ? ERR::Okay : ERR::AddClass;

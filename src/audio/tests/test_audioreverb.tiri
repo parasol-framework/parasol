@@ -1,6 +1,7 @@
 @if(exists='modules:audio')
 
    module audio as mAudio
+   import './effect_fields'
 
 @BeforeAll function init(State)
    global glFolder = State.folder
@@ -60,10 +61,10 @@ end
    assert(schema.find('key="output_peak_right" type="scalar"') != nil)
    assert(reverb.mtGetOutput('response') is ERR_Search)
    assert(reverb.mtGetGroupCount('bands') is ERR_Search)
-   assert(reverb.mtInsertEntry('bands', 0) is ERR_Search)
+   assert(reverb.mtBatch(array<str> { 'insert bands 0' }) is ERR_Search)
 end
 
-@Test function StagedChangesAndValidation()
+@Test function ChangesAndValidation()
    audio <close> = obj.new('Audio', { device='null', outputRate=48000 })
    reverb <close> = new_reverb(audio)
    assert(reverb.mutable is 1)
@@ -71,27 +72,21 @@ end
    -- Every bound is inclusive; values outside it are rejected immediately.
 
    for p in values(PARAMS) do
-      check reverb.acSetKey(p.key, p.min)
-      check reverb.acSetKey(p.key, p.max)
-      assert(reverb.acSetKey(p.key, p.min - 1) is ERR_InvalidValue, f'{p.key} below {p.min} must fail')
-      assert(reverb.acSetKey(p.key, p.max + 1) is ERR_InvalidValue, f'{p.key} above {p.max} must fail')
+      check reverb.mtBatch(array<str> { f'set {p.key} {p.min}', f'set {p.key} {p.max}' })
+      assert(reverb.mtBatch(array<str> { f'set {p.key} {p.min - 1}' }) is ERR_InvalidValue,
+         f'{p.key} below {p.min} must fail')
+      assert(reverb.mtBatch(array<str> { f'set {p.key} {p.max + 1}' }) is ERR_InvalidValue,
+         f'{p.key} above {p.max} must fail')
    end
-   assert(reverb.acSetKey('unknown', 1) is ERR_Search)
-   check reverb.acFlush()
+   assert(reverb.mtBatch(array<str> { 'set unknown 1' }) is ERR_Search)
 
-   -- Staged values are visible before Flush() and committed together.
+   -- A batch commits its values together.
 
-   check reverb.acSetKey('decay', 3200)
-   check reverb.acSetKey('size', 85)
-   check reverb.acSetKey('pre_delay', 45)
-   err, value_text = reverb.acGetKey('size')
-   value = tonumber(value_text)
-   assert(err is ERR_Okay and value is 85, 'Staged values must be readable')
-   check reverb.acFlush()
+   check reverb.mtBatch(array<str> { 'set decay 3200', 'set size 85', 'set pre_delay 45' })
    for key, expected in pairs({ decay=3200, size=85, pre_delay=45 }) do
       err, value_text = reverb.acGetKey(key)
       value = tonumber(value_text)
-      assert(err is ERR_Okay and value is expected, f'{key} should be {expected} after Flush(), got {value}')
+      assert(err is ERR_Okay and value is expected, f'{key} should be {expected} after Batch(), got {value}')
    end
 end
 
@@ -102,8 +97,7 @@ end
    reverb <close> = obj.new('AudioReverb')
    reverb.audio = audio
    reverb.channel = channel
-   check reverb.acSetKey('decay', 900)
-   check reverb.acSetKey('mix', 35)
+   check reverb.mtBatch(array<str> { 'set decay 900', 'set mix 35' })
    reverb.init()
    err, value_text = reverb.acGetKey('mix')
    value = tonumber(value_text)
@@ -131,25 +125,17 @@ end
 
    -- Ordinary edits, a size transition and a queued edit behind it.
 
-   check reverb.acSetKey('decay', 4000)
-   check reverb.acSetKey('damping', 20)
-   check reverb.acFlush()
-   check reverb.acSetKey('size', 90)
-   check reverb.acFlush()
-   check reverb.acSetKey('size', 10)
-   check reverb.acSetKey('pre_delay', 150)
-   check reverb.acFlush()
+   check reverb.mtBatch(array<str> { 'set decay 4000', 'set damping 20' })
+   check reverb.mtBatch(array<str> { 'set size 90' })
+   check reverb.mtBatch(array<str> { 'set size 10', 'set pre_delay 150' })
 
    -- Early reflections fade in, then a length edit crossfades with a queued length behind it.
 
-   check reverb.acSetKey('early_level', 60)
-   check reverb.acSetKey('early_length', 80)
-   check reverb.acFlush()
-   check reverb.acSetKey('early_length', 8)
-   check reverb.acFlush()
+   check reverb.mtBatch(array<str> { 'set early_level 60', 'set early_length 80' })
+   check reverb.mtBatch(array<str> { 'set early_length 8' })
    err, value_text = reverb.acGetKey('early_length')
    value = tonumber(value_text)
-   assert(err is ERR_Okay and value is 8, f'early_length should be 8 after Flush(), got {value}')
+   assert(err is ERR_Okay and value is 8, f'early_length should be 8 after Batch(), got {value}')
 
    err, layout = reverb.mtGetMeterLayout()
    assert(err is ERR_Okay and #layout.meters is 4)
@@ -161,17 +147,17 @@ end
    reverb.flags = 0
 
    check audio.mtCloseChannels(channel)
-   assert(reverb.acSetKey('mix', 50) is ERR_NotInitialised)
+   assert(reverb.mtBatch(array<str> { 'set mix 50' }) is ERR_NotInitialised)
    reverb.free()
 end
 
 @Test function MonoAndGlobalImmutability()
    audio <close> = obj.new('Audio', { device='null', outputRate=44100, outputLayout=array<int> { SPK_CENTRE } })
    reverb = audio.new('AudioReverb')
-   check reverb.acSetKey('size', 70)
+   check reverb.mtBatch(array<str> { 'set size 70' })
    reverb.init()
    assert(reverb.mutable is 0)
-   assert(reverb.acSetKey('size', 20) is ERR_Immutable)
+   assert(reverb.mtBatch(array<str> { 'set size 20' }) is ERR_Immutable)
    err, value_text = reverb.acGetKey('size')
    value = tonumber(value_text)
    assert(err is ERR_Okay and value is 70, 'Global effects remain readable')
@@ -198,9 +184,7 @@ end
          state_at_stop = state
       end })
    reverb <close> = obj.new('AudioReverb', { audio=audio, channel=sound.channelIndex & 0xffff0000 })
-   check reverb.acSetKey('decay', 2000)
-   check reverb.acSetKey('mix', 50)
-   check reverb.acFlush()
+   check reverb.mtBatch(array<str> { 'set decay 2000', 'set mix 50' })
    check sound.acActivate()
    deadline = mSys.PreciseTime() + 20000000
    while (stops is 0) and (mSys.PreciseTime() < deadline) do processing.sleep(0.01) end
@@ -219,6 +203,12 @@ end
    success
       raise 'An output rate below 8000 Hz must be rejected'
    end
+end
+
+-- Every schema parameter has a typed field that follows the shared field semantics.
+
+@Test function TypedFields()
+   effect_fields.checkFields('AudioReverb')
 end
 
 @end

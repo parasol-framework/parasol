@@ -23,10 +23,8 @@ constexpr double GATE_WINDOW = 0.025;                     // Seconds; minimum de
 constexpr double GATE_SNAP = 1e-12;                       // dB; opening envelopes below this become zero
 constexpr double GATE_DB_TO_LOG = std::numbers::ln10 / 20.0; // Natural-log gain per dB
 
-enum { GATE_EXPANDER = 0, GATE_GATE = 1 };
-
 struct GateSettings {
-   int Mode = GATE_EXPANDER;
+   GTM Mode = GTM::EXPANDER;
    double Threshold = -45;  // dBFS; opening threshold
    double Ratio = 2;        // Expansion slope below the threshold; ignored in gate mode
    double Range = 60;       // dB; maximum attenuation
@@ -89,7 +87,7 @@ inline bool gate_target(const GateSettings &Settings, int Rate, GateTarget &Targ
    Target.Slope      = Settings.Ratio - 1.0;
    Target.Attack     = gate_pole(Settings.Attack, Rate);
    Target.Release    = gate_pole(Settings.Release, Rate);
-   Target.Gate       = (Settings.Mode IS GATE_GATE) ? 1.0 : 0.0;
+   Target.Gate       = (Settings.Mode IS GTM::GATE) ? 1.0 : 0.0;
    return true;
 }
 

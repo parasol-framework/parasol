@@ -43,9 +43,54 @@ static void test_schema_serialisation(AudioTestContext &Test)
    AUDIO_CHECK(xml.ends_with("</effect>\n"));
 }
 
+static void test_batch_parsing(AudioTestContext &Test)
+{
+   AudioBatchCommand command;
+   AUDIO_CHECK(parse_batch_command(" \tset  bands[2].q\t0.7 ", command) IS ERR::Okay);
+   AUDIO_CHECK(command.Verb IS ABV::SET and command.Target IS "bands[2].q" and command.Argument IS "0.7");
+   AUDIO_CHECK(parse_batch_command("insert bands 0", command) IS ERR::Okay and command.Verb IS ABV::INSERT);
+   AUDIO_CHECK(parse_batch_command("remove bands 3", command) IS ERR::Okay and command.Verb IS ABV::REMOVE);
+   AUDIO_CHECK(parse_batch_command("", command) IS ERR::Syntax);
+   AUDIO_CHECK(parse_batch_command(" \t ", command) IS ERR::Syntax);
+   AUDIO_CHECK(parse_batch_command("set gain", command) IS ERR::Syntax);
+   AUDIO_CHECK(parse_batch_command("set gain 1 2", command) IS ERR::Syntax);
+   AUDIO_CHECK(parse_batch_command("SET gain 1", command) IS ERR::Syntax);
+   AUDIO_CHECK(parse_batch_command("move bands 1", command) IS ERR::Syntax);
+
+   double value = 0;
+   AUDIO_CHECK(parse_param_value("-3.5", value) IS ERR::Okay and value IS -3.5);
+   AUDIO_CHECK(parse_param_value("+2", value) IS ERR::Okay and value IS 2);
+   AUDIO_CHECK(parse_param_value("1e3", value) IS ERR::Okay and value IS 1000);
+   AUDIO_CHECK(parse_param_value("+-1", value) IS ERR::InvalidValue);
+   AUDIO_CHECK(parse_param_value("+", value) IS ERR::InvalidValue);
+   AUDIO_CHECK(parse_param_value("", value) IS ERR::InvalidValue);
+   AUDIO_CHECK(parse_param_value("1x", value) IS ERR::InvalidValue);
+   AUDIO_CHECK(parse_param_value("nan", value) IS ERR::InvalidValue);
+   AUDIO_CHECK(parse_param_value("inf", value) IS ERR::InvalidValue);
+   AUDIO_CHECK(parse_param_value("1e999", value) IS ERR::InvalidValue);
+
+   static const AudioParamOption options[] = { { 0, "peak", "Peak" }, { 2, "low_shelf", "Low Shelf" } };
+   static const AudioParamDesc type = { .Key = "type", .Type = APT::ENUM, .Options = options };
+   AUDIO_CHECK(parse_param_value(type, "low_shelf", value) IS ERR::Okay and value IS 2);
+   AUDIO_CHECK(parse_param_value(type, "2", value) IS ERR::Okay and value IS 2);
+   AUDIO_CHECK(parse_param_value(type, "Low_Shelf", value) IS ERR::InvalidValue);
+   static const AudioParamDesc gain = { .Key = "gain", .Min = -48, .Max = 48 };
+   AUDIO_CHECK(parse_param_value(gain, "peak", value) IS ERR::InvalidValue);
+
+   int index = -1;
+   AUDIO_CHECK(parse_entry_index("0", index) IS ERR::Okay and index IS 0);
+   AUDIO_CHECK(parse_entry_index("63", index) IS ERR::Okay and index IS 63);
+   AUDIO_CHECK(parse_entry_index("", index) IS ERR::Syntax);
+   AUDIO_CHECK(parse_entry_index("-1", index) IS ERR::Syntax);
+   AUDIO_CHECK(parse_entry_index("+1", index) IS ERR::Syntax);
+   AUDIO_CHECK(parse_entry_index("1.0", index) IS ERR::Syntax);
+   AUDIO_CHECK(parse_entry_index("2147483648", index) IS ERR::OutOfRange);
+}
+
 static void run(AudioTestContext &Test)
 {
    test_schema_serialisation(Test);
+   test_batch_parsing(Test);
    auto mutex = std::make_shared<std::recursive_mutex>();
    auto chain = std::make_shared<AudioEffectChain>(mutex);
    extAudioEffect first(nullptr, 1), second(nullptr, 2);

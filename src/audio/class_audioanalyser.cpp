@@ -34,21 +34,18 @@ silent.  A bypassed analyser does not capture audio, so its readings fall silent
 <header>Measurement</header>
 
 By default the spectrum and waveform measure the mean of every channel in the processing layout.  Audio that is out of
-phase between channels therefore reads lower than it sounds.  Set the `channel_index` parameter to measure a single
-channel of the processing layout instead, where 0 is the first channel.  This is unrelated to the #AudioEffect.Channel
-field, which selects the channel set.  After initialisation, change the parameter with @AudioEffect.SetKey() followed by
-@AudioEffect.Flush().  Effects on the global mix are immutable after initialisation, so a display with separate left
-and right traces creates and configures each global analyser in stages:
+phase between channels therefore reads lower than it sounds.  Set #ChannelIndex to measure a single channel of the
+processing layout instead, where 0 is the first channel.  The same value is published as the `channel_index` schema
+key.  Effects on the global mix are immutable after initialisation, so a display with separate left and right traces
+selects the channel of each global analyser when it is created:
 
 <pre>
-left = obj.new('AudioAnalyser')
-left.audio = sound.audio
-check left.acSetKey('channel_index', 0)
-left.init()
+left = obj.new('AudioAnalyser', { audio=sound.audio, channelIndex=0 })
+right = obj.new('AudioAnalyser', { audio=sound.audio, channelIndex=1 })
 </pre>
 
-Changing `channel_index` discards the captured audio, so readings are silent until audio captured from the new channel
-is heard.  If the processing layout has no channel at `channel_index`, for instance because the output has changed from
+Changing #ChannelIndex discards the captured audio, so readings are silent until audio captured from the new channel
+is heard.  If the processing layout has no channel at #ChannelIndex, for instance because the output has changed from
 stereo to mono, #GetSpectrum() and #GetWaveform() fail with `ERR::OutOfRange` until the channel is available again.
 
 The spectrum is computed with a Hann window over the most recent 32 to 47 ms of audio, depending on the output rate.
@@ -70,7 +67,7 @@ they are mixed to mono.  The value is 0 if either channel is at the RMS floor.  
 stereo layouts.</li>
 </list>
 
-The meters measure every channel regardless of `channel_index`.  The analyser adds no latency and has no tail.
+The meters measure every channel regardless of #ChannelIndex.  The analyser adds no latency and has no tail.
 
 Output rates from 8000 to 192000 Hz are supported.  Configuring the analyser for any other rate fails with
 `ERR::NoSupport`.
@@ -204,7 +201,7 @@ NullArgs
 Args: Fewer than two edges, more than 1025 edges, or `Levels` is not one entry shorter than `Frequencies`.
 InvalidValue: The edges are not ascending, or lie outside of the range from zero to half of the output rate.
 NotInitialised: The analyser is not connected to an effect chain.
-OutOfRange: The processing layout has no channel at `channel_index`.
+OutOfRange: The processing layout has no channel at #ChannelIndex.
 AccessObject: The @Audio object could not be locked.
 -END-
 
@@ -240,9 +237,9 @@ static ERR AUDIOANALYSER_GetSpectrum(extAudioAnalyser *Self, struct ana::GetSpec
 GetWaveform: Reads the waveform of the audio that is currently audible.
 
 GetWaveform() fills `Samples` with the most recent audible frames, oldest first.  Each value is a sample of the
-channel selected by `channel_index`, or by default the mean of every channel in the processing layout, where a magnitude
+channel selected by #ChannelIndex, or by default the mean of every channel in the processing layout, where a magnitude
 of 1.0 is full scale.  Frames that have not been captured, such as those after a source has stopped or from before
-`channel_index` was changed, are zero.
+#ChannelIndex was changed, are zero.
 
 The length of `Samples` determines the duration that is read, e.g. 1024 samples cover 21 ms at 48 kHz.
 
@@ -254,7 +251,7 @@ Okay
 NullArgs
 Args: `Samples` is empty or longer than 16384 entries.
 NotInitialised: The analyser is not connected to an effect chain.
-OutOfRange: The processing layout has no channel at `channel_index`.
+OutOfRange: The processing layout has no channel at #ChannelIndex.
 AccessObject: The @Audio object could not be locked.
 -END-
 
@@ -286,11 +283,30 @@ static ERR AUDIOANALYSER_Init(extAudioAnalyser *Self)
    return error;
 }
 
+/*********************************************************************************************************************
+
+-FIELD-
+ChannelIndex: The channel of the processing layout that the spectrum and waveform measure.
+
+The range is -1 to 63 and the default is -1, which measures the mean of every channel.  Zero is the first channel of
+the processing layout.  This is unrelated to the #AudioEffect.Channel field, which selects the channel set.  This
+field mirrors the `channel_index` schema key.
+
+*********************************************************************************************************************/
+
+static ERR AUDIOANALYSER_GET_ChannelIndex(extAudioAnalyser *Self, int *Value)
+{
+   *Value = Self->ChannelIndex;
+   return ERR::Okay;
+}
+
 //********************************************************************************************************************
 
 #include "class_audioanalyser_def.c"
 
 static const FieldArray clAudioAnalyserFields[] = {
+   { "ChannelIndex", FDF_VIRTUAL|FDF_INT|FDF_RW|FDF_PURE,
+     AUDIOANALYSER_GET_ChannelIndex, effect_param_set_int<AN_CHANNEL_INDEX> },
    END_FIELD
 };
 

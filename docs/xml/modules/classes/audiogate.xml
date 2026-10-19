@@ -15,10 +15,10 @@
     <description>
 <p>The gate attenuates audio whose level falls below a threshold, reducing background noise, hiss and spill in the pauses between sounds.  It does not remove noise that is present at the same time as louder material, such as hiss beneath speech.</p>
 <p>Create new gate objects as a child of an <class name="Audio">Audio</class> object or set the inherited <class name="AudioEffect" field="Audio">AudioEffect.Audio</class> field.  Use <class name="AudioEffect" field="Channel">AudioEffect.Channel</class> to process one channel set, or leave it at zero to process the global mix.  Application gates accept live changes; global gates become immutable after initialisation.</p>
-<p>Parameters are published through the inherited <class name="AudioEffect">AudioEffect</class> schema and are changed with <class name="AudioEffect" method="SetKey">AudioEffect.SetKey()</class> followed by <class name="AudioEffect" method="Flush">AudioEffect.Flush()</class>:</p>
+<p>Each parameter is available as a field, such as <fl>Threshold</fl> and <fl>Range</fl>.  Field writes before initialisation are range-checked and stored; after initialisation each write is validated and applied immediately.  The same parameters are published through the inherited <class name="AudioEffect">AudioEffect</class> schema under lower-case keys, where they can be changed together with <class name="AudioEffect" method="Batch">AudioEffect.Batch()</class>:</p>
 <list type="bullet">
-<li><code>mode</code>: <code>expander</code> (0) reduces the level progressively as the signal falls further below the threshold.  <code>gate</code>
-(1) switches between no attenuation and the full <code>range</code>.</li>
+<li><code>mode</code>: <code>expander</code> (<code>GTM::EXPANDER</code>) reduces the level progressively as the signal falls further below the
+threshold.  <code>gate</code> (<code>GTM::GATE</code>) switches between no attenuation and the full <code>range</code>.</li>
 <li><code>threshold</code>: the detector level, in dB relative to full scale, at which the gate opens.</li>
 <li><code>ratio</code>: the expansion slope below the threshold.  At 2, every 1 dB that the signal falls below the threshold adds
 1 dB of attenuation.  A ratio of 1 disables expansion.  The ratio is ignored in gate mode.</li>
@@ -30,11 +30,10 @@ threshold.</li>
 <li><code>release</code>: the time constant, in milliseconds, with which the gate closes.</li>
 </list>
 <p>The following gate silences the pauses in a voice recording on a playing channel set:</p>
-<pre>gate = obj.new('AudioGate', { audio=audio, channel=channel })
-gate.acSetKey('mode', 1)
-gate.acSetKey('threshold', -50)
-gate.acSetKey('range', 40)
-gate.acFlush()
+<pre>gate = obj.new('AudioGate', { audio=audio, channel=channel, mode=GTM_GATE, threshold=-50, range=40 })
+</pre>
+<p>Every field write after initialisation is a separate change.  To change several parameters in a single step, apply them together with <class name="AudioEffect" method="Batch">AudioEffect.Batch()</class>:</p>
+<pre>gate.mtBatch(array&lt;str&gt; { 'set mode expander', 'set ratio 2', 'set range 15' })
 </pre>
 <p>For gentler noise reduction that leaves the decay of notes more natural, use the default expander mode with a ratio between 1.5 and 3 and a range of 10 to 20 dB.</p>
 <header>Detection</header>
@@ -56,6 +55,97 @@ gate.acFlush()
       <file>class_audiogate.cpp</file>
     </source>
   </info>
+
+  <fields>
+    <field>
+      <name>Attack</name>
+      <comment>The time constant, in milliseconds, with which the gate opens.</comment>
+      <access read="G" write="S">Get/Set</access>
+      <type>DOUBLE</type>
+      <description>
+<p>The range is 0.1 to 100 ms and the default is 2 ms.  This field mirrors the <code>attack</code> schema key.  To change it together with other parameters in a single step, use <class name="AudioEffect" method="Batch">AudioEffect.Batch()</class>.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>Hold</name>
+      <comment>The time, in milliseconds, for which the gate remains open after the level falls below the closing threshold.</comment>
+      <access read="G" write="S">Get/Set</access>
+      <type>DOUBLE</type>
+      <description>
+<p>The range is 0 to 1000 ms and the default is 50 ms.  This field mirrors the <code>hold</code> schema key.  To change it together with other parameters in a single step, use <class name="AudioEffect" method="Batch">AudioEffect.Batch()</class>.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>Hysteresis</name>
+      <comment>How far, in decibels, the detector level must fall below the threshold before the gate closes.</comment>
+      <access read="G" write="S">Get/Set</access>
+      <type>DOUBLE</type>
+      <description>
+<p>The range is 0 to 24 dB and the default is 3 dB.  This field mirrors the <code>hysteresis</code> schema key.  To change it together with other parameters in a single step, use <class name="AudioEffect" method="Batch">AudioEffect.Batch()</class>.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>Mode</name>
+      <comment>Selects progressive or full attenuation of quiet passages.</comment>
+      <access read="G" write="S">Get/Set</access>
+      <type lookup="GTM">GTM</type>
+      <description>
+<p>The default is <code>GTM::EXPANDER</code>.  This field mirrors the <code>mode</code> schema key, which also accepts the option names <code>expander</code> and <code>gate</code>.  To change it together with other parameters in a single step, use <class name="AudioEffect" method="Batch">AudioEffect.Batch()</class>.</p>
+<types lookup="GTM"/>
+      </description>
+    </field>
+
+    <field>
+      <name>Range</name>
+      <comment>The maximum attenuation, in decibels.</comment>
+      <access read="G" write="S">Get/Set</access>
+      <type>DOUBLE</type>
+      <description>
+<p>The range is 0 to 90 dB and the default is 60 dB.  Zero disables the effect.  This field mirrors the <code>range</code> schema key. To change it together with other parameters in a single step, use <class name="AudioEffect" method="Batch">AudioEffect.Batch()</class>.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>Ratio</name>
+      <comment>The expansion slope below the threshold.</comment>
+      <access read="G" write="S">Get/Set</access>
+      <type>DOUBLE</type>
+      <description>
+<p>The range is 1 to 20 and the default is 2.  At 2, every decibel that the signal falls below the threshold adds a decibel of attenuation.  A ratio of 1 disables expansion.  The ratio is ignored when <fl>Mode</fl> is <code>GTM::GATE</code>.  This field mirrors the <code>ratio</code> schema key.  To change it together with other parameters in a single step, use <class name="AudioEffect" method="Batch">AudioEffect.Batch()</class>.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>Release</name>
+      <comment>The time constant, in milliseconds, with which the gate closes.</comment>
+      <access read="G" write="S">Get/Set</access>
+      <type>DOUBLE</type>
+      <description>
+<p>The range is 5 to 2000 ms and the default is 150 ms.  This field mirrors the <code>release</code> schema key.  To change it together with other parameters in a single step, use <class name="AudioEffect" method="Batch">AudioEffect.Batch()</class>.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>Threshold</name>
+      <comment>The detector level, in dBFS, at which the gate opens.</comment>
+      <access read="G" write="S">Get/Set</access>
+      <type>DOUBLE</type>
+      <description>
+<p>The range is -90 to 0 dBFS and the default is -45 dBFS.  This field mirrors the <code>threshold</code> schema key.  To change it together with other parameters in a single step, use <class name="AudioEffect" method="Batch">AudioEffect.Batch()</class>.</p>
+      </description>
+    </field>
+
+  </fields>
+  <types>
+    <constants lookup="GTM" comment="AudioGate attenuation modes.">
+      <const name="EXPANDER">Attenuation increases progressively as the signal falls further below the threshold.</const>
+      <const name="GATE">The full range of attenuation is applied whenever the gate is closed.</const>
+    </constants>
+
+  </types>
   <structs>
   </structs>
 </book>

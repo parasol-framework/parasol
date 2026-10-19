@@ -1,6 +1,7 @@
 @if(exists='modules:audio')
 
    module audio as mAudio
+   import './effect_fields'
 
 @BeforeAll function init(State)
    global glFolder = State.folder
@@ -95,7 +96,7 @@ end
    assert(saturator.mtGetOutput('response') is ERR_Search)
 end
 
-@Test function StagedChangesAndValidation()
+@Test function ChangesAndValidation()
    audio <close> = obj.new('Audio', { device='null', outputRate=48000 })
    saturator <close> = new_saturator(audio)
    assert(saturator.mutable is 1)
@@ -103,40 +104,36 @@ end
    -- Every bound is inclusive; values outside it and non-finite values are rejected immediately.
 
    for p in values(PARAMS) do
-      check saturator.acSetKey(p.key, p.min)
-      check saturator.acSetKey(p.key, p.max)
-      assert(saturator.acSetKey(p.key, p.min - 0.001) is ERR_InvalidValue, f'{p.key} below {p.min} must fail')
-      assert(saturator.acSetKey(p.key, p.max + 0.001) is ERR_InvalidValue, f'{p.key} above {p.max} must fail')
-      assert(saturator.acSetKey(p.key, math.huge) is ERR_InvalidValue, f'{p.key} must reject infinity')
-      assert(saturator.acSetKey(p.key, math.sqrt(-1)) is ERR_InvalidValue, f'{p.key} must reject NaN')
+      check saturator.mtBatch(array<str> { f'set {p.key} {p.min}', f'set {p.key} {p.max}' })
+      assert(saturator.mtBatch(array<str> { f'set {p.key} {p.min - 0.001}' }) is ERR_InvalidValue,
+         f'{p.key} below {p.min} must fail')
+      assert(saturator.mtBatch(array<str> { f'set {p.key} {p.max + 0.001}' }) is ERR_InvalidValue,
+         f'{p.key} above {p.max} must fail')
+      assert(saturator.mtBatch(array<str> { f'set {p.key} {math.huge}' }) is ERR_InvalidValue,
+         f'{p.key} must reject infinity')
+      assert(saturator.mtBatch(array<str> { f'set {p.key} {math.sqrt(-1)}' }) is ERR_InvalidValue,
+         f'{p.key} must reject NaN')
    end
 
    -- Shape accepts only its option values.
 
-   check saturator.acSetKey('shape', 1)
-   check saturator.acSetKey('shape', 0)
+   check saturator.mtBatch(array<str> { 'set shape 1', 'set shape 0' })
    for bad in values({ 2, -1, 0.5, math.huge }) do
-      assert(saturator.acSetKey('shape', bad) is ERR_InvalidValue, f'Shape must reject {bad}')
+      assert(saturator.mtBatch(array<str> { f'set shape {bad}' }) is ERR_InvalidValue, f'Shape must reject {bad}')
    end
-   assert(saturator.acSetKey('unknown', 1) is ERR_Search)
-   check saturator.acFlush()
+   assert(saturator.mtBatch(array<str> { 'set unknown 1' }) is ERR_Search)
 
-   -- Staged values are readable before Flush(); a rejected value leaves earlier staged changes intact, and Flush()
-   -- commits them together.
+   -- A rejected value fails the whole batch and names its command; a valid batch commits every value together.
 
-   check saturator.acSetKey('drive', 18.5)
-   check saturator.acSetKey('shape', 1)
-   assert(saturator.acSetKey('gain', 13) is ERR_InvalidValue)
-   check saturator.acSetKey('gain', -9.25)
-   check saturator.acSetKey('mix', 42)
+   err, failed = saturator.mtBatch(array<str> { 'set drive 18.5', 'set shape 1', 'set gain 13' })
+   assert(err is ERR_InvalidValue and failed is 2, f'The last command must fail, got {err} at {failed}')
    err, value_text = saturator.acGetKey('drive')
-   value = tonumber(value_text)
-   assert(err is ERR_Okay and value is 18.5, 'Staged values must be readable')
-   check saturator.acFlush()
+   assert(err is ERR_Okay and tonumber(value_text) != 18.5, 'A rejected batch must change nothing')
+   check saturator.mtBatch(array<str> { 'set drive 18.5', 'set shape 1', 'set gain -9.25', 'set mix 42' })
    for key, expected in pairs({ drive=18.5, shape=1, gain=-9.25, mix=42 }) do
       err, value_text = saturator.acGetKey(key)
       value = tonumber(value_text)
-      assert(err is ERR_Okay and value is expected, f'{key} should be {expected} after Flush(), got {value}')
+      assert(err is ERR_Okay and value is expected, f'{key} should be {expected} after Batch(), got {value}')
    end
 end
 
@@ -147,9 +144,8 @@ end
    saturator <close> = obj.new('AudioSaturator')
    saturator.audio = audio
    saturator.channel = channel
-   check saturator.acSetKey('drive', 30)
-   check saturator.acSetKey('shape', 1)
-   assert(saturator.acSetKey('mix', 101) is ERR_InvalidValue)
+   check saturator.mtBatch(array<str> { 'set drive 30', 'set shape 1' })
+   assert(saturator.mtBatch(array<str> { 'set mix 101' }) is ERR_InvalidValue)
    saturator.init()
    for key, expected in pairs({ drive=30, shape=1, gain=-6, mix=100 }) do
       err, value_text = saturator.acGetKey(key)
@@ -168,10 +164,7 @@ end
       raise 'Latency must not be readable before the output is configured'
    end
 
-   check saturator.acSetKey('drive', 36)
-   check saturator.acSetKey('shape', 1)
-   check saturator.acSetKey('gain', -36)
-   check saturator.acFlush()
+   check saturator.mtBatch(array<str> { 'set drive 36', 'set shape 1', 'set gain -36' })
    check audio.acActivate()
    assert(saturator.latency is 64, f'The oversampling filters delay by 64 frames, got {saturator.latency}')
    err, rate, format, layout, generation, state = saturator.mtGetProcessingFormat()
@@ -202,11 +195,8 @@ end
 
    -- Live edits, including a shape crossfade, never change the latency.
 
-   check saturator.acSetKey('shape', 0)
-   check saturator.acSetKey('drive', 12)
-   check saturator.acFlush()
-   check saturator.acSetKey('mix', 0)
-   check saturator.acFlush()
+   check saturator.mtBatch(array<str> { 'set shape 0', 'set drive 12' })
+   check saturator.mtBatch(array<str> { 'set mix 0' })
    assert(saturator.latency is 64, 'Parameter changes must not alter the latency')
 
    -- Bypass removes the latency; leaving bypass restores it.
@@ -228,7 +218,7 @@ end
    check audio.mtCloseChannels(channel)
    err, reading = saturator.mtReadMeters()
    assert(err is ERR_Okay and reading.flags is AMF_DISCONNECTED)
-   assert(saturator.acSetKey('mix', 50) is ERR_NotInitialised)
+   assert(saturator.mtBatch(array<str> { 'set mix 50' }) is ERR_NotInitialised)
    saturator.free()
 end
 
@@ -250,11 +240,10 @@ end
 @Test function MonoAndGlobalImmutability()
    audio <close> = obj.new('Audio', { device='null', outputRate=44100, outputLayout=array<int> { SPK_CENTRE } })
    saturator = audio.new('AudioSaturator')
-   check saturator.acSetKey('shape', 1)
-   check saturator.acSetKey('drive', 20)
+   check saturator.mtBatch(array<str> { 'set shape 1', 'set drive 20' })
    saturator.init()
    assert(saturator.mutable is 0)
-   assert(saturator.acSetKey('drive', 12) is ERR_Immutable)
+   assert(saturator.mtBatch(array<str> { 'set drive 12' }) is ERR_Immutable)
    err, value_text = saturator.acGetKey('shape')
    value = tonumber(value_text)
    assert(err is ERR_Okay and value is 1, 'Global effects remain readable')
@@ -282,8 +271,7 @@ end
          state_at_stop = state
       end })
    saturator <close> = obj.new('AudioSaturator', { audio=audio, channel=sound.channelIndex & 0xffff0000 })
-   check saturator.acSetKey('drive', 24)
-   check saturator.acFlush()
+   check saturator.mtBatch(array<str> { 'set drive 24' })
    check sound.acActivate()
    wait_for_stop(count, 20)
    assert(count.stops is 1, 'OnStop must be delivered once')
@@ -298,7 +286,7 @@ end
    first = audio.new('AudioSaturator')
    first.init()
    second = audio.new('AudioSaturator')
-   check second.acSetKey('shape', 1)
+   check second.mtBatch(array<str> { 'set shape 1' })
    second.init()
    check audio.acActivate()
    count = { stops=0 }
@@ -361,6 +349,12 @@ end
    success
       raise 'An output rate below 8000 Hz must be rejected'
    end
+end
+
+-- Every schema parameter has a typed field that follows the shared field semantics.
+
+@Test function TypedFields()
+   effect_fields.checkFields('AudioSaturator')
 end
 
 @end

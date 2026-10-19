@@ -41,11 +41,9 @@ constexpr double SATURATOR_BETA = 10.0;      // Kaiser window parameter
 constexpr double SATURATOR_SILENCE = 1e-30;  // Input magnitudes below this are treated as silence
 constexpr double SATURATOR_DB_TO_LOG = std::numbers::ln10 / 20.0;
 
-enum { SATURATE_SOFT = 0, SATURATE_HARD = 1 };
-
 struct SaturatorSettings {
    double Drive = 6;          // dB
-   int Shape = SATURATE_SOFT;
+   SATS Shape = SATS::SOFT;
    double Gain = -6;          // dB
    double Mix = 100;          // Percent
 };
@@ -144,7 +142,7 @@ inline bool saturator_target(const SaturatorSettings &Settings, int Rate, Satura
    Target.SampleRate = Rate;
    Target.Drive      = Settings.Drive;
    Target.DriveGain  = std::exp(Settings.Drive * SATURATOR_DB_TO_LOG);
-   Target.Blend      = (Settings.Shape IS SATURATE_HARD) ? 1.0 : 0.0;
+   Target.Blend      = (Settings.Shape IS SATS::HARD) ? 1.0 : 0.0;
    Target.Gain       = Settings.Gain;
    Target.TrimGain   = std::exp(Settings.Gain * SATURATOR_DB_TO_LOG);
    Target.Mix        = Settings.Mix / 100.0;

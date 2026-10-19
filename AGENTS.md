@@ -34,9 +34,13 @@ and the `agents-platform` test or workflow preset for that tree.
 **Testing:**
 
 - Always install your latest build before running `ctest`.
-- Run all registered tests: `ctest --preset agents`.
-- Run tests with a specific label: `ctest --preset agents -L TEST_LABEL`.
-- Explicit alternative: `ctest --build-config Debug --test-dir build/agents --output-on-failure` (append `-L TEST_LABEL` to filter).
+- Always run `ctest` through a test preset.  Run the standard test suite with `ctest --preset agents`.
+- Filter by label with `-L TEST_LABEL` or by test name with `-R TEST_NAME`, e.g. `ctest --preset agents -L xquery`.
+- Audio module integration tests (labels prefixed `audio_`) are excluded from the standard presets.  Run them
+  explicitly with `ctest --preset agents-audio`, optionally adding `-R audio_reverb` for a single test.  The
+  `debug-audio` and `debug-static-audio` presets do the same for the `debug` and `debug-static` trees.
+- For the `agents-platform` tree, use the `agents-platform` and `agents-platform-audio` test presets.
+- Do not invoke `ctest --test-dir` directly.  It bypasses the preset filters and runs every registered test.
 - Tiri tests are always written for the Flute tool.
 - Use the `flute-testing` skill before writing, reviewing, planning, or running Flute tests.
 - When running the Origo executable for individual tests, append `--log-warning` at a minimum for log messages, or `--log-api` if more detail is required.  Log output is directed to stderr.

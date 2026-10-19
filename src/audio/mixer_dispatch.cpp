@@ -65,6 +65,11 @@ static int resampler_mix(const AudioConfig &Config, const MixingParams &Params)
    const double bank = cutoff * glSincCutoffs;
    const int lower = std::min(int(bank), glSincCutoffs - 1);
    const double blend = bank - lower;
+   // The full-band kernel is zero at every integer offset except its centre, so unity and integer-aligned
+   // upsampling positions reduce to a single tap.  Omitted taps are only sin(pi*k) rounding residue.
+   const bool full_band = cutoff >= 1;
+   const double centre = glSincTable.Coefficients[glSincCutoffs][0][glSincPast];
+   const bool looping = Params.loop_type != LTYPE::NIL and Params.loop_end > Params.loop_start;
    for (int frame = 0; frame < Params.total_samples; ++frame) {
       if (Params.transition) resampler_transition(*Params.transition, Config.resampler);
       const int base = position >> 16;
@@ -90,21 +95,37 @@ static int resampler_mix(const AudioConfig &Config, const MixingParams &Params)
             }
          }
          const double sinc_weight = weight(ResamplerMode::SINC);
-         if (sinc_weight) {
+         if (sinc_weight and full_band and !(position & 0xffff)) {
+            const auto index = sinc_neighbour(Params.origin + base, Params);
+            values[channel] += sinc_weight * centre * SampleTraits<T>::normalize(source[index * channels + channel]);
+         }
+         else if (sinc_weight) {
             const double phase_index = phase * glSincPhases;
             const int row = int(phase_index);
             const double fraction = phase_index - row;
+            // Without a loop, a support that lies entirely within the source maps taps directly to frames.
+            const int64_t first_tap = Params.origin + base - glSincPast;
+            const bool direct = !looping and first_tap >= 0 and first_tap + glSincTaps <= Params.length;
+            auto tap_sample = [&](int Tap) {
+               const auto index = direct ? first_tap + Tap - Params.origin : sinc_neighbour(first_tap + Tap, Params);
+               return SampleTraits<T>::normalize(source[index * channels + channel]);
+            };
             double value = 0;
-            for (int tap = 0; tap < glSincTaps; ++tap) {
+            if (full_band) { // Upsampling and unity use only the top bank (blend is 1)
+               const float *current_row = glSincTable.Coefficients[glSincCutoffs][row];
+               const float *next_row = glSincTable.Coefficients[glSincCutoffs][row + 1];
+               for (int tap = 0; tap < glSincTaps; ++tap) {
+                  value += (current_row[tap] + fraction * (next_row[tap] - current_row[tap])) * tap_sample(tap);
+               }
+            }
+            else for (int tap = 0; tap < glSincTaps; ++tap) {
                const double a = glSincTable.Coefficients[lower][row][tap];
                const double b = glSincTable.Coefficients[lower][row + 1][tap];
                const double c = glSincTable.Coefficients[lower + 1][row][tap];
                const double d = glSincTable.Coefficients[lower + 1][row + 1][tap];
                const double first = a + fraction * (b - a);
                const double second = c + fraction * (d - c);
-               const auto index = sinc_neighbour(Params.origin + base + tap - glSincPast, Params);
-               value += (first + blend * (second - first)) *
-                  SampleTraits<T>::normalize(source[index * channels + channel]);
+               value += (first + blend * (second - first)) * tap_sample(tap);
             }
             values[channel] += sinc_weight * value;
          }

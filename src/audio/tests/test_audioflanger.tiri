@@ -1,6 +1,7 @@
 @if(exists='modules:audio')
 
    module audio as mAudio
+   import './effect_fields'
 
 @BeforeAll function init(State)
    global glFolder = State.folder
@@ -90,7 +91,7 @@ end
    assert(flanger.mtGetOutput('response') is ERR_Search)
 end
 
-@Test function StagedChangesAndValidation()
+@Test function ChangesAndValidation()
    audio <close> = obj.new('Audio', { device='null', outputRate=48000 })
    flanger <close> = new_flanger(audio)
    assert(flanger.mutable is 1)
@@ -98,33 +99,32 @@ end
    -- Every bound is inclusive; values outside it and non-finite values are rejected immediately.
 
    for p in values(PARAMS) do
-      check flanger.acSetKey(p.key, p.min)
-      check flanger.acSetKey(p.key, p.max)
-      assert(flanger.acSetKey(p.key, p.min - 0.001) is ERR_InvalidValue, f'{p.key} below {p.min} must fail')
-      assert(flanger.acSetKey(p.key, p.max + 0.001) is ERR_InvalidValue, f'{p.key} above {p.max} must fail')
-      assert(flanger.acSetKey(p.key, math.huge) is ERR_InvalidValue, f'{p.key} must reject infinity')
-      assert(flanger.acSetKey(p.key, -math.huge) is ERR_InvalidValue, f'{p.key} must reject -infinity')
-      assert(flanger.acSetKey(p.key, math.sqrt(-1)) is ERR_InvalidValue, f'{p.key} must reject NaN')
+      check flanger.mtBatch(array<str> { f'set {p.key} {p.min}', f'set {p.key} {p.max}' })
+      assert(flanger.mtBatch(array<str> { f'set {p.key} {p.min - 0.001}' }) is ERR_InvalidValue,
+         f'{p.key} below {p.min} must fail')
+      assert(flanger.mtBatch(array<str> { f'set {p.key} {p.max + 0.001}' }) is ERR_InvalidValue,
+         f'{p.key} above {p.max} must fail')
+      assert(flanger.mtBatch(array<str> { f'set {p.key} {math.huge}' }) is ERR_InvalidValue,
+         f'{p.key} must reject infinity')
+      assert(flanger.mtBatch(array<str> { f'set {p.key} {-math.huge}' }) is ERR_InvalidValue,
+         f'{p.key} must reject -infinity')
+      assert(flanger.mtBatch(array<str> { f'set {p.key} {math.sqrt(-1)}' }) is ERR_InvalidValue,
+         f'{p.key} must reject NaN')
    end
-   assert(flanger.acSetKey('unknown', 1) is ERR_Search)
-   check flanger.acFlush()
+   assert(flanger.mtBatch(array<str> { 'set unknown 1' }) is ERR_Search)
 
-   -- Staged values are readable before Flush(); a rejected value leaves earlier staged changes intact, and Flush()
-   -- commits them together.  Fractional and negative values are kept.
+   -- A rejected value fails the whole batch and names its command; a valid batch commits every value together.
+   -- Fractional and negative values are kept.
 
-   check flanger.acSetKey('rate', 1.25)
-   check flanger.acSetKey('delay', 2.5)
-   check flanger.acSetKey('depth', 4.75)
-   assert(flanger.acSetKey('feedback', -91) is ERR_InvalidValue)
-   check flanger.acSetKey('feedback', -62.5)
-   err, value_text = flanger.acGetKey('feedback')
-   value = tonumber(value_text)
-   assert(err is ERR_Okay and value is -62.5, 'Staged values must be readable')
-   check flanger.acFlush()
+   err, failed = flanger.mtBatch(array<str> { 'set rate 1.25', 'set delay 2.5', 'set depth 4.75', 'set feedback -91' })
+   assert(err is ERR_InvalidValue and failed is 3, f'The last command must fail, got {err} at {failed}')
+   err, value_text = flanger.acGetKey('rate')
+   assert(err is ERR_Okay and tonumber(value_text) != 1.25, 'A rejected batch must change nothing')
+   check flanger.mtBatch(array<str> { 'set rate 1.25', 'set delay 2.5', 'set depth 4.75', 'set feedback -62.5' })
    for key, expected in pairs({ rate=1.25, delay=2.5, depth=4.75, feedback=-62.5, mix=100 }) do
       err, value_text = flanger.acGetKey(key)
       value = tonumber(value_text)
-      assert(err is ERR_Okay and value is expected, f'{key} should be {expected} after Flush(), got {value}')
+      assert(err is ERR_Okay and value is expected, f'{key} should be {expected} after Batch(), got {value}')
    end
 end
 
@@ -135,9 +135,8 @@ end
    flanger <close> = obj.new('AudioFlanger')
    flanger.audio = audio
    flanger.channel = channel
-   check flanger.acSetKey('delay', 3)
-   check flanger.acSetKey('feedback', -80)
-   assert(flanger.acSetKey('depth', 10.5) is ERR_InvalidValue)
+   check flanger.mtBatch(array<str> { 'set delay 3', 'set feedback -80' })
+   assert(flanger.mtBatch(array<str> { 'set depth 10.5' }) is ERR_InvalidValue)
    flanger.init()
    for key, expected in pairs({ delay=3, feedback=-80, depth=2 }) do
       err, value_text = flanger.acGetKey(key)
@@ -149,8 +148,7 @@ end
 @Test function LivePlayback()
    audio <close> = obj.new('Audio', { device='null', outputRate=48000 })
    flanger, channel = new_flanger(audio)
-   check flanger.acSetKey('mix', 100)
-   check flanger.acFlush()
+   check flanger.mtBatch(array<str> { 'set mix 100' })
    check audio.acActivate()
    assert(flanger.latency is 0, 'The flanger publishes no algorithmic latency, even when fully wet')
    err, rate, format, layout, generation, state = flanger.mtGetProcessingFormat()
@@ -160,14 +158,8 @@ end
 
    -- Simultaneous rate, depth and feedback edits with a delay crossfade, then a queued delay edit.
 
-   check flanger.acSetKey('delay', 4.5)
-   check flanger.acSetKey('rate', 9)
-   check flanger.acSetKey('depth', 10)
-   check flanger.acSetKey('feedback', -90)
-   check flanger.acFlush()
-   check flanger.acSetKey('delay', 0.2)
-   check flanger.acSetKey('mix', 0)
-   check flanger.acFlush()
+   check flanger.mtBatch(array<str> { 'set delay 4.5', 'set rate 9', 'set depth 10', 'set feedback -90' })
+   check flanger.mtBatch(array<str> { 'set delay 0.2', 'set mix 0' })
    assert(flanger.latency is 0, 'Parameter changes must not alter the latency')
 
    err, layout = flanger.mtGetMeterLayout()
@@ -182,18 +174,17 @@ end
    check audio.mtCloseChannels(channel)
    err, reading = flanger.mtReadMeters()
    assert(err is ERR_Okay and reading.flags is AMF_DISCONNECTED)
-   assert(flanger.acSetKey('mix', 50) is ERR_NotInitialised)
+   assert(flanger.mtBatch(array<str> { 'set mix 50' }) is ERR_NotInitialised)
    flanger.free()
 end
 
 @Test function MonoAndGlobalImmutability()
    audio <close> = obj.new('Audio', { device='null', outputRate=44100, outputLayout=array<int> { SPK_CENTRE } })
    flanger = audio.new('AudioFlanger')
-   check flanger.acSetKey('feedback', -45)
-   check flanger.acSetKey('delay', 0.5)
+   check flanger.mtBatch(array<str> { 'set feedback -45', 'set delay 0.5' })
    flanger.init()
    assert(flanger.mutable is 0)
-   assert(flanger.acSetKey('delay', 2) is ERR_Immutable)
+   assert(flanger.mtBatch(array<str> { 'set delay 2' }) is ERR_Immutable)
    err, value_text = flanger.acGetKey('feedback')
    value = tonumber(value_text)
    assert(err is ERR_Okay and value is -45, 'Global settings are retained')
@@ -221,10 +212,7 @@ end
             state_at_stop = state
          end })
       flanger <close> = obj.new('AudioFlanger', { audio=audio, channel=sound.channelIndex & 0xffff0000 })
-      check flanger.acSetKey('delay', 5)
-      check flanger.acSetKey('depth', 10)
-      check flanger.acSetKey('feedback', feedback)
-      check flanger.acFlush()
+      check flanger.mtBatch(array<str> { 'set delay 5', 'set depth 10', f'set feedback {feedback}' })
       check sound.acActivate()
       wait_for_stop(count, 20)
       assert(count.stops is 1, 'OnStop must be delivered once')
@@ -238,12 +226,10 @@ end
 @Test function GlobalChainStop()
    audio <close> = obj.new('Audio', { device='null' })
    first = audio.new('AudioFlanger')
-   check first.acSetKey('delay', 5)
-   check first.acSetKey('feedback', 90)
+   check first.mtBatch(array<str> { 'set delay 5', 'set feedback 90' })
    first.init()
    second = audio.new('AudioFlanger')
-   check second.acSetKey('depth', 10)
-   check second.acSetKey('feedback', -90)
+   check second.mtBatch(array<str> { 'set depth 10', 'set feedback -90' })
    second.init()
    check audio.acActivate()
    count = { stops=0 }
@@ -267,8 +253,7 @@ end
    sound <close> = obj.new('Sound', { audio=audio, path=glFolder .. 'low-tone.wav',
       onStop=function(Sound) count.stops++ end })
    flanger = obj.new('AudioFlanger', { audio=audio, channel=sound.channelIndex & 0xffff0000 })
-   check flanger.acSetKey('feedback', 90)
-   check flanger.acFlush()
+   check flanger.mtBatch(array<str> { 'set feedback 90' })
    check sound.acActivate()
    processing.sleep(0.05)
    flanger.free()
@@ -287,8 +272,7 @@ end
       onStop=function(Sound) count.stops++ end })
    set = sound.channelIndex & 0xffff0000
    flanger <close> = obj.new('AudioFlanger', { audio=audio, channel=set })
-   check flanger.acSetKey('feedback', 90)
-   check flanger.acFlush()
+   check flanger.mtBatch(array<str> { 'set feedback 90' })
    check sound.acActivate()
    wait_for_stop(count, 20)
    assert(count.stops is 1, 'OnStop must be delivered once the drain limit is reached')
@@ -309,6 +293,12 @@ end
    success
       raise 'An output rate below 8000 Hz must be rejected'
    end
+end
+
+-- Every schema parameter has a typed field that follows the shared field semantics.
+
+@Test function TypedFields()
+   effect_fields.checkFields('AudioFlanger')
 end
 
 @end

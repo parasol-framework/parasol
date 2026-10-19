@@ -65,7 +65,7 @@ struct GateTrace {
 
 // A gate with near-instant timing, no hold and no hysteresis, so that steady-state levels follow the static curve.
 
-static GateSettings fast_settings(int Mode = GATE_GATE)
+static GateSettings fast_settings(GTM Mode = GTM::GATE)
 {
    return GateSettings { .Mode = Mode, .Threshold = -40, .Ratio = 2, .Range = 60, .Hysteresis = 0, .Attack = 0.1,
       .Hold = 0, .Release = 5 };
@@ -155,7 +155,7 @@ static void test_configuration(AudioTestContext &Test)
    AUDIO_CHECK(std::abs(target.Attack - std::exp(-1.0 / 96.0)) < 1e-15);
    AUDIO_CHECK(std::abs(target.Release - std::exp(-1.0 / 7200.0)) < 1e-15);
    auto gate = GateSettings();
-   gate.Mode = GATE_GATE;
+   gate.Mode = GTM::GATE;
    gate.Ratio = 20;
    gate.Hold = 0.01;
    AUDIO_REQUIRE(gate_target(gate, 44100, target));
@@ -183,7 +183,7 @@ static void test_expander_curve(AudioTestContext &Test)
 
    for (double ratio : { 1.5, 2.0, 4.0, 20.0 }) {
       for (double level : { -41.0, -45.0, -50.0, -60.0, -75.0, -130.0 }) {
-         auto settings = fast_settings(GATE_EXPANDER);
+         auto settings = fast_settings(GTM::EXPANDER);
          settings.Ratio = ratio;
          GateFixture fixture(48000, false, settings);
          const auto input = square(level, 24000, 1);
@@ -197,7 +197,7 @@ static void test_expander_curve(AudioTestContext &Test)
    }
 
    // At or above the threshold the expander opens and becomes bit-transparent once the attack has settled.
-   GateFixture open(48000, false, fast_settings(GATE_EXPANDER));
+   GateFixture open(48000, false, fast_settings(GTM::EXPANDER));
    const auto loud = square(-39, 24000, 1);
    auto loud_out = loud;
    open.process(loud_out);
@@ -205,7 +205,7 @@ static void test_expander_curve(AudioTestContext &Test)
    AUDIO_CHECK(identical(loud, loud_out, 1000));
 
    // A ratio of 1 never attenuates, so the output is bit-identical from the first frame.
-   auto unity = fast_settings(GATE_EXPANDER);
+   auto unity = fast_settings(GTM::EXPANDER);
    unity.Ratio = 1;
    GateFixture flat(48000, true, unity);
    uint32_t seed = 4;
@@ -244,7 +244,7 @@ static void test_gate_levels(AudioTestContext &Test)
       }
    }
 
-   for (int mode : { GATE_EXPANDER, GATE_GATE }) {
+   for (auto mode : { GTM::EXPANDER, GTM::GATE }) {
       auto settings = fast_settings(mode);
       settings.Range = 0;
       settings.Ratio = 20;
@@ -459,10 +459,10 @@ static void test_blocks(AudioTestContext &Test)
    }
 
    GateSettings edits[3] = { GateSettings(), GateSettings(), GateSettings() };
-   edits[0].Mode = GATE_GATE;
+   edits[0].Mode = GTM::GATE;
    edits[0].Threshold = -30;
    edits[0].Hold = 5;
-   edits[1].Mode = GATE_GATE;    // During the first ramp
+   edits[1].Mode = GTM::GATE;    // During the first ramp
    edits[1].Threshold = -30;
    edits[1].Ratio = 4;
    edits[1].Hysteresis = 12;
@@ -533,7 +533,7 @@ static void test_automation(AudioTestContext &Test)
    auto start = fast_settings();
    GateFixture fixture(48000, true, start);
    auto output = input;
-   auto last = fast_settings(GATE_EXPANDER);
+   auto last = fast_settings(GTM::EXPANDER);
    last.Threshold = -45;
    last.Ratio = 3;
    last.Range = 40;
@@ -542,7 +542,7 @@ static void test_automation(AudioTestContext &Test)
 
    fixture.Processor.process(output.data(), 24000);
    AUDIO_CHECK(std::abs(fixture.Processor.envelope() - 60) < 1e-9);
-   fixture.change(fast_settings(GATE_EXPANDER));
+   fixture.change(fast_settings(GTM::EXPANDER));
    fixture.Processor.process(output.data() + 24000 * 2, 200);
    fixture.change(last);
    fixture.Processor.process(output.data() + 24200 * 2, frames - 24200);
@@ -602,7 +602,7 @@ static void test_reset(AudioTestContext &Test)
 
    // An edit that is still ramping is cancelled by reset, which applies its endpoint immediately.
    auto edited = settings;
-   edited.Mode = GATE_EXPANDER;
+   edited.Mode = GTM::EXPANDER;
    edited.Ratio = 4;
    edited.Range = 30;
    fixture.change(edited);
@@ -674,11 +674,11 @@ static void test_reduction_meter(AudioTestContext &Test)
 static void test_extremes(AudioTestContext &Test)
 {
    const GateSettings extremes[] = {
-      { .Mode = GATE_EXPANDER, .Threshold = -90, .Ratio = 20, .Range = 90, .Hysteresis = 24, .Attack = 0.1,
+      { .Mode = GTM::EXPANDER, .Threshold = -90, .Ratio = 20, .Range = 90, .Hysteresis = 24, .Attack = 0.1,
         .Hold = 0, .Release = 5 },
-      { .Mode = GATE_GATE, .Threshold = 0, .Ratio = 1, .Range = 90, .Hysteresis = 0, .Attack = 100, .Hold = 1000,
+      { .Mode = GTM::GATE, .Threshold = 0, .Ratio = 1, .Range = 90, .Hysteresis = 0, .Attack = 100, .Hold = 1000,
         .Release = 2000 },
-      { .Mode = GATE_EXPANDER, .Threshold = 0, .Ratio = 20, .Range = 90, .Hysteresis = 24, .Attack = 100,
+      { .Mode = GTM::EXPANDER, .Threshold = 0, .Ratio = 20, .Range = 90, .Hysteresis = 24, .Attack = 100,
         .Hold = 1000, .Release = 5 }
    };
 

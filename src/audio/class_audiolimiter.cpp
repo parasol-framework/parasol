@@ -11,8 +11,10 @@ Create new limiter objects as a child of an @Audio object or set the inherited #
 #AudioEffect.Channel to process one channel set, or leave it at zero to process the global mix.  Application
 limiters accept live changes; global limiters become immutable after initialisation.
 
-Parameters are published through the inherited @AudioEffect schema and are changed with @AudioEffect.SetKey()
-followed by @AudioEffect.Flush():
+Each parameter is available as a field, such as #Ceiling and #Gain.  Field writes before initialisation are
+range-checked and stored; after initialisation each write is validated and applied immediately.  The same parameters are
+published through the inherited @AudioEffect schema under lower-case keys, where they can be changed together with
+@AudioEffect.Batch():
 
 <list type="bullet">
 <li>`ceiling`: the greatest permitted output sample magnitude, in dB relative to full scale, from -24 to 0 dB.</li>
@@ -21,13 +23,17 @@ followed by @AudioEffect.Flush():
 of the signal and the limiter holds the result below the ceiling.</li>
 </list>
 
-The following limits a playing channel set, raising its level by 6 dB with a ceiling of -0.5 dB, as a single change:
+The following limits a playing channel set, raising its level by 6 dB with a ceiling of -0.5 dB:
 
 <pre>
-limiter = obj.new('AudioLimiter', { audio=audio, channel=channel })
-limiter.acSetKey('ceiling', -0.5)
-limiter.acSetKey('gain', 6)
-limiter.acFlush()
+limiter = obj.new('AudioLimiter', { audio=audio, channel=channel, ceiling=-0.5, gain=6 })
+</pre>
+
+Every field write after initialisation is a separate change.  To change several parameters in a single step, apply them
+together with @AudioEffect.Batch():
+
+<pre>
+limiter.mtBatch(array&lt;str&gt; { 'set ceiling -1', 'set gain 9' })
 </pre>
 
 <header>Detection and Ceiling</header>
@@ -213,9 +219,39 @@ static ERR AUDIOLIMITER_Init(extAudioLimiter *Self)
    return error;
 }
 
-//********************************************************************************************************************
+/*********************************************************************************************************************
+
+-FIELD-
+Ceiling: The greatest permitted output sample magnitude, in dBFS.
+
+The range is -24 to 0 dBFS and the default is -1 dBFS.  This field mirrors the `ceiling` schema key.  To change it
+together with other parameters in a single step, use @AudioEffect.Batch().
+
+-FIELD-
+Gain: Gain, in decibels, applied to the input before peak detection.
+
+The range is -24 to 24 dB and the default is 0 dB.  The limiter holds the result below the #Ceiling.  This field mirrors
+the `gain` schema key.  To change it together with other parameters in a single step, use @AudioEffect.Batch().
+
+-FIELD-
+Release: The time constant, in milliseconds, with which gain reduction recovers after a peak has passed.
+
+The range is 5 to 1000 ms and the default is 100 ms.  This field mirrors the `release` schema key.  To change it
+together with other parameters in a single step, use @AudioEffect.Batch().
+
+*********************************************************************************************************************/
 
 #include "class_audiolimiter_def.c"
+
+static const FieldArray clAudioLimiterFields[] = {
+   { "Ceiling",    FDF_VIRTUAL|FDF_DOUBLE|FDF_RW|FDF_PURE,
+     effect_settings_get<extAudioLimiter, &LimiterSettings::Ceiling>, effect_param_set<LM_CEILING> },
+   { "Release",    FDF_VIRTUAL|FDF_DOUBLE|FDF_RW|FDF_PURE,
+     effect_settings_get<extAudioLimiter, &LimiterSettings::Release>, effect_param_set<LM_RELEASE> },
+   { "Gain",       FDF_VIRTUAL|FDF_DOUBLE|FDF_RW|FDF_PURE,
+     effect_settings_get<extAudioLimiter, &LimiterSettings::Gain>, effect_param_set<LM_GAIN> },
+   END_FIELD
+};
 
 //********************************************************************************************************************
 
@@ -227,6 +263,7 @@ static ERR add_audiolimiter_class()
       fl::Name("AudioLimiter"),
       fl::Category(CCF::AUDIO),
       fl::Actions(clAudioLimiterActions),
+      fl::Fields(clAudioLimiterFields),
       fl::Size(sizeof(extAudioLimiter)),
       fl::Path(MOD_PATH));
    return clAudioLimiter ? ERR::Okay : ERR::AddClass;

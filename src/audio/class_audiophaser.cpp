@@ -14,8 +14,10 @@ Create new phaser objects as a child of an @Audio object or set the inherited #A
 #AudioEffect.Channel to process one channel set, or leave it at zero to process the global mix.  Application phasers
 accept live changes; global phasers become immutable after initialisation.
 
-Parameters are published through the inherited @AudioEffect schema and are changed with @AudioEffect.SetKey()
-followed by @AudioEffect.Flush():
+Each parameter is available as a field, such as #Rate and #Centre.  Field writes before initialisation are range-checked
+and stored; after initialisation each write is validated and applied immediately.  The same parameters are published
+through the inherited @AudioEffect schema under lower-case keys, where they can be changed together with
+@AudioEffect.Batch():
 
 <list type="bullet">
 <li>`rate`: the frequency of the sweep, from 0.02 to 10 Hz.  Slow rates give a gradual sweep and fast rates a
@@ -32,14 +34,17 @@ deepest notches and 100 percent outputs only the filtered signal, in which the p
 vibrato.</li>
 </list>
 
-The following adds a slow, resonant sweep to a playing channel set, as a single change:
+The following adds a slow, resonant sweep to a playing channel set:
 
 <pre>
-phaser = obj.new('AudioPhaser', { audio=audio, channel=channel })
-phaser.acSetKey('rate', 0.15)
-phaser.acSetKey('depth', 90)
-phaser.acSetKey('feedback', 60)
-phaser.acFlush()
+phaser = obj.new('AudioPhaser', { audio=audio, channel=channel, rate=0.15, depth=90, feedback=60 })
+</pre>
+
+Every field write after initialisation is a separate change.  To change several parameters in a single step, apply them
+together with @AudioEffect.Batch():
+
+<pre>
+phaser.mtBatch(array&lt;str&gt; { 'set rate 5', 'set centre 2000', 'set depth 30' })
 </pre>
 
 Other useful combinations include a subtle swirl with `rate` 0.3, `depth` 40, `feedback` 0 and `mix` 40; a hollow,
@@ -73,7 +78,7 @@ outside the normalised mixing contract and are treated as silence.
 <header>Live Changes</header>
 
 Changes to every parameter ramp linearly over 10 ms from their current values.  The rate ramps as a frequency, so
-the oscillator continues smoothly from its current phase, and the centre ramps in octaves.  Flush preserves the
+the oscillator continues smoothly from its current phase, and the centre ramps in octaves.  A commit preserves the
 filter history and the oscillator phase.  Setting the mix to zero leaves the phaser running, so raising it again
 reveals the filtered audio that is present.
 
@@ -244,9 +249,57 @@ static ERR AUDIOPHASER_Init(extAudioPhaser *Self)
    return error;
 }
 
-//********************************************************************************************************************
+/*********************************************************************************************************************
+
+-FIELD-
+Centre: The frequency at the geometric centre of the sweep, in hertz.
+
+The range is 100 to 4000 Hz and the default is 800 Hz.  This field mirrors the `centre` schema key.  To change it
+together with other parameters in a single step, use @AudioEffect.Batch().
+
+-FIELD-
+Depth: How far the sweep travels either side of the centre, as a percentage of two octaves.
+
+The range is 0 to 100% and the default is 60%.  Zero holds the notches still.  This field mirrors the `depth` schema
+key.  To change it together with other parameters in a single step, use @AudioEffect.Batch().
+
+-FIELD-
+Feedback: The signed proportion of the filtered signal fed back into the filters, as a percentage.
+
+The range is -80 to 80% and the default is 20%.  Higher magnitudes give stronger resonance; negative values move the
+resonant peaks.  This field mirrors the `feedback` schema key.  To change it together with other parameters in a single
+step, use @AudioEffect.Batch().
+
+-FIELD-
+Mix: The proportion of the filtered signal in the output, as a percentage.
+
+The range is 0 to 100% and the default is 50%.  Zero leaves the input unchanged and 50% gives the deepest notches.  This
+field mirrors the `mix` schema key.  To change it together with other parameters in a single step, use
+@AudioEffect.Batch().
+
+-FIELD-
+Rate: The frequency of the sweep, in hertz.
+
+The range is 0.02 to 10 Hz and the default is 0.4 Hz.  This field mirrors the `rate` schema key.  To change it together
+with other parameters in a single step, use @AudioEffect.Batch().
+
+*********************************************************************************************************************/
 
 #include "class_audiophaser_def.c"
+
+static const FieldArray clAudioPhaserFields[] = {
+   { "Rate",       FDF_VIRTUAL|FDF_DOUBLE|FDF_RW|FDF_PURE,
+     effect_settings_get<extAudioPhaser, &PhaserSettings::Rate>, effect_param_set<PH_RATE> },
+   { "Centre",     FDF_VIRTUAL|FDF_DOUBLE|FDF_RW|FDF_PURE,
+     effect_settings_get<extAudioPhaser, &PhaserSettings::Centre>, effect_param_set<PH_CENTRE> },
+   { "Depth",      FDF_VIRTUAL|FDF_DOUBLE|FDF_RW|FDF_PURE,
+     effect_settings_get<extAudioPhaser, &PhaserSettings::Depth>, effect_param_set<PH_DEPTH> },
+   { "Feedback",   FDF_VIRTUAL|FDF_DOUBLE|FDF_RW|FDF_PURE,
+     effect_settings_get<extAudioPhaser, &PhaserSettings::Feedback>, effect_param_set<PH_FEEDBACK> },
+   { "Mix",        FDF_VIRTUAL|FDF_DOUBLE|FDF_RW|FDF_PURE,
+     effect_settings_get<extAudioPhaser, &PhaserSettings::Mix>, effect_param_set<PH_MIX> },
+   END_FIELD
+};
 
 //********************************************************************************************************************
 
@@ -258,6 +311,7 @@ static ERR add_audiophaser_class()
       fl::Name("AudioPhaser"),
       fl::Category(CCF::AUDIO),
       fl::Actions(clAudioPhaserActions),
+      fl::Fields(clAudioPhaserFields),
       fl::Size(sizeof(extAudioPhaser)),
       fl::Path(MOD_PATH));
    return clAudioPhaser ? ERR::Okay : ERR::AddClass;

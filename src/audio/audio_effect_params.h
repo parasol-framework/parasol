@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include <charconv>
 #include <cmath>
 #include <format>
 #include <memory>
@@ -340,6 +341,98 @@ inline ERR resolve_path(const AudioEffectSchema &Schema, AudioParamState &State,
       }
    }
    return ERR::Search;
+}
+
+//********************************************************************************************************************
+// Parse a numeric parameter value.  An optional leading plus sign is accepted.  Returns ERR::InvalidValue if the text
+// is empty, has trailing characters or is not finite.
+
+inline ERR parse_param_value(std::string_view Text, double &Value)
+{
+   if (Text.starts_with('+')) {
+      Text.remove_prefix(1);
+      if (Text.starts_with('-')) return ERR::InvalidValue;
+   }
+   if (Text.empty()) return ERR::InvalidValue;
+   double number;
+   auto [end, error] = std::from_chars(Text.data(), Text.data() + Text.size(), number);
+   if ((error != std::errc()) or (end != Text.data() + Text.size())) return ERR::InvalidValue;
+   if (not std::isfinite(number)) return ERR::InvalidValue;
+   Value = number;
+   return ERR::Okay;
+}
+
+//********************************************************************************************************************
+// Parse a value for a descriptor.  Enumerations also accept an option key, e.g. `low_shelf`.
+
+inline ERR parse_param_value(const AudioParamDesc &Desc, std::string_view Text, double &Value)
+{
+   if (Desc.Type IS APT::ENUM) {
+      for (const auto &option : Desc.Options) {
+         if (Text IS option.Key) {
+            Value = double(option.Value);
+            return ERR::Okay;
+         }
+      }
+   }
+   return parse_param_value(Text, Value);
+}
+
+//********************************************************************************************************************
+// Parse a group entry index.  Returns ERR::Syntax if the text is not a plain decimal number, and ERR::OutOfRange if it
+// exceeds the range of an int.
+
+inline ERR parse_entry_index(std::string_view Text, int &Index)
+{
+   if (Text.empty()) return ERR::Syntax;
+   int64_t index = 0;
+   for (auto c : Text) {
+      if ((c < '0') or (c > '9')) return ERR::Syntax;
+      index = (index * 10) + (c - '0');
+      if (index > 0x7fffffff) return ERR::OutOfRange;
+   }
+   Index = int(index);
+   return ERR::Okay;
+}
+
+//********************************************************************************************************************
+// A command for AudioEffect.Batch().  Every verb takes a target (a key-path for SET, a group key otherwise) and an
+// argument (a value for SET, an entry index otherwise).
+
+enum class ABV : int8_t { SET, INSERT, REMOVE };  // Batch verb
+
+struct AudioBatchCommand {
+   ABV Verb = ABV::SET;
+   std::string_view Target;
+   std::string_view Argument;
+};
+
+// Split a command into tokens separated by spaces or tabs.  Returns ERR::Syntax for an empty command, an unknown verb
+// or the wrong number of tokens.  The command's tokens are referenced, not copied.
+
+inline ERR parse_batch_command(std::string_view Command, AudioBatchCommand &Result)
+{
+   std::string_view tokens[4];
+   size_t count = 0;
+   size_t i = 0;
+   while (i < Command.size()) {
+      if ((Command[i] IS ' ') or (Command[i] IS '\t')) { i++; continue; }
+      const auto start = i;
+      while ((i < Command.size()) and (Command[i] != ' ') and (Command[i] != '\t')) i++;
+      if (count >= std::size(tokens)) return ERR::Syntax;
+      tokens[count++] = Command.substr(start, i - start);
+   }
+
+   if (count != 3) return ERR::Syntax;
+
+   if (tokens[0] IS "set") Result.Verb = ABV::SET;
+   else if (tokens[0] IS "insert") Result.Verb = ABV::INSERT;
+   else if (tokens[0] IS "remove") Result.Verb = ABV::REMOVE;
+   else return ERR::Syntax;
+
+   Result.Target   = tokens[1];
+   Result.Argument = tokens[2];
+   return ERR::Okay;
 }
 
 //********************************************************************************************************************

@@ -1,6 +1,7 @@
 @if(exists='modules:audio')
 
    module audio as mAudio
+   import './effect_fields'
 
 -- Published parameters in schema order, with their defaults, units and scales.
 
@@ -96,39 +97,38 @@ end
    end
 end
 
-@Test function StagedChangesAndValidation()
+@Test function ChangesAndValidation()
    audio <close> = obj.new('Audio', { device='null', outputRate=48000 })
    leveller <close> = new_leveller(audio)
    assert(leveller.mutable is 1)
 
    for p in values(PARAMS) do
-      check leveller.acSetKey(p.key, p.min)
-      check leveller.acSetKey(p.key, p.max)
-      assert(leveller.acSetKey(p.key, p.min - 0.001) is ERR_InvalidValue, f'{p.key} below {p.min} must fail')
-      assert(leveller.acSetKey(p.key, p.max + 0.001) is ERR_InvalidValue, f'{p.key} above {p.max} must fail')
-      assert(leveller.acSetKey(p.key, math.huge) is ERR_InvalidValue, f'{p.key} must reject infinity')
-      assert(leveller.acSetKey(p.key, math.sqrt(-1)) is ERR_InvalidValue, f'{p.key} must reject NaN')
+      check leveller.mtBatch(array<str> { f'set {p.key} {p.min}', f'set {p.key} {p.max}' })
+      assert(leveller.mtBatch(array<str> { f'set {p.key} {p.min - 0.001}' }) is ERR_InvalidValue,
+         f'{p.key} below {p.min} must fail')
+      assert(leveller.mtBatch(array<str> { f'set {p.key} {p.max + 0.001}' }) is ERR_InvalidValue,
+         f'{p.key} above {p.max} must fail')
+      assert(leveller.mtBatch(array<str> { f'set {p.key} {math.huge}' }) is ERR_InvalidValue,
+         f'{p.key} must reject infinity')
+      assert(leveller.mtBatch(array<str> { f'set {p.key} {math.sqrt(-1)}' }) is ERR_InvalidValue,
+         f'{p.key} must reject NaN')
    end
 
-   check leveller.acSetKey('link', 0)
-   check leveller.acSetKey('link', 1)
+   check leveller.mtBatch(array<str> { 'set link 0', 'set link 1' })
    for bad in values({ -1, 2, 0.5 }) do
-      assert(leveller.acSetKey('link', bad) is ERR_InvalidValue, f'Link must reject {bad}')
+      assert(leveller.mtBatch(array<str> { f'set link {bad}' }) is ERR_InvalidValue, f'Link must reject {bad}')
    end
-   assert(leveller.acSetKey('unknown', 1) is ERR_Search)
-   check leveller.acFlush()
+   assert(leveller.mtBatch(array<str> { 'set unknown 1' }) is ERR_Search)
 
-   -- Staged values are readable before Flush(); a rejected value leaves earlier staged changes intact.
+   -- A rejected value fails the whole batch and names its command; a valid batch commits every value together.
 
-   check leveller.acSetKey('target', -23)
-   check leveller.acSetKey('link', 0)
-   assert(leveller.acSetKey('response', 100) is ERR_InvalidValue)
-   check leveller.acSetKey('max_boost', 6.5)
-   assert(get_number(leveller, 'target') is -23, 'Staged values must be readable')
-   check leveller.acFlush()
+   err, failed = leveller.mtBatch(array<str> { 'set target -23', 'set link 0', 'set response 100' })
+   assert(err is ERR_InvalidValue and failed is 2, f'The last command must fail, got {err} at {failed}')
+   assert(get_number(leveller, 'target') != -23, 'A rejected batch must change nothing')
+   check leveller.mtBatch(array<str> { 'set target -23', 'set link 0', 'set max_boost 6.5' })
    for key, expected in pairs({ target=-23, link=0, max_boost=6.5, response=30000 }) do
       value = get_number(leveller, key)
-      assert(value is expected, f'{key} should be {expected} after Flush(), got {value}')
+      assert(value is expected, f'{key} should be {expected} after Batch(), got {value}')
    end
 end
 
@@ -139,9 +139,8 @@ end
    leveller <close> = obj.new('AudioLoudness')
    leveller.audio = audio
    leveller.channel = channel
-   check leveller.acSetKey('target', -14)
-   check leveller.acSetKey('link', 0)
-   assert(leveller.acSetKey('gate', -20) is ERR_InvalidValue)
+   check leveller.mtBatch(array<str> { 'set target -14', 'set link 0' })
+   assert(leveller.mtBatch(array<str> { 'set gate -20' }) is ERR_InvalidValue)
    leveller.init()
    assert(get_number(leveller, 'target') is -14)
    assert(get_number(leveller, 'link') is 0)
@@ -154,8 +153,7 @@ end
    check audio.acActivate()
    assert(leveller.latency is 0, 'The leveller adds no latency')
 
-   check leveller.acSetKey('response', 500)
-   check leveller.acFlush()
+   check leveller.mtBatch(array<str> { 'set response 500' })
    play_quiet(audio, channel)
 
    -- The quiet input is measured and boosted.  Linked operation applies the same gain to both channels.
@@ -181,12 +179,8 @@ end
 
    -- Live edits, including unlinking.
 
-   check leveller.acSetKey('target', -30)
-   check leveller.acSetKey('link', 0)
-   check leveller.acFlush()
-   check leveller.acSetKey('max_cut', 3)
-   check leveller.acSetKey('gate', -40)
-   check leveller.acFlush()
+   check leveller.mtBatch(array<str> { 'set target -30', 'set link 0' })
+   check leveller.mtBatch(array<str> { 'set max_cut 3', 'set gate -40' })
 
    leveller.flags = AEF_BYPASS
    err, reading = leveller.mtReadMeters()
@@ -197,17 +191,17 @@ end
    check audio.mtCloseChannels(channel)
    err, reading = leveller.mtReadMeters()
    assert(err is ERR_Okay and reading.flags is AMF_DISCONNECTED)
-   assert(leveller.acSetKey('target', -20) is ERR_NotInitialised)
+   assert(leveller.mtBatch(array<str> { 'set target -20' }) is ERR_NotInitialised)
    leveller.free()
 end
 
 @Test function MonoAndGlobalImmutability()
    audio <close> = obj.new('Audio', { device='null', outputRate=44100, outputLayout=array<int> { SPK_CENTRE } })
    leveller = audio.new('AudioLoudness')
-   check leveller.acSetKey('target', -23)
+   check leveller.mtBatch(array<str> { 'set target -23' })
    leveller.init()
    assert(leveller.mutable is 0)
-   assert(leveller.acSetKey('target', -16) is ERR_Immutable)
+   assert(leveller.mtBatch(array<str> { 'set target -16' }) is ERR_Immutable)
    assert(get_number(leveller, 'target') is -23, 'Global effects remain readable')
    check audio.acActivate()
    meters = meter_layout(leveller)
@@ -230,6 +224,12 @@ end
    success
       raise 'An output rate below 8000 Hz must be rejected'
    end
+end
+
+-- Every schema parameter has a typed field that follows the shared field semantics.
+
+@Test function TypedFields()
+   effect_fields.checkFields('AudioLoudness')
 end
 
 @end

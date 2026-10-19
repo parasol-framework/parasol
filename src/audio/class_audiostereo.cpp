@@ -17,8 +17,10 @@ Create new stereo objects as a child of an @Audio object or set the inherited #A
 #AudioEffect.Channel to process one channel set, or leave it at zero to process the global mix.  Application effects
 accept live changes; global effects become immutable after initialisation.
 
-Parameters are published through the inherited @AudioEffect schema and are changed with @AudioEffect.SetKey()
-followed by @AudioEffect.Flush():
+Each parameter is available as a field, such as #Width and #Balance.  Field writes before initialisation are
+range-checked and stored; after initialisation each write is validated and applied immediately.  The same parameters are
+published through the inherited @AudioEffect schema under lower-case keys, where they can be changed together with
+@AudioEffect.Batch():
 
 <list type="bullet">
 <li>`width`: the side level, from 0 to 200 percent.  Zero gives mono output and 100 leaves the image unchanged.</li>
@@ -33,14 +35,17 @@ enabled.</li>
 <li>`gain`: the output trim, from -24 to 12 dB.</li>
 </list>
 
-The following centres everything below 120 Hz while leaving the rest of the image unchanged, as a single change:
+The following centres everything below 120 Hz while leaving the rest of the image unchanged:
 
 <pre>
-stereo = obj.new('AudioStereo', { audio=audio, channel=channel })
-stereo.acSetKey('split', 1)
-stereo.acSetKey('crossover', 120)
-stereo.acSetKey('bass_width', 0)
-stereo.acFlush()
+stereo = obj.new('AudioStereo', { audio=audio, channel=channel, split=1, crossover=120, bassWidth=0 })
+</pre>
+
+Every field write after initialisation is a separate change.  To change several parameters in a single step, apply them
+together with @AudioEffect.Batch():
+
+<pre>
+stereo.mtBatch(array&lt;str&gt; { 'set width 150', 'set bass_width 100' })
 </pre>
 
 Other useful combinations include a wider image with `width` 140; a mono check with `width` 0; a broader image with
@@ -80,7 +85,7 @@ Changes to `width`, `bass_width`, `balance`, `gain` and `split` ramp linearly ov
 Enabling or disabling `split` leaves content well above the crossover at its width throughout the ramp.
 A change to `swap` ramps the side signal through zero to its inverse over 10 ms, so the image passes briefly through
 mono rather than jumping.  A change to `crossover` crossfades from the old filter to the new one over 10 ms; further
-changes during a crossfade take effect when it ends.  Flush preserves the filter history.
+changes during a crossfade take effect when it ends.  A commit preserves the filter history.
 
 Device reactivation, rate or layout changes and leaving bypass discard the filter history and apply the latest
 parameters without a transition.
@@ -256,9 +261,72 @@ static ERR AUDIOSTEREO_Init(extAudioStereo *Self)
    return error;
 }
 
-//********************************************************************************************************************
+/*********************************************************************************************************************
+
+-FIELD-
+Balance: The left-right balance, as a percentage.
+
+The range is -100 to 100% and the default is 0%.  Negative values attenuate the right channel and positive values
+attenuate the left.  This field mirrors the `balance` schema key.  To change it together with other parameters in a
+single step, use @AudioEffect.Batch().
+
+-FIELD-
+BassWidth: The level of the difference between the channels below the crossover, as a percentage.
+
+The range is 0 to 200% and the default is 0%.  Zero gives mono bass.  Ignored unless #Split is set.  This field mirrors
+the `bass_width` schema key.  To change it together with other parameters in a single step, use @AudioEffect.Batch().
+
+-FIELD-
+Crossover: The frequency, in hertz, below which #BassWidth applies instead of #Width.
+
+The range is 40 to 1000 Hz and the default is 150 Hz.  Ignored unless #Split is set.  This field mirrors the `crossover`
+schema key.  To change it together with other parameters in a single step, use @AudioEffect.Batch().
+
+-FIELD-
+Gain: The output trim, in decibels.
+
+The range is -24 to 12 dB and the default is 0 dB.  This field mirrors the `gain` schema key.  To change it together
+with other parameters in a single step, use @AudioEffect.Batch().
+
+-FIELD-
+Split: Applies a separate width below the crossover frequency.
+
+Set to 1 to apply #BassWidth instead of #Width below the #Crossover frequency.  The default is 0.  This field mirrors
+the `split` schema key.  To change it together with other parameters in a single step, use @AudioEffect.Batch().
+
+-FIELD-
+Swap: Exchanges the left and right channels before the width is applied.
+
+Set to 1 to exchange the channels.  The default is 0.  This field mirrors the `swap` schema key.  To change it together
+with other parameters in a single step, use @AudioEffect.Batch().
+
+-FIELD-
+Width: The level of the difference between the channels, as a percentage.
+
+The range is 0 to 200% and the default is 100%.  Zero gives mono output and 100% leaves the image unchanged.  This field
+mirrors the `width` schema key.  To change it together with other parameters in a single step, use @AudioEffect.Batch().
+
+*********************************************************************************************************************/
 
 #include "class_audiostereo_def.c"
+
+static const FieldArray clAudioStereoFields[] = {
+   { "Width",      FDF_VIRTUAL|FDF_DOUBLE|FDF_RW|FDF_PURE,
+     effect_settings_get<extAudioStereo, &StereoSettings::Width>, effect_param_set<ST_WIDTH> },
+   { "Balance",    FDF_VIRTUAL|FDF_DOUBLE|FDF_RW|FDF_PURE,
+     effect_settings_get<extAudioStereo, &StereoSettings::Balance>, effect_param_set<ST_BALANCE> },
+   { "Swap",       FDF_VIRTUAL|FDF_INT|FDF_RW|FDF_PURE,
+     effect_settings_get_int<extAudioStereo, &StereoSettings::Swap>, effect_param_set_int<ST_SWAP> },
+   { "Split",      FDF_VIRTUAL|FDF_INT|FDF_RW|FDF_PURE,
+     effect_settings_get_int<extAudioStereo, &StereoSettings::Split>, effect_param_set_int<ST_SPLIT> },
+   { "Crossover",  FDF_VIRTUAL|FDF_DOUBLE|FDF_RW|FDF_PURE,
+     effect_settings_get<extAudioStereo, &StereoSettings::Crossover>, effect_param_set<ST_CROSSOVER> },
+   { "BassWidth",  FDF_VIRTUAL|FDF_DOUBLE|FDF_RW|FDF_PURE,
+     effect_settings_get<extAudioStereo, &StereoSettings::BassWidth>, effect_param_set<ST_BASS_WIDTH> },
+   { "Gain",       FDF_VIRTUAL|FDF_DOUBLE|FDF_RW|FDF_PURE,
+     effect_settings_get<extAudioStereo, &StereoSettings::Gain>, effect_param_set<ST_GAIN> },
+   END_FIELD
+};
 
 //********************************************************************************************************************
 
@@ -270,6 +338,7 @@ static ERR add_audiostereo_class()
       fl::Name("AudioStereo"),
       fl::Category(CCF::AUDIO),
       fl::Actions(clAudioStereoActions),
+      fl::Fields(clAudioStereoFields),
       fl::Size(sizeof(extAudioStereo)),
       fl::Path(MOD_PATH));
    return clAudioStereo ? ERR::Okay : ERR::AddClass;

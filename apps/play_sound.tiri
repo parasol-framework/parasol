@@ -190,7 +190,7 @@ function parse_value(Param:table, Text:str):any
 end
 
 ----------------------------------------------------------------------------------------------------------------------
--- Group counts include changes that are waiting for Flush().
+-- Read the committed number of entries in a group.
 
 function entry_count(Effect:obj, Group:table):num
    _, count = check Effect.mtGetGroupCount(Group.key)
@@ -198,21 +198,30 @@ function entry_count(Effect:obj, Group:table):num
 end
 
 ----------------------------------------------------------------------------------------------------------------------
--- Check every rule against the staged values, so that a problem can be explained before Flush() rejects it.
--- Flush() discards the working copy when it fails, so this check has to come first.  Returns true if all rules pass.
+-- Read a setting as the pending batch will leave it: a value assigned on the command line, else the committed value,
+-- else the schema default for an entry that the batch creates.
 
-function check_rules(Effect:obj, Schema:table):bool
+function pending_value(Effect:obj, Schema:table, Values:table, Path:str):num
+   if Values[Path] != nil then return Values[Path] end
+   local err, text = Effect.acGetKey(Path)
+   if err is ERR_Okay then return tonumber(text) end
+   return find_param(Schema, Path).default
+end
+
+----------------------------------------------------------------------------------------------------------------------
+-- Check every rule against the pending values, so that a problem can be explained before Batch() rejects it.
+-- Returns true if all rules pass.
+
+function check_rules(Effect:obj, Schema:table, Values:table, Counts:table):bool
    ok = true
    for group in values(Schema.groups) do
-      for index in {0 to entry_count(Effect, group)} do
+      for index in {0 to Counts[group.key]} do
          for m in values(group.members) do
             for rule in values(m.rules) do
                if not rule.inactive then
                   local path = f'{group.key}[{index}].'
-                  local _, sibling_text = Effect.acGetKey(path .. rule.key)
-                  local sibling = tonumber(sibling_text)
-                  local _, value_text = Effect.acGetKey(path .. m.key)
-                  local value = tonumber(value_text)
+                  local sibling = pending_value(Effect, Schema, Values, path .. rule.key)
+                  local value = pending_value(Effect, Schema, Values, path .. m.key)
                   for v in values(rule.values) do
                      if (sibling is v) and (value > rule.max) then
                         sibling_desc = find_param(Schema, path .. rule.key)
@@ -442,8 +451,8 @@ end
 
 ----------------------------------------------------------------------------------------------------------------------
 -- Create an effect on a channel set and apply the command-line assignments to it.  The effect is initialised first,
--- so every change is staged in a working copy and applied as a single step by Flush().  The processor never runs a
--- partially configured state.  Returns nil if an assignment is rejected.
+-- and every change is applied as a single step by Batch(), so the processor never runs a partially configured state.
+-- Returns nil if an assignment is rejected.
 
 rx_assignment = regex.new('^([^=]+)=(.*)$')
 
@@ -454,6 +463,11 @@ function configure(Fx:table, Assignments:array<any>, Audio:obj, Channel:num):obj
       if not configured then effect.free() end
    end
    local schema = Fx.schema
+   local commands = array<str>
+   local paths = array<str>  -- The assignment path for each command, for error reports
+   local pending = {}        -- Assigned values by path
+   local counts = {}         -- Entry counts by group key, including entries that the batch creates
+   for group in values(schema.groups) do counts[group.key] = entry_count(effect, group) end
 
    for assignment in values(Assignments) do
       if assignment is 'on' then continue end
@@ -488,23 +502,32 @@ function configure(Fx:table, Assignments:array<any>, Audio:obj, Channel:num):obj
             return nil
          end
 
-         local count = entry_count(effect, group)
-         while count <= index do
-            check effect.mtInsertEntry(group.key, count)
-            count++
+         while counts[group.key] <= index do
+            commands.push(f'insert {group.key} {counts[group.key]}')
+            paths.push(path)
+            counts[group.key]++
          end
       end
 
-      if effect.acSetKey(path, string.format('%.17g', value)) != ERR_Okay then
-         print(f'{path}: {format_value(param, value)} is not {format_range(param, effect.outputRate)}')
-         return nil
-      end
+      commands.push(f'set {path} {string.format("%.17g", value)}')
+      paths.push(path)
+      pending[path] = value
    end
 
-   -- Rules between parameters are checked once every setting is staged.
+   -- Rules between parameters are checked once every setting is known.
 
-   if not check_rules(effect, schema) then return nil end
-   check effect.acFlush()
+   if not check_rules(effect, schema, pending, counts) then return nil end
+   local err, failed = effect.mtBatch(commands)
+   if err != ERR_Okay then
+      if failed >= 0 then
+         local path = paths[failed]
+         local param = find_param(schema, path)
+         print(f'{path}: {format_value(param, pending[path])} is not {format_range(param, effect.outputRate)}')
+      else
+         print(f'{Fx.name}: the settings were rejected: {mSys.GetErrorMsg(err)}')
+      end
+      return nil
+   end
    configured = true
    return effect
 end

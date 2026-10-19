@@ -16,8 +16,10 @@ Create new crossfeed objects as a child of an @Audio object or set the inherited
 #AudioEffect.Channel to process one channel set, or leave it at zero to process the global mix.  Application effects
 accept live changes; global effects become immutable after initialisation.
 
-Parameters are published through the inherited @AudioEffect schema and are changed with @AudioEffect.SetKey()
-followed by @AudioEffect.Flush():
+Each parameter is available as a field, such as #Amount and #Cutoff.  Field writes before initialisation are
+range-checked and stored; after initialisation each write is validated and applied immediately.  The same parameters are
+published through the inherited @AudioEffect schema under lower-case keys, where they can be changed together with
+@AudioEffect.Batch():
 
 <list type="bullet">
 <li>`amount`: the level of the opposite channel's contribution, from 0 to 50 percent.  Zero disables the crossfeed.</li>
@@ -29,13 +31,17 @@ the opposite ear.</li>
 </list>
 
 The defaults (20 percent, 700 Hz and 0.3 ms) are a moderate setting suitable for most music.  The following gives a
-stronger effect for recordings with hard-panned instruments, as a single change:
+stronger effect for recordings with hard-panned instruments:
 
 <pre>
-crossfeed = obj.new('AudioCrossfeed', { audio=audio, channel=channel })
-crossfeed.acSetKey('amount', 35)
-crossfeed.acSetKey('cutoff', 650)
-crossfeed.acFlush()
+crossfeed = obj.new('AudioCrossfeed', { audio=audio, channel=channel, amount=35, cutoff=650 })
+</pre>
+
+Every field write after initialisation is a separate change.  To change several parameters in a single step, apply them
+together with @AudioEffect.Batch():
+
+<pre>
+crossfeed.mtBatch(array&lt;str&gt; { 'set amount 30', 'set cutoff 300' })
 </pre>
 
 Other useful combinations include a subtle setting with `amount` 10 and `cutoff` 700, and a bass-only blend with
@@ -71,7 +77,7 @@ input.  Non-finite samples are outside the normalised mixing contract and are tr
 
 Changes to `amount`, `cutoff` and `gain` ramp linearly over 10 ms from their current values; the cutoff ramps the filter
 pole, which keeps the low-frequency level constant throughout.  A change to `delay` crossfades from the old delay to
-the new one over 10 ms; further changes during a crossfade take effect when it ends.  Flush preserves the filter and
+the new one over 10 ms; further changes during a crossfade take effect when it ends.  A commit preserves the filter and
 delay history.
 
 Device reactivation, rate or layout changes and leaving bypass discard the history and apply the latest parameters
@@ -226,9 +232,48 @@ static ERR AUDIOCROSSFEED_Init(extAudioCrossfeed *Self)
    return error;
 }
 
-//********************************************************************************************************************
+/*********************************************************************************************************************
+
+-FIELD-
+Amount: The level of the opposite channel's contribution, as a percentage.
+
+The range is 0 to 50% and the default is 20%.  Zero disables the crossfeed.  This field mirrors the `amount` schema key.
+To change it together with other parameters in a single step, use @AudioEffect.Batch().
+
+-FIELD-
+Cutoff: The low-pass corner of the crossfed signal, in hertz.
+
+The range is 100 to 2000 Hz and the default is 700 Hz.  Lower values leave only the bass in the opposite ear.  This
+field mirrors the `cutoff` schema key.  To change it together with other parameters in a single step, use
+@AudioEffect.Batch().
+
+-FIELD-
+Delay: The additional delay of the crossfed signal, in milliseconds.
+
+The range is 0 to 1 ms and the default is 0.3 ms.  This field mirrors the `delay` schema key.  To change it together
+with other parameters in a single step, use @AudioEffect.Batch().
+
+-FIELD-
+Gain: The output trim, in decibels.
+
+The range is -12 to 12 dB and the default is 0 dB.  This field mirrors the `gain` schema key.  To change it together
+with other parameters in a single step, use @AudioEffect.Batch().
+
+*********************************************************************************************************************/
 
 #include "class_audiocrossfeed_def.c"
+
+static const FieldArray clAudioCrossfeedFields[] = {
+   { "Amount",     FDF_VIRTUAL|FDF_DOUBLE|FDF_RW|FDF_PURE,
+     effect_settings_get<extAudioCrossfeed, &CrossfeedSettings::Amount>, effect_param_set<CF_AMOUNT> },
+   { "Cutoff",     FDF_VIRTUAL|FDF_DOUBLE|FDF_RW|FDF_PURE,
+     effect_settings_get<extAudioCrossfeed, &CrossfeedSettings::Cutoff>, effect_param_set<CF_CUTOFF> },
+   { "Delay",      FDF_VIRTUAL|FDF_DOUBLE|FDF_RW|FDF_PURE,
+     effect_settings_get<extAudioCrossfeed, &CrossfeedSettings::Delay>, effect_param_set<CF_DELAY> },
+   { "Gain",       FDF_VIRTUAL|FDF_DOUBLE|FDF_RW|FDF_PURE,
+     effect_settings_get<extAudioCrossfeed, &CrossfeedSettings::Gain>, effect_param_set<CF_GAIN> },
+   END_FIELD
+};
 
 //********************************************************************************************************************
 
@@ -240,6 +285,7 @@ static ERR add_audiocrossfeed_class()
       fl::Name("AudioCrossfeed"),
       fl::Category(CCF::AUDIO),
       fl::Actions(clAudioCrossfeedActions),
+      fl::Fields(clAudioCrossfeedFields),
       fl::Size(sizeof(extAudioCrossfeed)),
       fl::Path(MOD_PATH));
    return clAudioCrossfeed ? ERR::Okay : ERR::AddClass;

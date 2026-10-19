@@ -10,7 +10,7 @@
       "name": "agents",
       "displayName": "Agent Debug build",
       "description": "AGENTS.md defaults. For a static build, configure with -DKOTUKU_STATIC=ON.",
-      "inherits": "debug-modular",
+      "inherits": "debug",
       "binaryDir": "${sourceDir}/build/agents",
       "cacheVariables": {
         "CMAKE_INSTALL_PREFIX": "${sourceDir}/build/agents-install"
@@ -24,7 +24,7 @@
       "binaryDir": "${sourceDir}/build/agents-${hostSystemName}"
     },
     {
-      "name": "debug-modular",
+      "name": "debug",
       "displayName": "Debug modular build",
       "binaryDir": "${sourceDir}/build/presets/${presetName}",
       "cacheVariables": {
@@ -42,7 +42,7 @@
     {
       "name": "debug-static",
       "displayName": "Debug static build",
-      "inherits": "debug-modular",
+      "inherits": "debug",
       "binaryDir": "${sourceDir}/build/presets/${presetName}",
       "cacheVariables": {
         "CMAKE_INSTALL_PREFIX": "${sourceDir}/build/presets-install/${presetName}",
@@ -105,8 +105,8 @@
       "targets": ["build_headers"]
     },
     {
-      "name": "debug-modular-install",
-      "configurePreset": "debug-modular",
+      "name": "debug-install",
+      "configurePreset": "debug",
       "configuration": "Debug",
       "targets": ["install"]
     },
@@ -131,7 +131,7 @@
     {
       "name": "agents",
       "description": "Install the latest build first. Use -L TEST_LABEL to select a test label.",
-      "inherits": "debug-modular",
+      "inherits": "debug",
       "configurePreset": "agents"
     },
     {
@@ -140,20 +140,56 @@
       "configurePreset": "agents-platform"
     },
     {
-      "name": "debug-modular",
-      "configurePreset": "debug-modular",
+      "name": "debug",
+      "configurePreset": "debug",
       "configuration": "Debug",
       "output": {
         "outputOnFailure": true
+      },
+      "filter": {
+        "exclude": {
+          "label": "^audio_"
+        }
       }
     },
     {
       "name": "debug-static",
-      "configurePreset": "debug-static",
+      "inherits": "debug",
+      "configurePreset": "debug-static"
+    },
+    {
+      "name": "audio-base",
+      "hidden": true,
+      "description": "Run the audio module tests, including the integration suite excluded from the standard presets.",
       "configuration": "Debug",
       "output": {
         "outputOnFailure": true
+      },
+      "filter": {
+        "include": {
+          "label": "^audio"
+        }
       }
+    },
+    {
+      "name": "agents-audio",
+      "inherits": "audio-base",
+      "configurePreset": "agents"
+    },
+    {
+      "name": "agents-platform-audio",
+      "inherits": "agents-audio",
+      "configurePreset": "agents-platform"
+    },
+    {
+      "name": "debug-audio",
+      "inherits": "audio-base",
+      "configurePreset": "debug"
+    },
+    {
+      "name": "debug-static-audio",
+      "inherits": "audio-base",
+      "configurePreset": "debug-static"
     }
   ],
   "packagePresets": [
@@ -189,12 +225,12 @@
       ]
     },
     {
-      "name": "debug-modular",
+      "name": "debug",
       "displayName": "Configure, install, and test modular Debug",
       "steps": [
-        {"type": "configure", "name": "debug-modular"},
-        {"type": "build", "name": "debug-modular-install"},
-        {"type": "test", "name": "debug-modular"}
+        {"type": "configure", "name": "debug"},
+        {"type": "build", "name": "debug-install"},
+        {"type": "test", "name": "debug"}
       ]
     },
     {

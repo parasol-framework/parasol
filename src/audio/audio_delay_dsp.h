@@ -36,13 +36,11 @@ constexpr double DELAY_MIN_CORNER = 200;         // Hertz; damping corner at 100
 constexpr double DELAY_MAX_CORNER = 20000;       // Hertz; damping corner as damping approaches zero
 constexpr double DELAY_MAX_CORNER_RATIO = 0.45;  // The damping corner never exceeds this fraction of the rate
 
-enum { DELAY_NORMAL = 0, DELAY_PING_PONG = 1 };
-
 struct DelaySettings {
    double Time = 250;      // Milliseconds
    double Feedback = 30;   // Percent
    double Damping = 25;    // Percent
-   int Mode = DELAY_NORMAL;
+   DLM Mode = DLM::NORMAL;
    double Mix = 25;        // Percent
 };
 
@@ -55,7 +53,7 @@ struct DelayTarget {
    double Coefficient = 1;     // One-pole low-pass coefficient a, in (0, 1]
    double Blend = 0;           // Proportion of the low-pass output in the feedback path
    double Mix = 0;             // Wet proportion, 0 to 1
-   int Mode = DELAY_NORMAL;
+   DLM Mode = DLM::NORMAL;
    uint64_t TailFrames = 0;    // Conservative bound for these values alone
    uint64_t DecayFrames = 0;   // Typical 60 dB decay for these values alone
 };
@@ -326,7 +324,7 @@ public:
       coefficient_end = Next->Coefficient;
       blend_end = Next->Blend;
       mix_end = Next->Mix;
-      routing_end = ((Channels IS 2) and (Next->Mode IS DELAY_PING_PONG)) ? 1.0 : 0.0;
+      routing_end = ((Channels IS 2) and (Next->Mode IS DLM::PING_PONG)) ? 1.0 : 0.0;
       gain_step = (gain_end - gain) / double(ramp_frames);
       coefficient_step = (coefficient_end - coefficient) / double(ramp_frames);
       blend_step = (blend_end - blend) / double(ramp_frames);
@@ -382,7 +380,7 @@ public:
       coefficient = coefficient_end = Target.Coefficient;
       blend = blend_end = Target.Blend;
       mix = mix_end = Target.Mix;
-      routing = routing_end = ((Channels IS 2) and (Target.Mode IS DELAY_PING_PONG)) ? 1.0 : 0.0;
+      routing = routing_end = ((Channels IS 2) and (Target.Mode IS DLM::PING_PONG)) ? 1.0 : 0.0;
       gain_step = coefficient_step = blend_step = mix_step = routing_step = 0;
       tail_cache = Target.TailFrames;
       decay_cache = Target.DecayFrames;

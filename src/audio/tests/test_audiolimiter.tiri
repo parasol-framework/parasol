@@ -1,6 +1,7 @@
 @if(exists='modules:audio')
 
    module audio as mAudio
+   import './effect_fields'
 
 -- Published parameters in schema order, with their defaults, units and scales.
 
@@ -85,7 +86,7 @@ end
    assert(meters[4].channel is 0 and meters[4].label is 'Gain Reduction')
 end
 
-@Test function StagedChangesAndValidation()
+@Test function ChangesAndValidation()
    audio <close> = obj.new('Audio', { device='null', outputRate=48000 })
    limiter <close> = new_limiter(audio)
    assert(limiter.mutable is 1)
@@ -93,32 +94,30 @@ end
    -- Every bound is inclusive; values outside it and non-finite values are rejected immediately.
 
    for p in values(PARAMS) do
-      check limiter.acSetKey(p.key, p.min)
-      check limiter.acSetKey(p.key, p.max)
-      assert(limiter.acSetKey(p.key, p.min - 0.001) is ERR_InvalidValue, f'{p.key} below {p.min} must fail')
-      assert(limiter.acSetKey(p.key, p.max + 0.001) is ERR_InvalidValue, f'{p.key} above {p.max} must fail')
-      assert(limiter.acSetKey(p.key, math.huge) is ERR_InvalidValue, f'{p.key} must reject infinity')
-      assert(limiter.acSetKey(p.key, math.sqrt(-1)) is ERR_InvalidValue, f'{p.key} must reject NaN')
+      check limiter.mtBatch(array<str> { f'set {p.key} {p.min}', f'set {p.key} {p.max}' })
+      assert(limiter.mtBatch(array<str> { f'set {p.key} {p.min - 0.001}' }) is ERR_InvalidValue,
+         f'{p.key} below {p.min} must fail')
+      assert(limiter.mtBatch(array<str> { f'set {p.key} {p.max + 0.001}' }) is ERR_InvalidValue,
+         f'{p.key} above {p.max} must fail')
+      assert(limiter.mtBatch(array<str> { f'set {p.key} {math.huge}' }) is ERR_InvalidValue,
+         f'{p.key} must reject infinity')
+      assert(limiter.mtBatch(array<str> { f'set {p.key} {math.sqrt(-1)}' }) is ERR_InvalidValue,
+         f'{p.key} must reject NaN')
    end
-   assert(limiter.acSetKey('unknown', 1) is ERR_Search)
-   assert(limiter.acSetKey('mix', 50) is ERR_Search)
-   check limiter.acFlush()
+   assert(limiter.mtBatch(array<str> { 'set unknown 1' }) is ERR_Search)
+   assert(limiter.mtBatch(array<str> { 'set mix 50' }) is ERR_Search)
 
-   -- Staged values are readable before Flush(); a rejected value leaves earlier staged changes intact, and Flush()
-   -- commits them together.
+   -- A rejected value fails the whole batch and names its command; a valid batch commits every value together.
 
-   check limiter.acSetKey('ceiling', -3)
-   check limiter.acSetKey('gain', 6)
-   assert(limiter.acSetKey('release', 2000) is ERR_InvalidValue)
-   check limiter.acSetKey('release', 250)
-   err, value_text = limiter.acGetKey('gain')
-   value = tonumber(value_text)
-   assert(err is ERR_Okay and value is 6, 'Staged values must be readable')
-   check limiter.acFlush()
+   err, failed = limiter.mtBatch(array<str> { 'set ceiling -3', 'set gain 6', 'set release 2000' })
+   assert(err is ERR_InvalidValue and failed is 2, f'The last command must fail, got {err} at {failed}')
+   err, value_text = limiter.acGetKey('ceiling')
+   assert(err is ERR_Okay and tonumber(value_text) != -3, 'A rejected batch must change nothing')
+   check limiter.mtBatch(array<str> { 'set ceiling -3', 'set gain 6', 'set release 250' })
    for key, expected in pairs({ ceiling=-3, gain=6, release=250 }) do
       err, value_text = limiter.acGetKey(key)
       value = tonumber(value_text)
-      assert(err is ERR_Okay and value is expected, f'{key} should be {expected} after Flush(), got {value}')
+      assert(err is ERR_Okay and value is expected, f'{key} should be {expected} after Batch(), got {value}')
    end
 end
 
@@ -129,9 +128,8 @@ end
    limiter <close> = obj.new('AudioLimiter')
    limiter.audio = audio
    limiter.channel = channel
-   check limiter.acSetKey('ceiling', -0.5)
-   check limiter.acSetKey('release', 40)
-   assert(limiter.acSetKey('gain', 30) is ERR_InvalidValue)
+   check limiter.mtBatch(array<str> { 'set ceiling -0.5', 'set release 40' })
+   assert(limiter.mtBatch(array<str> { 'set gain 30' }) is ERR_InvalidValue)
    limiter.init()
    err, value_text = limiter.acGetKey('ceiling')
    value = tonumber(value_text)
@@ -158,14 +156,15 @@ end
 
    -- Live edits, including an edit that replaces a gain ramp, never change the latency.
 
-   check limiter.acSetKey('gain', 24)
-   check limiter.acSetKey('ceiling', -6)
-   check limiter.acFlush()
+   check limiter.mtBatch(array<str> { 'set gain 24', 'set ceiling -6' })
    play_loud(audio, channel)
-   check limiter.acSetKey('gain', 12)
-   check limiter.acSetKey('release', 5)
-   check limiter.acFlush()
+   check limiter.mtBatch(array<str> { 'set gain 12', 'set release 5' })
    assert(limiter.latency is 240, 'Parameter changes must not alter the latency')
+
+   -- An edit resets the meter.  The null device can finish the first sound before the edit lands, so replay it to
+   -- guarantee a measured interval after the reset.
+
+   play_loud(audio, channel)
 
    -- The loud input exceeds the ceiling, so the reduction meter reports attenuation once an interval is published.
 
@@ -212,7 +211,7 @@ end
    check audio.mtCloseChannels(channel)
    err, reading = limiter.mtReadMeters()
    assert(err is ERR_Okay and reading.flags is AMF_DISCONNECTED)
-   assert(limiter.acSetKey('gain', 0) is ERR_NotInitialised)
+   assert(limiter.mtBatch(array<str> { 'set gain 0' }) is ERR_NotInitialised)
    limiter.free()
 end
 
@@ -241,10 +240,10 @@ end
 @Test function MonoAndGlobalImmutability()
    audio <close> = obj.new('Audio', { device='null', outputRate=44100, outputLayout=array<int> { SPK_CENTRE } })
    limiter = audio.new('AudioLimiter')
-   check limiter.acSetKey('ceiling', -2)
+   check limiter.mtBatch(array<str> { 'set ceiling -2' })
    limiter.init()
    assert(limiter.mutable is 0)
-   assert(limiter.acSetKey('ceiling', -6) is ERR_Immutable)
+   assert(limiter.mtBatch(array<str> { 'set ceiling -6' }) is ERR_Immutable)
    err, value_text = limiter.acGetKey('ceiling')
    value = tonumber(value_text)
    assert(err is ERR_Okay and value is -2, 'Global effects remain readable')
@@ -268,6 +267,12 @@ end
    success
       raise 'An output rate below 8000 Hz must be rejected'
    end
+end
+
+-- Every schema parameter has a typed field that follows the shared field semantics.
+
+@Test function TypedFields()
+   effect_fields.checkFields('AudioLimiter')
 end
 
 @end

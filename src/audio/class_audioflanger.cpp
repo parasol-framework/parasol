@@ -12,8 +12,10 @@ Create new flanger objects as a child of an @Audio object or set the inherited #
 #AudioEffect.Channel to process one channel set, or leave it at zero to process the global mix.  Application flangers
 accept live changes; global flangers become immutable after initialisation.
 
-Parameters are published through the inherited @AudioEffect schema and are changed with @AudioEffect.SetKey()
-followed by @AudioEffect.Flush():
+Each parameter is available as a field, such as #Rate and #Feedback.  Field writes before initialisation are
+range-checked and stored; after initialisation each write is validated and applied immediately.  The same parameters are
+published through the inherited @AudioEffect schema under lower-case keys, where they can be changed together with
+@AudioEffect.Batch():
 
 <list type="bullet">
 <li>`rate`: the frequency of the sweep, from 0.02 to 10 Hz.  Slow rates give a gradual sweep and fast rates a
@@ -29,14 +31,17 @@ to give a hollower tone.</li>
 notches and 100 percent outputs only the delayed signal.</li>
 </list>
 
-The following adds a slow, resonant sweep to a playing channel set, as a single change:
+The following adds a slow, resonant sweep to a playing channel set:
 
 <pre>
-flanger = obj.new('AudioFlanger', { audio=audio, channel=channel })
-flanger.acSetKey('rate', 0.1)
-flanger.acSetKey('depth', 4)
-flanger.acSetKey('feedback', 70)
-flanger.acFlush()
+flanger = obj.new('AudioFlanger', { audio=audio, channel=channel, rate=0.1, depth=4, feedback=70 })
+</pre>
+
+Every field write after initialisation is a separate change.  To change several parameters in a single step, apply them
+together with @AudioEffect.Batch():
+
+<pre>
+flanger.mtBatch(array&lt;str&gt; { 'set feedback -60', 'set mix 35' })
 </pre>
 
 Other useful combinations include a subtle sweep with `rate` 0.15, `depth` 1.5, `feedback` 0 and `mix` 35; a hollow
@@ -77,7 +82,7 @@ in pitch movement while the ramp moves the delay.
 
 A change to the minimum delay crossfades between two read heads over 10 ms rather than sweeping the delay, so it does
 not produce an extra pitch bend.  Both heads follow the same oscillator.  An edit that arrives during the crossfade
-replaces a single queued delay, which is applied when the current crossfade finishes.  Flush preserves the delayed
+replaces a single queued delay, which is applied when the current crossfade finishes.  A commit preserves the delayed
 audio and the oscillator phase.  Setting the mix to zero leaves the flanger running, so raising it again reveals the
 delayed audio that is present.
 
@@ -245,9 +250,57 @@ static ERR AUDIOFLANGER_Init(extAudioFlanger *Self)
    return error;
 }
 
-//********************************************************************************************************************
+/*********************************************************************************************************************
+
+-FIELD-
+Delay: The shortest delay reached by the sweep, in milliseconds.
+
+The range is 0.1 to 5 ms and the default is 1 ms.  This field mirrors the `delay` schema key.  To change it together
+with other parameters in a single step, use @AudioEffect.Batch().
+
+-FIELD-
+Depth: How far the delay sweeps above its minimum, in milliseconds.
+
+The range is 0 to 10 ms and the default is 2 ms.  Zero disables the modulation.  This field mirrors the `depth` schema
+key.  To change it together with other parameters in a single step, use @AudioEffect.Batch().
+
+-FIELD-
+Feedback: The signed proportion of the delayed signal fed back into the delay, as a percentage.
+
+The range is -90 to 90% and the default is 30%.  Higher magnitudes give stronger resonance; negative values give a
+hollower tone.  This field mirrors the `feedback` schema key.  To change it together with other parameters in a single
+step, use @AudioEffect.Batch().
+
+-FIELD-
+Mix: The proportion of the delayed signal in the output, as a percentage.
+
+The range is 0 to 100% and the default is 50%.  Zero leaves the input unchanged and 50% gives the deepest notches.  This
+field mirrors the `mix` schema key.  To change it together with other parameters in a single step, use
+@AudioEffect.Batch().
+
+-FIELD-
+Rate: The frequency of the delay sweep, in hertz.
+
+The range is 0.02 to 10 Hz and the default is 0.25 Hz.  This field mirrors the `rate` schema key.  To change it together
+with other parameters in a single step, use @AudioEffect.Batch().
+
+*********************************************************************************************************************/
 
 #include "class_audioflanger_def.c"
+
+static const FieldArray clAudioFlangerFields[] = {
+   { "Rate",       FDF_VIRTUAL|FDF_DOUBLE|FDF_RW|FDF_PURE,
+     effect_settings_get<extAudioFlanger, &FlangerSettings::Rate>, effect_param_set<FL_RATE> },
+   { "Delay",      FDF_VIRTUAL|FDF_DOUBLE|FDF_RW|FDF_PURE,
+     effect_settings_get<extAudioFlanger, &FlangerSettings::Delay>, effect_param_set<FL_DELAY> },
+   { "Depth",      FDF_VIRTUAL|FDF_DOUBLE|FDF_RW|FDF_PURE,
+     effect_settings_get<extAudioFlanger, &FlangerSettings::Depth>, effect_param_set<FL_DEPTH> },
+   { "Feedback",   FDF_VIRTUAL|FDF_DOUBLE|FDF_RW|FDF_PURE,
+     effect_settings_get<extAudioFlanger, &FlangerSettings::Feedback>, effect_param_set<FL_FEEDBACK> },
+   { "Mix",        FDF_VIRTUAL|FDF_DOUBLE|FDF_RW|FDF_PURE,
+     effect_settings_get<extAudioFlanger, &FlangerSettings::Mix>, effect_param_set<FL_MIX> },
+   END_FIELD
+};
 
 //********************************************************************************************************************
 
@@ -259,6 +312,7 @@ static ERR add_audioflanger_class()
       fl::Name("AudioFlanger"),
       fl::Category(CCF::AUDIO),
       fl::Actions(clAudioFlangerActions),
+      fl::Fields(clAudioFlangerFields),
       fl::Size(sizeof(extAudioFlanger)),
       fl::Path(MOD_PATH));
    return clAudioFlanger ? ERR::Okay : ERR::AddClass;

@@ -21,18 +21,18 @@ accept live changes; global splitters and the effects in their branches become i
 
 <header>Branches</header>
 
-Branches are published through the inherited @AudioEffect schema as the `branches` group, which holds between one
-and eight entries.  Each entry has two parameters:
+A splitter holds between one and eight branches.  Each branch has two level settings, described by the !AudioBranch
+structure:
 
 <list type="bullet">
-<li>`gain`: the level of the branch output in the sum, from -48 to +12 dB.</li>
-<li>`mute`: when set, the branch is removed from the sum.  A muted branch continues to process its input, so its
+<li>`Gain`: the level of the branch output in the sum, from -48 to +12 dB.</li>
+<li>`Mute`: when set to 1, the branch is removed from the sum.  A muted branch continues to process its input, so its
 effects keep their state and meters.</li>
 </list>
 
-A new splitter has one unmuted branch, so it passes audio through unchanged.  Branches inserted with
-@AudioEffect.InsertEntry() are muted until they are enabled, so that inserting a branch is inaudible.  An empty
-branch passes its copy of the input through unchanged.
+A new splitter has one unmuted branch, so it passes audio through unchanged.  Use #InsertBranch(), #SetBranch() and
+#RemoveBranch() to edit individual branches, and #GetBranch() to read one.  An empty branch passes its copy of the
+input through unchanged.
 
 An effect is attached to a branch by setting its @AudioEffect.Parent field to the splitter and its @AudioEffect.Branch
 field to the branch index, or by creating it as a child of the splitter.  The splitter must be initialised first.
@@ -41,11 +41,16 @@ set:
 
 <pre>
 splitter = obj.new('AudioSplitter', { audio=audio, channel=channel })
-splitter.mtInsertEntry('branches', 1)
-splitter.acSetKey('branches[1].mute', 0)
-splitter.acSetKey('branches[1].gain', -6)
-splitter.acFlush()
+check splitter.mtInsertBranch(1, struct.new('AudioBranch', { gain=-6, mute=0 }))
 compressor = splitter.new('AudioCompressor', { branch=1 })
+</pre>
+
+The same settings are published through the inherited @AudioEffect schema as the `branches` group, with `gain` and
+`mute` members.  Use @AudioEffect.Batch() to change several branches in a single step.  A branch inserted with the
+`insert` command of @AudioEffect.Batch() is muted until it is enabled, so that inserting it is inaudible:
+
+<pre>
+splitter.mtBatch(array&lt;str&gt; { 'insert branches 1', 'set branches[1].mute 0', 'set branches[1].gain -6' })
 </pre>
 
 Removing a branch disconnects the effects in that branch, and later branches move down by one.  Effects follow their
@@ -106,9 +111,9 @@ public:
 };
 
 //********************************************************************************************************************
-// Parameter descriptors.  Member order matches the BRANCH_ indexes.
+// Parameter descriptors.  Member order matches the BRANCH_ indexes and the fields of AudioBranch.
 
-enum { BRANCH_GAIN = 0, BRANCH_MUTE };
+enum { BRANCH_GAIN = 0, BRANCH_MUTE, BRANCH_MEMBERS };
 enum { SPLITTER_BRANCHES = 0 };
 
 static const AudioParamDesc glBranchMembers[] = {
@@ -139,6 +144,11 @@ static const AudioOutputDesc glSplitterOutputs[] = {
 static SplitterBranchSettings entry_branch(const AudioParamEntry &Entry)
 {
    return SplitterBranchSettings { .Gain = Entry.Values[BRANCH_GAIN], .Mute = Entry.Values[BRANCH_MUTE] != 0 };
+}
+
+static std::array<double, BRANCH_MEMBERS> branch_values(const AudioBranch &Branch)
+{
+   return { Branch.Gain, double(Branch.Mute) };
 }
 
 static void splitter_read(extAudioEffect *Effect, AudioParamState &State)
@@ -319,6 +329,142 @@ static ERR AUDIOSPLITTER_Init(extAudioSplitter *Self)
 
 /*********************************************************************************************************************
 
+-METHOD-
+GetBranch: Reads the level settings of one branch.
+
+Copies the committed gain and mute state of the branch at `Index` to `Branch`.  Branches can be read before
+initialisation, from a global splitter, and after the splitter has been disconnected.
+
+<pre>
+branch = struct.new('AudioBranch')
+check splitter.mtGetBranch(0, branch)
+</pre>
+
+-INPUT-
+int Index: The zero-based index of the branch.
+struct(*AudioBranch) Branch: Receives the branch's gain and mute state.
+
+-ERRORS-
+Okay
+NullArgs
+OutOfRange: `Index` does not refer to an existing branch.
+-END-
+
+*********************************************************************************************************************/
+
+static ERR AUDIOSPLITTER_GetBranch(extAudioSplitter *Self, struct split::GetBranch *Args)
+{
+   if ((not Args) or (not Args->Branch)) return ERR::NullArgs;
+   if ((Args->Index < 0) or (Args->Index >= std::ssize(Self->Settings))) return ERR::OutOfRange;
+   const auto &settings = Self->Settings[Args->Index];
+   Args->Branch->Gain = settings.Gain;
+   Args->Branch->Mute = settings.Mute ? 1 : 0;
+   return ERR::Okay;
+}
+
+/*********************************************************************************************************************
+
+-METHOD-
+InsertBranch: Inserts an empty branch with the given level settings.
+
+Inserts a branch at `Index`, moving the branch at that position and every later branch up by one.  Effects in the
+moved branches stay attached, keep their state and report their new index in @AudioEffect.Branch.  The new branch
+has no effects, so it passes its copy of the input through unchanged until effects are attached to it.
+
+`Branch` sets the gain and mute state of the new branch.  An unmuted branch ramps in from zero gain over 10 ms.  Set
+`Mute` to 1 to insert a silent branch and enable it once its effects are attached, which is the behaviour of the
+`insert` command of @AudioEffect.Batch().
+
+<pre>
+check splitter.mtInsertBranch(1, struct.new('AudioBranch', { gain=-6, mute=1 }))
+compressor = splitter.new('AudioCompressor', { branch=1 })
+check splitter.mtSetBranch(1, struct.new('AudioBranch', { gain=-6, mute=0 }))
+</pre>
+
+-INPUT-
+int Index: The position of the new branch, from zero to the current branch count.
+struct(*AudioBranch) Branch: The gain and mute state of the new branch.
+
+-ERRORS-
+Okay
+NullArgs
+OutOfRange: `Index` is greater than the branch count, or the splitter already has eight branches.
+InvalidValue: The gain is outside -48 to +12 dB, or `Mute` is not 0 or 1.
+Immutable: The splitter is attached to the global chain.
+NotInitialised: The splitter has been disconnected from its Audio object.
+-END-
+
+*********************************************************************************************************************/
+
+static ERR AUDIOSPLITTER_InsertBranch(extAudioSplitter *Self, struct split::InsertBranch *Args)
+{
+   if ((not Args) or (not Args->Branch)) return ERR::NullArgs;
+   return effect_group_insert(Self, SPLITTER_BRANCHES, Args->Index, branch_values(*Args->Branch));
+}
+
+/*********************************************************************************************************************
+
+-METHOD-
+RemoveBranch: Removes one branch and disconnects its effects.
+
+Removes the branch at `Index` and disconnects every effect attached to it, as described in the class documentation.
+Later branches move down by one, and their effects stay attached and report their new index in
+@AudioEffect.Branch.  The removed branch ramps out over 10 ms.  The last remaining branch cannot be removed.
+
+-INPUT-
+int Index: The zero-based index of the branch.
+
+-ERRORS-
+Okay
+NullArgs
+OutOfRange: `Index` does not refer to an existing branch, or it refers to the only branch.
+Immutable: The splitter is attached to the global chain.
+NotInitialised: The splitter has been disconnected from its Audio object.
+-END-
+
+*********************************************************************************************************************/
+
+static ERR AUDIOSPLITTER_RemoveBranch(extAudioSplitter *Self, struct split::RemoveBranch *Args)
+{
+   if (not Args) return ERR::NullArgs;
+   return effect_group_remove(Self, SPLITTER_BRANCHES, Args->Index);
+}
+
+/*********************************************************************************************************************
+
+-METHOD-
+SetBranch: Replaces the level settings of one branch.
+
+Replaces the gain and mute state of the branch at `Index` as a single change.  The effects in the branch stay
+attached and keep their state, and a live change ramps over 10 ms.
+
+<pre>
+check splitter.mtSetBranch(0, struct.new('AudioBranch', { gain=-3, mute=0 }))
+</pre>
+
+-INPUT-
+int Index: The zero-based index of the branch.
+struct(*AudioBranch) Branch: The new gain and mute state.
+
+-ERRORS-
+Okay
+NullArgs
+OutOfRange: `Index` does not refer to an existing branch.
+InvalidValue: The gain is outside -48 to +12 dB, or `Mute` is not 0 or 1.
+Immutable: The splitter is attached to the global chain.
+NotInitialised: The splitter has been disconnected from its Audio object.
+-END-
+
+*********************************************************************************************************************/
+
+static ERR AUDIOSPLITTER_SetBranch(extAudioSplitter *Self, struct split::SetBranch *Args)
+{
+   if ((not Args) or (not Args->Branch)) return ERR::NullArgs;
+   return effect_group_set(Self, SPLITTER_BRANCHES, Args->Index, branch_values(*Args->Branch));
+}
+
+/*********************************************************************************************************************
+
 -FIELD-
 LatencyBudget: The fixed delay, in milliseconds, within which the latencies of all branches are aligned.
 
@@ -367,6 +513,7 @@ static ERR add_audiosplitter_class()
       fl::Name("AudioSplitter"),
       fl::Category(CCF::AUDIO),
       fl::Actions(clAudioSplitterActions),
+      fl::Methods(clAudioSplitterMethods),
       fl::Fields(clAudioSplitterFields),
       fl::Size(sizeof(extAudioSplitter)),
       fl::Path(MOD_PATH));
