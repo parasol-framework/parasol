@@ -1652,9 +1652,9 @@ static ERR FILE_Watch(extFile *Self, struct fl::Watch *Args)
             error = vd.WatchPath(Self);
             if (error IS ERR::Okay) retained_callback = true;
             else {
-               auto &func = Self->prvWatch->Routine;
-               if ((func.isScript()) and (not func.stale())) ((objScript *)func.Context)->derefProcedure(func);
-               func.unpin();
+               // The callback is not retained, so consume_callback releases the caller's script reference.
+               // Calling derefProcedure() here as well would release that reference twice.
+               Self->prvWatch->Routine.unpin();
                Self->prvWatch.reset();
             }
          }
