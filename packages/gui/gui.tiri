@@ -1032,10 +1032,15 @@ gui.themes = <table{ linkThemes({
          tick          = { stroke = gui.palette.dark.text, strokeWidth = 1, opacity = 0.6 },
          disabled      = { opacity = 0.5 }
       },
-      scrollbar = {
+      scrollbar_v = {
          bkgd          = { fill = gui.palette.dark.mid, stroke = 'none', strokeWidth = 2 },
-         fore          = { fill = gui.palette.dark.inverse, stroke = 'none', opacity = 0.75, strokeWidth = 2 },
-         foreHighlight = { fill = gui.palette.dark.contrast, opacity = 1 }
+         fore          = { fill = f'{gui.palette.dark.inverse};url(#dark_vslider)', stroke = 'none', opacity = 0.75, strokeWidth = 2 },
+         foreHighlight = { fill = f'{gui.palette.dark.contrast};url(#dark_vslider)', opacity = 1 }
+      },
+      scrollbar_h = {
+         bkgd          = { fill = gui.palette.dark.mid, stroke = 'none', strokeWidth = 2 },
+         fore          = { fill = f'{gui.palette.dark.inverse};url(#dark_hslider)', stroke = 'none', opacity = 0.75, strokeWidth = 2 },
+         foreHighlight = { fill = f'{gui.palette.dark.contrast};url(#dark_hslider)', opacity = 1 }
       },
       toolbar = {
          bkgd          = { fill = gui.palette.dark.bkgd },
