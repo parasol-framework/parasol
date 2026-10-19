@@ -104,31 +104,37 @@ end
    end
    for p in values(schema.params) do assert((p.description ?? '') != '', f'{p.key} must be described') end
 
-   -- Top-level parameters report their defaults, then accept a chosen value.
-
-   top = choose_values(schema.params, eq.outputRate)
-   for p in values(schema.params) do
-      err, value_text = eq.acGetKey(p.key)
-      value = tonumber(value_text)
-      assert(err is ERR_Okay and value is p.default, f'{p.key} should default to {p.default}')
-      check eq.acSetKey(p.key, string.format('%.17g', top[p.key]))
-   end
-
    -- Every group gets one new entry, which reports the published defaults before it is edited.
 
+   inserts = array<str>
+   for group in values(schema.groups) do inserts.push(f'insert {group.key} 0') end
+   check eq.mtBatch(inserts)
    for group in values(schema.groups) do
-      check eq.mtInsertEntry(group.key, 0)
-      entry = choose_values(group.members, eq.outputRate)
       for m in values(group.members) do
          path = f'{group.key}[0].{m.key}'
          err, value_text = eq.acGetKey(path)
          value = tonumber(value_text)
          assert(err is ERR_Okay and value is m.default, f'{path} should default to {m.default}, got {value}')
-         check eq.acSetKey(path, string.format('%.17g', entry[m.key]))
       end
    end
 
-   check eq.acFlush()
+   -- Top-level parameters report their defaults, then every parameter is changed in a single batch.
+
+   commands = array<str>
+   top = choose_values(schema.params, eq.outputRate)
+   for p in values(schema.params) do
+      err, value_text = eq.acGetKey(p.key)
+      value = tonumber(value_text)
+      assert(err is ERR_Okay and value is p.default, f'{p.key} should default to {p.default}')
+      commands.push(f'set {p.key} {string.format("%.17g", top[p.key])}')
+   end
+   for group in values(schema.groups) do
+      entry = choose_values(group.members, eq.outputRate)
+      for m in values(group.members) do
+         commands.push(f'set {group.key}[0].{m.key} {string.format("%.17g", entry[m.key])}')
+      end
+   end
+   check eq.mtBatch(commands)
 
    for p in values(schema.params) do
       err, value_text = eq.acGetKey(p.key)
@@ -148,42 +154,35 @@ end
 @Test function PathErrors()
    audio <close> = obj.new('Audio', { device='null', outputRate=48000 })
    eq <close> = new_equaliser(audio)
-   check eq.mtInsertEntry('bands', 0)
-   check eq.acFlush()
+   check eq.mtBatch(array<str> { 'insert bands 0' })
 
-   assert(eq.acSetKey('unknown', 1) is ERR_Search)
-   assert(eq.acSetKey('bands[0].unknown', 1) is ERR_Search)
-   assert(eq.acSetKey('bands[x].gain', 1) is ERR_Search)
-   assert(eq.acSetKey('bands[].gain', 1) is ERR_Search)
-   assert(eq.acSetKey('bands[-1].gain', 1) is ERR_Search)
-   assert(eq.acSetKey('bands[0]', 1) is ERR_Search)
-   assert(eq.acSetKey('bands[0]gain', 1) is ERR_Search)
-   assert(eq.acSetKey('bands[0.gain', 1) is ERR_Search)
-   assert(eq.acSetKey('', 1) is ERR_Search)
-   assert(eq.acSetKey('bands[1].gain', 1) is ERR_OutOfRange)
-   assert(eq.acSetKey('gain', 49) is ERR_InvalidValue)
-   assert(eq.acSetKey('bands[0].type', 9) is ERR_InvalidValue)
-   assert(eq.acSetKey('bands[0].frequency', 0) is ERR_InvalidValue)
-   assert(eq.acSetKey('bands[0].frequency', 24000) is ERR_InvalidValue)
+   for path in values({ 'unknown', 'bands[0].unknown', 'bands[x].gain', 'bands[].gain', 'bands[-1].gain', 'bands[0]',
+      'bands[0]gain', 'bands[0.gain' }) do
+      err, failed = eq.mtBatch(array<str> { f'set {path} 1' })
+      assert(err is ERR_Search and failed is 0, f'Path {path} must fail with ERR_Search, got {err}')
+   end
+   assert(eq.mtBatch(array<str> { 'set bands[1].gain 1' }) is ERR_OutOfRange)
+   assert(eq.mtBatch(array<str> { 'set gain 49' }) is ERR_InvalidValue)
+   assert(eq.mtBatch(array<str> { 'set bands[0].type 9' }) is ERR_InvalidValue)
+   assert(eq.mtBatch(array<str> { 'set bands[0].frequency 0' }) is ERR_InvalidValue)
+   assert(eq.mtBatch(array<str> { 'set bands[0].frequency 24000' }) is ERR_InvalidValue)
    err, value_text = eq.acGetKey('bands[5].q')
-   value = tonumber(value_text)
    assert(err is ERR_OutOfRange)
-   assert(eq.mtInsertEntry('unknown', 0) is ERR_Search)
-   assert(eq.mtInsertEntry('bands', 5) is ERR_OutOfRange)
-   assert(eq.mtRemoveEntry('bands', -1) is ERR_OutOfRange)
-   assert(eq.mtRemoveEntry('bands', 1) is ERR_OutOfRange)
-
-   -- Rejected calls must not leave a working copy behind; the gain field remains writable.
-
-   eq.gain = 1
-   assert(eq.gain is 1)
+   assert(eq.mtBatch(array<str> { 'insert unknown 0' }) is ERR_Search)
+   assert(eq.mtBatch(array<str> { 'insert bands 5' }) is ERR_OutOfRange)
+   assert(eq.mtBatch(array<str> { 'remove bands -1' }) is ERR_Syntax)
+   assert(eq.mtBatch(array<str> { 'remove bands 1' }) is ERR_OutOfRange)
+   assert(eq.mtBatch(array<str> { 'remove unknown 0' }) is ERR_Search)
 
    -- The group is limited to its published maximum.
 
-   for i in {1 to 64} do check eq.mtInsertEntry('bands', i) end
-   assert(eq.mtInsertEntry('bands', 64) is ERR_OutOfRange)
-   check eq.acFlush()
+   inserts = array<str>
+   for i in {1 to 64} do inserts.push(f'insert bands {i}') end
+   check eq.mtBatch(inserts)
    assert(#eq.bands is 64)
+   err, failed = eq.mtBatch(array<str> { 'set gain 1', 'insert bands 64' })
+   assert(err is ERR_OutOfRange and failed is 1)
+   assert(#eq.bands is 64 and eq.gain is 0, 'A failed batch must change nothing')
 
    -- A base AudioEffect publishes no schema.
 
@@ -191,24 +190,23 @@ end
    assert(err is ERR_Okay)
    plain <close> = obj.new('AudioEffect', { audio=audio, channel=channel })
    assert(plain.schema is '' or plain.schema is nil)
-   assert(plain.acSetKey('gain', 0) is ERR_NoSupport)
-   check plain.acFlush()
+   err, failed = plain.mtBatch(array<str> { 'set gain 0' })
+   assert(err is ERR_NoSupport and failed is -1)
 end
 
 @Test function NumericKeyValues()
    audio <close> = obj.new('Audio', { device='null', outputRate=48000 })
    eq <close> = new_equaliser(audio)
-   for text in values({ '', ' ', 'abc', '1dB', '1 2', '+', '+-1', '1e999', 'nan', 'inf', '-inf' }) do
-      assert(eq.acSetKey('gain', text) is ERR_InvalidValue, f'Invalid numeric text {text} must fail')
+   for text in values({ 'abc', '1dB', '+', '+-1', '1e999', 'nan', 'inf', '-inf', '0x10', '1,5' }) do
+      err, failed = eq.mtBatch(array<str> { f'set gain {text}' })
+      assert(err is ERR_InvalidValue and failed is 0, f'Invalid numeric text {text} must fail, got {err}')
    end
-   check eq.acSetKey('gain', '  +1.2345678901234567e0  ')
+   check eq.mtBatch(array<str> { '  set gain +1.2345678901234567e0  ' })
    err, text = eq.acGetKey('gain')
    assert(err is ERR_Okay and type(text) is 'string')
    assert(tonumber(text) is 1.2345678901234567, 'GetKey must preserve double precision')
-   check eq.acFlush()
-   err, committed = eq.acGetKey('gain')
-   assert(err is ERR_Okay and committed is text, 'Flush must preserve the numeric string')
-   assert(eq.acSetKey('gain', '2junk') is ERR_InvalidValue)
+   assert(eq.gain is 1.2345678901234567)
+   assert(eq.mtBatch(array<str> { 'set gain 2junk' }) is ERR_InvalidValue)
    err, unchanged = eq.acGetKey('gain')
    assert(err is ERR_Okay and unchanged is text, 'Invalid text must leave the value unchanged')
 end
@@ -216,85 +214,60 @@ end
 @Test function ParameterBounds()
    audio <close> = obj.new('Audio', { device='null', outputRate=48000 })
    eq <close> = new_equaliser(audio)
-   check eq.mtInsertEntry('bands', 0)
 
-   check eq.acSetKey('gain', -48)
-   check eq.acSetKey('gain', 48)
-   assert(eq.acSetKey('gain', 48.001) is ERR_InvalidValue)
-   assert(eq.acSetKey('gain', math.huge) is ERR_InvalidValue)
-   check eq.acSetKey('bands[0].type', EQB_HIGH_PASS)
-   assert(eq.acSetKey('bands[0].type', 1.5) is ERR_InvalidValue)
-   check eq.acSetKey('bands[0].frequency', 0.001)
-   check eq.acSetKey('bands[0].frequency', 23999)
-   assert(eq.acSetKey('bands[0].frequency', math.sqrt(-1)) is ERR_InvalidValue)
-   check eq.acFlush()
-
+   check eq.mtBatch(array<str> {
+      'insert bands 0',
+      'set gain -48',
+      'set gain 48',
+      f'set bands[0].type {EQB_HIGH_PASS}',
+      'set bands[0].frequency 0.001',
+      'set bands[0].frequency 23999'
+   })
    assert(eq.gain is 48 and eq.bands[0].type is EQB_HIGH_PASS)
    assert(eq.bands[0].frequency is 23999)
 
+   assert(eq.mtBatch(array<str> { 'set gain 48.001' }) is ERR_InvalidValue)
+   assert(eq.mtBatch(array<str> { f'set gain {math.huge}' }) is ERR_InvalidValue)
+   assert(eq.mtBatch(array<str> { 'set bands[0].type 1.5' }) is ERR_InvalidValue)
+   assert(eq.mtBatch(array<str> { f'set bands[0].frequency {math.sqrt(-1)}' }) is ERR_InvalidValue)
+   assert(eq.gain is 48 and eq.bands[0].frequency is 23999)
+
    low_rate <close> = obj.new('Audio', { device='null', outputRate=1600 })
    low_eq <close> = new_equaliser(low_rate)
-   check low_eq.mtInsertEntry('bands', 0)
+   check low_eq.mtBatch(array<str> { 'insert bands 0' })
    err, frequency_text = low_eq.acGetKey('bands[0].frequency')
    frequency = tonumber(frequency_text)
    assert(err is ERR_Okay and frequency is 400, 'A default frequency must fit below the Nyquist limit')
 end
 
-@Test function StagedChanges()
+@Test function AtomicChanges()
    audio <close> = obj.new('Audio', { device='null', outputRate=48000 })
    eq <close> = new_equaliser(audio)
-   check eq.acFlush() -- Nothing staged
+   err, failed = eq.mtBatch(array<str> { })
+   assert(err is ERR_Okay and failed is -1, 'An empty batch must succeed')
 
-   check eq.mtInsertEntry('bands', 0)
-   check eq.acSetKey('bands[0].q', 5)
-   check eq.acFlush()
+   check eq.mtBatch(array<str> { 'insert bands 0', 'set bands[0].q 5' })
+   assert(#eq.bands is 1 and eq.bands[0].q is 5)
 
-   -- Staged changes are visible to GetKey() but not to the committed Bands.
+   -- Field writes are never refused because of an earlier batch.
 
-   check eq.acSetKey('bands[0].gain', 6)
-   err, value_text = eq.acGetKey('bands[0].gain')
-   value = tonumber(value_text)
-   assert(err is ERR_Okay and value is 6)
-   assert(eq.bands[0].gain is 0)
-
-   -- Direct field writes are refused while changes are pending.
-
-   try
-      eq.gain = -1
-   except e when ERR_InvalidState
-   success
-      raise 'Gain writes must be refused while changes are staged'
-   end
-
-   check eq.acFlush()
-   assert(eq.bands[0].gain is 6)
    eq.gain = -1
    assert(eq.gain is -1)
 
-   -- Switching a Q 5 peak to a shelf only passes if the Q change is flushed with it.
+   -- Switching a Q 5 peak to a shelf only passes if the Q changes in the same batch.
 
-   check eq.acSetKey('bands[0].type', EQB_LOW_SHELF)
-   assert(eq.acFlush() is ERR_InvalidValue)
-   assert(eq.bands[0].type is EQB_PEAK and eq.bands[0].q is 5, 'A failed flush must leave the effect unchanged')
+   err, failed = eq.mtBatch(array<str> { 'set bands[0].type low_shelf' })
+   assert(err is ERR_InvalidValue and failed is -1, 'A rule violation must not name a command')
+   assert(eq.bands[0].type is EQB_PEAK and eq.bands[0].q is 5, 'A failed batch must leave the effect unchanged')
    err, value_text = eq.acGetKey('bands[0].type')
-   value = tonumber(value_text)
-   assert(value is EQB_PEAK, 'A failed flush must discard the working copy')
+   assert(tonumber(value_text) is EQB_PEAK, 'GetKey() must report the committed value')
 
-   check eq.acSetKey('bands[0].type', EQB_LOW_SHELF)
-   check eq.acSetKey('bands[0].q', 0.7)
-   check eq.acFlush()
+   check eq.mtBatch(array<str> { 'set bands[0].type low_shelf', 'set bands[0].q 0.7' })
    assert(eq.bands[0].type is EQB_LOW_SHELF and eq.bands[0].q is 0.7)
 
    -- Paths follow the working copy after insertion and removal.
 
-   check eq.mtInsertEntry('bands', 0)
-   check eq.acSetKey('bands[0].frequency', 250)
-   err, value_text = eq.acGetKey('bands[1].type')
-   value = tonumber(value_text)
-   assert(value is EQB_LOW_SHELF)
-   check eq.mtRemoveEntry('bands', 1)
-   assert(#eq.bands is 1 and eq.bands[0].type is EQB_LOW_SHELF)
-   check eq.acFlush()
+   check eq.mtBatch(array<str> { 'insert bands 0', 'set bands[0].frequency 250', 'remove bands 1' })
    assert(#eq.bands is 1 and eq.bands[0].type is EQB_PEAK and eq.bands[0].frequency is 250)
 end
 
@@ -307,17 +280,14 @@ end
 
    eq = audio.new('AudioEqualiser')
    eq.channel = channel
-   check eq.mtInsertEntry('bands', 0)
-   check eq.acSetKey('bands[0].frequency', 120)
+   check eq.mtBatch(array<str> { 'insert bands 0', 'set bands[0].frequency 120' })
    assert(#eq.bands is 1 and eq.bands[0].frequency is 120)
    eq.init()
    assert(eq.bands[0].frequency is 120)
 
    bad = audio.new('AudioEqualiser')
    bad.channel = channel
-   check bad.mtInsertEntry('bands', 0)
-   check bad.acSetKey('bands[0].type', EQB_HIGH_SHELF)
-   check bad.acSetKey('bands[0].q', 3)
+   check bad.mtBatch(array<str> { 'insert bands 0', f'set bands[0].type {EQB_HIGH_SHELF}', 'set bands[0].q 3' })
    try
       bad.init()
    except e
@@ -330,10 +300,7 @@ end
 @Test function ResponseCurve()
    audio <close> = obj.new('Audio', { device='null', outputRate=48000 })
    eq <close> = new_equaliser(audio)
-   check eq.mtInsertEntry('bands', 0)
-   check eq.acSetKey('bands[0].gain', 6)
-   check eq.acSetKey('bands[0].q', 1)
-   check eq.acFlush()
+   check eq.mtBatch(array<str> { 'insert bands 0', 'set bands[0].gain 6', 'set bands[0].q 1' })
    eq.gain = -2
 
    frequencies = array<double> { 20, 1000, 20000 }
@@ -342,12 +309,11 @@ end
    assert(math.abs(magnitudes[1] - 4) < 0.001, f'Expected 4 dB at the centre, got {magnitudes[1]}')
    assert(math.abs(magnitudes[0] + 2) < 0.05)
 
-   -- Staged changes are not included.
+   -- A rejected batch does not change the response.
 
-   check eq.acSetKey('bands[0].gain', -6)
+   assert(eq.mtBatch(array<str> { 'set bands[0].gain -6', 'set bands[0].q 99' }) is ERR_InvalidValue)
    check eq.mtGetResponse(frequencies, magnitudes)
    assert(math.abs(magnitudes[1] - 4) < 0.001)
-   check eq.acFlush()
 
    assert(eq.mtGetResponse(frequencies, array<double, 2>) is ERR_Args)
    assert(eq.mtGetResponse(array<double, 0>, array<double, 0>) is ERR_Args)
@@ -367,30 +333,24 @@ end
    assert(err is ERR_Okay and count is 0)
    assert(eq.mtGetGroupCount('missing') is ERR_Search)
 
-   check eq.mtInsertEntry('bands', 0)
-   _, count = check eq.mtGetGroupCount('bands')
-   assert(count is 1 and #eq.bands is 0, 'Counts must include staged insertions')
-   check eq.acFlush()
+   check eq.mtBatch(array<str> { 'insert bands 0' })
    _, count = check eq.mtGetGroupCount('bands')
    assert(count is 1 and #eq.bands is 1)
 
-   check eq.mtRemoveEntry('bands', 0)
+   -- A rejected batch leaves the committed count unchanged.
+
+   err, failed = eq.mtBatch(array<str> { 'remove bands 0', 'insert bands 0', 'set bands[0].type low_shelf',
+      'set bands[0].q 5', 'insert bands 1' })
+   assert(err is ERR_InvalidValue and failed is -1)
    _, count = check eq.mtGetGroupCount('bands')
-   assert(count is 0 and #eq.bands is 1, 'Counts must include staged removals')
-   check eq.mtInsertEntry('bands', 0)
-   check eq.acSetKey('bands[0].type', EQB_LOW_SHELF)
-   check eq.acSetKey('bands[0].q', 5)
-   check eq.mtInsertEntry('bands', 1)
-   assert(eq.acFlush() is ERR_InvalidValue)
-   _, count = check eq.mtGetGroupCount('bands')
-   assert(count is 1, 'Rejected changes must restore the committed count')
+   assert(count is 1, 'Rejected changes must leave the committed count')
 
    check audio.mtCloseChannels(eq.channel)
    _, count = check eq.mtGetGroupCount('bands')
    assert(count is 1, 'Disconnected effects retain their parameters')
 
    uninitialised <close> = obj.new('AudioEqualiser')
-   check uninitialised.mtInsertEntry('bands', 0)
+   check uninitialised.mtBatch(array<str> { 'insert bands 0' })
    _, count = check uninitialised.mtGetGroupCount('bands')
    assert(count is 1, 'Counts must work before initialisation')
    plain <close> = obj.new('AudioEffect')

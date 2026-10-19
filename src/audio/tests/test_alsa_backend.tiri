@@ -5,6 +5,21 @@ function u8_mono()
    return struct.new('AudioFormat', { sampleRate=44100, sampleFormat=ASF_U8, layout=array<int> { SPK_CENTRE } })
 end
 
+-- The null PCM is not paced: playback runs as fast as the mixer can render, which varies with build type, quality and
+-- host load.  Wait for expected events instead of assuming a duration.  Fixed windows remain only where a test checks
+-- that something does not happen.
+
+WAIT_LIMIT = 3 -- Seconds
+
+function wait_until(Condition:func):bool
+   deadline = mSys.PreciseTime() + WAIT_LIMIT * 1000000
+   while not Condition() do
+      if mSys.PreciseTime() >= deadline then return false end
+      processing.sleep(0.005)
+   end
+   return true
+end
+
 function s16_stereo()
    return struct.new('AudioFormat', {
       sampleRate=44100, sampleFormat=ASF_S16, layout=array<int> { SPK_FRONT_LEFT, SPK_FRONT_RIGHT }
@@ -78,8 +93,8 @@ end
    check mAudio.MixPlay(audio, channel, 0)
    mSys.WaitTime(-0.08)
    assert(completed is 0, 'The PCM worker must never call the script')
-   processing.sleep(0.15)
-   assert(completed is 1, 'Completion should be delivered when the client resumes')
+   assert(wait_until(() => completed > 0), 'Completion should be delivered when the client resumes')
+   assert(completed is 1, 'Completion must be delivered exactly once')
    check audio.mtRemoveSample(sample)
    check audio.mtCloseChannels(channel)
 end
@@ -116,8 +131,8 @@ end
       assert(err is ERR_Okay)
       check mAudio.MixSample(audio, channel, handle)
       check mAudio.MixPlay(audio, channel, 0)
-      processing.sleep(0.15)
-      assert(completed is 1, 'Playback must still deliver callbacks after completion without OnStop')
+      assert(wait_until(() => completed > 0), 'Playback must still deliver callbacks after completion without OnStop')
+      assert(completed is 1, 'Completion must be delivered exactly once')
    end
 end
 
@@ -139,9 +154,9 @@ end
    check mAudio.MixPlay(audio, channel, 0)
    mSys.WaitTime(-0.03)
    assert(reads is 0, 'Stream callbacks must remain on the client thread')
-   processing.sleep(0.2)
-   assert(reads >= 3, 'The ring should refill until the declared end')
+   assert(wait_until(() => completed > 0), 'A finite stream should complete')
    assert(completed is 1, 'A finite stream should complete exactly once')
+   assert(reads >= 3, 'The ring should refill until the declared end')
    check mAudio.MixPlay(audio, channel, 2000)
    processing.sleep(0.01)
    check audio.mtRemoveSample(sample)
@@ -165,9 +180,9 @@ end
    check mAudio.MixSample(audio, channel, sample)
    check mAudio.MixFrequency(audio, channel, 44100)
    check mAudio.MixPlay(audio, channel, 0)
-   processing.sleep(0.15)
+   assert(wait_until(() => completed > 0), 'Playback should finish after the producer resumes')
+   assert(completed is 1, 'Playback should finish exactly once')
    assert(reads is 3, 'An empty producer should retry without advancing its source position')
-   assert(completed is 1, 'Playback should finish after the producer resumes')
 end
 
 @Test function ProducerCanRemoveItsSample()
@@ -185,8 +200,10 @@ end
    check mAudio.MixSample(audio, channel, sample)
    check mAudio.MixFrequency(audio, channel, 44100)
    check mAudio.MixPlay(audio, channel, 0)
-   processing.sleep(0.05)
-   assert(removed, 'A producer may remove its stream without retaining a stale ring reference')
+   assert(wait_until(() => removed), 'The producer should be called')
+   processing.sleep(0.02) -- Keep mixing after the removal to expose any stale ring reference
+   assert(mAudio.MixSample(audio, channel, sample) is ERR_NoData,
+      'A producer may remove its stream without retaining a stale ring reference')
 end
 
 @Test function StreamLoopOffsetsAreBytes()
@@ -207,13 +224,11 @@ end
    check mAudio.MixSample(audio, channel, sample)
    check mAudio.MixFrequency(audio, channel, 44100)
    check mAudio.MixPlay(audio, channel, 0)
-   processing.sleep(0.03)
-   assert(saw_loop, 'Stereo 16-bit loop offsets must remain byte positions')
+   assert(wait_until(() => saw_loop), 'Stereo 16-bit loop offsets must remain byte positions')
    assert(completed is 0, 'A looping stream must remain active')
    check mAudio.MixRelease(audio, channel)
-   deadline = mSys.PreciseTime() + 300000
-   while completed is 0 and mSys.PreciseTime() < deadline do processing.sleep(0.005) end
-   assert(completed is 1, 'Releasing a stream loop must drain and finish')
+   assert(wait_until(() => completed > 0), 'Releasing a stream loop must drain and finish')
+   assert(completed is 1, 'A released loop must finish exactly once')
 end
 
 @Test function StreamLengthCannotCrossLoopStart()
@@ -316,8 +331,8 @@ end
    check mAudio.MixSample(audio, channels, stream)
    check mAudio.MixFrequency(audio, channels, 44100)
    check mAudio.MixPlay(audio, channels, 0)
-   processing.sleep(0.08)
-   assert(paused and stream_done is 0, 'An exhausted source must wait for its producer')
+   assert(wait_until(() => paused), 'The producer should be asked for more data')
+   assert(stream_done is 0, 'An exhausted source must wait for its producer')
    data = array<byte, 512>
    data.fill(128)
    err, resident = audio.mtAddSample(function(Audio, Handle) resident_done++ end, u8_mono(), data, nil)
@@ -325,9 +340,9 @@ end
    check mAudio.MixSample(audio, channels + 1, resident)
    check mAudio.MixFrequency(audio, channels + 1, 44100)
    check mAudio.MixPlay(audio, channels + 1, 0)
-   processing.sleep(0.08)
-   assert(resident_done is 1 and stream_done is 0, 'Source starvation must leave other channels playable')
+   assert(wait_until(() => resident_done > 0), 'Source starvation must leave other channels playable')
+   assert(resident_done is 1 and stream_done is 0, 'The starved stream must not finish while it waits')
    resumed = true
-   processing.sleep(0.15)
+   assert(wait_until(() => stream_done > 0), 'Resuming should finish the stream')
    assert(stream_done is 1 and supplied is 100000, 'Resuming must consume the complete source without skipping bytes')
 end

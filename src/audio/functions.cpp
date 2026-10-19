@@ -583,22 +583,26 @@ static void mix_stream(extAudio *Self, AudioChannel &Channel, AudioSample &Sampl
       }
 
       // Keep full history at every quality so switching to High never exposes stale support.
-      // Missing look-ahead freezes the source clock; EOF extends its final frame.
+      // Missing look-ahead freezes the source clock; EOF extends its final frame.  The support is copied in
+      // contiguous runs because it is rebuilt for every output frame.
       alignas(4) uint8_t frames[glSincTaps * 4];
-      for (int tap = 0; tap < gathered; ++tap) {
-         for (int byte = 0; byte < frame_bytes; ++byte) {
-            if (tap < past_support and Sample.HistoryFrames) {
-               const int past = std::max(0, Sample.HistoryFrames + tap - past_support);
-               frames[tap * frame_bytes + byte] = Sample.History[past * frame_bytes + byte];
-            }
-            else {
-               const size_t offset = std::min(size_t(std::max(0, tap - past_support)),
-                  Sample.Ring.Used / frame_bytes - 1) * frame_bytes;
-               frames[tap * frame_bytes + byte] =
-                  Sample.Data[(Sample.Ring.Read + offset + byte) % Sample.Data.size()];
-            }
-         }
-      }
+      auto frame = [&](int Tap) { return frames + Tap * frame_bytes; };
+      const int history = std::min(Sample.HistoryFrames, past_support);
+      std::copy_n(Sample.History + (Sample.HistoryFrames - history) * frame_bytes, history * frame_bytes,
+         frame(past_support - history));
+
+      const int ahead = int(std::min(size_t(support), Sample.Ring.Used / frame_bytes));
+      const size_t ahead_bytes = size_t(ahead) * frame_bytes;
+      const size_t first = std::min(ahead_bytes, Sample.Data.size() - Sample.Ring.Read);
+      std::copy_n(Sample.Data.data() + Sample.Ring.Read, first, frame(past_support));
+      std::copy_n(Sample.Data.data(), ahead_bytes - first, frame(past_support) + first);
+
+      // Taps older than the history repeat its oldest frame (the first ring frame if there is no history).
+      // Taps beyond the buffered data repeat its final frame.
+      const uint8_t *oldest = frame(past_support - history);
+      for (int tap = 0; tap < past_support - history; ++tap) std::copy_n(oldest, frame_bytes, frame(tap));
+      const uint8_t *last = frame(past_support + ahead - 1);
+      for (int tap = past_support + ahead; tap < gathered; ++tap) std::copy_n(last, frame_bytes, frame(tap));
 
       const bool source_stereo = pcm_stereo(Sample.SampleType);
       const double volume = Self->Mute ? 0 :

@@ -11,12 +11,14 @@ Create new gate objects as a child of an @Audio object or set the inherited #Aud
 #AudioEffect.Channel to process one channel set, or leave it at zero to process the global mix.  Application gates
 accept live changes; global gates become immutable after initialisation.
 
-Parameters are published through the inherited @AudioEffect schema and are changed with @AudioEffect.SetKey()
-followed by @AudioEffect.Flush():
+Each parameter is available as a field, such as #Threshold and #Range.  Field writes before initialisation are
+range-checked and stored; after initialisation each write is validated and applied immediately.  The same parameters are
+published through the inherited @AudioEffect schema under lower-case keys, where they can be changed together with
+@AudioEffect.Batch():
 
 <list type="bullet">
-<li>`mode`: `expander` (0) reduces the level progressively as the signal falls further below the threshold.  `gate`
-(1) switches between no attenuation and the full `range`.</li>
+<li>`mode`: `expander` (`GTM::EXPANDER`) reduces the level progressively as the signal falls further below the
+threshold.  `gate` (`GTM::GATE`) switches between no attenuation and the full `range`.</li>
 <li>`threshold`: the detector level, in dB relative to full scale, at which the gate opens.</li>
 <li>`ratio`: the expansion slope below the threshold.  At 2, every 1 dB that the signal falls below the threshold adds
 1 dB of attenuation.  A ratio of 1 disables expansion.  The ratio is ignored in gate mode.</li>
@@ -31,11 +33,14 @@ threshold.</li>
 The following gate silences the pauses in a voice recording on a playing channel set:
 
 <pre>
-gate = obj.new('AudioGate', { audio=audio, channel=channel })
-gate.acSetKey('mode', 1)
-gate.acSetKey('threshold', -50)
-gate.acSetKey('range', 40)
-gate.acFlush()
+gate = obj.new('AudioGate', { audio=audio, channel=channel, mode=GTM_GATE, threshold=-50, range=40 })
+</pre>
+
+Every field write after initialisation is a separate change.  To change several parameters in a single step, apply them
+together with @AudioEffect.Batch():
+
+<pre>
+gate.mtBatch(array&lt;str&gt; { 'set mode expander', 'set ratio 2', 'set range 15' })
 </pre>
 
 For gentler noise reduction that leaves the decay of notes more natural, use the default expander mode with a ratio
@@ -116,19 +121,19 @@ public:
 enum { GT_MODE = 0, GT_THRESHOLD, GT_RATIO, GT_RANGE, GT_HYSTERESIS, GT_ATTACK, GT_HOLD, GT_RELEASE };
 
 static const AudioParamOption glGateModes[] = {
-   { GATE_EXPANDER, "expander", "Expander",
+   { int(GTM::EXPANDER), "expander", "Expander",
      "Attenuation increases progressively as the signal falls further below the threshold, according to the ratio." },
-   { GATE_GATE, "gate", "Gate", "The full range of attenuation is applied whenever the gate is closed." }
+   { int(GTM::GATE), "gate", "Gate", "The full range of attenuation is applied whenever the gate is closed." }
 };
 
-static const int glGateModeGate[] = { GATE_GATE };
+static const int glGateModeGate[] = { int(GTM::GATE) };
 
 static const AudioParamRule glGateRatioRules[] = { { .Key = "mode", .Values = glGateModeGate, .Inactive = true } };
 
 static const AudioParamDesc glGateParams[] = {
    { .Key = "mode", .Label = "Mode",
      .Description = "Whether quiet passages are attenuated progressively or by the full range.",
-     .Type = APT::ENUM, .Default = GATE_EXPANDER, .Options = glGateModes },
+     .Type = APT::ENUM, .Default = int(GTM::EXPANDER), .Options = glGateModes },
    { .Key = "threshold", .Label = "Threshold",
      .Description = "The detector level, relative to full scale, at which the gate opens.",
      .Unit = APU::DB, .Min = -90, .Max = 0, .Default = -45 },
@@ -167,7 +172,7 @@ static const AudioOutputDesc glGateOutputs[] = {
 static GateSettings gate_settings(const AudioParamState &State)
 {
    return GateSettings {
-      .Mode       = int(State.Params[GT_MODE]),
+      .Mode       = GTM(int(State.Params[GT_MODE])),
       .Threshold  = State.Params[GT_THRESHOLD],
       .Ratio      = State.Params[GT_RATIO],
       .Range      = State.Params[GT_RANGE],
@@ -181,7 +186,7 @@ static GateSettings gate_settings(const AudioParamState &State)
 static void gate_read(extAudioEffect *Effect, AudioParamState &State)
 {
    const auto &settings = ((extAudioGate *)Effect)->Settings;
-   State.Params.assign({ double(settings.Mode), settings.Threshold, settings.Ratio, settings.Range,
+   State.Params.assign({ double(int(settings.Mode)), settings.Threshold, settings.Ratio, settings.Range,
       settings.Hysteresis, settings.Attack, settings.Hold, settings.Release });
    State.Groups.clear();
 }
@@ -264,11 +269,79 @@ static ERR AUDIOGATE_Init(extAudioGate *Self)
    return error;
 }
 
-//********************************************************************************************************************
+/*********************************************************************************************************************
+
+-FIELD-
+Attack: The time constant, in milliseconds, with which the gate opens.
+
+The range is 0.1 to 100 ms and the default is 2 ms.  This field mirrors the `attack` schema key.  To change it together
+with other parameters in a single step, use @AudioEffect.Batch().
+
+-FIELD-
+Hold: The time, in milliseconds, for which the gate remains open after the level falls below the closing threshold.
+
+The range is 0 to 1000 ms and the default is 50 ms.  This field mirrors the `hold` schema key.  To change it together
+with other parameters in a single step, use @AudioEffect.Batch().
+
+-FIELD-
+Hysteresis: How far, in decibels, the detector level must fall below the threshold before the gate closes.
+
+The range is 0 to 24 dB and the default is 3 dB.  This field mirrors the `hysteresis` schema key.  To change it together
+with other parameters in a single step, use @AudioEffect.Batch().
+
+-FIELD-
+Mode: Selects progressive or full attenuation of quiet passages.
+Lookup: GTM
+
+The default is `GTM::EXPANDER`.  This field mirrors the `mode` schema key, which also accepts the option names
+`expander` and `gate`.  To change it together with other parameters in a single step, use @AudioEffect.Batch().
+
+-FIELD-
+Range: The maximum attenuation, in decibels.
+
+The range is 0 to 90 dB and the default is 60 dB.  Zero disables the effect.  This field mirrors the `range` schema key.
+To change it together with other parameters in a single step, use @AudioEffect.Batch().
+
+-FIELD-
+Ratio: The expansion slope below the threshold.
+
+The range is 1 to 20 and the default is 2.  At 2, every decibel that the signal falls below the threshold adds a decibel
+of attenuation.  A ratio of 1 disables expansion.  The ratio is ignored when #Mode is `GTM::GATE`.  This field mirrors
+the `ratio` schema key.  To change it together with other parameters in a single step, use @AudioEffect.Batch().
+
+-FIELD-
+Release: The time constant, in milliseconds, with which the gate closes.
+
+The range is 5 to 2000 ms and the default is 150 ms.  This field mirrors the `release` schema key.  To change it
+together with other parameters in a single step, use @AudioEffect.Batch().
+
+-FIELD-
+Threshold: The detector level, in dBFS, at which the gate opens.
+
+The range is -90 to 0 dBFS and the default is -45 dBFS.  This field mirrors the `threshold` schema key.  To change it
+together with other parameters in a single step, use @AudioEffect.Batch().
+
+*********************************************************************************************************************/
 
 #include "class_audiogate_def.c"
 
 static const FieldArray clAudioGateFields[] = {
+   { "Mode",       FDF_VIRTUAL|FDF_INT|FDF_LOOKUP|FDF_RW|FDF_PURE,
+     effect_settings_get_int<extAudioGate, &GateSettings::Mode>, effect_param_set_int<GT_MODE>, &clAudioGateGTM },
+   { "Threshold",  FDF_VIRTUAL|FDF_DOUBLE|FDF_RW|FDF_PURE,
+     effect_settings_get<extAudioGate, &GateSettings::Threshold>, effect_param_set<GT_THRESHOLD> },
+   { "Ratio",      FDF_VIRTUAL|FDF_DOUBLE|FDF_RW|FDF_PURE,
+     effect_settings_get<extAudioGate, &GateSettings::Ratio>, effect_param_set<GT_RATIO> },
+   { "Range",      FDF_VIRTUAL|FDF_DOUBLE|FDF_RW|FDF_PURE,
+     effect_settings_get<extAudioGate, &GateSettings::Range>, effect_param_set<GT_RANGE> },
+   { "Hysteresis", FDF_VIRTUAL|FDF_DOUBLE|FDF_RW|FDF_PURE,
+     effect_settings_get<extAudioGate, &GateSettings::Hysteresis>, effect_param_set<GT_HYSTERESIS> },
+   { "Attack",     FDF_VIRTUAL|FDF_DOUBLE|FDF_RW|FDF_PURE,
+     effect_settings_get<extAudioGate, &GateSettings::Attack>, effect_param_set<GT_ATTACK> },
+   { "Hold",       FDF_VIRTUAL|FDF_DOUBLE|FDF_RW|FDF_PURE,
+     effect_settings_get<extAudioGate, &GateSettings::Hold>, effect_param_set<GT_HOLD> },
+   { "Release",    FDF_VIRTUAL|FDF_DOUBLE|FDF_RW|FDF_PURE,
+     effect_settings_get<extAudioGate, &GateSettings::Release>, effect_param_set<GT_RELEASE> },
    END_FIELD
 };
 

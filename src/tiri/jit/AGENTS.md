@@ -69,10 +69,10 @@ interfaces and copy or otherwise marshal data between the independent states.
 
 ```bash
 # Run all tests
-ctest --build-config Debug --test-dir build/agents --output-on-failure
+ctest --preset agents
 
 # Run specific test by label
-ctest --build-config Debug --test-dir build/agents --output-on-failure -L '^tiri_debug$'
+ctest --preset agents -L '^tiri_debug$'
 ```
 
 ### Manual Testing

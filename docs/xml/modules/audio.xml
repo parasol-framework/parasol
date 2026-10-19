@@ -496,6 +496,11 @@ A stream without a loop is unaffected.</li>
 
   </types>
   <structs>
+    <struct name="AudioBranch" comment="The level settings of one AudioSplitter branch.">
+      <field name="Gain" type="DOUBLE">Level of the branch output in the sum, in decibels</field>
+      <field name="Mute" type="INT">Set to 1 to remove the branch from the sum</field>
+    </struct>
+
     <struct name="AudioEQBand" comment="One parametric equaliser band.">
       <field name="Type" type="EQB" lookup="EQB">Filter type</field>
       <field name="Frequency" type="DOUBLE">Centre or corner frequency in hertz</field>

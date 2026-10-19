@@ -68,6 +68,18 @@ module({ name="Audio", copyright="Paul Manias © 2002-2026", version=1.0, timest
     "LOW_PASS: Low-pass filter; gain is ignored.",
     "HIGH_PASS: High-pass filter; gain is ignored.")
 
+  enums("SATS", { type="int", start=0, comment="AudioSaturator transfer curve shapes." },
+    "SOFT: Smooth saturation that approaches full scale gradually.",
+    "HARD: Hard clipping at full scale, for a harsher sound.")
+
+  enums("DLM", { type="int", start=0, comment="AudioDelay stereo routing modes." },
+    "NORMAL: Every channel is delayed independently, preserving the stereo image.",
+    "PING_PONG: The echoes alternate between the left and right channels, starting on the left.")
+
+  enums("GTM", { type="int", start=0, comment="AudioGate attenuation modes." },
+    "EXPANDER: Attenuation increases progressively as the signal falls further below the threshold.",
+    "GATE: The full range of attenuation is applied whenever the gate is closed.")
+
   flags("VCF", { comment="Volume control flags" },
     { PLAYBACK = "0x00000001: The mixer supports audio output." },
     { CAPTURE  = "0x00000010: The mixer supports audio input." },
@@ -206,6 +218,11 @@ module({ name="Audio", copyright="Paul Manias © 2002-2026", version=1.0, timest
     double Q           # Quality factor or shelf slope
   ]])
 
+  structdef("AudioBranch", { comment="The level settings of one AudioSplitter branch." }, [[
+    double Gain        # Level of the branch output in the sum, in decibels
+    int Mute           # Set to 1 to remove the branch from the sum
+  ]])
+
   methods("Audio", "Snd", {
     { id=1, name="OpenChannels" },
     { id=2, name="CloseChannels" },
@@ -233,14 +250,13 @@ module({ name="Audio", copyright="Paul Manias © 2002-2026", version=1.0, timest
   ]])
 
   methods("AudioEffect", "Fx", {
-    { id=3, name="InsertEntry" },
-    { id=4, name="RemoveEntry" },
     { id=5, name="GetResponse" },
     { id=6, name="GetGroupCount" },
     { id=7, name="GetMeterLayout" },
     { id=8, name="GetOutput" },
     { id=9, name="ReadMeters" },
-    { id=10, name="GetProcessingFormat" }
+    { id=10, name="GetProcessingFormat" },
+    { id=11, name="Batch" }
   })
 
   klass("AudioEffect", { version=1, src="class_audioeffect.cpp", output="class_audioeffect_def.c", extended=true }, [[
@@ -256,51 +272,128 @@ module({ name="Audio", copyright="Paul Manias © 2002-2026", version=1.0, timest
     ~string Schema
   ]])
 
+  -- AudioEqualiser method IDs start high enough to give a cushion from inherited AudioEffect methods.
+
+  methods("AudioEqualiser", "Eq", {
+    { id=30, name="GetBand" },
+    { id=31, name="SetBand" },
+    { id=32, name="InsertBand" },
+    { id=33, name="RemoveBand" }
+  })
+
   klass("AudioEqualiser", { base="AudioEffect", src="class_audioequaliser.cpp",
     output="class_audioequaliser_def.c", extended=true }, [[
     ~array(struct(AudioEQBand)) Bands
     ~double Gain
+    ~int Loudness
+    ~double ListeningLevel
   ]])
 
   klass("AudioReverb", { base="AudioEffect", src="class_audioreverb.cpp",
     output="class_audioreverb_def.c", extended=true }, [[
+    ~double Decay
+    ~double Size
+    ~double PreDelay
+    ~double Damping
+    ~double Diffusion
+    ~double EarlyLevel
+    ~double EarlyLength
+    ~double Mix
   ]])
 
   klass("AudioCompressor", { base="AudioEffect", src="class_audiocompressor.cpp",
     output="class_audiocompressor_def.c", extended=true }, [[
+    ~double Threshold
+    ~double Ratio
+    ~double Attack
+    ~double Release
+    ~double Knee
+    ~double Makeup
+    ~double Mix
   ]])
 
   klass("AudioLimiter", { base="AudioEffect", src="class_audiolimiter.cpp",
     output="class_audiolimiter_def.c", extended=true }, [[
+    ~double Ceiling
+    ~double Release
+    ~double Gain
   ]])
 
   klass("AudioGate", { base="AudioEffect", src="class_audiogate.cpp",
-    output="class_audiogate_def.c", extended=true }, [[
+    output="class_audiogate_def.c", references={ "GTM" }, extended=true }, [[
+    ~int(GTM) Mode
+    ~double Threshold
+    ~double Ratio
+    ~double Range
+    ~double Hysteresis
+    ~double Attack
+    ~double Hold
+    ~double Release
   ]])
 
   klass("AudioDelay", { base="AudioEffect", src="class_audiodelay.cpp",
-    output="class_audiodelay_def.c", extended=true }, [[
+    output="class_audiodelay_def.c", references={ "DLM" }, extended=true }, [[
+    ~double Time
+    ~double Feedback
+    ~double Damping
+    ~int(DLM) Mode
+    ~double Mix
   ]])
 
   klass("AudioChorus", { base="AudioEffect", src="class_audiochorus.cpp",
     output="class_audiochorus_def.c", extended=true }, [[
+    ~double Rate
+    ~double Delay
+    ~double Depth
+    ~double Spread
+    ~double Mix
   ]])
 
   klass("AudioFlanger", { base="AudioEffect", src="class_audioflanger.cpp",
     output="class_audioflanger_def.c", extended=true }, [[
+    ~double Rate
+    ~double Delay
+    ~double Depth
+    ~double Feedback
+    ~double Mix
   ]])
 
   klass("AudioLoudness", { base="AudioEffect", src="class_audioloudness.cpp",
     output="class_audioloudness_def.c", extended=true }, [[
+    ~double Target
+    ~double MaxBoost
+    ~double MaxCut
+    ~double Response
+    ~double Gate
+    ~int Link
   ]])
 
   klass("AudioPhaser", { base="AudioEffect", src="class_audiophaser.cpp",
     output="class_audiophaser_def.c", extended=true }, [[
+    ~double Rate
+    ~double Centre
+    ~double Depth
+    ~double Feedback
+    ~double Mix
   ]])
 
   klass("AudioSaturator", { base="AudioEffect", src="class_audiosaturator.cpp",
-    output="class_audiosaturator_def.c", extended=true }, [[
+    output="class_audiosaturator_def.c", references={ "SATS" },
+    extended=true }, [[
+    ~double Drive
+    ~int(SATS) Shape
+    ~double Gain
+    ~double Mix
   ]])
+
+  -- AudioSplitter method IDs start high enough to give a cushion from inherited AudioEffect methods.
+
+  methods("AudioSplitter", "Split", {
+    { id=30, name="GetBranch" },
+    { id=31, name="SetBranch" },
+    { id=32, name="InsertBranch" },
+    { id=33, name="RemoveBranch" }
+  })
 
   klass("AudioSplitter", { base="AudioEffect", src="class_audiosplitter.cpp",
     output="class_audiosplitter_def.c", extended=true }, [[
@@ -309,14 +402,28 @@ module({ name="Audio", copyright="Paul Manias © 2002-2026", version=1.0, timest
 
   klass("AudioStereo", { base="AudioEffect", src="class_audiostereo.cpp",
     output="class_audiostereo_def.c", extended=true }, [[
+    ~double Width
+    ~double Balance
+    ~int Swap
+    ~int Split
+    ~double Crossover
+    ~double BassWidth
+    ~double Gain
   ]])
 
   klass("AudioCrossfeed", { base="AudioEffect", src="class_audiocrossfeed.cpp",
     output="class_audiocrossfeed_def.c", extended=true }, [[
+    ~double Amount
+    ~double Cutoff
+    ~double Delay
+    ~double Gain
   ]])
 
   klass("AudioPitchShift", { base="AudioEffect", src="class_audiopitchshift.cpp",
     output="class_audiopitchshift_def.c", extended=true }, [[
+    ~double Semitones
+    ~double Mix
+    ~double Gain
   ]])
 
   -- AudioAnalyser method IDs start high enough to give a cushion from inherited AudioEffect methods.
@@ -328,6 +435,7 @@ module({ name="Audio", copyright="Paul Manias © 2002-2026", version=1.0, timest
 
   klass("AudioAnalyser", { base="AudioEffect", src="class_audioanalyser.cpp",
     output="class_audioanalyser_def.c", extended=true }, [[
+    ~int ChannelIndex
   ]])
 
   klass("Sound", { version=1, src="class_sound.cpp", output="class_sound_def.c", extended=true }, [[

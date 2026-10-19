@@ -1895,6 +1895,7 @@ identifier has no effect.</li>
 <p>The <code>Elapsed</code> parameter is the total number of microseconds that have elapsed since the last call.  The <code>CurrentTime</code> parameter is set to the <function>PreciseTime</function> value just prior to the <code>Callback</code> being called.  The callback function can return <code>ERR::Terminate</code> at any time to cancel the subscription.  All other error codes are ignored.  Tiri callbacks should use <code>raise ERR_Terminate</code> to perform the equivalent of this behaviour.</p>
 <p>To change the interval, call <function>UpdateTimer</function> with the new value.  To release a timer subscription, call <function>UpdateTimer</function> with the resulting <code>Subscription</code> handle and an <code>Interval</code> of zero.</p>
 <p>Timer management is provisioned by the <function>ProcessMessages</function> function.  Failure to regularly process incoming messages will lead to unreliable timer cycles.  It should be noted that the smaller the <code>Interval</code> that has been used, the more imperative regular message checking becomes.  Prolonged processing inside a timer routine can also impact on other timer subscriptions that are waiting to be processed.</p>
+<p>A timer callback is never re-entered.  If the callback processes messages, e.g. by calling <function>WaitTime</function>, its own timer is skipped until the callback returns.</p>
     </description>
     <result type="ERR">
       <error code="Okay">Operation successful.</error>
@@ -2041,9 +2042,11 @@ identifier has no effect.</li>
     </input>
     <description>
 <p>This function complements <function>SubscribeTimer</function>.  It can change the interval for an existing timer subscription, or remove it if the Interval is set to zero.</p>
+<p>A subscription that no longer exists, e.g. because its callback returned <code>ERR::Terminate</code>, is detected and results in <code>ERR::Search</code>.</p>
     </description>
     <result type="ERR">
       <error code="Okay">Operation successful.</error>
+      <error code="Search">The subscription does not refer to an active timer.</error>
       <error code="SystemLocked">Part of the system is unreachable due to a persistent lock</error>
       <error code="NullArgs">Function call missing argument value(s)</error>
       <error code="AlreadyLocked">Object or resource has already been locked</error>

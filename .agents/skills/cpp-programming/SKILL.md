@@ -39,7 +39,7 @@ ordinary C++ conventions.
 - After changing C++ source or headers, build the affected module before considering the work complete.
 - Use the Debug build and relevant commands documented in the repository `AGENTS.md`.
 - In a static build, rebuild both the affected module and `origo_cmd` so the executable includes the change.
-- Install the latest build before running `ctest`.
+- Install the latest build before running `ctest --preset agents`.
 - Confirm both successful compilation and compliance with this skill's formatting rules.
 
 ## Embedded API Documentation

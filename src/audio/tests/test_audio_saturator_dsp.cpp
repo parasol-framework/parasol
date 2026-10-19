@@ -45,7 +45,7 @@ struct SaturatorFixture {
    }
 };
 
-static SaturatorSettings settings(double Drive, int Shape, double Gain = 0, double Mix = 100)
+static SaturatorSettings settings(double Drive, SATS Shape, double Gain = 0, double Mix = 100)
 {
    return SaturatorSettings { .Drive = Drive, .Shape = Shape, .Gain = Gain, .Mix = Mix };
 }
@@ -54,12 +54,12 @@ static SaturatorSettings settings(double Drive, int Shape, double Gain = 0, doub
 
 static SaturatorSettings linear_settings(double Mix = 100)
 {
-   return settings(0, SATURATE_HARD, 0, Mix);
+   return settings(0, SATS::HARD, 0, Mix);
 }
 
-static double curve(double Z, int Shape)
+static double curve(double Z, SATS Shape)
 {
-   return (Shape IS SATURATE_HARD) ? std::clamp(Z, -1.0, 1.0) : std::tanh(Z);
+   return (Shape IS SATS::HARD) ? std::clamp(Z, -1.0, 1.0) : std::tanh(Z);
 }
 
 static double noise(uint32_t &Seed)
@@ -172,7 +172,7 @@ static void test_configuration(AudioTestContext &Test)
 
    // Fixed latency and support at every supported rate, independent of the settings.
    for (int rate : { 8000, 44100, 48000, 96000, 192000 }) {
-      for (int shape : { SATURATE_SOFT, SATURATE_HARD }) {
+      for (auto shape : { SATS::SOFT, SATS::HARD }) {
          SaturatorFixture fixture(rate, true, settings(36, shape, 12, 0));
          AUDIO_CHECK(fixture.Processor.latency() IS 64 and fixture.Processor.tail() IS AudioTail::FINITE);
          AUDIO_CHECK(fixture.Processor.tail_frames() IS 129 and fixture.Processor.decay_estimate() IS 65);
@@ -279,7 +279,7 @@ static void test_alignment(AudioTestContext &Test)
 
    // Mix zero is the input delayed by exactly 64 frames, bit for bit, including headroom above unity.
    for (int channels = 1; channels <= 2; channels++) {
-      SaturatorFixture dry(44100, channels IS 2, settings(36, SATURATE_HARD, 12, 0));
+      SaturatorFixture dry(44100, channels IS 2, settings(36, SATS::HARD, 12, 0));
       const auto input = noise_buffer(2000, channels, 3, 4.0);
       auto result = input;
       dry.run(result, 17);
@@ -297,8 +297,8 @@ static void test_alignment(AudioTestContext &Test)
    {
       const auto input = noise_buffer(3000, 2, 5, 0.8);
       auto wet = input, blended = input;
-      SaturatorFixture wet_only(48000, true, settings(18, SATURATE_SOFT, -3, 100));
-      SaturatorFixture partial(48000, true, settings(18, SATURATE_SOFT, -3, 30));
+      SaturatorFixture wet_only(48000, true, settings(18, SATS::SOFT, -3, 100));
+      SaturatorFixture partial(48000, true, settings(18, SATS::SOFT, -3, 30));
       wet_only.run(wet, 256);
       partial.run(blended, 256);
       double blend_error = 0;
@@ -320,8 +320,8 @@ static void test_transfer(AudioTestContext &Test)
 {
    // Both shapes, several drives and trims, mono and stereo, at several rates.
    const SaturatorSettings cases[] = {
-      settings(0, SATURATE_SOFT), settings(6, SATURATE_SOFT, -6), settings(36, SATURATE_SOFT, -36, 100),
-      settings(12, SATURATE_HARD, 12, 100), settings(36, SATURATE_HARD, -12, 60), settings(20, SATURATE_SOFT, 3, 25)
+      settings(0, SATS::SOFT), settings(6, SATS::SOFT, -6), settings(36, SATS::SOFT, -36, 100),
+      settings(12, SATS::HARD, 12, 100), settings(36, SATS::HARD, -12, 60), settings(20, SATS::SOFT, 3, 25)
    };
    for (int rate : { 8000, 44100, 96000 }) {
       for (int channels = 1; channels <= 2; channels++) {
@@ -337,7 +337,7 @@ static void test_transfer(AudioTestContext &Test)
 
    // Silence in, silence out, with no pending state.
    {
-      SaturatorFixture fixture(48000, true, settings(36, SATURATE_SOFT, 12));
+      SaturatorFixture fixture(48000, true, settings(36, SATS::SOFT, 12));
       std::vector<float> silence(2000, 0.0f);
       fixture.run(silence, 100);
       bool zero = true;
@@ -346,7 +346,7 @@ static void test_transfer(AudioTestContext &Test)
    }
 
    // Odd symmetry is exact: negating the input negates the output, for both curves.
-   for (int shape : { SATURATE_SOFT, SATURATE_HARD }) {
+   for (auto shape : { SATS::SOFT, SATS::HARD }) {
       SaturatorFixture a(48000, false, settings(24, shape)), b(48000, false, settings(24, shape));
       auto positive = noise_buffer(1000, 1, 13, 0.7);
       auto negative = positive;
@@ -360,8 +360,8 @@ static void test_transfer(AudioTestContext &Test)
 
    // Small signals see a gain equal to the drive times the trim: no drive-dependent normalisation.
    {
-      SaturatorFixture unity(48000, false, settings(0, SATURATE_SOFT));
-      SaturatorFixture driven(48000, false, settings(12, SATURATE_SOFT));
+      SaturatorFixture unity(48000, false, settings(0, SATS::SOFT));
+      SaturatorFixture driven(48000, false, settings(12, SATS::SOFT));
       auto a = noise_buffer(1000, 1, 17, 1e-6), b = a;
       unity.run(a);
       driven.run(b);
@@ -374,7 +374,7 @@ static void test_transfer(AudioTestContext &Test)
    }
 
    // DC settles on the static curve value: trim * curve(drive * level).
-   for (int shape : { SATURATE_SOFT, SATURATE_HARD }) {
+   for (auto shape : { SATS::SOFT, SATS::HARD }) {
       SaturatorFixture fixture(48000, false, settings(6, shape, -6));
       std::vector<float> dc(600, 0.5f);
       fixture.run(dc, 7);
@@ -385,12 +385,12 @@ static void test_transfer(AudioTestContext &Test)
 
    // Drive and trim endpoints: 36 dB of drive hard-clips a -30 dBFS DC level at full scale; -36 dB trim scales it.
    {
-      SaturatorFixture fixture(48000, false, settings(36, SATURATE_HARD, -36));
+      SaturatorFixture fixture(48000, false, settings(36, SATS::HARD, -36));
       std::vector<float> dc(600, 0.0316f);
       fixture.run(dc);
       AUDIO_CHECK(std::abs(dc[599] - std::pow(10.0, -36.0 / 20.0)) < 1e-7);
 
-      SaturatorFixture boost(48000, false, settings(0, SATURATE_HARD, 12));
+      SaturatorFixture boost(48000, false, settings(0, SATS::HARD, 12));
       std::vector<float> level(600, 0.25f);
       boost.run(level);
       AUDIO_CHECK(std::abs(level[599] - 0.25 * std::pow(10.0, 12.0 / 20.0)) < 1e-6);
@@ -401,7 +401,7 @@ static void test_transfer(AudioTestContext &Test)
    double absolute_sum = 0;
    for (auto c : saturator_filter().Prototype) absolute_sum += std::abs(c);
    const double bound = absolute_sum * std::pow(10.0, 12.0 / 20.0);
-   for (int shape : { SATURATE_SOFT, SATURATE_HARD }) {
+   for (auto shape : { SATS::SOFT, SATS::HARD }) {
       SaturatorFixture fixture(48000, true, settings(36, shape, 12));
       std::vector<float> buffer(2000);
       for (size_t i = 0; i < buffer.size(); i++) buffer[i] = (i % 7 < 3) ? 3.0e38f : -3.0e38f;
@@ -411,7 +411,7 @@ static void test_transfer(AudioTestContext &Test)
       AUDIO_CHECK(finite and (peak(buffer) <= bound * (1.0 + 1e-6)) and (peak(buffer) > 3.0));
    }
    {
-      SaturatorFixture fixture(48000, true, settings(24, SATURATE_SOFT, 0, 50));
+      SaturatorFixture fixture(48000, true, settings(24, SATS::SOFT, 0, 50));
       std::vector<float> buffer(1000);
       for (size_t i = 0; i < buffer.size(); i++) {
          buffer[i] = (i % 3 IS 0) ? std::numeric_limits<float>::quiet_NaN() :
@@ -442,7 +442,7 @@ struct SpectrumCase {
    const char *Name;
    std::vector<Tone> Tones;
    double Drive;
-   int Shape;
+   SATS Shape;
 };
 
 struct SpectrumResult {
@@ -564,22 +564,22 @@ static SpectrumResult measure_spectrum(const SpectrumCase &Case, int Oversample,
 // the passband error energy by at least 20 dB relative to unoversampled processing.
 
 static const SpectrumCase glGateCases[] = {
-   { "soft 24 dB, 996 Hz", { { 85, 0.5 } }, 24, SATURATE_SOFT },
-   { "soft 12 dB, 2988 Hz", { { 255, 0.5 } }, 12, SATURATE_SOFT },
-   { "hard 12 dB, 996 Hz", { { 85, 0.5 } }, 12, SATURATE_HARD },
-   { "hard 24 dB, 2988 Hz", { { 255, 0.5 } }, 24, SATURATE_HARD }
+   { "soft 24 dB, 996 Hz", { { 85, 0.5 } }, 24, SATS::SOFT },
+   { "soft 12 dB, 2988 Hz", { { 255, 0.5 } }, 12, SATS::SOFT },
+   { "hard 12 dB, 996 Hz", { { 85, 0.5 } }, 12, SATS::HARD },
+   { "hard 24 dB, 2988 Hz", { { 255, 0.5 } }, 24, SATS::HARD }
 };
 
 // Limitation cases quantify the residual aliasing of high-frequency, high-drive and dense material.  They carry no
 // improvement threshold.
 
 static const SpectrumCase glLimitCases[] = {
-   { "soft 36 dB, 14988 Hz", { { 1279, 0.5 } }, 36, SATURATE_SOFT },
-   { "hard 36 dB, 14988 Hz", { { 1279, 0.5 } }, 36, SATURATE_HARD },
-   { "soft 24 dB, 18996 Hz", { { 1621, 0.5 } }, 24, SATURATE_SOFT },
-   { "hard 24 dB, 18996 Hz", { { 1621, 0.5 } }, 24, SATURATE_HARD },
-   { "soft 24 dB, multitone", { { 85, 0.2 }, { 255, 0.2 }, { 511, 0.2 } }, 24, SATURATE_SOFT },
-   { "hard 24 dB, multitone", { { 85, 0.2 }, { 255, 0.2 }, { 511, 0.2 } }, 24, SATURATE_HARD }
+   { "soft 36 dB, 14988 Hz", { { 1279, 0.5 } }, 36, SATS::SOFT },
+   { "hard 36 dB, 14988 Hz", { { 1279, 0.5 } }, 36, SATS::HARD },
+   { "soft 24 dB, 18996 Hz", { { 1621, 0.5 } }, 24, SATS::SOFT },
+   { "hard 24 dB, 18996 Hz", { { 1621, 0.5 } }, 24, SATS::HARD },
+   { "soft 24 dB, multitone", { { 85, 0.2 }, { 255, 0.2 }, { 511, 0.2 } }, 24, SATS::SOFT },
+   { "hard 24 dB, multitone", { { 85, 0.2 }, { 255, 0.2 }, { 511, 0.2 } }, 24, SATS::HARD }
 };
 
 static void log_spectrum(const SpectrumCase &Case, const SpectrumResult &Result)
@@ -645,9 +645,9 @@ static void test_tail(AudioTestContext &Test)
    {
       SaturatorFixture fixture(48000, true, SaturatorSettings());
       std::vector<float> silence(2000, 0.0f);
-      fixture.change(settings(30, SATURATE_HARD, 12, 50));
+      fixture.change(settings(30, SATS::HARD, 12, 50));
       fixture.run_range(silence, 0, 100);
-      fixture.change(settings(0, SATURATE_SOFT, -36, 100));
+      fixture.change(settings(0, SATS::SOFT, -36, 100));
       fixture.run_range(silence, 100, 1000);
       bool zero = true;
       for (auto sample : silence) zero &= sample IS 0;
@@ -656,11 +656,11 @@ static void test_tail(AudioTestContext &Test)
 
    // Shape and drive edits during a pending tail do not extend it.
    {
-      SaturatorFixture fixture(48000, false, settings(24, SATURATE_SOFT));
+      SaturatorFixture fixture(48000, false, settings(24, SATS::SOFT));
       std::vector<float> buffer(300, 0.0f);
       buffer[0] = 0.9f;
       fixture.run_range(buffer, 0, 50);
-      fixture.change(settings(36, SATURATE_HARD, 6));
+      fixture.change(settings(36, SATS::HARD, 6));
       fixture.run_range(buffer, 50, 128);
       const bool before = fixture.Processor.pending();
       fixture.run_range(buffer, 128, 129);
@@ -712,7 +712,7 @@ static void test_lifecycle(AudioTestContext &Test)
    SaturatorFixture fixture(48000, true, SaturatorSettings());
    auto buffer = noise_buffer(500, 2, 4);
    fixture.run(buffer, 100);
-   fixture.change(settings(30, SATURATE_HARD, -12, 40));
+   fixture.change(settings(30, SATS::HARD, -12, 40));
    AUDIO_CHECK(fixture.Processor.pending() and fixture.Processor.ramping());
 
    // Reset discards every history and applies the committed settings immediately.
@@ -730,7 +730,7 @@ static void test_lifecycle(AudioTestContext &Test)
    {
       auto input = noise_buffer(800, 2, 8);
       auto fresh = input;
-      SaturatorFixture reference_fixture(48000, true, settings(30, SATURATE_HARD, -12, 40));
+      SaturatorFixture reference_fixture(48000, true, settings(30, SATS::HARD, -12, 40));
       fixture.run(input, 17);
       reference_fixture.run(fresh, 256);
       bool same = true;
@@ -740,11 +740,11 @@ static void test_lifecycle(AudioTestContext &Test)
 
    // An edit while a reset is pending, or with an unsupported target, records the settings without a transition.
    fixture.Effect.ResetPending = true;
-   fixture.change(settings(12, SATURATE_SOFT, 0, 100));
+   fixture.change(settings(12, SATS::SOFT, 0, 100));
    AUDIO_CHECK(fixture.Processor.Settings.Drive IS 12 and fixture.Processor.drive_level() IS 30.0);
    AUDIO_CHECK(not fixture.Processor.ramping());
    fixture.Effect.ResetPending = false;
-   fixture.Processor.update(settings(18, SATURATE_SOFT, 0, 100), nullptr);
+   fixture.Processor.update(settings(18, SATS::SOFT, 0, 100), nullptr);
    AUDIO_CHECK(fixture.Processor.Settings.Drive IS 18 and (not fixture.Processor.ramping()));
    fixture.Processor.reset();
    AUDIO_CHECK(fixture.Processor.drive_level() IS 18.0 and fixture.Processor.hard_weight() IS 0);
@@ -772,9 +772,9 @@ static void test_lifecycle(AudioTestContext &Test)
 
 static void test_ramps(AudioTestContext &Test)
 {
-   SaturatorFixture fixture(48000, false, settings(0, SATURATE_SOFT, 0, 100));
+   SaturatorFixture fixture(48000, false, settings(0, SATS::SOFT, 0, 100));
    std::vector<float> buffer(2000, 0.0f);
-   fixture.change(settings(24, SATURATE_HARD, -12, 50));
+   fixture.change(settings(24, SATS::HARD, -12, 50));
    fixture.run_range(buffer, 0, 240);
 
    AUDIO_CHECK(std::abs(fixture.Processor.drive_level() - 12.0) < 1e-9);
@@ -785,7 +785,7 @@ static void test_ramps(AudioTestContext &Test)
    AUDIO_CHECK(std::abs(fixture.Processor.wet_mix() - 0.75) < 1e-12);
 
    // Retarget midway: the new ramp starts from the current values and lasts a full 10 ms.
-   fixture.change(settings(0, SATURATE_SOFT, 0, 100));
+   fixture.change(settings(0, SATS::SOFT, 0, 100));
    fixture.run_range(buffer, 240, 480);
    AUDIO_CHECK(std::abs(fixture.Processor.drive_level() - 6.0) < 1e-9);
    AUDIO_CHECK(std::abs(fixture.Processor.hard_weight() - 0.25) < 1e-12);
@@ -801,10 +801,10 @@ static void test_ramps(AudioTestContext &Test)
    // A shape crossfade evaluates the blend of the two curves: with a DC input, the output moves from the soft value
    // to the hard value along the oversampled blend, and settles exactly.
    {
-      SaturatorFixture shape(48000, false, settings(12, SATURATE_SOFT, 0, 100));
+      SaturatorFixture shape(48000, false, settings(12, SATS::SOFT, 0, 100));
       std::vector<float> dc(2000, 0.3f);
       shape.run_range(dc, 0, 1000);
-      shape.change(settings(12, SATURATE_HARD, 0, 100));
+      shape.change(settings(12, SATS::HARD, 0, 100));
       shape.run_range(dc, 1000, 2000);
       const double soft = std::tanh(std::pow(10.0, 0.6) * 0.3);
       // The transition is monotonic apart from the filter's ringing at the corners of the ramp, which is below 2e-5.
@@ -829,10 +829,10 @@ static void test_blocks(AudioTestContext &Test)
       SaturatorSettings Settings;
    };
    const Edit edits[] = {
-      { 700, settings(30, SATURATE_HARD, -6, 100) },
-      { 905, settings(12, SATURATE_SOFT, 3, 60) },
-      { 1800, settings(36, SATURATE_HARD, -20, 0) },
-      { 1850, settings(6, SATURATE_SOFT, -6, 100) }
+      { 700, settings(30, SATS::HARD, -6, 100) },
+      { 905, settings(12, SATS::SOFT, 3, 60) },
+      { 1800, settings(36, SATS::HARD, -20, 0) },
+      { 1850, settings(6, SATS::SOFT, -6, 100) }
    };
 
    for (int rate : { 44100, 48000, 96000 }) {
@@ -886,7 +886,7 @@ static void test_resources(AudioTestContext &Test)
    std::vector<float> buffer(size_t(1024) * 2);
    double worst_block = 0, total = 0;
    for (int block = 0; block < 200; block++) {
-      fixture.change(settings((block & 1) ? 36 : 0, (block & 1) ? SATURATE_HARD : SATURATE_SOFT, -6, 70));
+      fixture.change(settings((block & 1) ? 36 : 0, (block & 1) ? SATS::HARD : SATS::SOFT, -6, 70));
       for (auto &sample : buffer) sample = float(noise(seed));
       const auto start = std::chrono::steady_clock::now();
       fixture.Processor.process(buffer.data(), 1024);

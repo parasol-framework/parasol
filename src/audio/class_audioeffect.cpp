@@ -65,7 +65,7 @@ A `step` is present only for stepped values.
 
 A `group` element describes a repeated structure, such as a list of equaliser bands, with `min` and `max` entry counts.
 Its entries are numbered from zero.
-Use #GetGroupCount() to read the number of entries, including staged insertions and removals.
+Use #GetGroupCount() to read the number of entries.
 
 A `rule` element relates a parameter to a sibling in the same group, or to another top-level parameter.  If the
 sibling named by `key` holds one of the listed `values`, the parameter is either ignored by the processor
@@ -89,13 +89,37 @@ layout replaces the meter layout; use #GetMeterLayout() to resolve keys to slots
 Parameters are addressed by key-paths: `key` for a top-level parameter, or `group[index].key` for a group member, e.g.
 `bands[2].frequency`.  Values are always in real units, such as hertz or decibels; they are never normalised.
 
-<header>Staged Changes</header>
+<header>Changing Parameters</header>
 
-Before initialisation, #SetKey(), #InsertEntry() and #RemoveEntry() change the effect directly and `Init()`
-validates the result.  After initialisation they change a working copy instead, which is applied as a single change
-when the client calls `Flush()`.  This allows related changes, such as switching a band's type together with its Q,
-without the processor ever running the state between them.  #GetKey() reports staged values.  A flush that
-breaks any rule is rejected in full and the working copy is discarded.
+Subclasses that publish typed fields, such as `Threshold` on @AudioCompressor, accept single-parameter changes
+through those fields.  Each write is validated and applied immediately.
+
+#Batch() is the generic interface.  It takes an ordered list of commands and applies them as one validated change,
+so related edits, such as switching a band's type together with its Q, never expose the processor to the state between
+them.  A command is a sequence of tokens separated by spaces or tabs.  Verbs are lower-case:
+
+<types type="Command">
+<type name="set KEY VALUE">Sets the parameter at the key-path `KEY` to `VALUE`.  The value is a finite number with
+an optional leading `+`.  An enumeration also accepts the `key` of one of its options, e.g.
+`set bands[0].type low_shelf`.</type>
+<type name="insert GROUP INDEX">Inserts an entry filled with the schema defaults at `INDEX`, from zero to the current
+entry count.</type>
+<type name="remove GROUP INDEX">Removes the entry at `INDEX`.  Later entries move down by one and keep their processing
+state.</type>
+</types>
+
+Commands apply in order to a working copy that exists only for the duration of the call.  An index in a later command
+refers to the working copy after the earlier commands, so `insert bands 0` followed by `set bands[0].gain 3` edits the
+new band.  Setting a key more than once is permitted; the last value wins.  Each value is checked against its own range
+as its command is applied.  Rules are checked once, against the final working copy, so the order of related `set`
+commands does not matter.
+
+Before initialisation the result is stored directly and `Init()` validates the complete state.  After initialisation
+the result is validated and committed as a single change.  If any command or rule fails, nothing is applied.
+
+Values are parsed as written.  Tiri f-strings format numbers to 14 significant digits (`f'{0.1 + 0.2}'` is `0.3`), so
+values built with them are not bit-exact.  This is harmless for audio parameters.  #GetKey() returns values with
+sufficient precision to preserve the original number.
 
 -END-
 
@@ -194,30 +218,71 @@ static ERR effect_commit(extAudioEffect *Self, const AudioParamState &State)
 }
 
 //********************************************************************************************************************
-// Apply an edit to the working copy after initialisation, or directly to the effect before initialisation.  Before
-// initialisation only each value's own range is checked; Init() validates the complete state.
+// Batch() command handlers.  Each applies one command to a working copy and checks only the values it changes; rules
+// are checked against the final state when it is committed.
 
-template <class T> static ERR effect_edit(extAudioEffect *Self, T &&Edit)
+static ERR batch_set(extAudioEffect *Self, AudioParamState &State, const AudioBatchCommand &Command, int Rate)
 {
-   if (not Self->Schema) return ERR::NoSupport;
-   if (auto error = effect_mutable(Self); error != ERR::Okay) return error;
-
-   if (Self->initialised()) {
-      const bool created = not Self->Pending;
-      if (created) {
-         Self->Pending = std::make_unique<AudioParamState>();
-         effect_snapshot(Self, *Self->Pending);
-      }
-      auto error = Edit(*Self->Pending);
-      if ((error != ERR::Okay) and created) Self->Pending.reset();
-      return error;
-   }
-
-   AudioParamState state;
-   effect_snapshot(Self, state);
-   if (auto error = Edit(state); error != ERR::Okay) return error;
-   Self->Schema->Apply(Self, state);
+   double *value;
+   const AudioParamDesc *desc;
+   if (auto error = resolve_path(*Self->Schema, State, Command.Target, value, desc); error != ERR::Okay) return error;
+   double number;
+   if (auto error = parse_param_value(*desc, Command.Argument, number); error != ERR::Okay) return error;
+   if (auto error = check_param(*desc, number, Rate); error != ERR::Okay) return error;
+   *value = number;
    return ERR::Okay;
+}
+
+// Group entry edits shared by Batch() and the group methods of subclasses.  A new entry has no origin, so it is fully
+// validated on commit and starts with fresh processing state.  Other entries keep their origins.
+
+static ERR group_insert(const AudioParamGroup &Group, std::vector<AudioParamEntry> &Entries, int Index,
+   AudioParamEntry &&Entry)
+{
+   if ((Index < 0) or (size_t(Index) > Entries.size())) return ERR::OutOfRange;
+   if (std::ssize(Entries) >= Group.MaxCount) return ERR::OutOfRange;
+   Entries.insert(Entries.begin() + Index, std::move(Entry));
+   return ERR::Okay;
+}
+
+static ERR group_remove(const AudioParamGroup &Group, std::vector<AudioParamEntry> &Entries, int Index)
+{
+   if ((Index < 0) or (size_t(Index) >= Entries.size())) return ERR::OutOfRange;
+   if (std::ssize(Entries) <= Group.MinCount) return ERR::OutOfRange;
+   Entries.erase(Entries.begin() + Index);
+   return ERR::Okay;
+}
+
+// Range-check every member value of a group entry, then store them.  Rules are checked when the state is committed.
+
+static ERR group_entry_assign(const AudioParamGroup &Group, AudioParamEntry &Entry, std::span<const double> Values,
+   int Rate)
+{
+   if (Values.size() != Group.Members.size()) return ERR::Args;
+   for (size_t m = 0; m < Values.size(); m++) {
+      if (check_param(Group.Members[m], Values[m], Rate) != ERR::Okay) return ERR::InvalidValue;
+   }
+   Entry.Values.assign(Values.begin(), Values.end());
+   return ERR::Okay;
+}
+
+static ERR batch_insert(extAudioEffect *Self, AudioParamState &State, const AudioBatchCommand &Command, int Rate)
+{
+   auto g = find_group(*Self->Schema, Command.Target);
+   if (g < 0) return ERR::Search;
+   int index;
+   if (auto error = parse_entry_index(Command.Argument, index); error != ERR::Okay) return error;
+   const auto &group = Self->Schema->Groups[g];
+   return group_insert(group, State.Groups[g], index, default_entry(group, Rate));
+}
+
+static ERR batch_remove(extAudioEffect *Self, AudioParamState &State, const AudioBatchCommand &Command)
+{
+   auto g = find_group(*Self->Schema, Command.Target);
+   if (g < 0) return ERR::Search;
+   int index;
+   if (auto error = parse_entry_index(Command.Argument, index); error != ERR::Okay) return error;
+   return group_remove(Self->Schema->Groups[g], State.Groups[g], index);
 }
 
 //********************************************************************************************************************
@@ -226,38 +291,187 @@ template <class T> static ERR effect_edit(extAudioEffect *Self, T &&Edit)
 static ERR effect_set_state(extAudioEffect *Self, const AudioParamState &State)
 {
    if (auto error = effect_mutable(Self); error != ERR::Okay) return error;
-   if (Self->Pending) return ERR::InvalidState;
    return effect_commit(Self, State);
+}
+
+//********************************************************************************************************************
+// Used by subclass field setters for scalar parameters.  Before initialisation the value is range-checked and stored,
+// as Batch() does, and Init() validates the complete state.  After initialisation the change is validated and
+// committed immediately.
+
+static ERR effect_set_param(extAudioEffect *Self, int Index, double Value)
+{
+   if (not Self->Schema) return ERR::NoSupport;
+   if ((Index < 0) or (Index >= int(Self->Schema->Params.size()))) return ERR::OutOfRange;
+   if (auto error = effect_mutable(Self); error != ERR::Okay) return error;
+   if (check_param(Self->Schema->Params[Index], Value, effect_rate(Self)) != ERR::Okay) return ERR::InvalidValue;
+
+   AudioParamState state;
+   effect_snapshot(Self, state);
+   state.Params[Index] = Value;
+   if (Self->initialised()) return effect_commit(Self, state);
+   Self->Schema->Apply(Self, state);
+   return ERR::Okay;
+}
+
+// Field accessor templates, so that one function serves every scalar parameter of a given type.  The getters read
+// the committed value from the subclass Settings structure.  The int getter also serves bool and enumerated members.
+
+template <int Index> static ERR effect_param_set(extAudioEffect *Self, double Value)
+{
+   return effect_set_param(Self, Index, Value);
+}
+
+template <int Index> static ERR effect_param_set_int(extAudioEffect *Self, int Value)
+{
+   return effect_set_param(Self, Index, double(Value));
+}
+
+template <class T, auto Member> static ERR effect_settings_get(T *Self, double *Value)
+{
+   *Value = Self->Settings.*Member;
+   return ERR::Okay;
+}
+
+template <class T, auto Member> static ERR effect_settings_get_int(T *Self, int *Value)
+{
+   *Value = int(Self->Settings.*Member);
+   return ERR::Okay;
+}
+
+//********************************************************************************************************************
+// Used by subclass methods that edit one parameter group, following the field semantics of effect_set_param().  Edit
+// receives the group's entries from a snapshot, in which each entry's origin is its committed index, together with
+// the group descriptor and the output rate.  An error from Edit abandons the change.
+
+template <class EDIT> static ERR effect_edit_group(extAudioEffect *Self, int Group, EDIT &&Edit)
+{
+   if (not Self->Schema) return ERR::NoSupport;
+   if ((Group < 0) or (Group >= std::ssize(Self->Schema->Groups))) return ERR::OutOfRange;
+   if (auto error = effect_mutable(Self); error != ERR::Okay) return error;
+
+   const int rate = effect_rate(Self);
+   AudioParamState state;
+   effect_snapshot(Self, state);
+   if (auto error = Edit(state.Groups[Group], Self->Schema->Groups[Group], rate); error != ERR::Okay) return error;
+   if (Self->initialised()) return effect_commit(Self, state);
+   Self->Schema->Apply(Self, state);
+   return ERR::Okay;
+}
+
+// Replace the member values of one entry.  The entry keeps its origin, so its processing state is preserved.
+
+static ERR effect_group_set(extAudioEffect *Self, int Group, int Index, std::span<const double> Values)
+{
+   return effect_edit_group(Self, Group,
+      [&](std::vector<AudioParamEntry> &Entries, const AudioParamGroup &Desc, int Rate) {
+         if ((Index < 0) or (size_t(Index) >= Entries.size())) return ERR::OutOfRange;
+         return group_entry_assign(Desc, Entries[Index], Values, Rate);
+      });
+}
+
+// Insert an entry with the given member values.
+
+static ERR effect_group_insert(extAudioEffect *Self, int Group, int Index, std::span<const double> Values)
+{
+   return effect_edit_group(Self, Group,
+      [&](std::vector<AudioParamEntry> &Entries, const AudioParamGroup &Desc, int Rate) {
+         AudioParamEntry entry;
+         if (auto error = group_entry_assign(Desc, entry, Values, Rate); error != ERR::Okay) return error;
+         return group_insert(Desc, Entries, Index, std::move(entry));
+      });
+}
+
+static ERR effect_group_remove(extAudioEffect *Self, int Group, int Index)
+{
+   return effect_edit_group(Self, Group,
+      [&](std::vector<AudioParamEntry> &Entries, const AudioParamGroup &Desc, int Rate) {
+         return group_remove(Desc, Entries, Index);
+      });
 }
 
 /*********************************************************************************************************************
 
--ACTION-
-Flush: Applies changes staged by SetKey(), InsertEntry() and RemoveEntry().
+-METHOD-
+Batch: Applies a sequence of parameter edits as a single change.
 
-After initialisation, parameter changes made through #SetKey(), #InsertEntry() and #RemoveEntry() are held in a
-working copy.  Flush() validates the working copy as a whole and applies it in a single step, so the processor never
-runs a partially changed state.
+Batch() applies an ordered list of edit commands to the parameters published in the #Schema, then validates and
+commits the result as one change.  The processor never runs a partially edited state, and if any command fails or the
+result breaks a rule, nothing is applied.  The command grammar is described in the class documentation.
 
-The working copy is discarded whether or not the flush succeeds.  If any value or rule is invalid, the effect is left
-unchanged and `ERR::InvalidValue` is returned.  Calling Flush() with no staged changes has no effect.
+<pre>
+check eq.mtBatch(array&lt;str&gt; {
+   'insert bands 0',
+   'set bands[0].type low_shelf',
+   'set bands[0].frequency 100',
+   'set bands[0].q 0.7'
+})
+</pre>
+
+Commands apply in order to a working copy that is private to the call.  Each value is checked against its own range
+as its command is applied, while rules that relate parameters to each other are checked once against the final state.
+Before initialisation the rules are not checked; `Init()` validates the complete state.  After initialisation the
+result is committed immediately and the processor ramps to the new values where it supports doing so.
+
+`Failed` receives the zero-based index of the command that failed to parse, resolve or pass its range check.  It is -1
+on success and when the failure cannot be attributed to a single command, such as a precondition or a broken rule.
+`ERR::InvalidValue` with a `Failed` value of -1 therefore indicates that the final state breaks a rule.
+
+-INPUT-
+vector(string) Commands: Ordered edit commands, e.g. `set gain -3` or `insert bands 0`.
+&int Failed: The zero-based index of the command that failed, or -1.
 
 -ERRORS-
-Okay: The staged changes were applied, or there were none.
-InvalidValue: The staged changes break a rule or range.  Nothing was applied.
-InvalidState: A staged edit would change the configured processor instance's algorithmic latency.
+Okay: Every command was applied, or `Commands` is empty.
+NullArgs
+Args: `Commands` holds more than 1024 entries.
+NoSupport: The effect does not publish a schema.
+Syntax: A command is empty, has an unknown verb, has the wrong number of tokens or has a malformed index.
+Search: A key or group is unknown.
+OutOfRange: A group index is invalid, the group is full, or the group is at its minimum size.
+InvalidValue: A value is malformed or out of range, or the resulting state breaks a rule.
+InvalidState: The change would alter the configured processor's algorithmic latency.
 Immutable: The effect is attached to the global chain.
 NotInitialised: The effect has been disconnected from its Audio object.
 -END-
 
 *********************************************************************************************************************/
 
-static ERR AUDIOEFFECT_Flush(extAudioEffect *Self)
+static ERR AUDIOEFFECT_Batch(extAudioEffect *Self, struct fx::Batch *Args)
 {
-   if (not Self->Pending) return ERR::Okay;
-   auto state = std::move(Self->Pending);
+   if ((not Args) or (not Args->Commands)) return ERR::NullArgs;
+
+   Args->Failed = -1;
+
+   if (not Self->Schema) return ERR::NoSupport;
+   if (Args->Commands->size() > 1024) return ERR::Args;
+   if (Args->Commands->empty()) return ERR::Okay;
    if (auto error = effect_mutable(Self); error != ERR::Okay) return error;
-   return effect_commit(Self, *state);
+
+   const int rate = effect_rate(Self);
+   AudioParamState state;
+   effect_snapshot(Self, state);
+
+   for (size_t i = 0; i < Args->Commands->size(); i++) {
+      AudioBatchCommand command;
+      auto error = parse_batch_command((*Args->Commands)[i], command);
+      if (error IS ERR::Okay) {
+         switch (command.Verb) {
+            case ABV::SET:    error = batch_set(Self, state, command, rate); break;
+            case ABV::INSERT: error = batch_insert(Self, state, command, rate); break;
+            case ABV::REMOVE: error = batch_remove(Self, state, command); break;
+         }
+      }
+
+      if (error != ERR::Okay) {
+         Args->Failed = int(i);
+         return error;
+      }
+   }
+
+   if (Self->initialised()) return effect_commit(Self, state);
+   Self->Schema->Apply(Self, state);
+   return ERR::Okay;
 }
 
 //********************************************************************************************************************
@@ -390,9 +604,8 @@ static ERR AUDIOEFFECT_Init(extAudioEffect *Self)
 -METHOD-
 GetGroupCount: Reads the number of entries in a parameter group.
 
-Returns the current entry count for the named group.  Staged insertions and removals are included, matching
-#GetKey().  A failed Flush() discards staged changes, so subsequent queries return the committed count.
-The count can be read before initialisation or after the effect has been disconnected.
+Returns the committed entry count for the named group.  The count can be read before initialisation or after the
+effect has been disconnected.
 
 -INPUT-
 strview Group: The group key published in #Schema, e.g. `bands`.
@@ -419,8 +632,7 @@ static ERR AUDIOEFFECT_GetGroupCount(extAudioEffect *Self, struct fx::GetGroupCo
 
    if (group < 0) return ERR::Search;
 
-   if (Self->Pending) Args->Count = int(Self->Pending->Groups[group].size());
-   else if (Self->Schema->GroupCount) Args->Count = int(Self->Schema->GroupCount(Self, group));
+   if (Self->Schema->GroupCount) Args->Count = int(Self->Schema->GroupCount(Self, group));
    else {
       AudioParamState state;
       Self->Schema->Read(Self, state);
@@ -435,9 +647,9 @@ static ERR AUDIOEFFECT_GetGroupCount(extAudioEffect *Self, struct fx::GetGroupCo
 -ACTION-
 GetKey: Reads a parameter value by key.
 
-Reads the value of a parameter published in the #Schema.  If changes are staged, the staged value is returned, so a
-client always reads back what it has set.  Values are returned as numeric strings with sufficient precision to
-preserve the original number.  Convert the result to a number when performing arithmetic.
+Reads the committed value of a parameter published in the #Schema.  Values are returned as numeric strings with
+sufficient precision to preserve the original number, including enumerated values.  Convert the result to a number
+when performing arithmetic.
 
 -INPUT-
 strview Key: A parameter key such as `gain` or `bands[2].frequency`.
@@ -459,16 +671,12 @@ static ERR AUDIOEFFECT_GetKey(extAudioEffect *Self, struct acGetKey *Args)
    if ((not Args) or (not Args->Value)) return ERR::NullArgs;
    if (not Self->Schema) return ERR::NoSupport;
 
-   AudioParamState committed;
-   auto state = Self->Pending.get();
-   if (not state) {
-      effect_snapshot(Self, committed);
-      state = &committed;
-   }
+   AudioParamState state;
+   effect_snapshot(Self, state);
 
    double *value;
    const AudioParamDesc *desc;
-   if (auto error = resolve_path(*Self->Schema, *state, Args->Key, value, desc); error != ERR::Okay) return error;
+   if (auto error = resolve_path(*Self->Schema, state, Args->Key, value, desc); error != ERR::Okay) return error;
    char buffer[64];
    auto [end, error] = std::to_chars(buffer, buffer + sizeof(buffer), *value);
    if (error != std::errc()) return ERR::Failed;
@@ -482,7 +690,7 @@ static ERR AUDIOEFFECT_GetKey(extAudioEffect *Self, struct acGetKey *Args)
 GetResponse: Computes the effect's frequency response.
 
 Computes the response of the effect at each of the given frequencies, in decibels, from its committed parameters at
-the current #OutputRate.  Staged changes are not included.  Effects that support this method list an `output` of
+the current #OutputRate.  Effects that support this method list an `output` of
 type `curve` in their #Schema.
 
 -INPUT-
@@ -516,48 +724,6 @@ static ERR AUDIOEFFECT_GetResponse(extAudioEffect *Self, struct fx::GetResponse 
    }
 
    return Self->Schema->Response(Self, Args->Frequencies, Args->Magnitudes);
-}
-
-/*********************************************************************************************************************
-
--METHOD-
-InsertEntry: Inserts a new entry into a parameter group.
-
-Inserts an entry at `Index`, filled with the default values published in the #Schema.  Later entries move up by one.
-Set `Index` to the current entry count to append.  After initialisation the insertion is staged until `Flush()` is
-called.
-
--INPUT-
-strview Group: The key of the group, e.g. `bands`.
-int Index: The zero-based position for the new entry.
-
--ERRORS-
-Okay
-NullArgs
-NoSupport: The effect does not publish a schema.
-Search: The group is unknown.
-OutOfRange: The index is invalid or the group is full.
-Immutable: The effect is attached to the global chain.
-NotInitialised: The effect has been disconnected from its Audio object.
--END-
-
-*********************************************************************************************************************/
-
-static ERR AUDIOEFFECT_InsertEntry(extAudioEffect *Self, struct fx::InsertEntry *Args)
-{
-   if (not Args) return ERR::NullArgs;
-   const int rate = effect_rate(Self);
-
-   return effect_edit(Self, [&](AudioParamState &State) {
-      auto g = find_group(*Self->Schema, Args->Group);
-      if (g < 0) return ERR::Search;
-      const auto &group = Self->Schema->Groups[g];
-      auto &entries = State.Groups[g];
-      if ((Args->Index < 0) or (size_t(Args->Index) > entries.size())) return ERR::OutOfRange;
-      if (int(entries.size()) >= group.MaxCount) return ERR::OutOfRange;
-      entries.insert(entries.begin() + Args->Index, default_entry(group, rate));
-      return ERR::Okay;
-   });
 }
 
 /*********************************************************************************************************************
@@ -807,102 +973,6 @@ static ERR AUDIOEFFECT_ReadMeters(extAudioEffect *Self, struct fx::ReadMeters *A
 
 /*********************************************************************************************************************
 
--METHOD-
-RemoveEntry: Removes an entry from a parameter group.
-
-Removes the entry at `Index`.  Later entries move down by one and keep their processing state.  After initialisation
-the removal is staged until `Flush()` is called.
-
--INPUT-
-strview Group: The key of the group, e.g. `bands`.
-int Index: The zero-based position of the entry to remove.
-
--ERRORS-
-Okay
-NullArgs
-NoSupport: The effect does not publish a schema.
-Search: The group is unknown.
-OutOfRange: The index is invalid or the group is at its minimum size.
-Immutable: The effect is attached to the global chain.
-NotInitialised: The effect has been disconnected from its Audio object.
--END-
-
-*********************************************************************************************************************/
-
-static ERR AUDIOEFFECT_RemoveEntry(extAudioEffect *Self, struct fx::RemoveEntry *Args)
-{
-   if (not Args) return ERR::NullArgs;
-
-   return effect_edit(Self, [&](AudioParamState &State) {
-      auto g = find_group(*Self->Schema, Args->Group);
-      if (g < 0) return ERR::Search;
-      auto &entries = State.Groups[g];
-      if ((Args->Index < 0) or (size_t(Args->Index) >= entries.size())) return ERR::OutOfRange;
-      if (int(entries.size()) <= Self->Schema->Groups[g].MinCount) return ERR::OutOfRange;
-      entries.erase(entries.begin() + Args->Index);
-      return ERR::Okay;
-   });
-}
-
-/*********************************************************************************************************************
-
--ACTION-
-SetKey: Changes a parameter value by key.
-
-Sets a parameter published in the #Schema.  The value is checked against the parameter's own range immediately.
-Rules that relate parameters to each other are checked when the change is applied: by `Init()` before initialisation,
-or by `Flush()` afterwards.  After initialisation the change is staged and has no effect on the processor until
-`Flush()` is called.
-
-Values must be numeric strings, including enumerated values.  Leading and trailing whitespace and an optional
-leading plus sign are accepted.  Empty strings, trailing text and non-finite values are rejected.
-
--INPUT-
-strview Key: A parameter key such as `gain` or `bands[2].frequency`.
-strview Value: The new numeric value, in the parameter's unit.
-
--ERRORS-
-Okay
-NullArgs
-NoSupport: The effect does not publish a schema.
-Search: The key is malformed or names an unknown parameter.
-OutOfRange: The group index does not refer to an existing entry.
-InvalidValue: The value is not a finite number or is outside the parameter's range.
-Immutable: The effect is attached to the global chain.
-NotInitialised: The effect has been disconnected from its Audio object.
--END-
-
-*********************************************************************************************************************/
-
-static ERR AUDIOEFFECT_SetKey(extAudioEffect *Self, struct acSetKey *Args)
-{
-   if (not Args) return ERR::NullArgs;
-   const int rate = effect_rate(Self);
-
-   return effect_edit(Self, [&](AudioParamState &State) {
-      double *value;
-      const AudioParamDesc *desc;
-      if (auto error = resolve_path(*Self->Schema, State, Args->Key, value, desc); error != ERR::Okay) return error;
-      auto text = Args->Value;
-      const auto start = text.find_first_not_of(" \t\r\n");
-      if (start IS std::string_view::npos) return ERR::InvalidValue;
-      text = text.substr(start, text.find_last_not_of(" \t\r\n") - start + 1);
-      if (text.starts_with('+')) {
-         text.remove_prefix(1);
-         if (text.starts_with('-')) return ERR::InvalidValue;
-      }
-      if (text.empty()) return ERR::InvalidValue;
-      double number;
-      auto [end, error] = std::from_chars(text.data(), text.data() + text.size(), number);
-      if ((error != std::errc()) or (end != text.data() + text.size())) return ERR::InvalidValue;
-      if (auto error = check_param(*desc, number, rate); error != ERR::Okay) return error;
-      *value = number;
-      return ERR::Okay;
-   });
-}
-
-/*********************************************************************************************************************
-
 -FIELD-
 Audio: Target Audio object, inherited from an Audio owner if omitted.
 
@@ -1078,7 +1148,7 @@ disconnecting the container from its Audio object or channel set disconnects the
 -FIELD-
 Schema: An XML description of the effect's parameters.
 
-The schema describes every parameter that can be read or changed with #GetKey() and #SetKey(), including
+The schema describes every parameter that can be read with #GetKey() and changed with #Batch(), including
 units, ranges, defaults, repeated groups and the rules between parameters.  The format is described in the class
 documentation.  Scalar outputs are listed for the channels of the current processing layout, with slots from the
 current meter layout.  Instance-specific bounds, such as the Nyquist frequency, are resolved against #OutputRate.

@@ -12,26 +12,31 @@ Create new saturator objects as a child of an @Audio object or set the inherited
 #AudioEffect.Channel to process one channel set, or leave it at zero to process the global mix.  Application saturators
 accept live changes; global saturators become immutable after initialisation.
 
-Parameters are published through the inherited @AudioEffect schema and are changed with @AudioEffect.SetKey()
-followed by @AudioEffect.Flush():
+Each parameter is available as a field, such as #Drive and #Shape.  Field writes before initialisation are range-checked
+and stored; after initialisation each write is validated and applied immediately.  The same parameters are published
+through the inherited @AudioEffect schema under lower-case keys, where they can be changed together with
+@AudioEffect.Batch():
 
 <list type="bullet">
 <li>`drive`: the gain applied before the transfer curve, from 0 to 36 dB.  Higher levels push more of the signal into
 the curved region and increase the distortion.</li>
-<li>`shape`: `soft` (0) for smooth saturation or `hard` (1) for hard clipping.</li>
+<li>`shape`: `soft` (`SATS::SOFT`) for smooth saturation or `hard` (`SATS::HARD`) for hard clipping.</li>
 <li>`gain`: the output trim of the processed signal, from -36 to 12 dB.  It does not affect the dry signal.</li>
 <li>`mix`: the linear blend of dry and processed signals, from 0 to 100 percent.  100 percent outputs only the
 processed signal.</li>
 </list>
 
-The following adds heavy parallel saturation to a playing channel set, as a single change:
+The following adds heavy parallel saturation to a playing channel set:
 
 <pre>
-saturator = obj.new('AudioSaturator', { audio=audio, channel=channel })
-saturator.acSetKey('drive', 24)
-saturator.acSetKey('gain', -12)
-saturator.acSetKey('mix', 40)
-saturator.acFlush()
+saturator = obj.new('AudioSaturator', { audio=audio, channel=channel, drive=24, gain=-12, mix=40 })
+</pre>
+
+Every field write after initialisation is a separate change.  To change several parameters in a single step, apply them
+together with @AudioEffect.Batch():
+
+<pre>
+saturator.mtBatch(array&lt;str&gt; { 'set shape hard', 'set drive 12', 'set gain -6' })
 </pre>
 
 <header>Transfer Curves</header>
@@ -74,7 +79,7 @@ required.  Non-finite samples are outside the normalised mixing contract and are
 Changes to drive and gain ramp over 10 ms in dB, and changes to mix ramp linearly over 10 ms, from their current
 values.  A change of shape crossfades the outputs of the two curves over 10 ms.  Drive and shape apply at the
 oversampled rate as samples reach the curve, so samples already travelling through the interpolation filter can be
-shaped with the new values; gain and mix apply at the output.  Flush preserves the filter and dry histories.  Setting
+shaped with the new values; gain and mix apply at the output.  A commit preserves the filter and dry histories.  Setting
 the mix to zero leaves the saturator running, with the dry signal still delayed.
 
 Device reactivation, rate or layout changes and leaving bypass discard the histories and apply the latest parameters
@@ -109,8 +114,8 @@ public:
 enum { SAT_DRIVE = 0, SAT_SHAPE, SAT_GAIN, SAT_MIX };
 
 static const AudioParamOption glSaturatorShapes[] = {
-   { SATURATE_SOFT, "soft", "Soft", "Smooth saturation that approaches full scale gradually." },
-   { SATURATE_HARD, "hard", "Hard", "Hard clipping at full scale, for a harsher sound." }
+   { int(SATS::SOFT), "soft", "Soft", "Smooth saturation that approaches full scale gradually." },
+   { int(SATS::HARD), "hard", "Hard", "Hard clipping at full scale, for a harsher sound." }
 };
 
 static const AudioParamDesc glSaturatorParams[] = {
@@ -119,7 +124,7 @@ static const AudioParamDesc glSaturatorParams[] = {
      .Unit = APU::DB, .Min = 0, .Max = 36, .Default = 6 },
    { .Key = "shape", .Label = "Shape",
      .Description = "Whether the transfer curve saturates smoothly or clips hard.",
-     .Type = APT::ENUM, .Default = SATURATE_SOFT, .Options = glSaturatorShapes },
+     .Type = APT::ENUM, .Default = int(SATS::SOFT), .Options = glSaturatorShapes },
    { .Key = "gain", .Label = "Gain",
      .Description = "The output trim of the processed signal.  The dry signal is unaffected.",
      .Unit = APU::DB, .Min = -36, .Max = 12, .Default = -6 },
@@ -142,7 +147,7 @@ static SaturatorSettings saturator_settings(const AudioParamState &State)
 {
    return SaturatorSettings {
       .Drive = State.Params[SAT_DRIVE],
-      .Shape = int(State.Params[SAT_SHAPE]),
+      .Shape = SATS(int(State.Params[SAT_SHAPE])),
       .Gain  = State.Params[SAT_GAIN],
       .Mix   = State.Params[SAT_MIX]
    };
@@ -151,7 +156,7 @@ static SaturatorSettings saturator_settings(const AudioParamState &State)
 static void saturator_read(extAudioEffect *Effect, AudioParamState &State)
 {
    const auto &settings = ((extAudioSaturator *)Effect)->Settings;
-   State.Params.assign({ settings.Drive, double(settings.Shape), settings.Gain, settings.Mix });
+   State.Params.assign({ settings.Drive, double(int(settings.Shape)), settings.Gain, settings.Mix });
    State.Groups.clear();
 }
 
@@ -235,9 +240,50 @@ static ERR AUDIOSATURATOR_Init(extAudioSaturator *Self)
    return error;
 }
 
-//********************************************************************************************************************
+/*********************************************************************************************************************
+
+-FIELD-
+Drive: The gain, in decibels, applied before the transfer curve.
+
+The range is 0 to 36 dB and the default is 6 dB.  Higher levels give more distortion.  This field mirrors the `drive`
+schema key.  To change it together with other parameters in a single step, use @AudioEffect.Batch().
+
+-FIELD-
+Gain: The output trim, in decibels, of the processed signal.
+
+The range is -36 to 12 dB and the default is -6 dB.  The dry signal is unaffected.  This field mirrors the `gain` schema
+key.  To change it together with other parameters in a single step, use @AudioEffect.Batch().
+
+-FIELD-
+Mix: The proportion of the processed signal in the output, as a percentage.
+
+The range is 0 to 100% and the default is 100%.  Zero outputs the dry signal, delayed by the saturator's latency.  This
+field mirrors the `mix` schema key.  To change it together with other parameters in a single step, use
+@AudioEffect.Batch().
+
+-FIELD-
+Shape: Selects smooth saturation or hard clipping.
+Lookup: SATS
+
+The default is `SATS::SOFT`.  This field mirrors the `shape` schema key, which also accepts the option names `soft` and
+`hard`.  To change it together with other parameters in a single step, use @AudioEffect.Batch().
+
+*********************************************************************************************************************/
 
 #include "class_audiosaturator_def.c"
+
+static const FieldArray clAudioSaturatorFields[] = {
+   { "Drive",      FDF_VIRTUAL|FDF_DOUBLE|FDF_RW|FDF_PURE,
+     effect_settings_get<extAudioSaturator, &SaturatorSettings::Drive>, effect_param_set<SAT_DRIVE> },
+   { "Shape",      FDF_VIRTUAL|FDF_INT|FDF_LOOKUP|FDF_RW|FDF_PURE,
+     effect_settings_get_int<extAudioSaturator, &SaturatorSettings::Shape>, effect_param_set_int<SAT_SHAPE>,
+     &clAudioSaturatorSATS },
+   { "Gain",       FDF_VIRTUAL|FDF_DOUBLE|FDF_RW|FDF_PURE,
+     effect_settings_get<extAudioSaturator, &SaturatorSettings::Gain>, effect_param_set<SAT_GAIN> },
+   { "Mix",        FDF_VIRTUAL|FDF_DOUBLE|FDF_RW|FDF_PURE,
+     effect_settings_get<extAudioSaturator, &SaturatorSettings::Mix>, effect_param_set<SAT_MIX> },
+   END_FIELD
+};
 
 //********************************************************************************************************************
 
@@ -249,6 +295,7 @@ static ERR add_audiosaturator_class()
       fl::Name("AudioSaturator"),
       fl::Category(CCF::AUDIO),
       fl::Actions(clAudioSaturatorActions),
+      fl::Fields(clAudioSaturatorFields),
       fl::Size(sizeof(extAudioSaturator)),
       fl::Path(MOD_PATH));
    return clAudioSaturator ? ERR::Okay : ERR::AddClass;

@@ -82,10 +82,12 @@ If running outside the repository root, use an absolute path for the `file=` par
 After C++ or build-system changes, build and install before running `ctest`:
 
 ```powershell
-cmake --build build/agents --config Debug --parallel
-cmake --install build/agents --config Debug
-ctest --build-config Debug --test-dir build/agents --output-on-failure -L TEST_LABEL
+cmake --build --preset agents-install
+ctest --preset agents -L TEST_LABEL
 ```
+
+Always run `ctest` through a test preset.  Audio tests registered with an `audio_` name prefix are excluded from the
+standard presets; run them with `ctest --preset agents-audio`.
 
 ## CMake Registration
 
@@ -103,4 +105,6 @@ foreach(TEST_NAME item_one item_two)
 endforeach()
 ```
 
-Keep labels and names consistent with neighbouring tests so focused `ctest -L ...` runs remain predictable.
+Keep labels and names consistent with neighbouring tests so focused `ctest --preset agents -L ...` runs remain
+predictable.  Note that `flute_test()` labels each test with its name, and the standard presets exclude labels matching
+`^audio_`, so only use that prefix for tests that belong to the opt-in audio suite.

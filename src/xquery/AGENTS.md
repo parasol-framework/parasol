@@ -767,7 +767,7 @@ cd src/xquery/tests && ../../../build/agents-install/origo.exe ../../../tools/fl
 
 **All XQuery Tests via CMake:**
 ```bash
-ctest --build-config [BuildType] --test-dir build/agents -L xquery --output-on-failure
+ctest --preset agents -L xquery
 ```
 
 ### C++ Unit Testing for Internal Components

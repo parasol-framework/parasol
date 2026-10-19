@@ -71,7 +71,7 @@ The WebRTC module has further mDNS coverage: the `webrtc_mdns_privacy` test, and
 Run the unit test with:
 
 ```bash
-ctest --build-config Debug --test-dir build/agents --output-on-failure -R '^network_mdns$'
+ctest --preset agents -R '^network_mdns$'
 ```
 
 When the test fails, it prints `mDNS failed at N`. `N` is the step number passed to `fail()` in `test_mdns.cpp`.

@@ -11,8 +11,10 @@ Create new leveller objects as a child of an @Audio object or set the inherited 
 #AudioEffect.Channel to process one channel set, or leave it at zero to process the global mix.  Application
 levellers accept live changes; global levellers become immutable after initialisation.
 
-Parameters are published through the inherited @AudioEffect schema and are changed with @AudioEffect.SetKey()
-followed by @AudioEffect.Flush():
+Each parameter is available as a field, such as #Target and #MaxBoost.  Field writes before initialisation are
+range-checked and stored; after initialisation each write is validated and applied immediately.  The same parameters are
+published through the inherited @AudioEffect schema under lower-case keys, where they can be changed together with
+@AudioEffect.Batch():
 
 <list type="bullet">
 <li>`target`: the short-term loudness, in LUFS, that the leveller aims for.  Common references are -14 LUFS for music
@@ -25,14 +27,18 @@ streaming, -16 LUFS for podcasts and spoken word, and -23 LUFS for broadcast pro
 levelled independently.</li>
 </list>
 
-The following leveller brings a channel set towards the -16 LUFS spoken-word reference, boosting quiet material by up
-to 9 dB:
+The following leveller brings a channel set towards the -16 LUFS spoken-word reference, boosting quiet material by up to
+9 dB:
 
 <pre>
-leveller = obj.new('AudioLoudness', { audio=audio, channel=channel })
-leveller.acSetKey('target', -16)
-leveller.acSetKey('max_boost', 9)
-leveller.acFlush()
+leveller = obj.new('AudioLoudness', { audio=audio, channel=channel, target=-16, maxBoost=9 })
+</pre>
+
+Every field write after initialisation is a separate change.  To change several parameters in a single step, apply them
+together with @AudioEffect.Batch():
+
+<pre>
+leveller.mtBatch(array&lt;str&gt; { 'set target -14', 'set max_cut 6' })
 </pre>
 
 The leveller does not limit peaks.  A boost can raise peaks above full scale, so place an @AudioLimiter after the
@@ -262,11 +268,62 @@ static ERR AUDIOLOUDNESS_Init(extAudioLoudness *Self)
    return error;
 }
 
-//********************************************************************************************************************
+/*********************************************************************************************************************
+
+-FIELD-
+Gate: The loudness, in LUFS, below which the gain is held rather than adjusted.
+
+The range is -90 to -30 LUFS and the default is -70 LUFS.  This field mirrors the `gate` schema key.  To change it
+together with other parameters in a single step, use @AudioEffect.Batch().
+
+-FIELD-
+Link: Applies one gain to every channel.
+
+Set to 1 (the default) to apply one gain to every channel, or 0 to level each channel independently, which can move the
+stereo image.  This field mirrors the `link` schema key.  To change it together with other parameters in a single step,
+use @AudioEffect.Batch().
+
+-FIELD-
+MaxBoost: The maximum gain, in decibels, applied to quiet material.
+
+The range is 0 to 24 dB and the default is 12 dB.  Zero prevents any boost.  This field mirrors the `max_boost` schema
+key.  To change it together with other parameters in a single step, use @AudioEffect.Batch().
+
+-FIELD-
+MaxCut: The maximum attenuation, in decibels, applied to loud material.
+
+The range is 0 to 24 dB and the default is 12 dB.  Zero prevents any cut.  This field mirrors the `max_cut` schema key.
+To change it together with other parameters in a single step, use @AudioEffect.Batch().
+
+-FIELD-
+Response: The time constant, in milliseconds, with which the gain moves towards its target.
+
+The range is 500 to 30000 ms and the default is 3000 ms.  This field mirrors the `response` schema key.  To change it
+together with other parameters in a single step, use @AudioEffect.Batch().
+
+-FIELD-
+Target: The short-term loudness, in LUFS, that the leveller aims for.
+
+The range is -36 to -6 LUFS and the default is -16 LUFS.  This field mirrors the `target` schema key.  To change it
+together with other parameters in a single step, use @AudioEffect.Batch().
+
+*********************************************************************************************************************/
 
 #include "class_audioloudness_def.c"
 
 static const FieldArray clAudioLoudnessFields[] = {
+   { "Target",     FDF_VIRTUAL|FDF_DOUBLE|FDF_RW|FDF_PURE,
+     effect_settings_get<extAudioLoudness, &LoudnessSettings::Target>, effect_param_set<LD_TARGET> },
+   { "MaxBoost",   FDF_VIRTUAL|FDF_DOUBLE|FDF_RW|FDF_PURE,
+     effect_settings_get<extAudioLoudness, &LoudnessSettings::MaxBoost>, effect_param_set<LD_MAX_BOOST> },
+   { "MaxCut",     FDF_VIRTUAL|FDF_DOUBLE|FDF_RW|FDF_PURE,
+     effect_settings_get<extAudioLoudness, &LoudnessSettings::MaxCut>, effect_param_set<LD_MAX_CUT> },
+   { "Response",   FDF_VIRTUAL|FDF_DOUBLE|FDF_RW|FDF_PURE,
+     effect_settings_get<extAudioLoudness, &LoudnessSettings::Response>, effect_param_set<LD_RESPONSE> },
+   { "Gate",       FDF_VIRTUAL|FDF_DOUBLE|FDF_RW|FDF_PURE,
+     effect_settings_get<extAudioLoudness, &LoudnessSettings::Gate>, effect_param_set<LD_GATE> },
+   { "Link",       FDF_VIRTUAL|FDF_INT|FDF_RW|FDF_PURE,
+     effect_settings_get_int<extAudioLoudness, &LoudnessSettings::Link>, effect_param_set_int<LD_LINK> },
    END_FIELD
 };
 

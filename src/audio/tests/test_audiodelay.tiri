@@ -1,6 +1,7 @@
 @if(exists='modules:audio')
 
    module audio as mAudio
+   import './effect_fields'
 
 @BeforeAll function init(State)
    global glFolder = State.folder
@@ -79,7 +80,7 @@ end
    assert(delay.mtGetGroupCount('bands') is ERR_Search)
 end
 
-@Test function StagedChangesAndValidation()
+@Test function ChangesAndValidation()
    audio <close> = obj.new('Audio', { device='null', outputRate=48000 })
    delay <close> = new_delay(audio)
    assert(delay.mutable is 1)
@@ -87,37 +88,34 @@ end
    -- Every bound is inclusive; values outside it and non-finite values are rejected immediately.
 
    for p in values(PARAMS) do
-      check delay.acSetKey(p.key, p.min)
-      check delay.acSetKey(p.key, p.max)
-      assert(delay.acSetKey(p.key, p.min - 0.001) is ERR_InvalidValue, f'{p.key} below {p.min} must fail')
-      assert(delay.acSetKey(p.key, p.max + 0.001) is ERR_InvalidValue, f'{p.key} above {p.max} must fail')
-      assert(delay.acSetKey(p.key, math.huge) is ERR_InvalidValue, f'{p.key} must reject infinity')
-      assert(delay.acSetKey(p.key, math.sqrt(-1)) is ERR_InvalidValue, f'{p.key} must reject NaN')
+      check delay.mtBatch(array<str> { f'set {p.key} {p.min}', f'set {p.key} {p.max}' })
+      assert(delay.mtBatch(array<str> { f'set {p.key} {p.min - 0.001}' }) is ERR_InvalidValue,
+         f'{p.key} below {p.min} must fail')
+      assert(delay.mtBatch(array<str> { f'set {p.key} {p.max + 0.001}' }) is ERR_InvalidValue,
+         f'{p.key} above {p.max} must fail')
+      assert(delay.mtBatch(array<str> { f'set {p.key} {math.huge}' }) is ERR_InvalidValue,
+         f'{p.key} must reject infinity')
+      assert(delay.mtBatch(array<str> { f'set {p.key} {math.sqrt(-1)}' }) is ERR_InvalidValue,
+         f'{p.key} must reject NaN')
    end
-   check delay.acSetKey('mode', 1)
-   check delay.acSetKey('mode', 0)
+   check delay.mtBatch(array<str> { 'set mode 1', 'set mode 0' })
    for bad in values({ -1, 2, 0.5, math.huge }) do
-      assert(delay.acSetKey('mode', bad) is ERR_InvalidValue, f'Mode {bad} must be rejected')
+      assert(delay.mtBatch(array<str> { f'set mode {bad}' }) is ERR_InvalidValue, f'Mode {bad} must be rejected')
    end
-   assert(delay.acSetKey('unknown', 1) is ERR_Search)
-   check delay.acFlush()
+   assert(delay.mtBatch(array<str> { 'set unknown 1' }) is ERR_Search)
 
-   -- Staged values are readable before Flush(); a rejected value leaves earlier staged changes intact, and Flush()
-   -- commits them together.  Fractional times are kept.
+   -- A rejected value fails the whole batch and names its command; a valid batch commits every value together.
+   -- Fractional times are kept.
 
-   check delay.acSetKey('time', 333.25)
-   check delay.acSetKey('mode', 1)
-   check delay.acSetKey('feedback', 60)
-   assert(delay.acSetKey('damping', 101) is ERR_InvalidValue)
-   check delay.acSetKey('damping', 70)
+   err, failed = delay.mtBatch(array<str> { 'set time 333.25', 'set mode 1', 'set feedback 60', 'set damping 101' })
+   assert(err is ERR_InvalidValue and failed is 3, f'The last command must fail, got {err} at {failed}')
    err, value_text = delay.acGetKey('time')
-   value = tonumber(value_text)
-   assert(err is ERR_Okay and value is 333.25, 'Staged values must be readable')
-   check delay.acFlush()
+   assert(err is ERR_Okay and tonumber(value_text) != 333.25, 'A rejected batch must change nothing')
+   check delay.mtBatch(array<str> { 'set time 333.25', 'set mode 1', 'set feedback 60', 'set damping 70' })
    for key, expected in pairs({ time=333.25, mode=1, feedback=60, damping=70 }) do
       err, value_text = delay.acGetKey(key)
       value = tonumber(value_text)
-      assert(err is ERR_Okay and value is expected, f'{key} should be {expected} after Flush(), got {value}')
+      assert(err is ERR_Okay and value is expected, f'{key} should be {expected} after Batch(), got {value}')
    end
 end
 
@@ -128,9 +126,8 @@ end
    delay <close> = obj.new('AudioDelay')
    delay.audio = audio
    delay.channel = channel
-   check delay.acSetKey('time', 120)
-   check delay.acSetKey('mode', 1)
-   assert(delay.acSetKey('feedback', 96) is ERR_InvalidValue)
+   check delay.mtBatch(array<str> { 'set time 120', 'set mode 1' })
+   assert(delay.mtBatch(array<str> { 'set feedback 96' }) is ERR_InvalidValue)
    delay.init()
    for key, expected in pairs({ time=120, mode=1, feedback=30 }) do
       err, value_text = delay.acGetKey(key)
@@ -142,8 +139,7 @@ end
 @Test function LivePlayback()
    audio <close> = obj.new('Audio', { device='null', outputRate=48000 })
    delay, channel = new_delay(audio)
-   check delay.acSetKey('mix', 100)
-   check delay.acFlush()
+   check delay.mtBatch(array<str> { 'set mix 100' })
    check audio.acActivate()
    assert(delay.latency is 0, 'The delay publishes no algorithmic latency, even when fully wet')
    err, rate, format, layout, generation, state = delay.mtGetProcessingFormat()
@@ -153,13 +149,8 @@ end
 
    -- Simultaneous time and mode edits, then a queued time edit behind the crossfade.
 
-   check delay.acSetKey('time', 80)
-   check delay.acSetKey('mode', 1)
-   check delay.acSetKey('feedback', 85)
-   check delay.acFlush()
-   check delay.acSetKey('time', 20)
-   check delay.acSetKey('damping', 100)
-   check delay.acFlush()
+   check delay.mtBatch(array<str> { 'set time 80', 'set mode 1', 'set feedback 85' })
+   check delay.mtBatch(array<str> { 'set time 20', 'set damping 100' })
    assert(delay.latency is 0, 'Parameter changes must not alter the latency')
 
    err, layout = delay.mtGetMeterLayout()
@@ -174,18 +165,17 @@ end
    check audio.mtCloseChannels(channel)
    err, reading = delay.mtReadMeters()
    assert(err is ERR_Okay and reading.flags is AMF_DISCONNECTED)
-   assert(delay.acSetKey('mix', 50) is ERR_NotInitialised)
+   assert(delay.mtBatch(array<str> { 'set mix 50' }) is ERR_NotInitialised)
    delay.free()
 end
 
 @Test function MonoAndGlobalImmutability()
    audio <close> = obj.new('Audio', { device='null', outputRate=44100, outputLayout=array<int> { SPK_CENTRE } })
    delay = audio.new('AudioDelay')
-   check delay.acSetKey('mode', 1)
-   check delay.acSetKey('time', 40)
+   check delay.mtBatch(array<str> { 'set mode 1', 'set time 40' })
    delay.init()
    assert(delay.mutable is 0)
-   assert(delay.acSetKey('time', 20) is ERR_Immutable)
+   assert(delay.mtBatch(array<str> { 'set time 20' }) is ERR_Immutable)
    err, value_text = delay.acGetKey('mode')
    value = tonumber(value_text)
    assert(err is ERR_Okay and value is 1, 'Mono retains the requested mode')
@@ -212,9 +202,7 @@ end
          state_at_stop = state
       end })
    delay <close> = obj.new('AudioDelay', { audio=audio, channel=sound.channelIndex & 0xffff0000 })
-   check delay.acSetKey('time', 100)
-   check delay.acSetKey('feedback', 20)
-   check delay.acFlush()
+   check delay.mtBatch(array<str> { 'set time 100', 'set feedback 20' })
    check sound.acActivate()
    deadline = mSys.PreciseTime() + 20000000
    while (stops is 0) and (mSys.PreciseTime() < deadline) do processing.sleep(0.01) end
@@ -233,10 +221,7 @@ end
       onStop=function(Sound) stops++ end })
    set = sound.channelIndex & 0xffff0000
    delay <close> = obj.new('AudioDelay', { audio=audio, channel=set })
-   check delay.acSetKey('time', 2000)
-   check delay.acSetKey('feedback', 95)
-   check delay.acSetKey('damping', 0)
-   check delay.acFlush()
+   check delay.mtBatch(array<str> { 'set time 2000', 'set feedback 95', 'set damping 0' })
    check sound.acActivate()
 
    deadline = mSys.PreciseTime() + 20000000
@@ -266,6 +251,12 @@ end
    success
       raise 'An output rate below 8000 Hz must be rejected'
    end
+end
+
+-- Every schema parameter has a typed field that follows the shared field semantics.
+
+@Test function TypedFields()
+   effect_fields.checkFields('AudioDelay')
 end
 
 @end

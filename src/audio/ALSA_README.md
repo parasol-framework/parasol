@@ -19,10 +19,12 @@ without advancing their source position and resume when data becomes available.
 
 ## Automated tests
 
-Build and install the Debug configuration before running:
+The audio integration suite is excluded from the standard test presets.  Build and install the Debug configuration,
+then run it explicitly:
 
 ```sh
-ctest --build-config Debug --test-dir build/agents --output-on-failure -L audio
+cmake --build --preset agents-install
+ctest --preset agents-audio
 ```
 
 `AudioBufferPolicy` checks units, public clamps, ring geometry and consumption during producer delays.  `AudioWorker`
@@ -34,10 +36,9 @@ activation failure and lifecycle cancellation.  No fault injection is exposed th
 Real-device tests are opt-in and submit silence or use zero Sound volume:
 
 ```sh
-cmake -S . -B build/agents -DKOTUKU_AUDIO_HARDWARE_TESTS=ON
-cmake --build build/agents --config Debug --parallel
-cmake --install build/agents --config Debug
-ctest --build-config Debug --test-dir build/agents --output-on-failure -L hardware
+cmake --preset agents -DKOTUKU_AUDIO_HARDWARE_TESTS=ON
+cmake --build --preset agents-install
+ctest --preset agents-audio -L hardware
 ```
 
 These tests require the configured ALSA output device.  Missing/busy hardware causes failure, rather than a false pass.

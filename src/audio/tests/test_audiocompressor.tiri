@@ -1,6 +1,7 @@
 @if(exists='modules:audio')
 
    module audio as mAudio
+   import './effect_fields'
 
 -- Published parameters in schema order, with their defaults, units and scales.
 
@@ -58,7 +59,7 @@ end
    assert(schema.find('unit="dB" scope="global" semantics="maximum-attenuation" slot="4"') != nil)
    assert(comp.mtGetOutput('response') is ERR_Search)
    assert(comp.mtGetGroupCount('bands') is ERR_Search)
-   assert(comp.mtInsertEntry('bands', 0) is ERR_Search)
+   assert(comp.mtBatch(array<str> { 'insert bands 0' }) is ERR_Search)
 
    -- Stereo expands the channel templates before the global reduction value.
 
@@ -74,7 +75,7 @@ end
    assert(meters[4].channel is 0 and meters[4].label is 'Gain Reduction')
 end
 
-@Test function StagedChangesAndValidation()
+@Test function ChangesAndValidation()
    audio <close> = obj.new('Audio', { device='null', outputRate=48000 })
    comp <close> = new_compressor(audio)
    assert(comp.mutable is 1)
@@ -82,31 +83,28 @@ end
    -- Every bound is inclusive; values outside it and non-finite values are rejected immediately.
 
    for p in values(PARAMS) do
-      check comp.acSetKey(p.key, p.min)
-      check comp.acSetKey(p.key, p.max)
-      assert(comp.acSetKey(p.key, p.min - 0.001) is ERR_InvalidValue, f'{p.key} below {p.min} must fail')
-      assert(comp.acSetKey(p.key, p.max + 0.001) is ERR_InvalidValue, f'{p.key} above {p.max} must fail')
-      assert(comp.acSetKey(p.key, math.huge) is ERR_InvalidValue, f'{p.key} must reject infinity')
-      assert(comp.acSetKey(p.key, math.sqrt(-1)) is ERR_InvalidValue, f'{p.key} must reject NaN')
+      check comp.mtBatch(array<str> { f'set {p.key} {p.min}', f'set {p.key} {p.max}' })
+      assert(comp.mtBatch(array<str> { f'set {p.key} {p.min - 0.001}' }) is ERR_InvalidValue,
+         f'{p.key} below {p.min} must fail')
+      assert(comp.mtBatch(array<str> { f'set {p.key} {p.max + 0.001}' }) is ERR_InvalidValue,
+         f'{p.key} above {p.max} must fail')
+      assert(comp.mtBatch(array<str> { f'set {p.key} {math.huge}' }) is ERR_InvalidValue,
+         f'{p.key} must reject infinity')
+      assert(comp.mtBatch(array<str> { f'set {p.key} {math.sqrt(-1)}' }) is ERR_InvalidValue,
+         f'{p.key} must reject NaN')
    end
-   assert(comp.acSetKey('unknown', 1) is ERR_Search)
-   check comp.acFlush()
+   assert(comp.mtBatch(array<str> { 'set unknown 1' }) is ERR_Search)
 
-   -- Staged values are readable before Flush(); a rejected value leaves earlier staged changes intact, and Flush()
-   -- commits them together.
+   -- A rejected value fails the whole batch and names its command; a valid batch commits every value together.
 
-   check comp.acSetKey('threshold', -30)
-   check comp.acSetKey('ratio', 8)
-   assert(comp.acSetKey('knee', 30) is ERR_InvalidValue)
-   check comp.acSetKey('makeup', 4.5)
-   err, value_text = comp.acGetKey('ratio')
-   value = tonumber(value_text)
-   assert(err is ERR_Okay and value is 8, 'Staged values must be readable')
-   check comp.acFlush()
+   err, failed = comp.mtBatch(array<str> { 'set threshold -30', 'set ratio 8', 'set knee 30', 'set makeup 4.5' })
+   assert(err is ERR_InvalidValue and failed is 2, f'The knee command must fail, got {err} at {failed}')
+   assert(comp.threshold is 0 and comp.ratio is 20, 'A rejected batch must change nothing')
+   check comp.mtBatch(array<str> { 'set threshold -30', 'set ratio 8', 'set makeup 4.5' })
    for key, expected in pairs({ threshold=-30, ratio=8, knee=24, makeup=4.5 }) do
       err, value_text = comp.acGetKey(key)
       value = tonumber(value_text)
-      assert(err is ERR_Okay and value is expected, f'{key} should be {expected} after Flush(), got {value}')
+      assert(err is ERR_Okay and value is expected, f'{key} should be {expected} after Batch(), got {value}')
    end
 end
 
@@ -117,9 +115,8 @@ end
    comp <close> = obj.new('AudioCompressor')
    comp.audio = audio
    comp.channel = channel
-   check comp.acSetKey('attack', 0.5)
-   check comp.acSetKey('mix', 35)
-   assert(comp.acSetKey('ratio', 0.5) is ERR_InvalidValue)
+   check comp.mtBatch(array<str> { 'set attack 0.5', 'set mix 35' })
+   assert(comp.mtBatch(array<str> { 'set ratio 0.5' }) is ERR_InvalidValue)
    comp.init()
    err, value_text = comp.acGetKey('mix')
    value = tonumber(value_text)
@@ -127,6 +124,117 @@ end
    err, value_text = comp.acGetKey('attack')
    value = tonumber(value_text)
    assert(err is ERR_Okay and value is 0.5)
+end
+
+-- Range-check every field.  Bounds are inclusive and a rejected write leaves the field unchanged.
+
+function check_field_ranges(Comp:obj)
+   for p in values(PARAMS) do
+      name = effect_fields.fieldName(p.key)
+      check Comp.set(name, p.min)
+      assert(Comp.get(name) is p.min, f'{name} must accept its minimum')
+      check Comp.set(name, p.max)
+      assert(Comp.get(name) is p.max, f'{name} must accept its maximum')
+      assert(Comp.set(name, p.min - 0.001) is ERR_InvalidValue, f'{name} below {p.min} must fail')
+      assert(Comp.set(name, p.max + 0.001) is ERR_InvalidValue, f'{name} above {p.max} must fail')
+      assert(Comp.set(name, math.huge) is ERR_InvalidValue, f'{name} must reject infinity')
+      assert(Comp.set(name, math.sqrt(-1)) is ERR_InvalidValue, f'{name} must reject NaN')
+      assert(Comp.get(name) is p.max, f'{name} must be unchanged by rejected writes')
+      check Comp.set(name, p.default)
+   end
+end
+
+@Test function FieldsMatchKeys()
+   audio <close> = obj.new('Audio', { device='null', outputRate=48000 })
+   err, channel = audio.mtOpenChannels(1)
+   assert(err is ERR_Okay)
+   comp <close> = obj.new('AudioCompressor')
+   comp.audio = audio
+   comp.channel = channel
+
+   -- Defaults, then field writes before Init(), are visible through both interfaces.
+
+   for p in values(PARAMS) do
+      assert(comp.get(effect_fields.fieldName(p.key)) is p.default, f'{p.key} field should default to {p.default}')
+   end
+   effect_fields.checkParity(comp)
+   comp.threshold = -30
+   comp.attack = 2.5
+   comp.mix = 40
+   effect_fields.checkParity(comp)
+
+   comp.init()
+   assert(comp.threshold is -30 and comp.attack is 2.5 and comp.mix is 40, 'Pre-Init() field values must persist')
+   effect_fields.checkParity(comp)
+end
+
+@Test function FieldsInNew()
+   audio <close> = obj.new('Audio', { device='null', outputRate=48000 })
+   err, channel = audio.mtOpenChannels(1)
+   assert(err is ERR_Okay)
+   comp <close> = obj.new('AudioCompressor', { audio=audio, channel=channel, threshold=-24, ratio=3, knee=0 })
+   assert(comp.threshold is -24 and comp.ratio is 3 and comp.knee is 0, 'obj.new() values must be applied')
+   err, value_text = comp.acGetKey('ratio')
+   assert(err is ERR_Okay and tonumber(value_text) is 3)
+   effect_fields.checkParity(comp)
+
+   -- The compressor has no cross-parameter rules, so the only invalid configuration is a value outside its range.
+
+   try
+      bad = obj.new('AudioCompressor', { audio=audio, channel=channel, ratio=0.5 })
+   except e when ERR_InvalidValue
+   success
+      raise 'A ratio below 1 must be rejected by obj.new()'
+   end
+end
+
+@Test function FieldRanges()
+   audio <close> = obj.new('Audio', { device='null', outputRate=48000 })
+   err, channel = audio.mtOpenChannels(1)
+   assert(err is ERR_Okay)
+   comp <close> = obj.new('AudioCompressor')
+   comp.audio = audio
+   comp.channel = channel
+   check_field_ranges(comp)
+   comp.init()
+   check_field_ranges(comp)
+
+   -- Plain assignment raises the error code.
+
+   try
+      comp.makeup = 99
+   except e when ERR_InvalidValue
+   success
+      raise 'Assigning an out-of-range value must raise ERR_InvalidValue'
+   end
+   assert(comp.makeup is 0)
+end
+
+@Test function LiveFieldWrites()
+   audio <close> = obj.new('Audio', { device='null', outputRate=48000 })
+   comp <close> = new_compressor(audio)
+   check audio.acActivate()
+
+   -- Each field write is committed immediately.
+
+   comp.makeup = 6
+   assert(comp.makeup is 6, 'A live field write must be committed immediately')
+   err, value_text = comp.acGetKey('makeup')
+   assert(err is ERR_Okay and tonumber(value_text) is 6, 'GetKey() must report a live field write')
+   comp.threshold = -36
+   comp.ratio = 12
+   effect_fields.checkParity(comp)
+
+   -- Batches and field writes are both immediate commits, so they can be interleaved freely.
+
+   check comp.mtBatch(array<str> { 'set ratio 8' })
+   assert(comp.ratio is 8, 'Fields must report a committed batch')
+   comp.makeup = 3
+   assert(comp.makeup is 3, 'A field write immediately after a batch must succeed')
+   assert(comp.mtBatch(array<str> { 'set ratio 4', 'set makeup 99' }) is ERR_InvalidValue)
+   assert(comp.ratio is 8 and comp.makeup is 3, 'A rejected batch must leave the fields unchanged')
+   effect_fields.checkParity(comp)
+   check audio.acDeactivate()
 end
 
 @Test function LivePlayback()
@@ -147,15 +255,8 @@ end
 
    -- Live edits to every parameter, including an edit that replaces one still ramping.
 
-   check comp.acSetKey('threshold', -40)
-   check comp.acSetKey('ratio', 10)
-   check comp.acSetKey('knee', 0)
-   check comp.acFlush()
-   check comp.acSetKey('attack', 1)
-   check comp.acSetKey('release', 500)
-   check comp.acSetKey('makeup', 12)
-   check comp.acSetKey('mix', 50)
-   check comp.acFlush()
+   check comp.mtBatch(array<str> { 'set threshold -40', 'set ratio 10', 'set knee 0' })
+   check comp.mtBatch(array<str> { 'set attack 1', 'set release 500', 'set makeup 12', 'set mix 50' })
 
    assert(#meter_layout(comp) is 5)
 
@@ -163,28 +264,30 @@ end
    err, reading = comp.mtReadMeters()
    assert(err is ERR_Okay and reading.flags is AMF_BYPASSED)
    comp.flags = 0
-   check comp.acSetKey('ratio', 2)
-   check comp.acFlush()
+   check comp.mtBatch(array<str> { 'set ratio 2' })
 
    -- Closing the channel set disconnects the effect.
 
    check audio.mtCloseChannels(channel)
    err, reading = comp.mtReadMeters()
    assert(err is ERR_Okay and reading.flags is AMF_DISCONNECTED)
-   assert(comp.acSetKey('mix', 50) is ERR_NotInitialised)
+   assert(comp.mtBatch(array<str> { 'set mix 50' }) is ERR_NotInitialised)
+   assert(comp.set('mix', 50) is ERR_NotInitialised, 'Field writes must fail after disconnection')
    comp.free()
 end
 
 @Test function MonoAndGlobalImmutability()
    audio <close> = obj.new('Audio', { device='null', outputRate=44100, outputLayout=array<int> { SPK_CENTRE } })
    comp = audio.new('AudioCompressor')
-   check comp.acSetKey('threshold', -24)
+   check comp.mtBatch(array<str> { 'set threshold -24' })
    comp.init()
    assert(comp.mutable is 0)
-   assert(comp.acSetKey('threshold', -12) is ERR_Immutable)
+   assert(comp.mtBatch(array<str> { 'set threshold -12' }) is ERR_Immutable)
+   assert(comp.set('threshold', -12) is ERR_Immutable, 'Field writes to a global effect must fail after Init()')
    err, value_text = comp.acGetKey('threshold')
    value = tonumber(value_text)
    assert(err is ERR_Okay and value is -24, 'Global effects remain readable')
+   assert(comp.threshold is -24, 'Global effect fields remain readable')
    check audio.acActivate()
    meters = meter_layout(comp)
    assert(#meters is 3, f'Mono must publish three meters, got {#meters}')

@@ -48,7 +48,7 @@ it does not confirm delivery.  The browser pauses interactive sends while more t
 Automated public API checks:
 
 ```bash
-ctest --build-config Debug --test-dir build/agents --output-on-failure -R '^(webrtc_public_channels_interop|webrtc_mdns_interop|webrtc_mdns_channels_interop)$'
+ctest --preset agents -R '^(webrtc_public_channels_interop|webrtc_mdns_interop|webrtc_mdns_channels_interop)$'
 ```
 
 The browser harness requires the pinned Playwright package and an actual Chromium executable configured through

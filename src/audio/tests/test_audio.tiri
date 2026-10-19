@@ -46,7 +46,7 @@ end
    snd = obj.new('sound', { path=glFolder .. 'low-tone.wav', volume=0.25 })
    assert(snd, 'Failed to process low-tone wav file.')
 
-   local time, time_taken
+   local time, time_taken:num
    snd.onStop = function(Sound:obj)
       time_taken = (mSys.PreciseTime() - time) / 1000000
       Sound.acSignal()

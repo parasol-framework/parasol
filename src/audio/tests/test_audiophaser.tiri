@@ -1,6 +1,7 @@
 @if(exists='modules:audio')
 
    module audio as mAudio
+   import './effect_fields'
 
 @BeforeAll function init(State)
    global glFolder = State.folder
@@ -89,7 +90,7 @@ end
    assert(phaser.mtGetOutput('response') is ERR_Search)
 end
 
-@Test function StagedChangesAndValidation()
+@Test function ChangesAndValidation()
    audio <close> = obj.new('Audio', { device='null', outputRate=48000 })
    phaser <close> = new_phaser(audio)
    assert(phaser.mutable is 1)
@@ -97,33 +98,34 @@ end
    -- Every bound is inclusive; values outside it and non-finite values are rejected immediately.
 
    for p in values(PARAMS) do
-      check phaser.acSetKey(p.key, p.min)
-      check phaser.acSetKey(p.key, p.max)
-      assert(phaser.acSetKey(p.key, p.min - 0.001) is ERR_InvalidValue, f'{p.key} below {p.min} must fail')
-      assert(phaser.acSetKey(p.key, p.max + 0.001) is ERR_InvalidValue, f'{p.key} above {p.max} must fail')
-      assert(phaser.acSetKey(p.key, math.huge) is ERR_InvalidValue, f'{p.key} must reject infinity')
-      assert(phaser.acSetKey(p.key, -math.huge) is ERR_InvalidValue, f'{p.key} must reject -infinity')
-      assert(phaser.acSetKey(p.key, math.sqrt(-1)) is ERR_InvalidValue, f'{p.key} must reject NaN')
+      check phaser.mtBatch(array<str> { f'set {p.key} {p.min}', f'set {p.key} {p.max}' })
+      assert(phaser.mtBatch(array<str> { f'set {p.key} {p.min - 0.001}' }) is ERR_InvalidValue,
+         f'{p.key} below {p.min} must fail')
+      assert(phaser.mtBatch(array<str> { f'set {p.key} {p.max + 0.001}' }) is ERR_InvalidValue,
+         f'{p.key} above {p.max} must fail')
+      assert(phaser.mtBatch(array<str> { f'set {p.key} {math.huge}' }) is ERR_InvalidValue,
+         f'{p.key} must reject infinity')
+      assert(phaser.mtBatch(array<str> { f'set {p.key} {-math.huge}' }) is ERR_InvalidValue,
+         f'{p.key} must reject -infinity')
+      assert(phaser.mtBatch(array<str> { f'set {p.key} {math.sqrt(-1)}' }) is ERR_InvalidValue,
+         f'{p.key} must reject NaN')
    end
-   assert(phaser.acSetKey('unknown', 1) is ERR_Search)
-   check phaser.acFlush()
+   assert(phaser.mtBatch(array<str> { 'set unknown 1' }) is ERR_Search)
 
-   -- Staged values are readable before Flush(); a rejected value leaves earlier staged changes intact, and Flush()
-   -- commits them together.  Fractional and negative values are kept.
+   -- A rejected value fails the whole batch and names its command; a valid batch commits every value together.
+   -- Fractional and negative values are kept.
 
-   check phaser.acSetKey('rate', 1.25)
-   check phaser.acSetKey('centre', 1234.5)
-   check phaser.acSetKey('depth', 47.25)
-   assert(phaser.acSetKey('feedback', -81) is ERR_InvalidValue)
-   check phaser.acSetKey('feedback', -62.5)
-   err, value_text = phaser.acGetKey('feedback')
-   value = tonumber(value_text)
-   assert(err is ERR_Okay and value is -62.5, 'Staged values must be readable')
-   check phaser.acFlush()
+   err, failed = phaser.mtBatch(array<str> {
+      'set rate 1.25', 'set centre 1234.5', 'set depth 47.25', 'set feedback -81'
+   })
+   assert(err is ERR_InvalidValue and failed is 3, f'The last command must fail, got {err} at {failed}')
+   err, value_text = phaser.acGetKey('rate')
+   assert(err is ERR_Okay and tonumber(value_text) != 1.25, 'A rejected batch must change nothing')
+   check phaser.mtBatch(array<str> { 'set rate 1.25', 'set centre 1234.5', 'set depth 47.25', 'set feedback -62.5' })
    for key, expected in pairs({ rate=1.25, centre=1234.5, depth=47.25, feedback=-62.5, mix=100 }) do
       err, value_text = phaser.acGetKey(key)
       value = tonumber(value_text)
-      assert(err is ERR_Okay and value is expected, f'{key} should be {expected} after Flush(), got {value}')
+      assert(err is ERR_Okay and value is expected, f'{key} should be {expected} after Batch(), got {value}')
    end
 end
 
@@ -134,9 +136,8 @@ end
    phaser <close> = obj.new('AudioPhaser')
    phaser.audio = audio
    phaser.channel = channel
-   check phaser.acSetKey('centre', 2500)
-   check phaser.acSetKey('feedback', -70)
-   assert(phaser.acSetKey('centre', 99) is ERR_InvalidValue)
+   check phaser.mtBatch(array<str> { 'set centre 2500', 'set feedback -70' })
+   assert(phaser.mtBatch(array<str> { 'set centre 99' }) is ERR_InvalidValue)
    phaser.init()
    for key, expected in pairs({ centre=2500, feedback=-70, depth=60 }) do
       err, value_text = phaser.acGetKey(key)
@@ -148,8 +149,7 @@ end
 @Test function LivePlayback()
    audio <close> = obj.new('Audio', { device='null', outputRate=48000 })
    phaser, channel = new_phaser(audio)
-   check phaser.acSetKey('mix', 100)
-   check phaser.acFlush()
+   check phaser.mtBatch(array<str> { 'set mix 100' })
    check audio.acActivate()
    assert(phaser.latency is 0, 'The phaser publishes no algorithmic latency, even when fully wet')
    err, rate, format, layout, generation, state = phaser.mtGetProcessingFormat()
@@ -159,15 +159,8 @@ end
 
    -- Simultaneous edits of every parameter at their extremes, followed by a second edit during the ramp.
 
-   check phaser.acSetKey('centre', 100)
-   check phaser.acSetKey('rate', 10)
-   check phaser.acSetKey('depth', 100)
-   check phaser.acSetKey('feedback', -80)
-   check phaser.acFlush()
-   check phaser.acSetKey('centre', 4000)
-   check phaser.acSetKey('feedback', 80)
-   check phaser.acSetKey('mix', 0)
-   check phaser.acFlush()
+   check phaser.mtBatch(array<str> { 'set centre 100', 'set rate 10', 'set depth 100', 'set feedback -80' })
+   check phaser.mtBatch(array<str> { 'set centre 4000', 'set feedback 80', 'set mix 0' })
    assert(phaser.latency is 0, 'Parameter changes must not alter the latency')
 
    err, layout = phaser.mtGetMeterLayout()
@@ -182,18 +175,17 @@ end
    check audio.mtCloseChannels(channel)
    err, reading = phaser.mtReadMeters()
    assert(err is ERR_Okay and reading.flags is AMF_DISCONNECTED)
-   assert(phaser.acSetKey('mix', 50) is ERR_NotInitialised)
+   assert(phaser.mtBatch(array<str> { 'set mix 50' }) is ERR_NotInitialised)
    phaser.free()
 end
 
 @Test function MonoAndGlobalImmutability()
    audio <close> = obj.new('Audio', { device='null', outputRate=44100, outputLayout=array<int> { SPK_CENTRE } })
    phaser = audio.new('AudioPhaser')
-   check phaser.acSetKey('feedback', -45)
-   check phaser.acSetKey('centre', 300)
+   check phaser.mtBatch(array<str> { 'set feedback -45', 'set centre 300' })
    phaser.init()
    assert(phaser.mutable is 0)
-   assert(phaser.acSetKey('centre', 2000) is ERR_Immutable)
+   assert(phaser.mtBatch(array<str> { 'set centre 2000' }) is ERR_Immutable)
    err, value_text = phaser.acGetKey('feedback')
    value = tonumber(value_text)
    assert(err is ERR_Okay and value is -45, 'Global settings are retained')
@@ -221,10 +213,7 @@ end
             state_at_stop = state
          end })
       phaser <close> = obj.new('AudioPhaser', { audio=audio, channel=sound.channelIndex & 0xffff0000 })
-      check phaser.acSetKey('centre', 100)
-      check phaser.acSetKey('depth', 100)
-      check phaser.acSetKey('feedback', feedback)
-      check phaser.acFlush()
+      check phaser.mtBatch(array<str> { 'set centre 100', 'set depth 100', f'set feedback {feedback}' })
       check sound.acActivate()
       wait_for_stop(count, 20)
       assert(count.stops is 1, 'OnStop must be delivered once')
@@ -238,12 +227,10 @@ end
 @Test function GlobalChainStop()
    audio <close> = obj.new('Audio', { device='null' })
    first = audio.new('AudioPhaser')
-   check first.acSetKey('centre', 100)
-   check first.acSetKey('feedback', 80)
+   check first.mtBatch(array<str> { 'set centre 100', 'set feedback 80' })
    first.init()
    second = audio.new('AudioPhaser')
-   check second.acSetKey('depth', 100)
-   check second.acSetKey('feedback', -80)
+   check second.mtBatch(array<str> { 'set depth 100', 'set feedback -80' })
    second.init()
    check audio.acActivate()
    count = { stops=0 }
@@ -267,8 +254,7 @@ end
    sound <close> = obj.new('Sound', { audio=audio, path=glFolder .. 'low-tone.wav',
       onStop=function(Sound) count.stops++ end })
    phaser = obj.new('AudioPhaser', { audio=audio, channel=sound.channelIndex & 0xffff0000 })
-   check phaser.acSetKey('feedback', 80)
-   check phaser.acFlush()
+   check phaser.mtBatch(array<str> { 'set feedback 80' })
    check sound.acActivate()
    processing.sleep(0.05)
    phaser.free()
@@ -287,10 +273,7 @@ end
       onStop=function(Sound) count.stops++ end })
    set = sound.channelIndex & 0xffff0000
    phaser <close> = obj.new('AudioPhaser', { audio=audio, channel=set })
-   check phaser.acSetKey('centre', 100)
-   check phaser.acSetKey('depth', 0)
-   check phaser.acSetKey('feedback', 80)
-   check phaser.acFlush()
+   check phaser.mtBatch(array<str> { 'set centre 100', 'set depth 0', 'set feedback 80' })
    check sound.acActivate()
    wait_for_stop(count, 20)
    assert(count.stops is 1, 'OnStop must be delivered once the drain limit is reached')
@@ -311,6 +294,12 @@ end
    success
       raise 'An output rate below 8000 Hz must be rejected'
    end
+end
+
+-- Every schema parameter has a typed field that follows the shared field semantics.
+
+@Test function TypedFields()
+   effect_fields.checkFields('AudioPhaser')
 end
 
 @end

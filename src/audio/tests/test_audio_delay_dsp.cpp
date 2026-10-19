@@ -61,7 +61,7 @@ struct DelayFixture {
 
 static DelaySettings wet_settings(double Time, double Feedback, double Damping = 0)
 {
-   return DelaySettings { .Time = Time, .Feedback = Feedback, .Damping = Damping, .Mode = DELAY_NORMAL, .Mix = 100 };
+   return DelaySettings { .Time = Time, .Feedback = Feedback, .Damping = Damping, .Mode = DLM::NORMAL, .Mix = 100 };
 }
 
 static double noise(uint32_t &Seed)
@@ -81,7 +81,7 @@ static std::vector<double> reference(const std::vector<float> &Input, int Channe
    const double g = Settings.Feedback / 100.0, m = Settings.Mix / 100.0;
    double a, b;
    delay_damping(Settings.Damping, Rate, a, b);
-   const bool ping_pong = (Channels IS 2) and (Settings.Mode IS DELAY_PING_PONG);
+   const bool ping_pong = (Channels IS 2) and (Settings.Mode IS DLM::PING_PONG);
    const int whole = int(std::floor(delay));
    const double fraction = delay - double(whole);
 
@@ -258,10 +258,10 @@ static void test_timing(AudioTestContext &Test)
 
    // Noise through fractional delays, feedback, damping and both modes matches the independent model.
    const DelaySettings cases[] = {
-      { .Time = 3.3, .Feedback = 80, .Damping = 40, .Mode = DELAY_NORMAL, .Mix = 25 },
-      { .Time = 1, .Feedback = 95, .Damping = 100, .Mode = DELAY_NORMAL, .Mix = 100 },
-      { .Time = 7.77, .Feedback = 60, .Damping = 0.4, .Mode = DELAY_PING_PONG, .Mix = 50 },
-      { .Time = 12.5, .Feedback = 0, .Damping = 0, .Mode = DELAY_PING_PONG, .Mix = 0 }
+      { .Time = 3.3, .Feedback = 80, .Damping = 40, .Mode = DLM::NORMAL, .Mix = 25 },
+      { .Time = 1, .Feedback = 95, .Damping = 100, .Mode = DLM::NORMAL, .Mix = 100 },
+      { .Time = 7.77, .Feedback = 60, .Damping = 0.4, .Mode = DLM::PING_PONG, .Mix = 50 },
+      { .Time = 12.5, .Feedback = 0, .Damping = 0, .Mode = DLM::PING_PONG, .Mix = 0 }
    };
    for (int rate : { 44100, 48000, 96000 }) {
       for (int channels = 1; channels <= 2; channels++) {
@@ -321,7 +321,7 @@ static void test_mix_and_isolation(AudioTestContext &Test)
 static void test_ping_pong(AudioTestContext &Test)
 {
    auto settings = wet_settings(10, 50);
-   settings.Mode = DELAY_PING_PONG;
+   settings.Mode = DLM::PING_PONG;
    DelayFixture fixture(48000, true, settings);
    auto output = fixture.impulse(1900, 1.0f, 0.5f);
    auto at = [&](int Frame, int Channel) { return output[size_t(Frame) * 2 + Channel]; };
@@ -351,7 +351,7 @@ static void test_ping_pong(AudioTestContext &Test)
 
    // Mono retains the requested mode but uses normal routing.
    DelayFixture mono(48000, false, settings);
-   AUDIO_CHECK(mono.Processor.Settings.Mode IS DELAY_PING_PONG and mono.Processor.routing_weight() IS 0);
+   AUDIO_CHECK(mono.Processor.Settings.Mode IS DLM::PING_PONG and mono.Processor.routing_weight() IS 0);
    output = mono.impulse(1000);
    AUDIO_CHECK(output[480] IS 1.0f and output[960] IS 0.5f);
 }
@@ -381,7 +381,7 @@ static void test_stability(AudioTestContext &Test)
    double peak = 0;
    for (int block = 0; block < 40; block++) {
       auto settings = wet_settings(2.5, 95, 10);
-      settings.Mode = (block & 1) ? DELAY_PING_PONG : DELAY_NORMAL;
+      settings.Mode = (block & 1) ? DLM::PING_PONG : DLM::NORMAL;
       toggled.change(settings);
       std::vector<float> buffer(size_t(1200) * 2);
       for (auto &sample : buffer) sample = float(noise(seed));
@@ -535,7 +535,7 @@ static void test_edits(AudioTestContext &Test)
    auto second = wet_settings(30, 30, 0);
    fixture.change(second);
    auto third = wet_settings(40, 60, 50);
-   third.Mode = DELAY_PING_PONG;
+   third.Mode = DLM::PING_PONG;
    fixture.change(third);
    AUDIO_CHECK(fixture.Processor.time_queued() and fixture.Processor.read_distance() IS 960.0);
 
@@ -621,14 +621,14 @@ static void test_crossfade_boundary(AudioTestContext &Test)
 
 static void test_blocks(AudioTestContext &Test)
 {
-   const auto initial = DelaySettings { .Time = 7.3, .Feedback = 70, .Damping = 20, .Mode = DELAY_NORMAL, .Mix = 40 };
+   const auto initial = DelaySettings { .Time = 7.3, .Feedback = 70, .Damping = 20, .Mode = DLM::NORMAL, .Mix = 40 };
    DelaySettings edits[3] = { initial, initial, initial };
    edits[0].Time = 21.7;
-   edits[0].Mode = DELAY_PING_PONG;
+   edits[0].Mode = DLM::PING_PONG;
    edits[0].Feedback = 90;
    edits[1].Time = 3.1;           // Queued behind the first crossfade
    edits[1].Damping = 100;
-   edits[2].Mode = DELAY_NORMAL;
+   edits[2].Mode = DLM::NORMAL;
    edits[2].Mix = 80;
    edits[2].Time = 13;
 
@@ -682,7 +682,7 @@ static void test_transitions(AudioTestContext &Test)
    fixture.Processor.process(buffer.data(), edit_at);
    auto edited = settings;
    edited.Time = 137;
-   edited.Mode = DELAY_PING_PONG;
+   edited.Mode = DLM::PING_PONG;
    edited.Feedback = 80;
    edited.Damping = 70;
    edited.Mix = 70;
@@ -719,7 +719,7 @@ static void test_resources(AudioTestContext &Test)
    for (int block = 0; block < 400; block++) {
       // Overlapping transitions: a time edit every block queues behind the running crossfade.
       auto settings = DelaySettings { .Time = 1000.0 + (block % 7) * 150.0, .Feedback = 95, .Damping = 100,
-         .Mode = (block & 1) ? DELAY_PING_PONG : DELAY_NORMAL, .Mix = 50 };
+         .Mode = (block & 1) ? DLM::PING_PONG : DLM::NORMAL, .Mix = 50 };
       fixture.change(settings);
       for (auto &sample : buffer) sample = float(noise(seed));
       const auto start = std::chrono::steady_clock::now();

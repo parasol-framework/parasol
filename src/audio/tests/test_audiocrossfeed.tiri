@@ -1,10 +1,11 @@
--- AudioCrossfeed: schema, validation, staged changes, live processing measured through the peak meters, mono, global
+-- AudioCrossfeed: schema, validation, batch changes, live processing measured through the peak meters, mono, global
 -- immutability, tail draining and unsupported rates.  The null device is unpaced, so live tests play a looping tone
 -- and poll until a reading reflects the latest settings.
 
 @if(exists='modules:audio')
 
    module audio as mAudio
+   import './effect_fields'
 
 @BeforeAll function init(State)
    global glFolder = State.folder
@@ -83,8 +84,9 @@ function get_number(Effect:obj, Key:str):<num>
 end
 
 function configure(Effect:obj, Values:table)
-   for key, value in pairs(Values) do check Effect.acSetKey(key, value) end
-   check Effect.acFlush()
+   commands = array<str>
+   for key, value in pairs(Values) do commands.push(f'set {key} {value}') end
+   check Effect.mtBatch(commands)
 end
 
 -- Poll until a valid meter reading has the expected output levels relative to the left input peak, within 0.25 dB.
@@ -152,33 +154,33 @@ end
    assert(crossfeed.mtGetOutput('response') is ERR_Search)
 end
 
-@Test function StagedChangesAndValidation()
+@Test function ChangesAndValidation()
    audio <close> = obj.new('Audio', { device='null', outputRate=48000 })
    crossfeed <close> = new_crossfeed(audio)
    assert(crossfeed.mutable is 1)
 
    for p in values(PARAMS) do
-      check crossfeed.acSetKey(p.key, p.min)
-      check crossfeed.acSetKey(p.key, p.max)
-      assert(crossfeed.acSetKey(p.key, p.min - 0.001) is ERR_InvalidValue, f'{p.key} below {p.min} must fail')
-      assert(crossfeed.acSetKey(p.key, p.max + 0.001) is ERR_InvalidValue, f'{p.key} above {p.max} must fail')
-      assert(crossfeed.acSetKey(p.key, math.huge) is ERR_InvalidValue, f'{p.key} must reject infinity')
-      assert(crossfeed.acSetKey(p.key, math.sqrt(-1)) is ERR_InvalidValue, f'{p.key} must reject NaN')
+      check crossfeed.mtBatch(array<str> { f'set {p.key} {p.min}', f'set {p.key} {p.max}' })
+      assert(crossfeed.mtBatch(array<str> { f'set {p.key} {p.min - 0.001}' }) is ERR_InvalidValue,
+         f'{p.key} below {p.min} must fail')
+      assert(crossfeed.mtBatch(array<str> { f'set {p.key} {p.max + 0.001}' }) is ERR_InvalidValue,
+         f'{p.key} above {p.max} must fail')
+      assert(crossfeed.mtBatch(array<str> { f'set {p.key} {math.huge}' }) is ERR_InvalidValue,
+         f'{p.key} must reject infinity')
+      assert(crossfeed.mtBatch(array<str> { f'set {p.key} {math.sqrt(-1)}' }) is ERR_InvalidValue,
+         f'{p.key} must reject NaN')
    end
-   assert(crossfeed.acSetKey('unknown', 1) is ERR_Search)
-   check crossfeed.acFlush()
+   assert(crossfeed.mtBatch(array<str> { 'set unknown 1' }) is ERR_Search)
 
-   -- Staged values are readable before Flush(); a rejected value leaves earlier staged changes intact.
+   -- A rejected value fails the whole batch and names its command; a valid batch commits every value together.
 
-   check crossfeed.acSetKey('amount', 37.5)
-   check crossfeed.acSetKey('delay', 0.0625)
-   assert(crossfeed.acSetKey('cutoff', 99) is ERR_InvalidValue)
-   check crossfeed.acSetKey('cutoff', 455.5)
-   assert(get_number(crossfeed, 'cutoff') is 455.5, 'Staged values must be readable')
-   check crossfeed.acFlush()
+   err, failed = crossfeed.mtBatch(array<str> { 'set amount 37.5', 'set delay 0.0625', 'set cutoff 99' })
+   assert(err is ERR_InvalidValue and failed is 2, f'The last command must fail, got {err} at {failed}')
+   assert(get_number(crossfeed, 'amount') != 37.5, 'A rejected batch must change nothing')
+   check crossfeed.mtBatch(array<str> { 'set amount 37.5', 'set delay 0.0625', 'set cutoff 455.5' })
    for key, expected in pairs({ amount=37.5, delay=0.0625, cutoff=455.5, gain=12 }) do
       value = get_number(crossfeed, key)
-      assert(value is expected, f'{key} should be {expected} after Flush(), got {value}')
+      assert(value is expected, f'{key} should be {expected} after Batch(), got {value}')
    end
 end
 
@@ -189,9 +191,8 @@ end
    crossfeed <close> = obj.new('AudioCrossfeed')
    crossfeed.audio = audio
    crossfeed.channel = channel
-   check crossfeed.acSetKey('amount', 45)
-   check crossfeed.acSetKey('cutoff', 250)
-   assert(crossfeed.acSetKey('gain', 13) is ERR_InvalidValue)
+   check crossfeed.mtBatch(array<str> { 'set amount 45', 'set cutoff 250' })
+   assert(crossfeed.mtBatch(array<str> { 'set gain 13' }) is ERR_InvalidValue)
    crossfeed.init()
    for key, expected in pairs({ amount=45, cutoff=250, delay=0.3, gain=0 }) do
       value = get_number(crossfeed, key)
@@ -236,18 +237,17 @@ end
    check audio.mtCloseChannels(channel)
    err, reading = crossfeed.mtReadMeters()
    assert(err is ERR_Okay and reading.flags is AMF_DISCONNECTED)
-   assert(crossfeed.acSetKey('amount', 10) is ERR_NotInitialised)
+   assert(crossfeed.mtBatch(array<str> { 'set amount 10' }) is ERR_NotInitialised)
    crossfeed.free()
 end
 
 @Test function MonoAndGlobalImmutability()
    audio <close> = obj.new('Audio', { device='null', outputRate=44100, outputLayout=array<int> { SPK_CENTRE } })
    crossfeed = audio.new('AudioCrossfeed')
-   check crossfeed.acSetKey('amount', 50)
-   check crossfeed.acSetKey('gain', -3)
+   check crossfeed.mtBatch(array<str> { 'set amount 50', 'set gain -3' })
    crossfeed.init()
    assert(crossfeed.mutable is 0)
-   assert(crossfeed.acSetKey('amount', 10) is ERR_Immutable)
+   assert(crossfeed.mtBatch(array<str> { 'set amount 10' }) is ERR_Immutable)
    assert(get_number(crossfeed, 'amount') is 50, 'Global settings are retained')
    check audio.acActivate()
    err, layout = crossfeed.mtGetMeterLayout()
@@ -307,6 +307,12 @@ end
    success
       raise 'An output rate below 8000 Hz must be rejected'
    end
+end
+
+-- Every schema parameter has a typed field that follows the shared field semantics.
+
+@Test function TypedFields()
+   effect_fields.checkFields('AudioCrossfeed')
 end
 
 @end

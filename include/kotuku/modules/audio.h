@@ -152,6 +152,30 @@ enum class EQB : int {
    HIGH_PASS = 4,
 };
 
+// AudioSaturator transfer curve shapes.
+
+enum class SATS : int {
+   NIL = 0,
+   SOFT = 0,
+   HARD = 1,
+};
+
+// AudioDelay stereo routing modes.
+
+enum class DLM : int {
+   NIL = 0,
+   NORMAL = 0,
+   PING_PONG = 1,
+};
+
+// AudioGate attenuation modes.
+
+enum class GTM : int {
+   NIL = 0,
+   EXPANDER = 0,
+   GATE = 1,
+};
+
 // Volume control flags
 
 enum class VCF : uint32_t {
@@ -342,6 +366,11 @@ struct AudioEQBand {
    double Frequency;    // Centre or corner frequency in hertz
    double Gain;         // Band gain in decibels
    double Q;            // Quality factor or shelf slope
+};
+
+struct AudioBranch {
+   double Gain;    // Level of the branch output in the sum, in decibels
+   int    Mute;    // Set to 1 to remove the branch from the sum
 };
 
 // Audio class definition
@@ -606,7 +635,7 @@ class objAudio : public Object {
 
    inline ERR setOutputLayout(std::span<const int> Value) noexcept {
       auto field = &this->Class->Dictionary[5];
-      return field->WriteValue(this, field, 0x40101308, &Value);
+      return field->WriteValue(this, field, 0x40101300, &Value);
    }
 
 };
@@ -618,14 +647,13 @@ class objAudio : public Object {
 // AudioEffect methods
 
 namespace fx {
-struct InsertEntry { std::string_view Group; int Index; static const AC id = AC(-3); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
-struct RemoveEntry { std::string_view Group; int Index; static const AC id = AC(-4); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
 struct GetResponse { std::span<const double> Frequencies; std::span<double> Magnitudes; static const AC id = AC(-5); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
 struct GetGroupCount { std::string_view Group; int Count; static const AC id = AC(-6); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
 struct GetMeterLayout { struct MeterLayout *Layout; static const AC id = AC(-7); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
 struct GetOutput { std::string_view Key; double Value; static const AC id = AC(-8); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
 struct ReadMeters { struct MeterReading *Reading; static const AC id = AC(-9); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
 struct GetProcessingFormat { int SampleRate; ASF SampleFormat; kt::vector<int> *Layout; int64_t Generation; AFS State; static const AC id = AC(-10); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct Batch { kt::vector<std::string> *Commands; int Failed; static const AC id = AC(-11); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
 
 } // namespace
 
@@ -647,7 +675,6 @@ class objAudioEffect : public Object {
 
    // Action stubs
 
-   inline ERR flush() noexcept { return Action(AC::Flush, this, nullptr); }
    inline ERR getKey(std::string_view Key, std::string &Value) noexcept {
       struct acGetKey args = { Key, &Value };
       auto error = Action(AC::GetKey, this, &args);
@@ -655,18 +682,6 @@ class objAudioEffect : public Object {
       return error;
    }
    inline ERR init() noexcept { return InitObject(this); }
-   inline ERR acSetKey(std::string_view FieldName, std::string_view Value) noexcept {
-      struct acSetKey args = { FieldName, Value };
-      return Action(AC::SetKey, this, &args);
-   }
-   inline ERR insertEntry(const std::string_view &Group, int Index) noexcept {
-      struct fx::InsertEntry args = { Group, Index };
-      return Action(AC(-3), this, &args);
-   }
-   inline ERR removeEntry(const std::string_view &Group, int Index) noexcept {
-      struct fx::RemoveEntry args = { Group, Index };
-      return Action(AC(-4), this, &args);
-   }
    inline ERR getResponse(std::span<const double> Frequencies, std::span<double> Magnitudes) noexcept {
       struct fx::GetResponse args = { Frequencies, Magnitudes };
       return Action(AC(-5), this, &args);
@@ -702,6 +717,12 @@ class objAudioEffect : public Object {
       if (SampleFormat) *SampleFormat = args.SampleFormat;
       if (Generation) *Generation = args.Generation;
       if (State) *State = args.State;
+      return error;
+   }
+   inline ERR batch(kt::vector<std::string> &Commands, int * Failed) noexcept {
+      struct fx::Batch args = { &Commands, (int)0 };
+      ERR error = Action(AC(-11), this, &args);
+      if (Failed) *Failed = args.Failed;
       return error;
    }
 
@@ -816,6 +837,16 @@ class objAudioEffect : public Object {
 
 #define VER_AUDIOEQUALISER (1.000000)
 
+// AudioEqualiser methods
+
+namespace eq {
+struct GetBand { int Index; struct AudioEQBand *Band; static const AC id = AC(-30); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct SetBand { int Index; struct AudioEQBand *Band; static const AC id = AC(-31); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct InsertBand { int Index; struct AudioEQBand *Band; static const AC id = AC(-32); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct RemoveBand { int Index; static const AC id = AC(-33); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+
+} // namespace
+
 class objAudioEqualiser : public objAudioEffect {
    public:
    static constexpr CLASSID CLASS_ID = CLASSID::AUDIOEQUALISER;
@@ -827,11 +858,27 @@ class objAudioEqualiser : public objAudioEffect {
    // Action stubs
 
    inline ERR init() noexcept { return InitObject(this); }
+   inline ERR getBand(int Index, struct AudioEQBand * Band) noexcept {
+      struct eq::GetBand args = { Index, Band };
+      return Action(AC(-30), this, &args);
+   }
+   inline ERR setBand(int Index, struct AudioEQBand * Band) noexcept {
+      struct eq::SetBand args = { Index, Band };
+      return Action(AC(-31), this, &args);
+   }
+   inline ERR insertBand(int Index, struct AudioEQBand * Band) noexcept {
+      struct eq::InsertBand args = { Index, Band };
+      return Action(AC(-32), this, &args);
+   }
+   inline ERR removeBand(int Index) noexcept {
+      struct eq::RemoveBand args = { Index };
+      return Action(AC(-33), this, &args);
+   }
 
    // Customised field getting
 
    inline ERR getBands(std::span<struct AudioEQBand> &Value) noexcept {
-      auto field = &this->Class->Dictionary[16];
+      auto field = &this->Class->Dictionary[18];
       auto get_field = (ERR (*)(APTR, std::span<struct AudioEQBand> &))field->GetValue;
       return get_field(this, Value);
    }
@@ -841,16 +888,36 @@ class objAudioEqualiser : public objAudioEffect {
       return field->GetValue(this, &Value);
    }
 
+   inline ERR getLoudness(int &Value) noexcept {
+      auto field = &this->Class->Dictionary[16];
+      return field->GetValue(this, &Value);
+   }
+
+   inline ERR getListeningLevel(double &Value) noexcept {
+      auto field = &this->Class->Dictionary[17];
+      return field->GetValue(this, &Value);
+   }
+
 
    // Customised field setting
 
    inline ERR setBands(std::span<const struct AudioEQBand> Value) noexcept {
-      auto field = &this->Class->Dictionary[16];
+      auto field = &this->Class->Dictionary[18];
       return field->WriteValue(this, field, 0x00101318, &Value);
    }
 
    inline ERR setGain(const double Value) noexcept {
       auto field = &this->Class->Dictionary[15];
+      return field->WriteValue(this, field, FD_DOUBLE, &Value);
+   }
+
+   inline ERR setLoudness(const int Value) noexcept {
+      auto field = &this->Class->Dictionary[16];
+      return field->WriteValue(this, field, FD_INT, &Value);
+   }
+
+   inline ERR setListeningLevel(const double Value) noexcept {
+      auto field = &this->Class->Dictionary[17];
       return field->WriteValue(this, field, FD_DOUBLE, &Value);
    }
 
@@ -874,8 +941,88 @@ class objAudioReverb : public objAudioEffect {
 
    // Customised field getting
 
+   inline ERR getDecay(double &Value) noexcept {
+      auto field = &this->Class->Dictionary[15];
+      return field->GetValue(this, &Value);
+   }
+
+   inline ERR getSize(double &Value) noexcept {
+      auto field = &this->Class->Dictionary[19];
+      return field->GetValue(this, &Value);
+   }
+
+   inline ERR getPreDelay(double &Value) noexcept {
+      auto field = &this->Class->Dictionary[21];
+      return field->GetValue(this, &Value);
+   }
+
+   inline ERR getDamping(double &Value) noexcept {
+      auto field = &this->Class->Dictionary[22];
+      return field->GetValue(this, &Value);
+   }
+
+   inline ERR getDiffusion(double &Value) noexcept {
+      auto field = &this->Class->Dictionary[16];
+      return field->GetValue(this, &Value);
+   }
+
+   inline ERR getEarlyLevel(double &Value) noexcept {
+      auto field = &this->Class->Dictionary[17];
+      return field->GetValue(this, &Value);
+   }
+
+   inline ERR getEarlyLength(double &Value) noexcept {
+      auto field = &this->Class->Dictionary[18];
+      return field->GetValue(this, &Value);
+   }
+
+   inline ERR getMix(double &Value) noexcept {
+      auto field = &this->Class->Dictionary[20];
+      return field->GetValue(this, &Value);
+   }
+
 
    // Customised field setting
+
+   inline ERR setDecay(const double Value) noexcept {
+      auto field = &this->Class->Dictionary[15];
+      return field->WriteValue(this, field, FD_DOUBLE, &Value);
+   }
+
+   inline ERR setSize(const double Value) noexcept {
+      auto field = &this->Class->Dictionary[19];
+      return field->WriteValue(this, field, FD_DOUBLE, &Value);
+   }
+
+   inline ERR setPreDelay(const double Value) noexcept {
+      auto field = &this->Class->Dictionary[21];
+      return field->WriteValue(this, field, FD_DOUBLE, &Value);
+   }
+
+   inline ERR setDamping(const double Value) noexcept {
+      auto field = &this->Class->Dictionary[22];
+      return field->WriteValue(this, field, FD_DOUBLE, &Value);
+   }
+
+   inline ERR setDiffusion(const double Value) noexcept {
+      auto field = &this->Class->Dictionary[16];
+      return field->WriteValue(this, field, FD_DOUBLE, &Value);
+   }
+
+   inline ERR setEarlyLevel(const double Value) noexcept {
+      auto field = &this->Class->Dictionary[17];
+      return field->WriteValue(this, field, FD_DOUBLE, &Value);
+   }
+
+   inline ERR setEarlyLength(const double Value) noexcept {
+      auto field = &this->Class->Dictionary[18];
+      return field->WriteValue(this, field, FD_DOUBLE, &Value);
+   }
+
+   inline ERR setMix(const double Value) noexcept {
+      auto field = &this->Class->Dictionary[20];
+      return field->WriteValue(this, field, FD_DOUBLE, &Value);
+   }
 
 };
 
@@ -897,8 +1044,78 @@ class objAudioCompressor : public objAudioEffect {
 
    // Customised field getting
 
+   inline ERR getThreshold(double &Value) noexcept {
+      auto field = &this->Class->Dictionary[16];
+      return field->GetValue(this, &Value);
+   }
+
+   inline ERR getRatio(double &Value) noexcept {
+      auto field = &this->Class->Dictionary[19];
+      return field->GetValue(this, &Value);
+   }
+
+   inline ERR getAttack(double &Value) noexcept {
+      auto field = &this->Class->Dictionary[15];
+      return field->GetValue(this, &Value);
+   }
+
+   inline ERR getRelease(double &Value) noexcept {
+      auto field = &this->Class->Dictionary[21];
+      return field->GetValue(this, &Value);
+   }
+
+   inline ERR getKnee(double &Value) noexcept {
+      auto field = &this->Class->Dictionary[20];
+      return field->GetValue(this, &Value);
+   }
+
+   inline ERR getMakeup(double &Value) noexcept {
+      auto field = &this->Class->Dictionary[17];
+      return field->GetValue(this, &Value);
+   }
+
+   inline ERR getMix(double &Value) noexcept {
+      auto field = &this->Class->Dictionary[18];
+      return field->GetValue(this, &Value);
+   }
+
 
    // Customised field setting
+
+   inline ERR setThreshold(const double Value) noexcept {
+      auto field = &this->Class->Dictionary[16];
+      return field->WriteValue(this, field, FD_DOUBLE, &Value);
+   }
+
+   inline ERR setRatio(const double Value) noexcept {
+      auto field = &this->Class->Dictionary[19];
+      return field->WriteValue(this, field, FD_DOUBLE, &Value);
+   }
+
+   inline ERR setAttack(const double Value) noexcept {
+      auto field = &this->Class->Dictionary[15];
+      return field->WriteValue(this, field, FD_DOUBLE, &Value);
+   }
+
+   inline ERR setRelease(const double Value) noexcept {
+      auto field = &this->Class->Dictionary[21];
+      return field->WriteValue(this, field, FD_DOUBLE, &Value);
+   }
+
+   inline ERR setKnee(const double Value) noexcept {
+      auto field = &this->Class->Dictionary[20];
+      return field->WriteValue(this, field, FD_DOUBLE, &Value);
+   }
+
+   inline ERR setMakeup(const double Value) noexcept {
+      auto field = &this->Class->Dictionary[17];
+      return field->WriteValue(this, field, FD_DOUBLE, &Value);
+   }
+
+   inline ERR setMix(const double Value) noexcept {
+      auto field = &this->Class->Dictionary[18];
+      return field->WriteValue(this, field, FD_DOUBLE, &Value);
+   }
 
 };
 
@@ -920,8 +1137,38 @@ class objAudioLimiter : public objAudioEffect {
 
    // Customised field getting
 
+   inline ERR getCeiling(double &Value) noexcept {
+      auto field = &this->Class->Dictionary[16];
+      return field->GetValue(this, &Value);
+   }
+
+   inline ERR getRelease(double &Value) noexcept {
+      auto field = &this->Class->Dictionary[17];
+      return field->GetValue(this, &Value);
+   }
+
+   inline ERR getGain(double &Value) noexcept {
+      auto field = &this->Class->Dictionary[15];
+      return field->GetValue(this, &Value);
+   }
+
 
    // Customised field setting
+
+   inline ERR setCeiling(const double Value) noexcept {
+      auto field = &this->Class->Dictionary[16];
+      return field->WriteValue(this, field, FD_DOUBLE, &Value);
+   }
+
+   inline ERR setRelease(const double Value) noexcept {
+      auto field = &this->Class->Dictionary[17];
+      return field->WriteValue(this, field, FD_DOUBLE, &Value);
+   }
+
+   inline ERR setGain(const double Value) noexcept {
+      auto field = &this->Class->Dictionary[15];
+      return field->WriteValue(this, field, FD_DOUBLE, &Value);
+   }
 
 };
 
@@ -943,8 +1190,88 @@ class objAudioGate : public objAudioEffect {
 
    // Customised field getting
 
+   inline ERR getMode(GTM &Value) noexcept {
+      auto field = &this->Class->Dictionary[19];
+      return field->GetValue(this, &Value);
+   }
+
+   inline ERR getThreshold(double &Value) noexcept {
+      auto field = &this->Class->Dictionary[18];
+      return field->GetValue(this, &Value);
+   }
+
+   inline ERR getRatio(double &Value) noexcept {
+      auto field = &this->Class->Dictionary[21];
+      return field->GetValue(this, &Value);
+   }
+
+   inline ERR getRange(double &Value) noexcept {
+      auto field = &this->Class->Dictionary[16];
+      return field->GetValue(this, &Value);
+   }
+
+   inline ERR getHysteresis(double &Value) noexcept {
+      auto field = &this->Class->Dictionary[20];
+      return field->GetValue(this, &Value);
+   }
+
+   inline ERR getAttack(double &Value) noexcept {
+      auto field = &this->Class->Dictionary[15];
+      return field->GetValue(this, &Value);
+   }
+
+   inline ERR getHold(double &Value) noexcept {
+      auto field = &this->Class->Dictionary[17];
+      return field->GetValue(this, &Value);
+   }
+
+   inline ERR getRelease(double &Value) noexcept {
+      auto field = &this->Class->Dictionary[22];
+      return field->GetValue(this, &Value);
+   }
+
 
    // Customised field setting
+
+   inline ERR setMode(const GTM Value) noexcept {
+      auto field = &this->Class->Dictionary[19];
+      return field->WriteValue(this, field, FD_INT, &Value);
+   }
+
+   inline ERR setThreshold(const double Value) noexcept {
+      auto field = &this->Class->Dictionary[18];
+      return field->WriteValue(this, field, FD_DOUBLE, &Value);
+   }
+
+   inline ERR setRatio(const double Value) noexcept {
+      auto field = &this->Class->Dictionary[21];
+      return field->WriteValue(this, field, FD_DOUBLE, &Value);
+   }
+
+   inline ERR setRange(const double Value) noexcept {
+      auto field = &this->Class->Dictionary[16];
+      return field->WriteValue(this, field, FD_DOUBLE, &Value);
+   }
+
+   inline ERR setHysteresis(const double Value) noexcept {
+      auto field = &this->Class->Dictionary[20];
+      return field->WriteValue(this, field, FD_DOUBLE, &Value);
+   }
+
+   inline ERR setAttack(const double Value) noexcept {
+      auto field = &this->Class->Dictionary[15];
+      return field->WriteValue(this, field, FD_DOUBLE, &Value);
+   }
+
+   inline ERR setHold(const double Value) noexcept {
+      auto field = &this->Class->Dictionary[17];
+      return field->WriteValue(this, field, FD_DOUBLE, &Value);
+   }
+
+   inline ERR setRelease(const double Value) noexcept {
+      auto field = &this->Class->Dictionary[22];
+      return field->WriteValue(this, field, FD_DOUBLE, &Value);
+   }
 
 };
 
@@ -966,8 +1293,58 @@ class objAudioDelay : public objAudioEffect {
 
    // Customised field getting
 
+   inline ERR getTime(double &Value) noexcept {
+      auto field = &this->Class->Dictionary[15];
+      return field->GetValue(this, &Value);
+   }
+
+   inline ERR getFeedback(double &Value) noexcept {
+      auto field = &this->Class->Dictionary[18];
+      return field->GetValue(this, &Value);
+   }
+
+   inline ERR getDamping(double &Value) noexcept {
+      auto field = &this->Class->Dictionary[19];
+      return field->GetValue(this, &Value);
+   }
+
+   inline ERR getMode(DLM &Value) noexcept {
+      auto field = &this->Class->Dictionary[16];
+      return field->GetValue(this, &Value);
+   }
+
+   inline ERR getMix(double &Value) noexcept {
+      auto field = &this->Class->Dictionary[17];
+      return field->GetValue(this, &Value);
+   }
+
 
    // Customised field setting
+
+   inline ERR setTime(const double Value) noexcept {
+      auto field = &this->Class->Dictionary[15];
+      return field->WriteValue(this, field, FD_DOUBLE, &Value);
+   }
+
+   inline ERR setFeedback(const double Value) noexcept {
+      auto field = &this->Class->Dictionary[18];
+      return field->WriteValue(this, field, FD_DOUBLE, &Value);
+   }
+
+   inline ERR setDamping(const double Value) noexcept {
+      auto field = &this->Class->Dictionary[19];
+      return field->WriteValue(this, field, FD_DOUBLE, &Value);
+   }
+
+   inline ERR setMode(const DLM Value) noexcept {
+      auto field = &this->Class->Dictionary[16];
+      return field->WriteValue(this, field, FD_INT, &Value);
+   }
+
+   inline ERR setMix(const double Value) noexcept {
+      auto field = &this->Class->Dictionary[17];
+      return field->WriteValue(this, field, FD_DOUBLE, &Value);
+   }
 
 };
 
@@ -989,8 +1366,58 @@ class objAudioChorus : public objAudioEffect {
 
    // Customised field getting
 
+   inline ERR getRate(double &Value) noexcept {
+      auto field = &this->Class->Dictionary[16];
+      return field->GetValue(this, &Value);
+   }
+
+   inline ERR getDelay(double &Value) noexcept {
+      auto field = &this->Class->Dictionary[17];
+      return field->GetValue(this, &Value);
+   }
+
+   inline ERR getDepth(double &Value) noexcept {
+      auto field = &this->Class->Dictionary[15];
+      return field->GetValue(this, &Value);
+   }
+
+   inline ERR getSpread(double &Value) noexcept {
+      auto field = &this->Class->Dictionary[18];
+      return field->GetValue(this, &Value);
+   }
+
+   inline ERR getMix(double &Value) noexcept {
+      auto field = &this->Class->Dictionary[19];
+      return field->GetValue(this, &Value);
+   }
+
 
    // Customised field setting
+
+   inline ERR setRate(const double Value) noexcept {
+      auto field = &this->Class->Dictionary[16];
+      return field->WriteValue(this, field, FD_DOUBLE, &Value);
+   }
+
+   inline ERR setDelay(const double Value) noexcept {
+      auto field = &this->Class->Dictionary[17];
+      return field->WriteValue(this, field, FD_DOUBLE, &Value);
+   }
+
+   inline ERR setDepth(const double Value) noexcept {
+      auto field = &this->Class->Dictionary[15];
+      return field->WriteValue(this, field, FD_DOUBLE, &Value);
+   }
+
+   inline ERR setSpread(const double Value) noexcept {
+      auto field = &this->Class->Dictionary[18];
+      return field->WriteValue(this, field, FD_DOUBLE, &Value);
+   }
+
+   inline ERR setMix(const double Value) noexcept {
+      auto field = &this->Class->Dictionary[19];
+      return field->WriteValue(this, field, FD_DOUBLE, &Value);
+   }
 
 };
 
@@ -1012,8 +1439,58 @@ class objAudioFlanger : public objAudioEffect {
 
    // Customised field getting
 
+   inline ERR getRate(double &Value) noexcept {
+      auto field = &this->Class->Dictionary[16];
+      return field->GetValue(this, &Value);
+   }
+
+   inline ERR getDelay(double &Value) noexcept {
+      auto field = &this->Class->Dictionary[17];
+      return field->GetValue(this, &Value);
+   }
+
+   inline ERR getDepth(double &Value) noexcept {
+      auto field = &this->Class->Dictionary[15];
+      return field->GetValue(this, &Value);
+   }
+
+   inline ERR getFeedback(double &Value) noexcept {
+      auto field = &this->Class->Dictionary[19];
+      return field->GetValue(this, &Value);
+   }
+
+   inline ERR getMix(double &Value) noexcept {
+      auto field = &this->Class->Dictionary[18];
+      return field->GetValue(this, &Value);
+   }
+
 
    // Customised field setting
+
+   inline ERR setRate(const double Value) noexcept {
+      auto field = &this->Class->Dictionary[16];
+      return field->WriteValue(this, field, FD_DOUBLE, &Value);
+   }
+
+   inline ERR setDelay(const double Value) noexcept {
+      auto field = &this->Class->Dictionary[17];
+      return field->WriteValue(this, field, FD_DOUBLE, &Value);
+   }
+
+   inline ERR setDepth(const double Value) noexcept {
+      auto field = &this->Class->Dictionary[15];
+      return field->WriteValue(this, field, FD_DOUBLE, &Value);
+   }
+
+   inline ERR setFeedback(const double Value) noexcept {
+      auto field = &this->Class->Dictionary[19];
+      return field->WriteValue(this, field, FD_DOUBLE, &Value);
+   }
+
+   inline ERR setMix(const double Value) noexcept {
+      auto field = &this->Class->Dictionary[18];
+      return field->WriteValue(this, field, FD_DOUBLE, &Value);
+   }
 
 };
 
@@ -1035,8 +1512,68 @@ class objAudioLoudness : public objAudioEffect {
 
    // Customised field getting
 
+   inline ERR getTarget(double &Value) noexcept {
+      auto field = &this->Class->Dictionary[19];
+      return field->GetValue(this, &Value);
+   }
+
+   inline ERR getMaxBoost(double &Value) noexcept {
+      auto field = &this->Class->Dictionary[16];
+      return field->GetValue(this, &Value);
+   }
+
+   inline ERR getMaxCut(double &Value) noexcept {
+      auto field = &this->Class->Dictionary[20];
+      return field->GetValue(this, &Value);
+   }
+
+   inline ERR getResponse(double &Value) noexcept {
+      auto field = &this->Class->Dictionary[17];
+      return field->GetValue(this, &Value);
+   }
+
+   inline ERR getGate(double &Value) noexcept {
+      auto field = &this->Class->Dictionary[15];
+      return field->GetValue(this, &Value);
+   }
+
+   inline ERR getLink(int &Value) noexcept {
+      auto field = &this->Class->Dictionary[18];
+      return field->GetValue(this, &Value);
+   }
+
 
    // Customised field setting
+
+   inline ERR setTarget(const double Value) noexcept {
+      auto field = &this->Class->Dictionary[19];
+      return field->WriteValue(this, field, FD_DOUBLE, &Value);
+   }
+
+   inline ERR setMaxBoost(const double Value) noexcept {
+      auto field = &this->Class->Dictionary[16];
+      return field->WriteValue(this, field, FD_DOUBLE, &Value);
+   }
+
+   inline ERR setMaxCut(const double Value) noexcept {
+      auto field = &this->Class->Dictionary[20];
+      return field->WriteValue(this, field, FD_DOUBLE, &Value);
+   }
+
+   inline ERR setResponse(const double Value) noexcept {
+      auto field = &this->Class->Dictionary[17];
+      return field->WriteValue(this, field, FD_DOUBLE, &Value);
+   }
+
+   inline ERR setGate(const double Value) noexcept {
+      auto field = &this->Class->Dictionary[15];
+      return field->WriteValue(this, field, FD_DOUBLE, &Value);
+   }
+
+   inline ERR setLink(const int Value) noexcept {
+      auto field = &this->Class->Dictionary[18];
+      return field->WriteValue(this, field, FD_INT, &Value);
+   }
 
 };
 
@@ -1058,8 +1595,58 @@ class objAudioPhaser : public objAudioEffect {
 
    // Customised field getting
 
+   inline ERR getRate(double &Value) noexcept {
+      auto field = &this->Class->Dictionary[16];
+      return field->GetValue(this, &Value);
+   }
+
+   inline ERR getCentre(double &Value) noexcept {
+      auto field = &this->Class->Dictionary[17];
+      return field->GetValue(this, &Value);
+   }
+
+   inline ERR getDepth(double &Value) noexcept {
+      auto field = &this->Class->Dictionary[15];
+      return field->GetValue(this, &Value);
+   }
+
+   inline ERR getFeedback(double &Value) noexcept {
+      auto field = &this->Class->Dictionary[19];
+      return field->GetValue(this, &Value);
+   }
+
+   inline ERR getMix(double &Value) noexcept {
+      auto field = &this->Class->Dictionary[18];
+      return field->GetValue(this, &Value);
+   }
+
 
    // Customised field setting
+
+   inline ERR setRate(const double Value) noexcept {
+      auto field = &this->Class->Dictionary[16];
+      return field->WriteValue(this, field, FD_DOUBLE, &Value);
+   }
+
+   inline ERR setCentre(const double Value) noexcept {
+      auto field = &this->Class->Dictionary[17];
+      return field->WriteValue(this, field, FD_DOUBLE, &Value);
+   }
+
+   inline ERR setDepth(const double Value) noexcept {
+      auto field = &this->Class->Dictionary[15];
+      return field->WriteValue(this, field, FD_DOUBLE, &Value);
+   }
+
+   inline ERR setFeedback(const double Value) noexcept {
+      auto field = &this->Class->Dictionary[19];
+      return field->WriteValue(this, field, FD_DOUBLE, &Value);
+   }
+
+   inline ERR setMix(const double Value) noexcept {
+      auto field = &this->Class->Dictionary[18];
+      return field->WriteValue(this, field, FD_DOUBLE, &Value);
+   }
 
 };
 
@@ -1081,14 +1668,64 @@ class objAudioSaturator : public objAudioEffect {
 
    // Customised field getting
 
+   inline ERR getDrive(double &Value) noexcept {
+      auto field = &this->Class->Dictionary[17];
+      return field->GetValue(this, &Value);
+   }
+
+   inline ERR getShape(SATS &Value) noexcept {
+      auto field = &this->Class->Dictionary[15];
+      return field->GetValue(this, &Value);
+   }
+
+   inline ERR getGain(double &Value) noexcept {
+      auto field = &this->Class->Dictionary[16];
+      return field->GetValue(this, &Value);
+   }
+
+   inline ERR getMix(double &Value) noexcept {
+      auto field = &this->Class->Dictionary[18];
+      return field->GetValue(this, &Value);
+   }
+
 
    // Customised field setting
+
+   inline ERR setDrive(const double Value) noexcept {
+      auto field = &this->Class->Dictionary[17];
+      return field->WriteValue(this, field, FD_DOUBLE, &Value);
+   }
+
+   inline ERR setShape(const SATS Value) noexcept {
+      auto field = &this->Class->Dictionary[15];
+      return field->WriteValue(this, field, FD_INT, &Value);
+   }
+
+   inline ERR setGain(const double Value) noexcept {
+      auto field = &this->Class->Dictionary[16];
+      return field->WriteValue(this, field, FD_DOUBLE, &Value);
+   }
+
+   inline ERR setMix(const double Value) noexcept {
+      auto field = &this->Class->Dictionary[18];
+      return field->WriteValue(this, field, FD_DOUBLE, &Value);
+   }
 
 };
 
 // AudioSplitter class definition
 
 #define VER_AUDIOSPLITTER (1.000000)
+
+// AudioSplitter methods
+
+namespace split {
+struct GetBranch { int Index; struct AudioBranch *Branch; static const AC id = AC(-30); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct SetBranch { int Index; struct AudioBranch *Branch; static const AC id = AC(-31); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct InsertBranch { int Index; struct AudioBranch *Branch; static const AC id = AC(-32); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct RemoveBranch { int Index; static const AC id = AC(-33); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+
+} // namespace
 
 class objAudioSplitter : public objAudioEffect {
    public:
@@ -1101,6 +1738,22 @@ class objAudioSplitter : public objAudioEffect {
    // Action stubs
 
    inline ERR init() noexcept { return InitObject(this); }
+   inline ERR getBranch(int Index, struct AudioBranch * Branch) noexcept {
+      struct split::GetBranch args = { Index, Branch };
+      return Action(AC(-30), this, &args);
+   }
+   inline ERR setBranch(int Index, struct AudioBranch * Branch) noexcept {
+      struct split::SetBranch args = { Index, Branch };
+      return Action(AC(-31), this, &args);
+   }
+   inline ERR insertBranch(int Index, struct AudioBranch * Branch) noexcept {
+      struct split::InsertBranch args = { Index, Branch };
+      return Action(AC(-32), this, &args);
+   }
+   inline ERR removeBranch(int Index) noexcept {
+      struct split::RemoveBranch args = { Index };
+      return Action(AC(-33), this, &args);
+   }
 
    // Customised field getting
 
@@ -1140,8 +1793,78 @@ class objAudioStereo : public objAudioEffect {
 
    // Customised field getting
 
+   inline ERR getWidth(double &Value) noexcept {
+      auto field = &this->Class->Dictionary[19];
+      return field->GetValue(this, &Value);
+   }
+
+   inline ERR getBalance(double &Value) noexcept {
+      auto field = &this->Class->Dictionary[21];
+      return field->GetValue(this, &Value);
+   }
+
+   inline ERR getSwap(int &Value) noexcept {
+      auto field = &this->Class->Dictionary[18];
+      return field->GetValue(this, &Value);
+   }
+
+   inline ERR getSplit(int &Value) noexcept {
+      auto field = &this->Class->Dictionary[15];
+      return field->GetValue(this, &Value);
+   }
+
+   inline ERR getCrossover(double &Value) noexcept {
+      auto field = &this->Class->Dictionary[16];
+      return field->GetValue(this, &Value);
+   }
+
+   inline ERR getBassWidth(double &Value) noexcept {
+      auto field = &this->Class->Dictionary[20];
+      return field->GetValue(this, &Value);
+   }
+
+   inline ERR getGain(double &Value) noexcept {
+      auto field = &this->Class->Dictionary[17];
+      return field->GetValue(this, &Value);
+   }
+
 
    // Customised field setting
+
+   inline ERR setWidth(const double Value) noexcept {
+      auto field = &this->Class->Dictionary[19];
+      return field->WriteValue(this, field, FD_DOUBLE, &Value);
+   }
+
+   inline ERR setBalance(const double Value) noexcept {
+      auto field = &this->Class->Dictionary[21];
+      return field->WriteValue(this, field, FD_DOUBLE, &Value);
+   }
+
+   inline ERR setSwap(const int Value) noexcept {
+      auto field = &this->Class->Dictionary[18];
+      return field->WriteValue(this, field, FD_INT, &Value);
+   }
+
+   inline ERR setSplit(const int Value) noexcept {
+      auto field = &this->Class->Dictionary[15];
+      return field->WriteValue(this, field, FD_INT, &Value);
+   }
+
+   inline ERR setCrossover(const double Value) noexcept {
+      auto field = &this->Class->Dictionary[16];
+      return field->WriteValue(this, field, FD_DOUBLE, &Value);
+   }
+
+   inline ERR setBassWidth(const double Value) noexcept {
+      auto field = &this->Class->Dictionary[20];
+      return field->WriteValue(this, field, FD_DOUBLE, &Value);
+   }
+
+   inline ERR setGain(const double Value) noexcept {
+      auto field = &this->Class->Dictionary[17];
+      return field->WriteValue(this, field, FD_DOUBLE, &Value);
+   }
 
 };
 
@@ -1163,8 +1886,48 @@ class objAudioCrossfeed : public objAudioEffect {
 
    // Customised field getting
 
+   inline ERR getAmount(double &Value) noexcept {
+      auto field = &this->Class->Dictionary[15];
+      return field->GetValue(this, &Value);
+   }
+
+   inline ERR getCutoff(double &Value) noexcept {
+      auto field = &this->Class->Dictionary[18];
+      return field->GetValue(this, &Value);
+   }
+
+   inline ERR getDelay(double &Value) noexcept {
+      auto field = &this->Class->Dictionary[16];
+      return field->GetValue(this, &Value);
+   }
+
+   inline ERR getGain(double &Value) noexcept {
+      auto field = &this->Class->Dictionary[17];
+      return field->GetValue(this, &Value);
+   }
+
 
    // Customised field setting
+
+   inline ERR setAmount(const double Value) noexcept {
+      auto field = &this->Class->Dictionary[15];
+      return field->WriteValue(this, field, FD_DOUBLE, &Value);
+   }
+
+   inline ERR setCutoff(const double Value) noexcept {
+      auto field = &this->Class->Dictionary[18];
+      return field->WriteValue(this, field, FD_DOUBLE, &Value);
+   }
+
+   inline ERR setDelay(const double Value) noexcept {
+      auto field = &this->Class->Dictionary[16];
+      return field->WriteValue(this, field, FD_DOUBLE, &Value);
+   }
+
+   inline ERR setGain(const double Value) noexcept {
+      auto field = &this->Class->Dictionary[17];
+      return field->WriteValue(this, field, FD_DOUBLE, &Value);
+   }
 
 };
 
@@ -1186,8 +1949,38 @@ class objAudioPitchShift : public objAudioEffect {
 
    // Customised field getting
 
+   inline ERR getSemitones(double &Value) noexcept {
+      auto field = &this->Class->Dictionary[17];
+      return field->GetValue(this, &Value);
+   }
+
+   inline ERR getMix(double &Value) noexcept {
+      auto field = &this->Class->Dictionary[16];
+      return field->GetValue(this, &Value);
+   }
+
+   inline ERR getGain(double &Value) noexcept {
+      auto field = &this->Class->Dictionary[15];
+      return field->GetValue(this, &Value);
+   }
+
 
    // Customised field setting
+
+   inline ERR setSemitones(const double Value) noexcept {
+      auto field = &this->Class->Dictionary[17];
+      return field->WriteValue(this, field, FD_DOUBLE, &Value);
+   }
+
+   inline ERR setMix(const double Value) noexcept {
+      auto field = &this->Class->Dictionary[16];
+      return field->WriteValue(this, field, FD_DOUBLE, &Value);
+   }
+
+   inline ERR setGain(const double Value) noexcept {
+      auto field = &this->Class->Dictionary[15];
+      return field->WriteValue(this, field, FD_DOUBLE, &Value);
+   }
 
 };
 
@@ -1225,8 +2018,18 @@ class objAudioAnalyser : public objAudioEffect {
 
    // Customised field getting
 
+   inline ERR getChannelIndex(int &Value) noexcept {
+      auto field = &this->Class->Dictionary[15];
+      return field->GetValue(this, &Value);
+   }
+
 
    // Customised field setting
+
+   inline ERR setChannelIndex(const int Value) noexcept {
+      auto field = &this->Class->Dictionary[15];
+      return field->WriteValue(this, field, FD_INT, &Value);
+   }
 
 };
 

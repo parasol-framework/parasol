@@ -1,6 +1,7 @@
 @if(exists='modules:audio')
 
    module audio as mAudio
+   import './effect_fields'
 
 @BeforeAll function init(State)
    global glFolder = State.folder
@@ -77,7 +78,7 @@ end
    assert(chorus.mtGetGroupCount('voices') is ERR_Search)
 end
 
-@Test function StagedChangesAndValidation()
+@Test function ChangesAndValidation()
    audio <close> = obj.new('Audio', { device='null', outputRate=48000 })
    chorus <close> = new_chorus(audio)
    assert(chorus.mutable is 1)
@@ -85,33 +86,32 @@ end
    -- Every bound is inclusive; values outside it and non-finite values are rejected immediately.
 
    for p in values(PARAMS) do
-      check chorus.acSetKey(p.key, p.min)
-      check chorus.acSetKey(p.key, p.max)
-      assert(chorus.acSetKey(p.key, p.min - 0.001) is ERR_InvalidValue, f'{p.key} below {p.min} must fail')
-      assert(chorus.acSetKey(p.key, p.max + 0.001) is ERR_InvalidValue, f'{p.key} above {p.max} must fail')
-      assert(chorus.acSetKey(p.key, math.huge) is ERR_InvalidValue, f'{p.key} must reject infinity')
-      assert(chorus.acSetKey(p.key, -math.huge) is ERR_InvalidValue, f'{p.key} must reject -infinity')
-      assert(chorus.acSetKey(p.key, math.sqrt(-1)) is ERR_InvalidValue, f'{p.key} must reject NaN')
+      check chorus.mtBatch(array<str> { f'set {p.key} {p.min}', f'set {p.key} {p.max}' })
+      assert(chorus.mtBatch(array<str> { f'set {p.key} {p.min - 0.001}' }) is ERR_InvalidValue,
+         f'{p.key} below {p.min} must fail')
+      assert(chorus.mtBatch(array<str> { f'set {p.key} {p.max + 0.001}' }) is ERR_InvalidValue,
+         f'{p.key} above {p.max} must fail')
+      assert(chorus.mtBatch(array<str> { f'set {p.key} {math.huge}' }) is ERR_InvalidValue,
+         f'{p.key} must reject infinity')
+      assert(chorus.mtBatch(array<str> { f'set {p.key} {-math.huge}' }) is ERR_InvalidValue,
+         f'{p.key} must reject -infinity')
+      assert(chorus.mtBatch(array<str> { f'set {p.key} {math.sqrt(-1)}' }) is ERR_InvalidValue,
+         f'{p.key} must reject NaN')
    end
-   assert(chorus.acSetKey('unknown', 1) is ERR_Search)
-   check chorus.acFlush()
+   assert(chorus.mtBatch(array<str> { 'set unknown 1' }) is ERR_Search)
 
-   -- Staged values are readable before Flush(); a rejected value leaves earlier staged changes intact, and Flush()
-   -- commits them together.  Fractional values are kept.
+   -- A rejected value fails the whole batch and names its command; a valid batch commits every value together.
+   -- Fractional values are kept.
 
-   check chorus.acSetKey('rate', 1.25)
-   check chorus.acSetKey('delay', 22.5)
-   check chorus.acSetKey('depth', 4.75)
-   assert(chorus.acSetKey('spread', 101) is ERR_InvalidValue)
-   check chorus.acSetKey('spread', 80)
-   err, value_text = chorus.acGetKey('delay')
-   value = tonumber(value_text)
-   assert(err is ERR_Okay and value is 22.5, 'Staged values must be readable')
-   check chorus.acFlush()
+   err, failed = chorus.mtBatch(array<str> { 'set rate 1.25', 'set delay 22.5', 'set depth 4.75', 'set spread 101' })
+   assert(err is ERR_InvalidValue and failed is 3, f'The last command must fail, got {err} at {failed}')
+   err, value_text = chorus.acGetKey('rate')
+   assert(err is ERR_Okay and tonumber(value_text) != 1.25, 'A rejected batch must change nothing')
+   check chorus.mtBatch(array<str> { 'set rate 1.25', 'set delay 22.5', 'set depth 4.75', 'set spread 80' })
    for key, expected in pairs({ rate=1.25, delay=22.5, depth=4.75, spread=80, mix=100 }) do
       err, value_text = chorus.acGetKey(key)
       value = tonumber(value_text)
-      assert(err is ERR_Okay and value is expected, f'{key} should be {expected} after Flush(), got {value}')
+      assert(err is ERR_Okay and value is expected, f'{key} should be {expected} after Batch(), got {value}')
    end
 end
 
@@ -122,9 +122,8 @@ end
    chorus <close> = obj.new('AudioChorus')
    chorus.audio = audio
    chorus.channel = channel
-   check chorus.acSetKey('delay', 25)
-   check chorus.acSetKey('spread', 100)
-   assert(chorus.acSetKey('depth', 9.5) is ERR_InvalidValue)
+   check chorus.mtBatch(array<str> { 'set delay 25', 'set spread 100' })
+   assert(chorus.mtBatch(array<str> { 'set depth 9.5' }) is ERR_InvalidValue)
    chorus.init()
    for key, expected in pairs({ delay=25, spread=100, depth=3 }) do
       err, value_text = chorus.acGetKey(key)
@@ -136,8 +135,7 @@ end
 @Test function LivePlayback()
    audio <close> = obj.new('Audio', { device='null', outputRate=48000 })
    chorus, channel = new_chorus(audio)
-   check chorus.acSetKey('mix', 100)
-   check chorus.acFlush()
+   check chorus.mtBatch(array<str> { 'set mix 100' })
    check audio.acActivate()
    assert(chorus.latency is 0, 'The chorus publishes no algorithmic latency, even when fully wet')
    err, rate, format, layout, generation, state = chorus.mtGetProcessingFormat()
@@ -147,14 +145,8 @@ end
 
    -- Simultaneous rate, depth and spread edits with a centre-delay crossfade, then a queued centre-delay edit.
 
-   check chorus.acSetKey('delay', 28)
-   check chorus.acSetKey('rate', 9)
-   check chorus.acSetKey('depth', 9)
-   check chorus.acSetKey('spread', 100)
-   check chorus.acFlush()
-   check chorus.acSetKey('delay', 12)
-   check chorus.acSetKey('mix', 0)
-   check chorus.acFlush()
+   check chorus.mtBatch(array<str> { 'set delay 28', 'set rate 9', 'set depth 9', 'set spread 100' })
+   check chorus.mtBatch(array<str> { 'set delay 12', 'set mix 0' })
    assert(chorus.latency is 0, 'Parameter changes must not alter the latency')
 
    err, layout = chorus.mtGetMeterLayout()
@@ -169,18 +161,17 @@ end
    check audio.mtCloseChannels(channel)
    err, reading = chorus.mtReadMeters()
    assert(err is ERR_Okay and reading.flags is AMF_DISCONNECTED)
-   assert(chorus.acSetKey('mix', 50) is ERR_NotInitialised)
+   assert(chorus.mtBatch(array<str> { 'set mix 50' }) is ERR_NotInitialised)
    chorus.free()
 end
 
 @Test function MonoAndGlobalImmutability()
    audio <close> = obj.new('Audio', { device='null', outputRate=44100, outputLayout=array<int> { SPK_CENTRE } })
    chorus = audio.new('AudioChorus')
-   check chorus.acSetKey('spread', 100)
-   check chorus.acSetKey('delay', 20)
+   check chorus.mtBatch(array<str> { 'set spread 100', 'set delay 20' })
    chorus.init()
    assert(chorus.mutable is 0)
-   assert(chorus.acSetKey('delay', 12) is ERR_Immutable)
+   assert(chorus.mtBatch(array<str> { 'set delay 12' }) is ERR_Immutable)
    err, value_text = chorus.acGetKey('spread')
    value = tonumber(value_text)
    assert(err is ERR_Okay and value is 100, 'Mono retains the requested spread')
@@ -207,9 +198,7 @@ end
          state_at_stop = state
       end })
    chorus <close> = obj.new('AudioChorus', { audio=audio, channel=sound.channelIndex & 0xffff0000 })
-   check chorus.acSetKey('delay', 30)
-   check chorus.acSetKey('depth', 9)
-   check chorus.acFlush()
+   check chorus.mtBatch(array<str> { 'set delay 30', 'set depth 9' })
    check sound.acActivate()
    wait_for_stop(count, 20)
    assert(count.stops is 1, 'OnStop must be delivered once')
@@ -222,10 +211,10 @@ end
 @Test function GlobalChainStop()
    audio <close> = obj.new('Audio', { device='null' })
    first = audio.new('AudioChorus')
-   check first.acSetKey('delay', 30)
+   check first.mtBatch(array<str> { 'set delay 30' })
    first.init()
    second = audio.new('AudioChorus')
-   check second.acSetKey('depth', 9)
+   check second.mtBatch(array<str> { 'set depth 9' })
    second.init()
    check audio.acActivate()
    count = { stops=0 }
@@ -303,6 +292,12 @@ end
    success
       raise 'An output rate below 8000 Hz must be rejected'
    end
+end
+
+-- Every schema parameter has a typed field that follows the shared field semantics.
+
+@Test function TypedFields()
+   effect_fields.checkFields('AudioChorus')
 end
 
 @end

@@ -11,8 +11,10 @@ Create new chorus objects as a child of an @Audio object or set the inherited #A
 #AudioEffect.Channel to process one channel set, or leave it at zero to process the global mix.  Application choruses
 accept live changes; global choruses become immutable after initialisation.
 
-Parameters are published through the inherited @AudioEffect schema and are changed with @AudioEffect.SetKey()
-followed by @AudioEffect.Flush():
+Each parameter is available as a field, such as #Rate and #Depth.  Field writes before initialisation are range-checked
+and stored; after initialisation each write is validated and applied immediately.  The same parameters are published
+through the inherited @AudioEffect schema under lower-case keys, where they can be changed together with
+@AudioEffect.Batch():
 
 <list type="bullet">
 <li>`rate`: the frequency of the sweep, from 0.05 to 10 Hz.  Slow rates give a gentle drift and fast rates a warble.
@@ -26,14 +28,18 @@ moves both channels together and 100 percent moves them in opposition for the wi
 delayed copy.</li>
 </list>
 
-The following adds a wide, slow chorus to a playing channel set, as a single change:
+The following adds a wide, slow chorus to a playing channel set, then deepens it:
 
 <pre>
-chorus = obj.new('AudioChorus', { audio=audio, channel=channel })
-chorus.acSetKey('rate', 0.4)
-chorus.acSetKey('depth', 5)
-chorus.acSetKey('spread', 100)
-chorus.acFlush()
+chorus = obj.new('AudioChorus', { audio=audio, channel=channel, rate=0.4, depth=5, spread=100 })
+chorus.depth = 7
+</pre>
+
+Every field write after initialisation is a separate change.  To change several parameters in a single step, apply them
+together with @AudioEffect.Batch():
+
+<pre>
+chorus.mtBatch(array&lt;str&gt; { 'set rate 1.5', 'set depth 2', 'set mix 50' })
 </pre>
 
 <header>Modulation</header>
@@ -70,7 +76,7 @@ modulation and are heard as changes in pitch movement.
 
 A change to the centre delay crossfades between two read heads over 10 ms rather than sweeping the delay, so it does
 not produce an extra pitch bend.  Both heads follow the same oscillator.  An edit that arrives during the crossfade
-replaces a single queued delay, which is applied when the current crossfade finishes.  Flush preserves the delayed
+replaces a single queued delay, which is applied when the current crossfade finishes.  A commit preserves the delayed
 audio and the oscillator phase.  Setting the mix to zero leaves the chorus running, so raising it again reveals the
 delayed audio that is present.
 
@@ -233,9 +239,56 @@ static ERR AUDIOCHORUS_Init(extAudioChorus *Self)
    return error;
 }
 
-//********************************************************************************************************************
+/*********************************************************************************************************************
+
+-FIELD-
+Delay: The centre of the delay sweep, in milliseconds.
+
+The range is 10 to 30 ms and the default is 15 ms.  This field mirrors the `delay` schema key.  To change it together
+with other parameters in a single step, use @AudioEffect.Batch().
+
+-FIELD-
+Depth: How far the delay moves either side of its centre, in milliseconds.
+
+The range is 0 to 9 ms and the default is 3 ms.  Zero disables the modulation.  This field mirrors the `depth` schema
+key.  To change it together with other parameters in a single step, use @AudioEffect.Batch().
+
+-FIELD-
+Mix: The proportion of the delayed copy in the output, as a percentage.
+
+The range is 0 to 100% and the default is 35%.  Zero leaves the input unchanged.  This field mirrors the `mix` schema
+key.  To change it together with other parameters in a single step, use @AudioEffect.Batch().
+
+-FIELD-
+Rate: The frequency of the delay sweep, in hertz.
+
+The range is 0.05 to 10 Hz and the default is 0.8 Hz.  This field mirrors the `rate` schema key.  To change it together
+with other parameters in a single step, use @AudioEffect.Batch().
+
+-FIELD-
+Spread: The phase difference between the left and right sweeps, as a percentage of half a cycle.
+
+The range is 0 to 100% and the default is 50%.  Zero moves both channels together.  Mono output is unaffected.  This
+field mirrors the `spread` schema key.  To change it together with other parameters in a single step, use
+@AudioEffect.Batch().
+
+*********************************************************************************************************************/
 
 #include "class_audiochorus_def.c"
+
+static const FieldArray clAudioChorusFields[] = {
+   { "Rate",       FDF_VIRTUAL|FDF_DOUBLE|FDF_RW|FDF_PURE,
+     effect_settings_get<extAudioChorus, &ChorusSettings::Rate>, effect_param_set<CH_RATE> },
+   { "Delay",      FDF_VIRTUAL|FDF_DOUBLE|FDF_RW|FDF_PURE,
+     effect_settings_get<extAudioChorus, &ChorusSettings::Delay>, effect_param_set<CH_DELAY> },
+   { "Depth",      FDF_VIRTUAL|FDF_DOUBLE|FDF_RW|FDF_PURE,
+     effect_settings_get<extAudioChorus, &ChorusSettings::Depth>, effect_param_set<CH_DEPTH> },
+   { "Spread",     FDF_VIRTUAL|FDF_DOUBLE|FDF_RW|FDF_PURE,
+     effect_settings_get<extAudioChorus, &ChorusSettings::Spread>, effect_param_set<CH_SPREAD> },
+   { "Mix",        FDF_VIRTUAL|FDF_DOUBLE|FDF_RW|FDF_PURE,
+     effect_settings_get<extAudioChorus, &ChorusSettings::Mix>, effect_param_set<CH_MIX> },
+   END_FIELD
+};
 
 //********************************************************************************************************************
 
@@ -247,6 +300,7 @@ static ERR add_audiochorus_class()
       fl::Name("AudioChorus"),
       fl::Category(CCF::AUDIO),
       fl::Actions(clAudioChorusActions),
+      fl::Fields(clAudioChorusFields),
       fl::Size(sizeof(extAudioChorus)),
       fl::Path(MOD_PATH));
    return clAudioChorus ? ERR::Okay : ERR::AddClass;

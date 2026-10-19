@@ -10,8 +10,10 @@ Create new compressor objects as a child of an @Audio object or set the inherite
 #AudioEffect.Channel to process one channel set, or leave it at zero to process the global mix.  Application
 compressors accept live changes; global compressors become immutable after initialisation.
 
-Parameters are published through the inherited @AudioEffect schema and are changed with @AudioEffect.SetKey()
-followed by @AudioEffect.Flush():
+Each parameter is available as a field, such as #Threshold and #Ratio.  Field writes before initialisation are
+range-checked and stored; after initialisation each write is validated and applied immediately.  The same parameters
+are published through the inherited @AudioEffect schema under lower-case keys, where they can be changed together with
+@AudioEffect.Batch():
 
 <list type="bullet">
 <li>`threshold`: the detector level, in dB relative to full scale, above which compression is applied.</li>
@@ -25,14 +27,18 @@ leaves the compressor only 1 dB above it.  A ratio of 1 disables compression.</l
 between zero and 100 percent provide parallel compression.</li>
 </list>
 
-The following compresses dialogue on a playing channel set and adds makeup gain as a single change:
+The following compresses dialogue on a playing channel set and then raises the makeup gain:
 
 <pre>
-comp = obj.new('AudioCompressor', { audio=audio, channel=channel })
-comp.acSetKey('threshold', -24)
-comp.acSetKey('ratio', 3)
-comp.acSetKey('makeup', 6)
-comp.acFlush()
+comp = obj.new('AudioCompressor', { audio=audio, channel=channel, threshold=-24, ratio=3 })
+comp.makeup = 6
+</pre>
+
+Every field write after initialisation is a separate change.  To change several parameters in a single step, apply
+them together with @AudioEffect.Batch():
+
+<pre>
+comp.mtBatch(array&lt;str&gt; { 'set threshold -30', 'set ratio 6', 'set makeup 9' })
 </pre>
 
 <header>Detection and Transfer Curve</header>
@@ -238,11 +244,70 @@ static ERR AUDIOCOMPRESSOR_Init(extAudioCompressor *Self)
    return error;
 }
 
-//********************************************************************************************************************
+/*********************************************************************************************************************
+
+-FIELD-
+Attack: The time constant, in milliseconds, with which gain reduction increases.
+
+The range is 0.1 to 200 ms and the default is 10 ms.  This field mirrors the `attack` schema key.  To change it together
+with other parameters in a single step, use @AudioEffect.Batch().
+
+-FIELD-
+Knee: The width, in decibels, of a soft transition centred on the threshold.
+
+The range is 0 to 24 dB and the default is 6 dB.  Zero selects a hard knee.  This field mirrors the `knee` schema key.
+To change it together with other parameters in a single step, use @AudioEffect.Batch().
+
+-FIELD-
+Makeup: Gain, in decibels, applied to the compressed signal to restore its loudness.
+
+The range is -24 to 24 dB and the default is 0 dB.  This field mirrors the `makeup` schema key.  To change it together
+with other parameters in a single step, use @AudioEffect.Batch().
+
+-FIELD-
+Mix: The proportion of compressed signal in the output, as a percentage.
+
+The range is 0 to 100% and the default is 100%.  Lower values provide parallel compression and zero leaves the input
+unchanged.  This field mirrors the `mix` schema key.  To change it together with other parameters in a single step, use
+@AudioEffect.Batch().
+
+-FIELD-
+Ratio: The ratio of the input level to the output level above the threshold.
+
+The range is 1 to 20 and the default is 4.  A ratio of 1 disables compression.  This field mirrors the `ratio` schema
+key.  To change it together with other parameters in a single step, use @AudioEffect.Batch().
+
+-FIELD-
+Release: The time constant, in milliseconds, with which gain reduction recovers.
+
+The range is 5 to 2000 ms and the default is 100 ms.  This field mirrors the `release` schema key.  To change it
+together with other parameters in a single step, use @AudioEffect.Batch().
+
+-FIELD-
+Threshold: The detector level, in dBFS, above which the signal is compressed.
+
+The range is -60 to 0 dBFS and the default is -18 dBFS.  This field mirrors the `threshold` schema key.  To change it
+together with other parameters in a single step, use @AudioEffect.Batch().
+
+*********************************************************************************************************************/
 
 #include "class_audiocompressor_def.c"
 
 static const FieldArray clAudioCompressorFields[] = {
+   { "Threshold", FDF_VIRTUAL|FDF_DOUBLE|FDF_RW|FDF_PURE,
+     effect_settings_get<extAudioCompressor, &CompressorSettings::Threshold>, effect_param_set<CP_THRESHOLD> },
+   { "Ratio",     FDF_VIRTUAL|FDF_DOUBLE|FDF_RW|FDF_PURE,
+     effect_settings_get<extAudioCompressor, &CompressorSettings::Ratio>, effect_param_set<CP_RATIO> },
+   { "Attack",    FDF_VIRTUAL|FDF_DOUBLE|FDF_RW|FDF_PURE,
+     effect_settings_get<extAudioCompressor, &CompressorSettings::Attack>, effect_param_set<CP_ATTACK> },
+   { "Release",   FDF_VIRTUAL|FDF_DOUBLE|FDF_RW|FDF_PURE,
+     effect_settings_get<extAudioCompressor, &CompressorSettings::Release>, effect_param_set<CP_RELEASE> },
+   { "Knee",      FDF_VIRTUAL|FDF_DOUBLE|FDF_RW|FDF_PURE,
+     effect_settings_get<extAudioCompressor, &CompressorSettings::Knee>, effect_param_set<CP_KNEE> },
+   { "Makeup",    FDF_VIRTUAL|FDF_DOUBLE|FDF_RW|FDF_PURE,
+     effect_settings_get<extAudioCompressor, &CompressorSettings::Makeup>, effect_param_set<CP_MAKEUP> },
+   { "Mix",       FDF_VIRTUAL|FDF_DOUBLE|FDF_RW|FDF_PURE,
+     effect_settings_get<extAudioCompressor, &CompressorSettings::Mix>, effect_param_set<CP_MIX> },
    END_FIELD
 };
 

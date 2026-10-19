@@ -11,28 +11,36 @@ independent filter history for each channel.  The equaliser does not perform bas
 crossover for an LFE channel.  Application equalisers accept live changes;
 global equalisers become immutable after initialisation.
 
-The equaliser publishes its parameters through the inherited @AudioEffect schema.  The top-level `gain` parameter is
-the output trim.  The `bands` group holds up to 64 bands, each with `type`, `frequency`, `gain` and `q` members.  Band
-gain is ignored by pass filters, and Q is limited to one for shelf filters, where it sets the shelf slope.  New bands
-are silent peak filters at 1000 Hz until they are edited.
+The top-level parameters are available as the fields #Gain, #Loudness and #ListeningLevel.  Each band is an
+!AudioEQBand with a type, frequency, gain and Q, and up to 64 bands are permitted.  Band gain is ignored by pass
+filters, and Q is limited to one for shelf filters, where it sets the shelf slope.  Use #InsertBand(), #SetBand() and
+#RemoveBand() to edit individual bands, #GetBand() to read one, and #Bands to read or replace the whole list.
 
-The following adds a bass shelf to a playing channel set.  The change is applied as a single step by @AudioEffect.Flush():
+Field writes and band methods before initialisation are range-checked and stored, and `Init()` validates the complete
+configuration.  After initialisation each call is validated and applied immediately, as a single change.
+
+The following adds a bass shelf to a playing channel set and lowers the output trim:
 
 <pre>
-eq.mtInsertEntry('bands', 0)
-eq.acSetKey('bands[0].type', EQB_LOW_SHELF)
-eq.acSetKey('bands[0].frequency', 100)
-eq.acSetKey('bands[0].gain', 4)
-eq.acSetKey('bands[0].q', 0.7)
-eq.acFlush()
+eq = obj.new('AudioEqualiser', { audio=audio, channel=channel })
+check eq.mtInsertBand(0, struct.new('AudioEQBand', { type=EQB_LOW_SHELF, frequency=100, gain=4, q=0.7 }))
+eq.gain = -2
 </pre>
 
-Assign the #Bands field to replace every band at once.
+The same parameters are published through the inherited @AudioEffect schema.  The top-level keys are `gain`,
+`loudness` and `listening_level`, and the `bands` group has `type`, `frequency`, `gain` and `q` members.  Use
+@AudioEffect.Batch() to change several of them in a single step, e.g. a band and the output trim together:
 
-Set the top-level `loudness` parameter to apply equal-loudness compensation, which restores the bass and treble that
-the ear loses when playback is quiet.  The `listening_level` parameter is the playback level in decibels relative to
-the reference level, at which compensation is flat.  The equaliser cannot measure the acoustic playback level, so
-the application sets `listening_level` from its own volume control.  The compensation is a low shelf and a high shelf
+<pre>
+eq.mtBatch(array&lt;str&gt; { 'set bands[0].gain 6', 'set gain -4' })
+</pre>
+
+A band inserted by @AudioEffect.Batch() is a silent peak filter at 1000 Hz until it is edited.
+
+Set #Loudness to apply equal-loudness compensation, which restores the bass and treble that the ear loses when
+playback is quiet.  #ListeningLevel is the playback level in decibels relative to the reference level, at which
+compensation is flat.  The equaliser cannot measure the acoustic playback level, so the application sets
+#ListeningLevel from its own volume control.  The compensation is a low shelf and a high shelf
 that approximate the difference between the ISO 226:2023 equal-loudness contours at the reference level of 80 phon
 and at the listening level.  The shelves run after the bands and before the output trim, and are included in
 @AudioEffect.GetResponse().  The fit error grows with attenuation; the worst error in the ISO data range of 20 Hz to
@@ -41,9 +49,8 @@ raised by 1.6 dB.  Compensation can boost the bass by up to 30 dB at low listeni
 after the equaliser to prevent clipping.
 
 <pre>
-eq.acSetKey('loudness', 1)
-eq.acSetKey('listening_level', -30)
-eq.acFlush()
+eq.listeningLevel = -30
+eq.loudness = 1
 </pre>
 
 Live changes crossfade the old and new filter chains over 10 ms, including output trim changes.  An edit during a
@@ -155,6 +162,11 @@ static AudioEQBand entry_band(const AudioParamEntry &Entry)
 {
    return AudioEQBand { EQB(int(Entry.Values[BAND_TYPE])), Entry.Values[BAND_FREQUENCY], Entry.Values[BAND_GAIN],
       Entry.Values[BAND_Q] };
+}
+
+static std::array<double, BAND_MEMBERS> band_values(const AudioEQBand &Band)
+{
+   return { double(int(Band.Type)), Band.Frequency, Band.Gain, Band.Q };
 }
 
 //********************************************************************************************************************
@@ -303,12 +315,134 @@ static ERR AUDIOEQUALISER_Init(extAudioEqualiser *Self)
 
 /*********************************************************************************************************************
 
+-METHOD-
+GetBand: Reads one band.
+
+Copies the committed values of the band at `Index` to `Band`.  Bands can be read before initialisation, from a global
+equaliser, and after the equaliser has been disconnected.
+
+<pre>
+band = struct.new('AudioEQBand')
+check eq.mtGetBand(0, band)
+</pre>
+
+-INPUT-
+int Index: The zero-based index of the band.
+struct(*AudioEQBand) Band: Receives the band's type, frequency, gain and Q.
+
+-ERRORS-
+Okay
+NullArgs
+OutOfRange: `Index` does not refer to an existing band.
+-END-
+
+*********************************************************************************************************************/
+
+static ERR AUDIOEQUALISER_GetBand(extAudioEqualiser *Self, struct eq::GetBand *Args)
+{
+   if ((not Args) or (not Args->Band)) return ERR::NullArgs;
+   if ((Args->Index < 0) or (Args->Index >= std::ssize(Self->Bands))) return ERR::OutOfRange;
+   *Args->Band = Self->Bands[Args->Index];
+   return ERR::Okay;
+}
+
+/*********************************************************************************************************************
+
+-METHOD-
+InsertBand: Inserts a band with the given values.
+
+Inserts `Band` at `Index`, moving the band at that position and every later band up by one.  The new band starts with
+fresh filter history, while the other bands keep theirs, so a live insertion does not disturb them.
+
+-INPUT-
+int Index: The position of the new band, from zero to the current band count.
+struct(*AudioEQBand) Band: The type, frequency, gain and Q of the new band.
+
+-ERRORS-
+Okay
+NullArgs
+OutOfRange: `Index` is greater than the band count, or the equaliser already has 64 bands.
+InvalidValue: A value is out of range, or Q exceeds one for a shelf after initialisation.
+Immutable: The equaliser is attached to the global chain.
+NotInitialised: The equaliser has been disconnected from its Audio object.
+-END-
+
+*********************************************************************************************************************/
+
+static ERR AUDIOEQUALISER_InsertBand(extAudioEqualiser *Self, struct eq::InsertBand *Args)
+{
+   if ((not Args) or (not Args->Band)) return ERR::NullArgs;
+   return effect_group_insert(Self, EQ_BANDS, Args->Index, band_values(*Args->Band));
+}
+
+/*********************************************************************************************************************
+
+-METHOD-
+RemoveBand: Removes one band.
+
+Removes the band at `Index`, moving every later band down by one.  The remaining bands keep their filter history.
+
+-INPUT-
+int Index: The zero-based index of the band.
+
+-ERRORS-
+Okay
+NullArgs
+OutOfRange: `Index` does not refer to an existing band.
+Immutable: The equaliser is attached to the global chain.
+NotInitialised: The equaliser has been disconnected from its Audio object.
+-END-
+
+*********************************************************************************************************************/
+
+static ERR AUDIOEQUALISER_RemoveBand(extAudioEqualiser *Self, struct eq::RemoveBand *Args)
+{
+   if (not Args) return ERR::NullArgs;
+   return effect_group_remove(Self, EQ_BANDS, Args->Index);
+}
+
+/*********************************************************************************************************************
+
+-METHOD-
+SetBand: Replaces the values of one band.
+
+Replaces the type, frequency, gain and Q of the band at `Index` as a single change.  The band keeps its filter history
+and a live edit crossfades to the new response.  Because every value changes together, a peak can be changed to a
+shelf and its Q reduced to one in the same call.
+
+<pre>
+check eq.mtSetBand(0, struct.new('AudioEQBand', { type=EQB_HIGH_SHELF, frequency=8000, gain=-3, q=0.5 }))
+</pre>
+
+-INPUT-
+int Index: The zero-based index of the band.
+struct(*AudioEQBand) Band: The new type, frequency, gain and Q.
+
+-ERRORS-
+Okay
+NullArgs
+OutOfRange: `Index` does not refer to an existing band.
+InvalidValue: A value is out of range, or Q exceeds one for a shelf after initialisation.
+Immutable: The equaliser is attached to the global chain.
+NotInitialised: The equaliser has been disconnected from its Audio object.
+-END-
+
+*********************************************************************************************************************/
+
+static ERR AUDIOEQUALISER_SetBand(extAudioEqualiser *Self, struct eq::SetBand *Args)
+{
+   if ((not Args) or (not Args->Band)) return ERR::NullArgs;
+   return effect_group_set(Self, EQ_BANDS, Args->Index, band_values(*Args->Band));
+}
+
+/*********************************************************************************************************************
+
 -FIELD-
 Bands: The ordered array of AudioEQBand structures.
 
-The list can contain at most 64 bands.  Replacing the list clears filter history, so use @AudioEffect.SetKey()
-for live adjustment.  A global equaliser accepts this field only before initialisation.  Writes return
-`ERR::InvalidState` while changes staged by @AudioEffect.SetKey() are waiting for @AudioEffect.Flush().
+The list can contain at most 64 bands.  Replacing the list clears the filter history of every band, so use #SetBand(),
+#InsertBand() and #RemoveBand() for live adjustment; they preserve the history of the bands that they do not
+replace.  A global equaliser accepts this field only before initialisation.
 
 *********************************************************************************************************************/
 
@@ -336,6 +470,9 @@ static ERR AUDIOEQUALISER_SET_Bands(extAudioEqualiser *Self, std::span<const Aud
 -FIELD-
 Gain: Output trim in decibels, applied after all bands.
 
+The range is -48 to 48 dB and the default is 0 dB.  This field mirrors the `gain` schema key.  To change it together
+with other parameters in a single step, use @AudioEffect.Batch().
+
 *********************************************************************************************************************/
 
 static ERR AUDIOEQUALISER_GET_Gain(extAudioEqualiser *Self, double *Value)
@@ -344,12 +481,39 @@ static ERR AUDIOEQUALISER_GET_Gain(extAudioEqualiser *Self, double *Value)
    return ERR::Okay;
 }
 
-static ERR AUDIOEQUALISER_SET_Gain(extAudioEqualiser *Self, double Value)
+/*********************************************************************************************************************
+
+-FIELD-
+ListeningLevel: The playback level, in decibels relative to the reference level, used for loudness compensation.
+
+The range is -60 to 0 dB and the default is -20 dB.  Set it from the application's volume control; lower levels
+receive more bass and treble, and compensation is flat at 0 dB.  The value has no effect unless #Loudness is enabled.
+This field mirrors the `listening_level` schema key.  To change it together with other parameters in a single step,
+use @AudioEffect.Batch().
+
+*********************************************************************************************************************/
+
+static ERR AUDIOEQUALISER_GET_ListeningLevel(extAudioEqualiser *Self, double *Value)
 {
-   AudioParamState state;
-   effect_snapshot(Self, state);
-   state.Params[EQ_GAIN] = Value;
-   return effect_set_state(Self, state);
+   *Value = Self->ListeningLevel;
+   return ERR::Okay;
+}
+
+/*********************************************************************************************************************
+
+-FIELD-
+Loudness: Enables equal-loudness compensation.
+
+Set to 1 to restore the bass and treble that the ear loses when playback is quiet, according to #ListeningLevel.  The
+default is 0 (disabled).  This field mirrors the `loudness` schema key.  To change it together with other parameters
+in a single step, use @AudioEffect.Batch().
+
+*********************************************************************************************************************/
+
+static ERR AUDIOEQUALISER_GET_Loudness(extAudioEqualiser *Self, int *Value)
+{
+   *Value = Self->Loudness ? 1 : 0;
+   return ERR::Okay;
 }
 
 //********************************************************************************************************************
@@ -358,7 +522,10 @@ static ERR AUDIOEQUALISER_SET_Gain(extAudioEqualiser *Self, double Value)
 
 static const FieldArray clAudioEqualiserFields[] = {
    { "Bands", FDF_VIRTUAL|FDF_ARRAY|FDF_STRUCT|FDF_RW|FDF_PURE, AUDIOEQUALISER_GET_Bands, AUDIOEQUALISER_SET_Bands, "AudioEQBand" },
-   { "Gain",  FDF_VIRTUAL|FDF_DOUBLE|FDF_RW|FDF_PURE, AUDIOEQUALISER_GET_Gain, AUDIOEQUALISER_SET_Gain },
+   { "Gain",  FDF_VIRTUAL|FDF_DOUBLE|FDF_RW|FDF_PURE, AUDIOEQUALISER_GET_Gain, effect_param_set<EQ_GAIN> },
+   { "Loudness", FDF_VIRTUAL|FDF_INT|FDF_RW|FDF_PURE, AUDIOEQUALISER_GET_Loudness, effect_param_set_int<EQ_LOUDNESS> },
+   { "ListeningLevel", FDF_VIRTUAL|FDF_DOUBLE|FDF_RW|FDF_PURE,
+     AUDIOEQUALISER_GET_ListeningLevel, effect_param_set<EQ_LISTENING_LEVEL> },
    END_FIELD
 };
 
@@ -372,6 +539,7 @@ static ERR add_audioequaliser_class()
       fl::Name("AudioEqualiser"),
       fl::Category(CCF::AUDIO),
       fl::Actions(clAudioEqualiserActions),
+      fl::Methods(clAudioEqualiserMethods),
       fl::Fields(clAudioEqualiserFields),
       fl::Size(sizeof(extAudioEqualiser)),
       fl::Path(MOD_PATH));

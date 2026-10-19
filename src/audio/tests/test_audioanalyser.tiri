@@ -4,6 +4,7 @@
 @if(exists='modules:audio')
 
    module audio as mAudio
+   import './effect_fields'
 
 EDGES = array<double> { 20, 250, 500, 2000, 4000, 8000, 20000 }
 TONE_BAND = 2 -- The 500 to 2000 Hz band contains the 1 kHz test tone
@@ -111,27 +112,27 @@ end
    analyser <close> = obj.new('AudioAnalyser', { audio=audio, channel=channel })
    assert(get_number(analyser, 'channel_index') is -1, 'The default measures every channel')
    for _, value in ipairs({ -1, 0, 63 }) do
-      check analyser.acSetKey('channel_index', value)
+      check analyser.mtBatch(array<str> { f'set channel_index {value}' })
    end
    for _, value in ipairs({ -2, 64, 0.5, math.huge, math.sqrt(-1) }) do
-      assert(analyser.acSetKey('channel_index', value) is ERR_InvalidValue, f'channel_index must reject {value}')
+      assert(analyser.mtBatch(array<str> { f'set channel_index {value}' }) is ERR_InvalidValue,
+         f'channel_index must reject {value}')
    end
-   check analyser.acSetKey('channel_index', 1)
-   check analyser.acFlush()
+   check analyser.mtBatch(array<str> { 'set channel_index 1' })
    assert(get_number(analyser, 'channel_index') is 1)
 
    -- A global analyser's parameters must be configured before initialisation.
 
    early <close> = obj.new('AudioAnalyser')
    early.audio = audio
-   check early.acSetKey('channel_index', 0)
+   check early.mtBatch(array<str> { 'set channel_index 0' })
    early.init()
    assert(get_number(early, 'channel_index') is 0)
 
    -- Analysers of the global mix are immutable once initialised.
 
    mix <close> = audio.new('AudioAnalyser', { })
-   assert(mix.acSetKey('channel_index', 0) is ERR_Immutable)
+   assert(mix.mtBatch(array<str> { 'set channel_index 0' }) is ERR_Immutable)
 end
 
 -- A mono output has no correlation meter, and a channel beyond the layout cannot be read until it exists.
@@ -152,12 +153,10 @@ end
    assert(analyser.schema.find('key="correlation"') is nil, 'Correlation is only published for stereo')
    assert(analyser.mtGetOutput('correlation') is ERR_Search)
 
-   check analyser.acSetKey('channel_index', 1)
-   check analyser.acFlush()
+   check analyser.mtBatch(array<str> { 'set channel_index 1' })
    assert(analyser.mtGetSpectrum(EDGES, array<double, 6>) is ERR_OutOfRange, 'Channel 1 does not exist in mono')
    assert(analyser.mtGetWaveform(array<float, 64>) is ERR_OutOfRange, 'Channel 1 does not exist in mono')
-   check analyser.acSetKey('channel_index', 0)
-   check analyser.acFlush()
+   check analyser.mtBatch(array<str> { 'set channel_index 0' })
    check analyser.mtGetWaveform(array<float, 64>)
 end
 
@@ -262,12 +261,10 @@ end
 
    -- channel_index 0 measures the tone; channel_index 1 measures silence once its new history is audible.
 
-   check analyser.acSetKey('channel_index', 0)
-   check analyser.acFlush()
+   check analyser.mtBatch(array<str> { 'set channel_index 0' })
    await_tone(analyser)
 
-   check analyser.acSetKey('channel_index', 1)
-   check analyser.acFlush()
+   check analyser.mtBatch(array<str> { 'set channel_index 1' })
    levels = array<double, 6>
    for attempt in {0 to 20} do
       check analyser.mtGetSpectrum(EDGES, levels)
@@ -298,6 +295,12 @@ end
    success
       raise 'An output rate below 8000 Hz must be rejected'
    end
+end
+
+-- Every schema parameter has a typed field that follows the shared field semantics.
+
+@Test function TypedFields()
+   effect_fields.checkFields('AudioAnalyser')
 end
 
 @end

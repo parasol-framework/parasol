@@ -15,7 +15,7 @@
     <description>
 <p>The loudness leveller measures the perceived loudness of the audio passing through it and adjusts its gain so that material from different sources plays at a consistent level.  A quiet recording is raised and a loud one lowered, each within a configurable limit, and the gain changes slowly enough that the dynamics within a recording are preserved.</p>
 <p>Create new leveller objects as a child of an <class name="Audio">Audio</class> object or set the inherited <class name="AudioEffect" field="Audio">AudioEffect.Audio</class> field.  Use <class name="AudioEffect" field="Channel">AudioEffect.Channel</class> to process one channel set, or leave it at zero to process the global mix.  Application levellers accept live changes; global levellers become immutable after initialisation.</p>
-<p>Parameters are published through the inherited <class name="AudioEffect">AudioEffect</class> schema and are changed with <class name="AudioEffect" method="SetKey">AudioEffect.SetKey()</class> followed by <class name="AudioEffect" method="Flush">AudioEffect.Flush()</class>:</p>
+<p>Each parameter is available as a field, such as <fl>Target</fl> and <fl>MaxBoost</fl>.  Field writes before initialisation are range-checked and stored; after initialisation each write is validated and applied immediately.  The same parameters are published through the inherited <class name="AudioEffect">AudioEffect</class> schema under lower-case keys, where they can be changed together with <class name="AudioEffect" method="Batch">AudioEffect.Batch()</class>:</p>
 <list type="bullet">
 <li><code>target</code>: the short-term loudness, in LUFS, that the leveller aims for.  Common references are -14 LUFS for music
 streaming, -16 LUFS for podcasts and spoken word, and -23 LUFS for broadcast programmes.</li>
@@ -27,10 +27,10 @@ streaming, -16 LUFS for podcasts and spoken word, and -23 LUFS for broadcast pro
 levelled independently.</li>
 </list>
 <p>The following leveller brings a channel set towards the -16 LUFS spoken-word reference, boosting quiet material by up to 9 dB:</p>
-<pre>leveller = obj.new('AudioLoudness', { audio=audio, channel=channel })
-leveller.acSetKey('target', -16)
-leveller.acSetKey('max_boost', 9)
-leveller.acFlush()
+<pre>leveller = obj.new('AudioLoudness', { audio=audio, channel=channel, target=-16, maxBoost=9 })
+</pre>
+<p>Every field write after initialisation is a separate change.  To change several parameters in a single step, apply them together with <class name="AudioEffect" method="Batch">AudioEffect.Batch()</class>:</p>
+<pre>leveller.mtBatch(array&lt;str&gt; { 'set target -14', 'set max_cut 6' })
 </pre>
 <p>The leveller does not limit peaks.  A boost can raise peaks above full scale, so place an <class name="AudioLimiter">AudioLimiter</class> after the leveller, with a higher <class name="AudioEffect" field="Order">AudioEffect.Order</class>, whenever <code>max_boost</code> is not zero.</p>
 <header>Measurement</header>
@@ -61,6 +61,69 @@ same gain.</li>
       <file>class_audioloudness.cpp</file>
     </source>
   </info>
+
+  <fields>
+    <field>
+      <name>Gate</name>
+      <comment>The loudness, in LUFS, below which the gain is held rather than adjusted.</comment>
+      <access read="G" write="S">Get/Set</access>
+      <type>DOUBLE</type>
+      <description>
+<p>The range is -90 to -30 LUFS and the default is -70 LUFS.  This field mirrors the <code>gate</code> schema key.  To change it together with other parameters in a single step, use <class name="AudioEffect" method="Batch">AudioEffect.Batch()</class>.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>Link</name>
+      <comment>Applies one gain to every channel.</comment>
+      <access read="G" write="S">Get/Set</access>
+      <type>INT</type>
+      <description>
+<p>Set to 1 (the default) to apply one gain to every channel, or 0 to level each channel independently, which can move the stereo image.  This field mirrors the <code>link</code> schema key.  To change it together with other parameters in a single step, use <class name="AudioEffect" method="Batch">AudioEffect.Batch()</class>.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>MaxBoost</name>
+      <comment>The maximum gain, in decibels, applied to quiet material.</comment>
+      <access read="G" write="S">Get/Set</access>
+      <type>DOUBLE</type>
+      <description>
+<p>The range is 0 to 24 dB and the default is 12 dB.  Zero prevents any boost.  This field mirrors the <code>max_boost</code> schema key.  To change it together with other parameters in a single step, use <class name="AudioEffect" method="Batch">AudioEffect.Batch()</class>.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>MaxCut</name>
+      <comment>The maximum attenuation, in decibels, applied to loud material.</comment>
+      <access read="G" write="S">Get/Set</access>
+      <type>DOUBLE</type>
+      <description>
+<p>The range is 0 to 24 dB and the default is 12 dB.  Zero prevents any cut.  This field mirrors the <code>max_cut</code> schema key. To change it together with other parameters in a single step, use <class name="AudioEffect" method="Batch">AudioEffect.Batch()</class>.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>Response</name>
+      <comment>The time constant, in milliseconds, with which the gain moves towards its target.</comment>
+      <access read="G" write="S">Get/Set</access>
+      <type>DOUBLE</type>
+      <description>
+<p>The range is 500 to 30000 ms and the default is 3000 ms.  This field mirrors the <code>response</code> schema key.  To change it together with other parameters in a single step, use <class name="AudioEffect" method="Batch">AudioEffect.Batch()</class>.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>Target</name>
+      <comment>The short-term loudness, in LUFS, that the leveller aims for.</comment>
+      <access read="G" write="S">Get/Set</access>
+      <type>DOUBLE</type>
+      <description>
+<p>The range is -36 to -6 LUFS and the default is -16 LUFS.  This field mirrors the <code>target</code> schema key.  To change it together with other parameters in a single step, use <class name="AudioEffect" method="Batch">AudioEffect.Batch()</class>.</p>
+      </description>
+    </field>
+
+  </fields>
   <structs>
   </structs>
 </book>

@@ -10,8 +10,10 @@ Create new reverberator objects as a child of an @Audio object or set the inheri
 Use #AudioEffect.Channel to process one channel set, or leave it at zero to process the global mix.  Application
 reverberators accept live changes; global reverberators become immutable after initialisation.
 
-Parameters are published through the inherited @AudioEffect schema and are changed with
-@AudioEffect.SetKey() followed by @AudioEffect.Flush():
+Each parameter is available as a field, such as #Decay and #Size.  Field writes before initialisation are range-checked
+and stored; after initialisation each write is validated and applied immediately.  The same parameters are published
+through the inherited @AudioEffect schema under lower-case keys, where they can be changed together with
+@AudioEffect.Batch():
 
 <list type="bullet">
 <li>`decay`: the time, in milliseconds, for the reverberation to fall by 60 dB at low frequencies.</li>
@@ -37,14 +39,18 @@ not compensated.  The normalisation holds on average across frequencies, but the
 so a sustained tone can emerge up to about 10 dB above its input level.  Leave headroom at high mix settings, or place
 an effect that limits peaks after the reverb.
 
-The following creates a large hall for a playing channel set, then lengthens its decay as a single change:
+The following creates a large hall for a playing channel set, then lengthens its decay:
 
 <pre>
-reverb = obj.new('AudioReverb', { audio=audio, channel=channel })
-reverb.acSetKey('size', 90)
-reverb.acSetKey('decay', 3500)
-reverb.acSetKey('mix', 30)
-reverb.acFlush()
+reverb = obj.new('AudioReverb', { audio=audio, channel=channel, size=90, mix=30 })
+reverb.decay = 3500
+</pre>
+
+Every field write after initialisation is a separate change.  To change several parameters in a single step, apply them
+together with @AudioEffect.Batch():
+
+<pre>
+reverb.mtBatch(array&lt;str&gt; { 'set size 40', 'set decay 900', 'set early_level 50' })
 </pre>
 
 A mono output is processed as a single channel.  A stereo input feeds alternate delay lines from each channel, and the
@@ -67,10 +73,7 @@ lengths at high levels can sound like a flutter echo; combine them with a modera
 The following adds the reflections of a long room to a small, diffuse reverberation:
 
 <pre>
-reverb.acSetKey('early_level', 60)
-reverb.acSetKey('early_length', 70)
-reverb.acSetKey('size', 30)
-reverb.acFlush()
+reverb.mtBatch(array&lt;str&gt; { 'set early_level 60', 'set early_length 70', 'set size 30' })
 </pre>
 
 <header>Live Changes</header>
@@ -263,11 +266,78 @@ static ERR AUDIOREVERB_Init(extAudioReverb *Self)
    return error;
 }
 
-//********************************************************************************************************************
+/*********************************************************************************************************************
+
+-FIELD-
+Damping: How much faster high frequencies decay than low frequencies, as a percentage.
+
+The range is 0 to 100% and the default is 50%.  This field mirrors the `damping` schema key.  To change it together with
+other parameters in a single step, use @AudioEffect.Batch().
+
+-FIELD-
+Decay: The time, in milliseconds, for the reverberation to fall by 60 dB at low frequencies.
+
+The range is 100 to 20000 ms and the default is 1500 ms.  This field mirrors the `decay` schema key.  To change it
+together with other parameters in a single step, use @AudioEffect.Batch().
+
+-FIELD-
+Diffusion: The density of the reflections, as a percentage.
+
+The range is 0 to 100% and the default is 70%.  Low values produce distinct echoes and high values a smooth wash.  This
+field mirrors the `diffusion` schema key.  To change it together with other parameters in a single step, use
+@AudioEffect.Batch().
+
+-FIELD-
+EarlyLength: The time, in milliseconds, from the first to the last early reflection.
+
+The range is 5 to 100 ms and the default is 30 ms.  This field mirrors the `early_length` schema key.  To change it
+together with other parameters in a single step, use @AudioEffect.Batch().
+
+-FIELD-
+EarlyLevel: The level of the early reflections in the wet output, as a percentage.
+
+The range is 0 to 100% and the default is 0%.  Zero disables the early reflections.  This field mirrors the
+`early_level` schema key.  To change it together with other parameters in a single step, use @AudioEffect.Batch().
+
+-FIELD-
+Mix: The proportion of reverberation in the output, as a percentage.
+
+The range is 0 to 100% and the default is 20%.  Zero leaves the input unchanged.  This field mirrors the `mix` schema
+key.  To change it together with other parameters in a single step, use @AudioEffect.Batch().
+
+-FIELD-
+PreDelay: The gap, in milliseconds, before the input reaches the reverberation.
+
+The range is 0 to 250 ms and the default is 20 ms.  This field mirrors the `pre_delay` schema key.  To change it
+together with other parameters in a single step, use @AudioEffect.Batch().
+
+-FIELD-
+Size: The scale of the simulated room, as a percentage.
+
+The range is 0 to 100% and the default is 50%.  Larger rooms space their reflections further apart.  This field mirrors
+the `size` schema key.  To change it together with other parameters in a single step, use @AudioEffect.Batch().
+
+*********************************************************************************************************************/
 
 #include "class_audioreverb_def.c"
 
 static const FieldArray clAudioReverbFields[] = {
+   { "Decay",      FDF_VIRTUAL|FDF_DOUBLE|FDF_RW|FDF_PURE,
+     effect_settings_get<extAudioReverb, &ReverbSettings::Decay>, effect_param_set<RV_DECAY> },
+   { "Size",       FDF_VIRTUAL|FDF_DOUBLE|FDF_RW|FDF_PURE,
+     effect_settings_get<extAudioReverb, &ReverbSettings::Size>, effect_param_set<RV_SIZE> },
+   { "PreDelay",   FDF_VIRTUAL|FDF_DOUBLE|FDF_RW|FDF_PURE,
+     effect_settings_get<extAudioReverb, &ReverbSettings::PreDelay>, effect_param_set<RV_PRE_DELAY> },
+   { "Damping",    FDF_VIRTUAL|FDF_DOUBLE|FDF_RW|FDF_PURE,
+     effect_settings_get<extAudioReverb, &ReverbSettings::Damping>, effect_param_set<RV_DAMPING> },
+   { "Diffusion",  FDF_VIRTUAL|FDF_DOUBLE|FDF_RW|FDF_PURE,
+     effect_settings_get<extAudioReverb, &ReverbSettings::Diffusion>, effect_param_set<RV_DIFFUSION> },
+   { "EarlyLevel", FDF_VIRTUAL|FDF_DOUBLE|FDF_RW|FDF_PURE,
+     effect_settings_get<extAudioReverb, &ReverbSettings::EarlyLevel>, effect_param_set<RV_EARLY_LEVEL> },
+   { "EarlyLength", FDF_VIRTUAL|FDF_DOUBLE|FDF_RW|FDF_PURE,
+     effect_settings_get<extAudioReverb, &ReverbSettings::EarlyLength>, effect_param_set<RV_EARLY_LENGTH> },
+   { "Mix",        FDF_VIRTUAL|FDF_DOUBLE|FDF_RW|FDF_PURE,
+     effect_settings_get<extAudioReverb, &ReverbSettings::Mix>, effect_param_set<RV_MIX> },
    END_FIELD
 };
 

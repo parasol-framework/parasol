@@ -10,8 +10,10 @@ Create new delay objects as a child of an @Audio object or set the inherited #Au
 #AudioEffect.Channel to process one channel set, or leave it at zero to process the global mix.  Application delays
 accept live changes; global delays become immutable after initialisation.
 
-Parameters are published through the inherited @AudioEffect schema and are changed with @AudioEffect.SetKey()
-followed by @AudioEffect.Flush():
+Each parameter is available as a field, such as #Time and #Feedback.  Field writes before initialisation are
+range-checked and stored; after initialisation each write is validated and applied immediately.  The same parameters are
+published through the inherited @AudioEffect schema under lower-case keys, where they can be changed together with
+@AudioEffect.Batch():
 
 <list type="bullet">
 <li>`time`: the interval between echoes, from 1 to 2000 milliseconds.  Fractions of a millisecond are honoured.</li>
@@ -19,22 +21,24 @@ followed by @AudioEffect.Flush():
 echo.</li>
 <li>`damping`: the high-frequency loss applied to every repeat, from 0 to 100 percent.  The first echo is never
 filtered.</li>
-<li>`mode`: `normal` (0) delays each channel independently; `ping_pong` (1) bounces the echoes between the left and
-right channels.</li>
+<li>`mode`: `normal` (`DLM::NORMAL`) delays each channel independently; `ping_pong` (`DLM::PING_PONG`) bounces
+the echoes between the left and right channels.</li>
 <li>`mix`: the linear blend of dry and wet signals.  Zero passes the input unchanged and 100 percent outputs only the
 echoes.</li>
 </list>
 
-The following adds a ping-pong echo of 375 ms with gently darkening repeats to a playing channel set, as a single
-change:
+The following adds a ping-pong echo of 375 ms with gently darkening repeats to a playing channel set:
 
 <pre>
-delay = obj.new('AudioDelay', { audio=audio, channel=channel })
-delay.acSetKey('time', 375)
-delay.acSetKey('feedback', 45)
-delay.acSetKey('damping', 40)
-delay.acSetKey('mode', 1)
-delay.acFlush()
+delay = obj.new('AudioDelay', { audio=audio, channel=channel, time=375, feedback=45, damping=40,
+   mode=DLM_PING_PONG })
+</pre>
+
+Every field write after initialisation is a separate change.  To change several parameters in a single step, apply them
+together with @AudioEffect.Batch():
+
+<pre>
+delay.mtBatch(array&lt;str&gt; { 'set time 500', 'set mode normal' })
 </pre>
 
 <header>Routing</header>
@@ -118,8 +122,8 @@ public:
 enum { DL_TIME = 0, DL_FEEDBACK, DL_DAMPING, DL_MODE, DL_MIX };
 
 static const AudioParamOption glDelayModes[] = {
-   { DELAY_NORMAL, "normal", "Normal", "Every channel is delayed independently, preserving the stereo image." },
-   { DELAY_PING_PONG, "ping_pong", "Ping-Pong",
+   { int(DLM::NORMAL), "normal", "Normal", "Every channel is delayed independently, preserving the stereo image." },
+   { int(DLM::PING_PONG), "ping_pong", "Ping-Pong",
      "The echoes alternate between the left and right channels, starting on the left.  Mono output is unaffected." }
 };
 
@@ -135,7 +139,7 @@ static const AudioParamDesc glDelayParams[] = {
      .Unit = APU::PERCENT, .Min = 0, .Max = 100, .Default = 25 },
    { .Key = "mode", .Label = "Mode",
      .Description = "Whether stereo echoes are independent for each channel or alternate between the channels.",
-     .Type = APT::ENUM, .Default = DELAY_NORMAL, .Options = glDelayModes },
+     .Type = APT::ENUM, .Default = int(DLM::NORMAL), .Options = glDelayModes },
    { .Key = "mix", .Label = "Mix",
      .Description = "The proportion of echoes in the output.  Zero leaves the input unchanged.",
      .Unit = APU::PERCENT, .Min = 0, .Max = 100, .Default = 25 }
@@ -156,7 +160,7 @@ static DelaySettings delay_settings(const AudioParamState &State)
       .Time     = State.Params[DL_TIME],
       .Feedback = State.Params[DL_FEEDBACK],
       .Damping  = State.Params[DL_DAMPING],
-      .Mode     = int(State.Params[DL_MODE]),
+      .Mode     = DLM(int(State.Params[DL_MODE])),
       .Mix      = State.Params[DL_MIX]
    };
 }
@@ -164,7 +168,8 @@ static DelaySettings delay_settings(const AudioParamState &State)
 static void delay_read(extAudioEffect *Effect, AudioParamState &State)
 {
    const auto &settings = ((extAudioDelay *)Effect)->Settings;
-   State.Params.assign({ settings.Time, settings.Feedback, settings.Damping, double(settings.Mode), settings.Mix });
+   State.Params.assign({ settings.Time, settings.Feedback, settings.Damping, double(int(settings.Mode)),
+      settings.Mix });
    State.Groups.clear();
 }
 
@@ -247,9 +252,57 @@ static ERR AUDIODELAY_Init(extAudioDelay *Self)
    return error;
 }
 
-//********************************************************************************************************************
+/*********************************************************************************************************************
+
+-FIELD-
+Damping: The high-frequency loss applied to every repeat, as a percentage.
+
+The range is 0 to 100% and the default is 25%.  The first echo is never filtered.  This field mirrors the `damping`
+schema key.  To change it together with other parameters in a single step, use @AudioEffect.Batch().
+
+-FIELD-
+Feedback: The level of each repeat relative to the previous one, as a percentage.
+
+The range is 0 to 95% and the default is 30%.  Zero produces a single echo.  This field mirrors the `feedback` schema
+key.  To change it together with other parameters in a single step, use @AudioEffect.Batch().
+
+-FIELD-
+Mix: The proportion of echoes in the output, as a percentage.
+
+The range is 0 to 100% and the default is 25%.  Zero leaves the input unchanged.  This field mirrors the `mix` schema
+key.  To change it together with other parameters in a single step, use @AudioEffect.Batch().
+
+-FIELD-
+Mode: Selects independent or alternating stereo echoes.
+Lookup: DLM
+
+The default is `DLM::NORMAL`.  Mono output always uses normal routing.  This field mirrors the `mode` schema key, which
+also accepts the option names `normal` and `ping_pong`.  To change it together with other parameters in a single step,
+use @AudioEffect.Batch().
+
+-FIELD-
+Time: The interval between echoes, in milliseconds.
+
+The range is 1 to 2000 ms and the default is 250 ms.  Fractions of a millisecond are honoured.  This field mirrors the
+`time` schema key.  To change it together with other parameters in a single step, use @AudioEffect.Batch().
+
+*********************************************************************************************************************/
 
 #include "class_audiodelay_def.c"
+
+static const FieldArray clAudioDelayFields[] = {
+   { "Time",       FDF_VIRTUAL|FDF_DOUBLE|FDF_RW|FDF_PURE,
+     effect_settings_get<extAudioDelay, &DelaySettings::Time>, effect_param_set<DL_TIME> },
+   { "Feedback",   FDF_VIRTUAL|FDF_DOUBLE|FDF_RW|FDF_PURE,
+     effect_settings_get<extAudioDelay, &DelaySettings::Feedback>, effect_param_set<DL_FEEDBACK> },
+   { "Damping",    FDF_VIRTUAL|FDF_DOUBLE|FDF_RW|FDF_PURE,
+     effect_settings_get<extAudioDelay, &DelaySettings::Damping>, effect_param_set<DL_DAMPING> },
+   { "Mode",       FDF_VIRTUAL|FDF_INT|FDF_LOOKUP|FDF_RW|FDF_PURE,
+     effect_settings_get_int<extAudioDelay, &DelaySettings::Mode>, effect_param_set_int<DL_MODE>, &clAudioDelayDLM },
+   { "Mix",        FDF_VIRTUAL|FDF_DOUBLE|FDF_RW|FDF_PURE,
+     effect_settings_get<extAudioDelay, &DelaySettings::Mix>, effect_param_set<DL_MIX> },
+   END_FIELD
+};
 
 //********************************************************************************************************************
 
@@ -261,6 +314,7 @@ static ERR add_audiodelay_class()
       fl::Name("AudioDelay"),
       fl::Category(CCF::AUDIO),
       fl::Actions(clAudioDelayActions),
+      fl::Fields(clAudioDelayFields),
       fl::Size(sizeof(extAudioDelay)),
       fl::Path(MOD_PATH));
    return clAudioDelay ? ERR::Okay : ERR::AddClass;

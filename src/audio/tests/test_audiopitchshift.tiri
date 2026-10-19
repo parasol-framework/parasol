@@ -1,4 +1,4 @@
--- AudioPitchShift: schema, validation, staged changes, latency, live transposition measured by a following
+-- AudioPitchShift: schema, validation, batch changes, latency, live transposition measured by a following
 -- AudioAnalyser, mono, global immutability, tail draining and unsupported rates.  The null device is unpaced, so live
 -- tests play a looping tone and poll until a reading reflects the latest settings.  Numerical accuracy is covered by
 -- the native tests in test_audio_pitchshift_dsp.cpp.
@@ -6,6 +6,7 @@
 @if(exists='modules:audio')
 
    module audio as mAudio
+   import './effect_fields'
 
 @BeforeAll function init(State)
    global glFolder = State.folder
@@ -66,8 +67,9 @@ function get_number(Effect:obj, Key:str):<num>
 end
 
 function configure(Effect:obj, Values:table)
-   for key, value in pairs(Values) do check Effect.acSetKey(key, value) end
-   check Effect.acFlush()
+   commands = array<str>
+   for key, value in pairs(Values) do commands.push(f'set {key} {value}') end
+   check Effect.mtBatch(commands)
 end
 
 -- Poll the analyser until the Expected band holds the tone, every other measured band is at least 30 dB below it, and
@@ -150,34 +152,34 @@ end
    assert(shifter.mtGetOutput('response') is ERR_Search)
 end
 
-@Test function StagedChangesAndValidation()
+@Test function ChangesAndValidation()
    audio <close> = obj.new('Audio', { device='null', outputRate=48000 })
    shifter <close> = new_shifter(audio)
    assert(shifter.mutable is 1)
 
    for p in values(PARAMS) do
-      check shifter.acSetKey(p.key, p.min)
-      check shifter.acSetKey(p.key, p.max)
-      assert(shifter.acSetKey(p.key, p.min - 0.001) is ERR_InvalidValue, f'{p.key} below {p.min} must fail')
-      assert(shifter.acSetKey(p.key, p.max + 0.001) is ERR_InvalidValue, f'{p.key} above {p.max} must fail')
-      assert(shifter.acSetKey(p.key, math.huge) is ERR_InvalidValue, f'{p.key} must reject infinity')
-      assert(shifter.acSetKey(p.key, math.sqrt(-1)) is ERR_InvalidValue, f'{p.key} must reject NaN')
+      check shifter.mtBatch(array<str> { f'set {p.key} {p.min}', f'set {p.key} {p.max}' })
+      assert(shifter.mtBatch(array<str> { f'set {p.key} {p.min - 0.001}' }) is ERR_InvalidValue,
+         f'{p.key} below {p.min} must fail')
+      assert(shifter.mtBatch(array<str> { f'set {p.key} {p.max + 0.001}' }) is ERR_InvalidValue,
+         f'{p.key} above {p.max} must fail')
+      assert(shifter.mtBatch(array<str> { f'set {p.key} {math.huge}' }) is ERR_InvalidValue,
+         f'{p.key} must reject infinity')
+      assert(shifter.mtBatch(array<str> { f'set {p.key} {math.sqrt(-1)}' }) is ERR_InvalidValue,
+         f'{p.key} must reject NaN')
    end
-   assert(shifter.acSetKey('unknown', 1) is ERR_Search)
-   check shifter.acFlush()
+   assert(shifter.mtBatch(array<str> { 'set unknown 1' }) is ERR_Search)
 
-   -- Staged values are readable before Flush(); a rejected value leaves earlier staged changes intact.  Fractional
-   -- semitones are accepted for detuning.
+   -- A rejected value fails the whole batch and names its command; a valid batch commits every value together.
+   -- Fractional semitones are accepted for detuning.
 
-   check shifter.acSetKey('semitones', -0.15)
-   check shifter.acSetKey('mix', 62.5)
-   assert(shifter.acSetKey('gain', 12.5) is ERR_InvalidValue)
-   check shifter.acSetKey('gain', -7.25)
-   assert(get_number(shifter, 'semitones') is -0.15, 'Staged values must be readable')
-   check shifter.acFlush()
+   err, failed = shifter.mtBatch(array<str> { 'set semitones -0.15', 'set mix 62.5', 'set gain 12.5' })
+   assert(err is ERR_InvalidValue and failed is 2, f'The last command must fail, got {err} at {failed}')
+   assert(get_number(shifter, 'semitones') != -0.15, 'A rejected batch must change nothing')
+   check shifter.mtBatch(array<str> { 'set semitones -0.15', 'set mix 62.5', 'set gain -7.25' })
    for key, expected in pairs({ semitones=-0.15, mix=62.5, gain=-7.25 }) do
       value = get_number(shifter, key)
-      assert(value is expected, f'{key} should be {expected} after Flush(), got {value}')
+      assert(value is expected, f'{key} should be {expected} after Batch(), got {value}')
    end
 end
 
@@ -188,9 +190,8 @@ end
    shifter <close> = obj.new('AudioPitchShift')
    shifter.audio = audio
    shifter.channel = channel
-   check shifter.acSetKey('semitones', 7)
-   check shifter.acSetKey('mix', 40)
-   assert(shifter.acSetKey('semitones', -13) is ERR_InvalidValue)
+   check shifter.mtBatch(array<str> { 'set semitones 7', 'set mix 40' })
+   assert(shifter.mtBatch(array<str> { 'set semitones -13' }) is ERR_InvalidValue)
    shifter.init()
    for key, expected in pairs({ semitones=7, mix=40, gain=0 }) do
       value = get_number(shifter, key)
@@ -281,17 +282,16 @@ end
    check audio.mtCloseChannels(channel)
    err, reading = shifter.mtReadMeters()
    assert(err is ERR_Okay and reading.flags is AMF_DISCONNECTED)
-   assert(shifter.acSetKey('semitones', 1) is ERR_NotInitialised)
+   assert(shifter.mtBatch(array<str> { 'set semitones 1' }) is ERR_NotInitialised)
 end
 
 @Test function MonoAndGlobalImmutability()
    audio <close> = obj.new('Audio', { device='null', outputRate=44100, outputLayout=array<int> { SPK_CENTRE } })
    shifter = audio.new('AudioPitchShift')
-   check shifter.acSetKey('semitones', -5)
-   check shifter.acSetKey('gain', -3)
+   check shifter.mtBatch(array<str> { 'set semitones -5', 'set gain -3' })
    shifter.init()
    assert(shifter.mutable is 0)
-   assert(shifter.acSetKey('semitones', 3) is ERR_Immutable)
+   assert(shifter.mtBatch(array<str> { 'set semitones 3' }) is ERR_Immutable)
    assert(get_number(shifter, 'semitones') is -5, 'Global settings are retained')
    check audio.acActivate()
    assert(shifter.latency is 2048)
@@ -352,6 +352,12 @@ end
    success
       raise 'An output rate below 8000 Hz must be rejected'
    end
+end
+
+-- Every schema parameter has a typed field that follows the shared field semantics.
+
+@Test function TypedFields()
+   effect_fields.checkFields('AudioPitchShift')
 end
 
 @end
