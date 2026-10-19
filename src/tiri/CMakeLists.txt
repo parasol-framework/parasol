@@ -988,7 +988,7 @@ set (TIRI_TESTS
    context_access contextual_member_calls contextual_designation context_blocks context_materialisation
    gc_lifecycle
    metamethod_context_dispatch stack_growth function_callback_context function_context_binding
-   callback_results setter_error_registers field_assignment_blocks
+   callback_results setter_error_registers field_assignment_blocks mixed_assignment
 )
 
 foreach (TEST_NAME ${TIRI_TESTS})
