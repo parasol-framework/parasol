@@ -34,6 +34,7 @@
 #include <memory>
 #include <array>
 #include <string_view>
+#include <utility>
 #include <pthread.h>
 #include <signal.h>
 #include <sys/mman.h>
@@ -192,6 +193,8 @@ struct WaylandSeat {
    uint32_t PointerSerial = 0;
    uint32_t ContentButtons = 0;
    bool PointerInContent = false;
+   float ScrollX = 0;
+   float ScrollY = 0;
    uint32_t KeyboardSerial = 0;
    uint32_t SelectionSerial = 0;
    double X = 0;
@@ -1382,6 +1385,8 @@ static void pointer_enter(void *Data, wl_pointer *, uint32_t Serial, wl_surface 
 static void pointer_leave(void *Data, wl_pointer *, uint32_t, wl_surface *)
 {
    auto seat = (WaylandSeat *)Data;
+   seat->ScrollX = 0;
+   seat->ScrollY = 0;
    auto window = seat->PointerWindow;
    const bool inside = seat->PointerInContent;
    seat->PointerWindow = nullptr;
@@ -1436,16 +1441,35 @@ static void pointer_button(void *Data, wl_pointer *, uint32_t Serial, uint32_t, 
    if (seat->Owner->Callbacks) seat->Owner->Callbacks->ButtonInput(mask, pressed);
 }
 
-static void pointer_axis(void *Data, wl_pointer *, uint32_t, uint32_t Axis, wl_fixed_t Value)
+// A wheel notch is reported as 15 axis units, which is rescaled to match the X11 driver.  Wayland does not report
+// modifiers with pointer events, so the Shift state is only known while the keyboard focus is on one of our windows.
+
+static void pointer_frame(void *Data, wl_pointer *)
 {
    auto seat = (WaylandSeat *)Data;
-   if ((Axis IS WL_POINTER_AXIS_VERTICAL_SCROLL) and seat->PointerWindow and
-         seat->PointerInContent and seat->Owner->Callbacks)
+   auto delta_x = std::exchange(seat->ScrollX, 0);
+   auto delta_y = std::exchange(seat->ScrollY, 0);
+   if ((not seat->PointerWindow) or (not seat->PointerInContent) or (not seat->Owner->Callbacks)) return;
+   if ((delta_x != 0) or (delta_y != 0)) {
       seat->Owner->Callbacks->WheelMovement(seat->PointerWindow->SurfaceID,
-         float(wl_fixed_to_double(Value) * 9.0 / 15.0));
+         delta_x, delta_y, key_qualifiers(seat));
+   }
 }
 
-static void pointer_frame(void *, wl_pointer *) { }
+static void pointer_axis(void *Data, wl_pointer *Pointer, uint32_t, uint32_t Axis, wl_fixed_t Value)
+{
+   auto seat = (WaylandSeat *)Data;
+   if ((not seat->PointerWindow) or (not seat->PointerInContent) or (not seat->Owner->Callbacks)) return;
+
+   auto delta = float(wl_fixed_to_double(Value) * 9.0 / 15.0);
+   if (Axis IS WL_POINTER_AXIS_VERTICAL_SCROLL) seat->ScrollY += delta;
+   else if (Axis IS WL_POINTER_AXIS_HORIZONTAL_SCROLL) seat->ScrollX += delta;
+
+   // Older protocol versions do not send frames.  Newer versions group both axes so that Shift only redirects
+   // purely vertical gestures.
+   if (wl_pointer_get_version(Pointer) < WL_POINTER_FRAME_SINCE_VERSION) pointer_frame(Data, Pointer);
+}
+
 static void pointer_axis_source(void *, wl_pointer *, uint32_t) { }
 static void pointer_axis_stop(void *, wl_pointer *, uint32_t, uint32_t) { }
 static void pointer_axis_discrete(void *, wl_pointer *, uint32_t, int32_t) { }

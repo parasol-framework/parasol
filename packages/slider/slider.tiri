@@ -869,7 +869,8 @@ gui.slider = function(Options:table!)
          -- inconsistently (a notch can be 3 or 9 units), so each wheel event moves one increment regardless of size.
 
          repeat
-            if (Msg.type is JET_WHEEL) and (Msg.value != 0) then
+            if ((Msg.type is JET_WHEEL) or
+               ((Msg.type is JET_WHEEL_X) and (Msg.flags has JTYPE_ALT))) and (Msg.value != 0) then
                &prvAdjust((Msg.value < 0) ? 1 : -1)
             end
             Msg = Msg.next

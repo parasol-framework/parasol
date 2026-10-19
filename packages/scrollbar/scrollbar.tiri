@@ -253,6 +253,12 @@ gui.scrollbar = function(Options)
                   if length > lView.height then length = lView.height end
                   self.scrollPage(0, -ev.value * length * 0.06)
                end
+            elseif ev.type is JET_WHEEL_X then
+               length = lPage.width - lView.width
+               if length > 0 then
+                  if length > lView.width then length = lView.width end
+                  self.scrollPage(-ev.value * length * 0.06, 0)
+               end
             end
             ev = ev.next
          end

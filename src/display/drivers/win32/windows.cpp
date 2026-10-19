@@ -844,14 +844,22 @@ static void HandleMovement(HWND Window, WPARAM, LPARAM LParam, bool NonClient)
 
 //********************************************************************************************************************
 
-static void HandleWheel(HWND window, WPARAM wparam, LPARAM lparam)
-{
-   // Get the absolute position of the mouse pointer relative to the desktop, then convert the coordinates relative to
-   // the main window.
+// WM_MOUSEWHEEL reports upward rotation as a positive delta, so it is negated to match the framework's convention.
+// WM_MOUSEHWHEEL already reports rightward movement as positive.  The modifier state is read from the message rather
+// than the tracked key state, so that it is correct when the window does not have the keyboard focus.
 
+static void HandleWheel(HWND window, WPARAM wparam, bool Horizontal)
+{
    if (auto surface_id = winLookupSurfaceID(window)) {
-      double delta = -((double)GET_WHEEL_DELTA_WPARAM(wparam) / (double)WHEEL_DELTA) * 3.0;
-      MsgWheelMovement(surface_id, delta);
+      double delta = ((double)GET_WHEEL_DELTA_WPARAM(wparam) / (double)WHEEL_DELTA) * 3.0;
+      auto keys = GET_KEYSTATE_WPARAM(wparam);
+      int qualifiers = 0;
+      if (keys & MK_SHIFT) qualifiers |= (GetKeyState(VK_RSHIFT) & 0x8000) ? KQ_R_SHIFT : KQ_L_SHIFT;
+      if (keys & MK_CONTROL) qualifiers |= (GetKeyState(VK_RCONTROL) & 0x8000) ? KQ_R_CONTROL : KQ_L_CONTROL;
+      if (GetKeyState(VK_MENU) & 0x8000) qualifiers |= (GetKeyState(VK_RMENU) & 0x8000) ? KQ_R_ALT : KQ_L_ALT;
+
+      if (Horizontal) MsgWheelMovement(surface_id, delta, 0, qualifiers);
+      else MsgWheelMovement(surface_id, 0, -delta, qualifiers);
    }
 }
 
@@ -1269,7 +1277,8 @@ static LRESULT CALLBACK WindowProcedure(HWND window, UINT msgcode, WPARAM wParam
       case WM_MOUSELEAVE:    glCursorEntry = FALSE;
                              return 0;
 
-      case WM_MOUSEWHEEL:    HandleWheel(window, wParam, lParam); return 0;
+      case WM_MOUSEWHEEL:    HandleWheel(window, wParam, false); return 0;
+      case WM_MOUSEHWHEEL:   HandleWheel(window, wParam, true); return 0;
 
       case WM_LBUTTONDOWN:   HandleButtonPress(window, WIN_LMB); return 0;
       case WM_RBUTTONDOWN:   HandleButtonPress(window, WIN_RMB); return 0;

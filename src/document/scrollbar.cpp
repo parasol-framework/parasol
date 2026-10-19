@@ -167,6 +167,16 @@ static ERR page_movement(objVectorViewport *Viewport, const InputEvent *Events, 
             Scroll->scroll_page(0, -ev->Value * length * 0.06);
          }
       }
+      else if (ev->Type IS JET::WHEEL_X) {
+         Unit view_width, page_width;
+         Scroll->m_view->getWidth(view_width);
+         Scroll->m_page->getWidth(page_width);
+         double length = page_width - view_width;
+         if (length > 0) {
+            if (length > view_width) length = view_width;
+            Scroll->scroll_page(-ev->Value * length * 0.06, 0);
+         }
+      }
    }
 
    return ERR::Okay;

@@ -879,12 +879,38 @@ void x11_save_clipboard(X11Driver::State *State, Time Timestamp)
 
 //********************************************************************************************************************
 
+// Translate the modifier state of a pointer event.  The X server reports this state even when the window lacks the
+// keyboard focus, but cannot distinguish left from right keys, so the side is taken from tracked key presses if known.
+
+static KQ pointer_qualifiers(unsigned State)
+{
+   auto side = [](KQ Pair, KQ Left) {
+      auto held = glKeyFlags & Pair;
+      return (held != KQ::NIL) ? held : Left;
+   };
+
+   auto flags = KQ::NIL;
+   if (State & ShiftMask)   flags |= side(KQ::SHIFT, KQ::L_SHIFT);
+   if (State & ControlMask) flags |= side(KQ::CONTROL, KQ::L_CONTROL);
+   if (State & Mod1Mask)    flags |= side(KQ::ALT, KQ::L_ALT);
+   return flags;
+}
+
+//********************************************************************************************************************
+// Buttons 4 and 5 are vertical wheel rotation, 6 and 7 are horizontal (wheel tilt or touchpad scrolling).
+
 void handle_button_press(XEvent *xevent)
 {
    auto surface_id = resolve_surface(xevent->xbutton.window);
+   auto button = xevent->xbutton.button;
 
-   if (xevent->xbutton.button IS 4) glDriverCallbacks.WheelMovement(surface_id, -9.0);
-   else if (xevent->xbutton.button IS 5) glDriverCallbacks.WheelMovement(surface_id, 9.0);
+   if ((button >= 4) and (button <= 7)) {
+      auto qualifiers = pointer_qualifiers(xevent->xbutton.state);
+      if (button IS 4) glDriverCallbacks.WheelMovement(surface_id, 0, -9.0, qualifiers);
+      else if (button IS 5) glDriverCallbacks.WheelMovement(surface_id, 0, 9.0, qualifiers);
+      else if (button IS 6) glDriverCallbacks.WheelMovement(surface_id, -9.0, 0, qualifiers);
+      else glDriverCallbacks.WheelMovement(surface_id, 9.0, 0, qualifiers);
+   }
    else if (xevent->xbutton.button IS 1) glDriverCallbacks.ButtonInput(0x0001, true);
    else if (xevent->xbutton.button IS 2) glDriverCallbacks.ButtonInput(0x0004, true);
    else if (xevent->xbutton.button IS 3) glDriverCallbacks.ButtonInput(0x0002, true);
