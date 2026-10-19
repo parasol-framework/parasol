@@ -8,22 +8,17 @@ Documentation is available in the Kotuku Wiki.
 
    namespace gui
 
-   local lStyle
-   if mSys.AnalysePath('style:scrollbar.tiri') is ERR_Okay then
-      lStyle = loadFile('style:scrollbar.tiri')
-   else
-      lStyle = loadFile('styles:default/scrollbar.tiri')
-   end
-
 gui.scrollbar = function(Options)
    self = entity { } -- Public interface
-   lTarget   = Options.target
-   lPage     = Options.page
-   lView     = Options.view
-   lBreadth  = Options.breadth ?? 16
-   lPageMode = 'fixed'
-   lMinWidth = 0
-   lTheme    = gui.getTheme(Options.target)
+   lTarget     = Options.target
+   lPage       = Options.page
+   lView       = Options.view
+   lBreadth    = Options.breadth ?? 16
+   lPageMode   = 'fixed'
+   lMinWidth   = 0
+   lTheme      = gui.getTheme(Options.target)
+   lMinSlider  = lBreadth * 1.25 -- Minimum slider length (20 pixels at the default breadth)
+   lHideSlider = lBreadth * 0.75 -- A bar is hidden if its slider length cannot exceed this value
 
    function calcSlider(ViewLength:num!, PageLength:num!, HostLength:num!, Position:num!)
       slider_size = HostLength * (ViewLength / PageLength)
@@ -33,7 +28,7 @@ gui.scrollbar = function(Options)
       end
 
       local offset:num
-      min_size = 20
+      min_size = lMinSlider
       if slider_size < min_size then -- Fixed slider calculation
          slider_size = min_size
          scale       = (PageLength - ViewLength) / (HostLength - min_size)
@@ -79,7 +74,7 @@ gui.scrollbar = function(Options)
             self.vbar.sliderVP.y      = offset
             self.vbar.sliderVP.height = slider_size
 
-            if slider_size <= 12 then
+            if slider_size <= lHideSlider then
                self.vbar.viewport.visibility = VIS_HIDDEN
                lView.xOffset = 0
                self.hbar?.viewport.xOffset = 0
@@ -88,8 +83,6 @@ gui.scrollbar = function(Options)
                lView.xOffset = self.vbar.sliderVP.width
                self.hbar?.viewport.xOffset = lBreadth
             end
-
-            lStyle.arrange(self.vbar)
          end
       end
 
@@ -103,15 +96,13 @@ gui.scrollbar = function(Options)
             self.hbar.sliderVP.x     = offset
             self.hbar.sliderVP.width = slider_size
 
-            if slider_size <= 12 then
+            if slider_size <= lHideSlider then
                self.hbar.viewport.visibility = VIS_HIDDEN
                lView.yOffset = 0
             else
                self.hbar.viewport.visibility = VIS_VISIBLE
                lView.yOffset = self.hbar.sliderVP.height
             end
-
-            lStyle.arrange(self.hbar)
          end
       end
 
@@ -125,12 +116,15 @@ gui.scrollbar = function(Options)
          vp = lTarget.new('VectorViewport', { name='VBarVP', y = 0, xOffset = 0, yOffset = 0, width = lBreadth, overflow = VOF_HIDDEN })
 
          bar = vp.state()
-         bar.viewport  = vp
-         bar.direction = 'V'
-         bar.barBkgd = bar.viewport.new('VectorRectangle', table.merge({ width = '100%', height = '100%' }, lTheme.scrollbar.bkgd))
-
-         bar.sliderHostVP = vp.new('VectorViewport', { name='VSliderHostVP', y = 0, width = '100%', yOffset = 0, overflow = VOF_HIDDEN })
-         bar.sliderVP = bar.sliderHostVP.new('VectorViewport', { name='VSliderVP', width = lBreadth, height = bar.sliderHostVP.height, overflow = VOF_HIDDEN })
+         bar_theme = lTheme.scrollbar_v ?? lTheme.scrollbar
+         bar.{
+            viewport     = vp,
+            direction    = 'V',
+            theme        = bar_theme,
+            barBkgd      = bar.viewport.new('VectorRectangle', table.merge({ width = '100%', height = '100%' }, bar_theme.bkgd)),
+            sliderHostVP = vp.new('VectorViewport', { name='VSliderHostVP', y = 0, width = '100%', yOffset = 0, overflow = VOF_HIDDEN }),
+            sliderVP     = bar.sliderHostVP.new('VectorViewport', { name='VSliderVP', width = lBreadth, height = bar.sliderHostVP.height, overflow = VOF_HIDDEN })
+         }
 
          -- Respond to the user dragging the slider.  Moving the page is all that is necessary; this
          -- will result in downstream callbacks making the necessary updates.
@@ -152,13 +146,15 @@ gui.scrollbar = function(Options)
          if &vbar?.viewport?.visibility is VIS_VISIBLE then vp.xOffset = lBreadth end
 
          bar = vp.state()
-         bar.viewport  = vp
-         bar.direction = 'H'
-
-         bar.barBkgd = bar.viewport.new('VectorRectangle', table.merge({ width = '100%', height = '100%' }, lTheme.scrollbar.bkgd))
-
-         bar.sliderHostVP = vp.new('VectorViewport', { name='HSliderHostVP', x = 0, height = '100%', xOffset = 0, overflow = VOF_HIDDEN })
-         bar.sliderVP = bar.sliderHostVP.new('VectorViewport', { name='HSliderVP', width = bar.sliderHostVP.height, height = lBreadth, overflow = VOF_HIDDEN })
+         bar_theme = lTheme.scrollbar_h ?? lTheme.scrollbar
+         bar.{
+            viewport     = vp,
+            direction    = 'H',
+            theme        = bar_theme,
+            barBkgd      = bar.viewport.new('VectorRectangle', table.merge({ width = '100%', height = '100%' }, bar_theme.bkgd)),
+            sliderHostVP = vp.new('VectorViewport', { name='HSliderHostVP', x = 0, height = '100%', xOffset = 0, overflow = VOF_HIDDEN }),
+            sliderVP     = bar.sliderHostVP.new('VectorViewport', { name='HSliderVP', width = bar.sliderHostVP.height, height = lBreadth, overflow = VOF_HIDDEN })
+         }
 
          bar.sliderVP.dragCallback = function(Viewport:obj!, X:num!, Y:num!)
             slider_width = Viewport.width
@@ -174,7 +170,26 @@ gui.scrollbar = function(Options)
          end
       end
 
-      lStyle.slider(bar, bar.sliderVP, lTheme)
+      bar.slider = { viewport = bar.sliderVP }
+      bar.slider.bkRect = bar.sliderVP.new('VectorRectangle', table.merge({
+         width = '100%', height = '100%'
+      }, bar.theme.fore))
+
+      bar.sliderVP.mtSubscribeInput(JTYPE_CROSSING, function(Viewport:obj!, Msg)
+         redraw = false
+         repeat
+            if Msg.type is JET_CROSSED_IN then
+               gui.applyStyle(bar.slider.bkRect, bar.theme.foreHighlight)
+               redraw = true
+            elseif Msg.type is JET_CROSSED_OUT then
+               gui.applyStyle(bar.slider.bkRect, bar.theme.fore)
+               redraw = true
+            end
+            Msg = Msg.next
+         until not Msg
+
+         if redraw then Viewport.acDraw() end
+      end)
 
       -- Capture user interactivity within the bar area.
 
@@ -202,67 +217,75 @@ gui.scrollbar = function(Options)
       return bar
    end
 
+   -- Compute the distance to scroll for a wheel event along one axis.
+
+   function wheelDelta(PageLength:num!, ViewLength:num!, Value:num!):num
+      length = PageLength - ViewLength
+      if length <= 0 then return 0 end
+      if length > ViewLength then length = ViewLength end
+      return -Value * length * 0.06
+   end
+
+   -- The slider and possibly the page need to be repositioned whenever the view is resized.
+
+   function viewFeedback(Viewport:obj!, Event)
+      px = lPage.x
+      py = lPage.y
+      pw = lPage.width
+
+      if lPageMode is 'dynamic' then
+         nw = lMinWidth
+         if nw < lView.width then -- Maximise page width in dynamic mode
+            if px != 0 then
+               px = 0
+               lPage.x = 0
+            end
+            nw = lView.width
+         end
+
+         if pw != nw then
+            lPage.width = nw
+            pw = nw
+         end
+      end
+
+      if px + pw < lView.width then
+         x = lView.width - pw
+         if x > 0 then x = 0 end
+         if px != x then lPage.x = math.floor(x) end
+      end
+
+      if py + lPage.height < lView.height then
+         y = lView.height - lPage.height
+         if y > 0 then y = 0 end
+         if py != y then lPage.y = math.floor(y) end
+      end
+
+      recalcSlidersFromView()
+   end
+
+   function pageFeedback(Viewport:obj!, Event)
+      recalcSlidersFromView()
+   end
+
+   function pageInput(Viewport:obj!, Events)
+      ev = Events
+      while ev do
+         if ev.type is JET_WHEEL_X then
+            delta = wheelDelta(lPage.width, lView.width, ev.value)
+            if delta != 0 then self.scrollPage(delta, 0) end
+         elseif ev.type is JET_WHEEL then
+            delta = wheelDelta(lPage.height, lView.height, ev.value)
+            if delta != 0 then self.scrollPage(0, delta) end
+         end
+         ev = ev.next
+      end
+   end
+
    function doSubscriptions()
-      -- The slider and possibly the page need to be repositioned whenever the view is resized.
-
-      lView.mtSubscribeFeedback(FM_PATH_CHANGED, function(Viewport:obj!, Event)
-         px = lPage.x
-         py = lPage.y
-         pw = lPage.width
-
-         if lPageMode is 'dynamic' then
-            nw = lMinWidth
-            if nw < lView.width then -- Maximise page width in dynamic mode
-               if px != 0 then
-                  px = 0
-                  lPage.x = 0
-               end
-               nw = lView.width
-            end
-            if pw != nw then
-               lPage.width = nw
-               pw = nw
-            end
-         end
-
-         if px + pw < lView.width then
-            x = lView.width - pw
-            if x > 0 then x = 0 end
-            if px != x then lPage.x = math.floor(x) end
-         end
-
-         if py + lPage.height < lView.height then
-            y = lView.height - lPage.height
-            if y > 0 then y = 0 end
-            if py != y then lPage.y = math.floor(y) end
-         end
-
-         recalcSlidersFromView()
-      end)
-
-      lPage.mtSubscribeFeedback(FM_PATH_CHANGED, function(Viewport:obj!, Event)
-         recalcSlidersFromView()
-      end)
-
-      lPage.mtSubscribeInput(JTYPE_EXT_MOVEMENT, function(Viewport:obj!, Events)
-         ev = Events
-         while ev do
-            if ev.type is JET_WHEEL then
-               length = lPage.height - lView.height
-               if length > 0 then
-                  if length > lView.height then length = lView.height end
-                  self.scrollPage(0, -ev.value * length * 0.06)
-               end
-            elseif ev.type is JET_WHEEL_X then
-               length = lPage.width - lView.width
-               if length > 0 then
-                  if length > lView.width then length = lView.width end
-                  self.scrollPage(-ev.value * length * 0.06, 0)
-               end
-            end
-            ev = ev.next
-         end
-      end)
+      lView.mtSubscribeFeedback(FM_PATH_CHANGED, viewFeedback)
+      lPage.mtSubscribeFeedback(FM_PATH_CHANGED, pageFeedback)
+      lPage.mtSubscribeInput(JTYPE_EXT_MOVEMENT, pageInput)
    end
 
    self.scrollPage = function(DeltaX:num!, DeltaY:num!)
@@ -288,6 +311,56 @@ gui.scrollbar = function(Options)
          lPage.y = math.floor(y)
          lTarget.acDraw()
       end
+   end
+
+   -- Clients forward key presses from their keyboard subscription.  Returns true if the key was consumed for scrolling.
+   -- Arrow keys move by a line, Page Up/Down move by most of a view, Home/End move to the start or end of the page.
+
+   self.keyPress = function(Qualifiers:num!, Code:num!):bool
+      if not (Qualifiers has KQ_PRESSED) then return false end
+      if Qualifiers has (KQ_CTRL | KQ_ALT | KQ_COMMAND) then return false end
+
+      can_v = (&vbar != nil) and (lPage.height > lView.height)
+      can_h = (&hbar != nil) and (lPage.width > lView.width)
+
+      if Code is KEY_UP then
+         if not can_v then return false end
+         &scrollPage(0, math.max(lBreadth, lView.height * 0.1))
+      elseif Code is KEY_DOWN then
+         if not can_v then return false end
+         &scrollPage(0, -math.max(lBreadth, lView.height * 0.1))
+      elseif Code is KEY_LEFT then
+         if not can_h then return false end
+         &scrollPage(math.max(lBreadth, lView.width * 0.1), 0)
+      elseif Code is KEY_RIGHT then
+         if not can_h then return false end
+         &scrollPage(-math.max(lBreadth, lView.width * 0.1), 0)
+      elseif Code is KEY_PAGE_UP then
+         if not can_v then return false end
+         &scrollPage(0, lView.height * 0.9)
+      elseif Code is KEY_PAGE_DOWN then
+         if not can_v then return false end
+         &scrollPage(0, -(lView.height * 0.9))
+      elseif Code is KEY_HOME then
+         if can_v then
+            &scrollPage(0, -lPage.y)
+         elseif can_h then
+            &scrollPage(-lPage.x, 0)
+         else
+            return false
+         end
+      elseif Code is KEY_END then
+         if can_v then
+            &scrollPage(0, -lPage.height)
+         elseif can_h then
+            &scrollPage(-lPage.width, 0)
+         else
+            return false
+         end
+      else
+         return false
+      end
+      return true
    end
 
    -- NB: As a client you can set the page height and width directly if no mode change is required.
@@ -316,6 +389,11 @@ gui.scrollbar = function(Options)
    end
 
    self.changeViewport = function(View, Page)
+      try -- The previous view and page may have been freed already
+        lView.mtSubscribeFeedback(0, viewFeedback)
+        lPage.mtSubscribeFeedback(0, pageFeedback)
+        lPage.mtSubscribeInput(0, pageInput)
+      end
       lView = View
       lPage = Page
       recalcSlidersFromView()
