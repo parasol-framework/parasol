@@ -32,59 +32,59 @@ gui.toolbar = function(Options)
    }
 
    function sendFeedback()
-      item = self._current
-      if item and item.callback and (not item.disabled) and (not self._disabled) then
+      item = &_current
+      if item and item.callback and (not item.disabled) and (not &_disabled) then
          item.callback(self, item)
       end
    end
 
    function firstIcon():table -- Return the first item that is an icon
-      item = self._first
+      item = &_first
       while ((item != nil) and (item.type != TI_ICON)) do item = item.next end
       return item
    end
 
    function lastIcon():table -- Return the last item that is an icon
-      item = self._last
+      item = &_last
       while ((item != nil) and (item.type != TI_ICON)) do item = item.prev end
       return item
    end
 
    function newItem(Type, Name, ID)
-      if ID and self._lookup[ID] then raise 'An item with identifier ' .. ID .. ' already exists.' end
+      if ID and &_lookup[ID] then raise 'An item with identifier ' .. ID .. ' already exists.' end
 
       item = { type=Type, id=ID, name=Name, x=0, y=0, width=0, height=0 }
       if Name?? then
          item.displayName = Name
       end
 
-      if self._last then self._last.next = item end
-      item.prev = self._last
+      if &_last then &_last.next = item end
+      item.prev = &_last
       item.next = nil
-      self._last = item
-      self._first ?= item
+      &_last = item
+      &_first ?= item
 
-      if ID then self._lookup[ID] = item end
+      if ID then &_lookup[ID] = item end
       return item
    end
 
    function cancelTipTimer()
-      if self._tipTimer then
-         mSys.UpdateTimer(self._tipTimer, 0)
-         self._tipTimer = nil
+      if &_tipTimer then
+         mSys.UpdateTimer(&_tipTimer, 0)
+         &_tipTimer = nil
       end
    end
 
    function startTipTimer()
-      if self._tipTimer then -- Reset existing timer
-         mSys.UpdateTimer(self._tipTimer, lTipDelay)
+      if &_tipTimer then -- Reset existing timer
+         mSys.UpdateTimer(&_tipTimer, lTipDelay)
       else
          local err
-         err, self._tipTimer = mSys.SubscribeTimer(lTipDelay, function(Elapsed, CurrentTime)
-            if self._current and self._current.tip?? then
-               self._tooltip = gui.tooltip({ target=self.viewport, text=self._current.tip })
+         err, &_tipTimer = mSys.SubscribeTimer(lTipDelay, function(Elapsed, CurrentTime)
+            if &_current and &_current.tip?? then
+               &_tooltip = gui.tooltip({ target=&viewport, text=&_current.tip })
             end
-            self._tipTimer = nil
+            &_tipTimer = nil
             raise ERR_Terminate
          end)
       end
@@ -93,7 +93,7 @@ gui.toolbar = function(Options)
    -- Return the toolbar item located at position (x,y)
 
    function getCursorItem(X, Y):table
-      item = self._first
+      item = &_first
       while (item) do
          if (X >= item.x) and (X < item.x + item.width) and (Y >= item.y) and (Y <  item.y + item.height) then
             if item.type is TI_ICON then return item end
@@ -105,16 +105,10 @@ gui.toolbar = function(Options)
    -- Position a highlighting rectangle so that it spans the breadth of the toolbar at the item's location.
 
    function coverItem(Vector, Item)
-      if self._horizontal then
-         Vector.x      = Item.x
-         Vector.y      = 0
-         Vector.width  = Item.width
-         Vector.height = self.viewport.height
+      if &_horizontal then
+         Vector.{ x = Item.x, y = 0, width = Item.width, height = &viewport.height }
       else
-         Vector.x      = 0
-         Vector.y      = Item.y
-         Vector.width  = self.viewport.width
-         Vector.height = Item.height
+         Vector.{ x = 0, y = Item.y, width = &viewport.width, height = Item.height }
       end
    end
 
@@ -131,51 +125,51 @@ gui.toolbar = function(Options)
    -- Reflect an item's disabled and selected states in its graphics.
 
    function updateItemState(Item)
-      opacity = (self._disabled or Item.disabled) ? 0.5 : 1.0
-      Item.icon?.opacity = opacity
-      Item.vectorText?.opacity = opacity
+      opacity = (&_disabled or Item.disabled) ? 0.5 : 1.0
+      Item.icon?.opacity         = opacity
+      Item.vectorText?.opacity   = opacity
       Item.vSelected?.visibility = Item.selected ? 'visible' : 'hidden'
    end
 
    -- Highlight selected item (for keyboard item selection)
 
    function highlightItem(Item)
-      if (not Item) or (self._kbItem is Item) then return end
+      if (not Item) or (&_kbItem is Item) then return end
 
-      if self._current and (self._current != Item) then
-         setItemHighlight(self._current, false)
+      if &_current and (&_current != Item) then
+         setItemHighlight(&_current, false)
       end
 
-      self._vHover.visibility = 'hidden'
-      self._current = Item
-      self._kbItem  = Item
-      coverItem(self.kbIcon, Item)
-      self.kbIcon.visibility = 'visible'
+      &_vHover.visibility = 'hidden'
+      &_current = Item
+      &_kbItem  = Item
+      coverItem(&kbIcon, Item)
+      &kbIcon.visibility = 'visible'
 
-      self.viewport.acDraw()
+      &viewport.acDraw()
    end
 
    function hoverUpdate(Item, StateChanged) -- Highlight items that the user hovers over.
-      if (self._current is Item) and (StateChanged != true) then return end
+      if (&_current is Item) and (StateChanged != true) then return end
 
-      if self._current then
-         setItemHighlight(self._current, false)
+      if &_current then
+         setItemHighlight(&_current, false)
       end
 
-      self.kbIcon.visibility = 'hidden'
-      self._kbItem  = nil
-      self._current = Item
+      &kbIcon.visibility = 'hidden'
+      &_kbItem  = nil
+      &_current = Item
 
-      if self._current and (not self._current.disabled) and (not self._disabled) then
-         self._vHover.fill = self._clicked ? self._selectFill : self._hoverFill
+      if &_current and (not &_current.disabled) and (not &_disabled) then
+         &_vHover.fill = &_clicked ? &_selectFill : &_hoverFill
          setItemHighlight(Item, true)
-         coverItem(self._vHover, self._current)
-         self._vHover.visibility = 'visible'
+         coverItem(&_vHover, &_current)
+         &_vHover.visibility = 'visible'
       else
-         self._vHover.visibility = 'hidden'
+         &_vHover.visibility = 'hidden'
       end
 
-      self.viewport.acDraw()
+      &viewport.acDraw()
    end
 
    -- Main routine for arranging items within the toolbar's viewport.  It can be called again to rebuild the layout
@@ -183,57 +177,59 @@ gui.toolbar = function(Options)
 
    function arrangeItems()
       groupOffset = 0
-      if self._groupCount > 0 then
-         groupOffset = self._groupMargin
+      if &_groupCount > 0 then
+         groupOffset = &_groupMargin
       end
 
-      cell_size = tb_theme.iconSize + (self._cellMargin * 2)
+      cell_size = tb_theme.iconSize + (&_cellMargin * 2)
 
       -- Transient highlight state refers to the graphics being rebuilt, so it is reset.
 
-      if self._current then setItemHighlight(self._current, false) end
-      self._current = nil
-      self._clicked = nil
-      self._kbItem  = nil
+      if &_current then setItemHighlight(&_current, false) end
+      &_current = nil
+      &_clicked = nil
+      &_kbItem  = nil
 
       -- The _groupClip simplifies masking and 'vg' provides a container for hosting vectors.
 
-      self._groupClip?.free()
-      self._groupClip = nil
-      self.vg?.free()
+      &_groupClip?.free()
+      &_groupClip = nil
+      &vg?.free()
 
-      if self._groupCount > 0 then
-         self._groupClip = self.viewport.scene.new('VectorClip', { name='GroupMask', units='UserSpace' })
+      if &_groupCount > 0 then
+         &_groupClip = &viewport.scene.new('VectorClip', { name='GroupMask', units='UserSpace' })
       end
 
-      self.vg = self.viewport.new('VectorGroup', { name='ItemGroup' })
+      &vg = &viewport.new('VectorGroup', { name='ItemGroup' })
 
       -- Selection highlights are hosted in their own group so that they draw above the group backgrounds (which are
       -- moved to the back) and below the hover highlight.
 
-      self._vSelection = self.vg.new('VectorGroup', { name='Selections' })
-      if self._groupClip then self._vSelection.mask = self._groupClip end
+      &_vSelection = &vg.new('VectorGroup', { name='Selections' })
+      if &_groupClip then &_vSelection.mask = &_groupClip end
 
-      highlight_round = (self._groupCount > 0) ? 0 : self._round
+      highlight_round = (&_groupCount > 0) ? 0 : &_round
 
-      self._vHover = self.vg.new('VectorRectangle', {
-         fill = self._hoverFill, x = 0, y = 0, width = 1, height = 1, visibility = 'hidden',
+      &_vHover = &vg.new('VectorRectangle', {
+         fill = &_hoverFill, x = 0, y = 0, width = 1, height = 1, visibility = 'hidden',
          roundX = highlight_round, roundY = highlight_round
       })
-      if self._groupClip then self._vHover.mask = self._groupClip end
+
+      if &_groupClip then &_vHover.mask = &_groupClip end
 
       -- The keyboard highlighter shares the hover highlight's depth so that text items, which are created later in
       -- the group, draw above it.
 
-      self.kbIcon = self.vg.new('VectorRectangle', table.merge({
+      &kbIcon = &vg.new('VectorRectangle', table.merge({
          x = 0, y = 0, width = 1, height = 1, visibility = 'hidden',
       }, tb_theme.highlight))
-      if self._groupClip then self.kbIcon.mask = self._groupClip end
 
-      item = self._first
+      if &_groupClip then &kbIcon.mask = &_groupClip end
+
+      item = &_first
 
       local x:num, y:num
-      if self._horizontal then
+      if &_horizontal then
          x = 0
          y = groupOffset
       else
@@ -250,7 +246,7 @@ gui.toolbar = function(Options)
             item.y = y
 
             local seq:str
-            if self._horizontal then
+            if &_horizontal then
                item.width  = 6
                item.height = cell_size
                seq = string.format('M%f,%f l0,%f', x+(item.width-1) * 0.5, y+1, item.height)
@@ -262,18 +258,18 @@ gui.toolbar = function(Options)
 
             dash_size = tb_theme.groupBorder.strokeWidth ?? gui.pixel('1.5pt')
 
-            self.vg.new('VectorPath', table.merge({
+            &vg.new('VectorPath', table.merge({
                name = 'break', sequence = seq, dashArray = array<double> { dash_size, dash_size }
             }, tb_theme.groupBorder))
 
-            if self._horizontal then
+            if &_horizontal then
                x += item.width
             else
                y += item.height
             end
          elseif item.type is TI_GROUP then
             if not Options.flush then
-               if self._horizontal then
+               if &_horizontal then
                   x += not item.prev ? groupOffset : (tb_theme.iconSize * 0.25)
                else
                   y += not item.prev ? groupOffset : (tb_theme.iconSize * 0.25)
@@ -284,69 +280,69 @@ gui.toolbar = function(Options)
 
                item.x = x
                item.y = y
-               if self._horizontal then
+               if &_horizontal then
                   item.height = cell_size
                else
                   item.width = cell_size
                end
 
-               item.bkgd = self.vg.new('VectorRectangle', table.merge({
-                  name = 'groupbkgd', x = x, y = y, roundX = self._round, roundY = self._round, width = 1, height = 1
+               item.bkgd = &vg.new('VectorRectangle', table.merge({
+                  name = 'groupbkgd', x = x, y = y, roundX = &_round, roundY = &_round, width = 1, height = 1
                }, tb_theme.bkgd))
 
                item.bkgd.acMoveToBack()
 
-               item.border = self.vg.new('VectorRectangle', table.merge({
-                  name = 'grouprect', x = x, y = y, roundX = self._round, roundY = self._round, width = 1, height = 1
+               item.border = &vg.new('VectorRectangle', table.merge({
+                  name = 'grouprect', x = x, y = y, roundX = &_round, roundY = &_round, width = 1, height = 1
                }, tb_theme.groupBorder))
 
-               if self._groupClip then
-                  item.clip = self._groupClip.viewport.new('VectorRectangle', {
-                     name = 'groupclip', x = x, y = y, roundX = self._round, roundY = self._round, width = 1, height = 1
+               if &_groupClip then
+                  item.clip = &_groupClip.viewport.new('VectorRectangle', {
+                     name = 'groupclip', x = x, y = y, roundX = &_round, roundY = &_round, width = 1, height = 1
                   })
                end
             end
          elseif item.type is TI_ICON then
-            item.x      = x
-            item.y      = y
-            item.width  = cell_size
-            item.height = cell_size
+            item.{ x = x, y = y, width = cell_size, height = cell_size }
 
             if item.icon then
-               item.icon.x = x + self._cellMargin
-               item.icon.y = y + self._cellMargin
+               item.icon.{ x = x + &_cellMargin, y = y + &_cellMargin }
                item.icon.acMoveToFront()
             elseif item.displayName?? then
-               fill_name = f'tbar_{self._iconTheme}'
-               gui.simpleGradient(self.viewport.scene, fill_name, gui.iconThemes[self._iconTheme], 0, 0, 0, 1, 'boundingbox', true)
-               item.textFill = f'url(#{fill_name})'
+               -- The text is hosted by its own group so that gui.applyIconTheme() styles it without affecting
+               -- other vectors in the toolbar.  The theme gradients are shared with the icons in the scene.
 
-               if self._iconHighlight and (self._iconTheme != self._iconHighlight) then
-                  alt_name = f'tbar_{self._iconHighlight}'
-                  gui.simpleGradient(self.viewport.scene, alt_name, gui.iconThemes[self._iconHighlight], 0, 0, 0, 1, 'boundingbox', true)
-                  item.textAltFill = f'url(#{alt_name})'
-               end
+               text_group = &vg.new('VectorGroup', { name='itemtext' })
 
-               item.vectorText = self.vg.new('VectorText', {
-                  x        = x + self._cellMargin,
+               item.vectorText = text_group.new('VectorText', {
+                  x        = x + &_cellMargin,
                   face     = gui.fonts.widget.face,
                   fontSize = tb_theme.iconSize * 0.75,
                   weight   = 500,
-                  fill     = item.textFill,
                   string   = item.displayName
                })
 
+               if &_iconHighlight and (&_iconTheme != &_iconHighlight) then
+                  gui.applyIconTheme(&_iconHighlight, text_group)
+                  item.textAltFill = item.vectorText.fill
+                  item.vectorText.stroke = nil -- Prevent the highlight stroke from carrying into the normal theme
+               end
+
+               gui.applyIconTheme(&_iconTheme, text_group)
+               item.textFill = item.vectorText.fill
+
                -- Text widens its cell in horizontal toolbars.  Vertical toolbars retain a uniform column width.
 
-               if self._horizontal then
+               if &_horizontal then
                   err, bx, by, bw, bh = item.vectorText.mtGetBoundary(0)
-                  item.width = bw + (self._cellMargin * 2)
+                  item.width = bw + (&_cellMargin * 2)
                end
+
                item.vectorText.y = item.y + (item.height * 0.5) + (item.vectorText.displaySize * 0.5)
             end
 
-            item.vSelected = self._vSelection.new('VectorRectangle', {
-               fill=self._selectFill, x=0, y=0, width=1, height=1, visibility='hidden',
+            item.vSelected = &_vSelection.new('VectorRectangle', {
+               fill=&_selectFill, x=0, y=0, width=1, height=1, visibility='hidden',
                roundX=highlight_round, roundY=highlight_round
             })
             coverItem(item.vSelected, item)
@@ -358,7 +354,7 @@ gui.toolbar = function(Options)
                item.sticker.viewport.acMoveToFront()
             end
 
-            if self._horizontal then
+            if &_horizontal then
                x += item.width
             else
                y += item.height
@@ -368,11 +364,11 @@ gui.toolbar = function(Options)
 
             if currentGroup then
                item.group = currentGroup
-               if self._horizontal then
+               if &_horizontal then
                   currentGroup.width  = x - currentGroup.x
-                  currentGroup.height = self.viewport.height - (groupOffset * 2)
+                  currentGroup.height = &viewport.height - (groupOffset * 2)
                else
-                  currentGroup.width  = self.viewport.width - (groupOffset * 2)
+                  currentGroup.width  = &viewport.width - (groupOffset * 2)
                   currentGroup.height = y - currentGroup.y
                end
 
@@ -392,7 +388,7 @@ gui.toolbar = function(Options)
                end
 
                if spanCount is currentGroup.span then
-                  if self._horizontal then
+                  if &_horizontal then
                      x += groupOffset -- Gap between groups
                   else
                      y += groupOffset
@@ -405,28 +401,28 @@ gui.toolbar = function(Options)
          item = item.next
       end
 
-      if self._arrangedSize then
-         if self._horizontal then
-            self.viewport.width = x
+      if &_arrangedSize then
+         if &_horizontal then
+            &viewport.width = x
          else
-            self.viewport.height = y
+            &viewport.height = y
          end
       end
-      self._arranged = true
+      &_arranged = true
    end
 
    -- Size the toolbar's breadth to suit its content, then arrange the items.
 
    function updateLayout()
-      self._colBreadth = tb_theme.iconSize + (self._cellMargin * 2)
-      if self._groupCount > 0 then
-         self._colBreadth += (self._groupMargin*2)
+      &_colBreadth = tb_theme.iconSize + (&_cellMargin * 2)
+      if &_groupCount > 0 then
+         &_colBreadth += (&_groupMargin*2)
       end
 
-      if self._horizontal then
-         self.viewport.height = self._colBreadth
+      if &_horizontal then
+         &viewport.height = &_colBreadth
       else
-         self.viewport.width = self._colBreadth
+         &viewport.width = &_colBreadth
       end
 
       arrangeItems()
@@ -435,9 +431,9 @@ gui.toolbar = function(Options)
    -- Items added after the toolbar has been created require the layout to be rebuilt.
 
    function itemsChanged()
-      if self._arranged then
+      if &_arranged then
          updateLayout()
-         self.viewport.acDraw()
+         &viewport.acDraw()
       end
    end
 
