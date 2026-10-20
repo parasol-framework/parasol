@@ -1337,13 +1337,18 @@ private:
          Call.builtin_method.reset();
          return;
       }
-      if ((not descriptor.proved() and Call.argument_syntax != CallArgumentSyntax::Synthetic) or
-          receiver_type IS TiriType::Any or receiver_type IS TiriType::Unknown or
+      bool unresolved = (not descriptor.proved() and Call.argument_syntax != CallArgumentSyntax::Synthetic) or
+         receiver_type IS TiriType::Any or receiver_type IS TiriType::Unknown;
+
+      // A nullable receiver of a known type takes the runtime path so that a nil value raises instead of reaching
+      // the built-in, but its type is resolved and does not warrant a warning.
+
+      if (unresolved or
           (descriptor.nullable and not safe and Call.argument_syntax != CallArgumentSyntax::Synthetic)) {
          Call.builtin_method.reset();
          if (Call.argument_syntax IS CallArgumentSyntax::Parenthesised) {
             Call.runtime_builtin_method = CallExprPayload::RuntimeBuiltinMethodCall{ member, safe };
-            this->report_unresolved_method(Call, *receiver, member);
+            if (unresolved) this->report_unresolved_method(Call, *receiver, member);
          }
          return;
       }
@@ -1641,10 +1646,14 @@ private:
       if (Base.primary IS TiriType::Object and Base.object_class_id != CLASSID::NIL and Member) {
          auto field = lookup_field_type(Base.object_class_id, Member->hash);
          if (field and field->type != TiriType::Unknown) {
+            // Reference fields read as nil when unset, e.g. an object field with no target, so only numeric
+            // fields can be trusted as present.
+
             StaticValueDescriptor result;
             result.primary = field->type;
             result.object_class_id = field->object_class_id;
             result.proof = StaticProof::Trusted;
+            result.nullable = field->type != TiriType::Num;
             return result;
          }
       }
