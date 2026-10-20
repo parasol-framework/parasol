@@ -545,7 +545,7 @@ ERR render_filter(extVectorFilter *Self, extVectorViewport *Viewport, extVector 
 {
    kt::Log log(__FUNCTION__);
 
-   if (!Vector) return log.warning(ERR::NullArgs);
+   if ((!Vector) or (!Viewport)) return log.warning(ERR::NullArgs);
    if (Self->Disabled) return ERR::NothingDone;
    if (!Self->Effects) return log.warning(ERR::FieldNotSet);
 
