@@ -126,3 +126,74 @@ end
          f'Clip pattern should multiply ancestor, shape, fill and pattern opacity (got {combined})')
    end
 end
+
+function layeredClipPixels(Fill:str!, Units:num!):<num, num>
+   local scene <close> = obj.new('VectorScene', { pageWidth=120, pageHeight=80 })
+   local viewport = scene.new('VectorViewport', { width='100%', height='100%' })
+   local stops = array<struct<GradientStop>>
+   for _, entry in array<table> {
+      { offset=0, alpha=1 }, { offset=0.5, alpha=1 }, { offset=0.5, alpha=0 }, { offset=1, alpha=0 }
+   } do
+      local stop = struct<GradientStop>
+      stop.offset = entry.offset
+      stop.rgb.red = 1
+      stop.rgb.green = 1
+      stop.rgb.blue = 1
+      stop.rgb.alpha = entry.alpha
+      stops.push(stop)
+   end
+   local gradient = scene.new('GradientLinear', {
+      units=VUNIT_BOUNDING_BOX, x1=0, y1=0, x2=1, y2=0, stops=stops
+   })
+   check scene.mtAddDef('half', gradient)
+   local pattern = scene.new('VectorPattern', {
+      width=10, height=10, units=VUNIT_USERSPACE, spreadMethod=VSPREAD_REPEAT
+   })
+   pattern.viewport.new('VectorRectangle', { width=10, height=10, fill='white' })
+   check scene.mtAddDef('white_pattern', pattern)
+
+   local clip = scene.new('VectorClip', { flags=VCLF_APPLY_FILLS, units=Units })
+   local size = Units is VUNIT_BOUNDING_BOX ? 1 : 40
+   if Units is VUNIT_BOUNDING_BOX then
+      clip.viewport.viewWidth = 1
+      clip.viewport.viewHeight = 1
+   end
+   clip.viewport.new('VectorRectangle', { width=size, height=size, fill=Fill })
+   viewport.new('VectorRectangle', { width=40, height=40, fill='red', mask=clip })
+   local bmp <close> = newBitmap(120, 80)
+   drawScene(scene, bmp)
+   return struct.toTable(mGfx.ReadRGBPixel(bmp, 10, 20)).red,
+      struct.toTable(mGfx.ReadRGBPixel(bmp, 30, 20)).red
+end
+
+@Test function ClipSolidLayersFollowPainterOrder()
+   for units in values(array<int> { VUNIT_USERSPACE, VUNIT_BOUNDING_BOX }) do
+      for _, fill in array<str> { 'none;black;white', 'white, black, none' } do
+         local left, right = layeredClipPixels(fill, units)
+         assert((left > 245) and (right > 245), f'Upper white clip layer must reveal the target for {fill}')
+      end
+      for _, fill in array<str> { 'none;white;black', 'black, white, none' } do
+         local left, right = layeredClipPixels(fill, units)
+         assert((left is 0) and (right is 0), f'Upper black clip layer must hide the target for {fill}')
+      end
+   end
+end
+
+@Test function ClipGradientLayersCompositeOverLowerPainters()
+   for units in values(array<int> { VUNIT_USERSPACE, VUNIT_BOUNDING_BOX }) do
+      local _, red = layeredClipPixels('red', units)
+      for _, fill in array<str> { 'none;red;url(#half)', 'url(#half), red, none' } do
+         local left, right = layeredClipPixels(fill, units)
+         assert(left > 245, f'Upper gradient must reveal the target on the left for {fill}')
+         assert((red > 0) and (math.abs(right - red) <= 1),
+            f'Transparent gradient must preserve the lower red painter for {fill}')
+      end
+   end
+end
+
+@Test function ClipExtendedPatternLayerIsRendered()
+   for units in values(array<int> { VUNIT_USERSPACE, VUNIT_BOUNDING_BOX }) do
+      local left, right = layeredClipPixels('none;black;url(#white_pattern)', units)
+      assert((left > 245) and (right > 245), 'An extended pattern painter must reveal the masked target')
+   end
+end
