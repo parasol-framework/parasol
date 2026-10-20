@@ -36,17 +36,15 @@ gui.icon = function(Options:table!)
       __gc = function()
          &svg?.free()
          &viewport?.free()
-         &svgGradient?.free()
          &svg = nil
          &viewport = nil
          &iconVP = nil
-         &svgGradient = nil
       end
    })
 
    -- Weak bindings retain the widget only for the duration of each callback.
 
-   text_words:array<str>, text_group:obj, icon_theme:table, theme:table
+   text_words:array<str>, text_group:obj, icon_theme:any, theme:table
 
    click_state  = { held=false, x=0, y=0 }
    words        = array<table>
@@ -229,7 +227,7 @@ gui.icon = function(Options:table!)
             path   = imageLocation(Path)
          })
 
-         gui.applyFill(replacement_vp, f'url(#iconFill{&viewport.id})')
+         gui.applyIconTheme(icon_theme, replacement_vp)
       except ex
          replacement_svg?.free()
          replacement_vp.free()
@@ -276,7 +274,8 @@ gui.icon = function(Options:table!)
       assert(Options.image??, 'The image option is required.')
 
       theme = gui.getTheme(Options.target)
-      theme_colour = gui.iconThemes[theme.page.icon ?? 'carbon']
+      icon_theme = theme.page.icon ?? 'carbon'
+      if icon_theme is <str> and not gui.iconThemes[icon_theme] then icon_theme = 'carbon' end
 
       &viewport = Options.target.new('VectorViewport', {
          x           = Options.x ?? 0,
@@ -291,9 +290,9 @@ gui.icon = function(Options:table!)
          x = 0, y = 0, width = icon_size, height = icon_size
       })
 
-      local viewport = &viewport
+      local vp = &viewport
       if Options.draggable then
-         viewport.dragCallback = function[<weak> self](Viewport:obj!, X:num!, Y:num!)
+         vp.dragCallback = function[<weak> self](Viewport:obj!, X:num!, Y:num!)
             if &disabled then return end
             Viewport.x = X
             Viewport.y = Y
@@ -303,14 +302,11 @@ gui.icon = function(Options:table!)
 
       src = imageLocation(Options.image)
       assert(src, 'Invalid image source ' .. Options.image)
+
       &svg = obj.new('svg', { target=&iconVP, path=src })
+      gui.applyIconTheme(icon_theme, &iconVP)
 
-      gname = 'iconFill' .. &viewport.id
-      &svgGradient = gui.simpleGradient(&iconVP.scene, gname, { theme_colour.first, theme_colour.last },
-         0, &iconVP.y, 0, 1, 'boundingbox')
-      gui.applyFill(&iconVP, f'url(#{gname})')
-
-      check viewport.mtSubscribeInput(JTYPE_BUTTON, inputFeedback)
+      check vp.mtSubscribeInput(JTYPE_BUTTON, inputFeedback)
 
       arrangeText()
       if Options.disabled then &disable() end
