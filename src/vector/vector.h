@@ -815,7 +815,7 @@ class extVector : public objVector {
    VIJ InnerJoin;
    VMF GuideFlags;
 
-   extPainter Fill[2], Stroke;
+   extPainter Fill, Stroke;       // Fill is the bottom-most fill painter
    double FinalX, FinalY;         // Used by Viewport to define the target X,Y; also VectorText to position the text' final position.
    TClipRectangle<double> Bounds; // Must be calculated by GeneratePath() and called from calc_full_boundary()
    Unit StrokeWidth;
@@ -826,6 +826,7 @@ class extVector : public objVector {
    void   (*GeneratePath)(extVector *, agg::path_storage &);
    std::unique_ptr<agg::rasterizer_scanline_aa<>> StrokeRaster;
    std::unique_ptr<agg::rasterizer_scanline_aa<>> FillRaster;
+   std::unique_ptr<std::vector<extPainter>> ExtFill; // Painters drawn over Fill, in drawing order.  Null if unused.
    std::unique_ptr<std::vector<FeedbackSubscription>> FeedbackSubscriptions;
    std::unique_ptr<std::vector<InputSubscription>> InputSubscriptions;
    std::unique_ptr<std::vector<FUNCTION>> KeyboardSubscriptions;
@@ -843,7 +844,6 @@ class extVector : public objVector {
    uint16_t  ButtonLock:1;
    uint16_t  DisableHitTesting:1;
    uint16_t  ResizeSubscription:1;
-   uint16_t  FGFill:1;
    uint16_t  Stroked:1;
    uint16_t  ValidState:1;         // Can be set to false during path generation if the shape is invalid
    uint16_t  RequiresRedraw:1;
@@ -867,6 +867,11 @@ class extVector : public objVector {
    }
 
    ~extVector();
+
+   void reset_fill() {
+      Fill.reset();
+      ExtFill.reset();
+   }
 
    // Methods
 

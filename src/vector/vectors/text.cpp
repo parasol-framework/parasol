@@ -226,7 +226,7 @@ class extVectorText : public extVector {
       txFontSize      = 16; // Pixel units, equivalent to 12pt
       txCharLimit     = 0x7fffffff;
       txFamily        = "Noto Sans";
-      Fill[0].Colour  = FRGB(1, 1, 1, 1);
+      Fill.Colour     = FRGB(1, 1, 1, 1);
       txLetterSpacing = 1.0;
       DisableHitTesting = true;
    }
@@ -831,7 +831,7 @@ The painter used for filling a vector path can be defined through this field usi
 string is parsed through the ~Vector.ReadPainter() function.  Please refer to it for further details on
 valid formatting.
 
-Fallback colours and dual-fill painting are supported in the same way as the @Vector.Fill field.  Please refer to it
+Fallback colours and layered fill painters are supported in the same way as the @Vector.Fill field.  Please refer to it
 for further details.
 
 *********************************************************************************************************************/
@@ -847,18 +847,14 @@ static ERR TEXT_GET_Fill(extVectorText *Self, std::string_view &Value)
 static ERR TEXT_SET_Fill(extVectorText *Self, const std::string_view &Value)
 {
    Self->FillString.clear();
-   Self->Fill[0].reset();
-   Self->Fill[1].reset();
-   Self->FGFill = false;
+   Self->reset_fill();
 
    if (Value.empty()) {
       return ERR::Okay;
    }
 
-   bool fg_fill;
-   if (auto error = read_fill_painters(Self->Scene, Value, Self->Fill, fg_fill); !error) {
+   if (auto error = read_fill_painters(Self->Scene, Value, Self->Fill, Self->ExtFill); !error) {
       Self->FillString = Value;
-      Self->FGFill = fg_fill;
 
       // Bitmap font reset/redraw required
       if (Self->txBitmapFont) reset_path(Self);
@@ -866,8 +862,7 @@ static ERR TEXT_SET_Fill(extVectorText *Self, const std::string_view &Value)
       return ERR::Okay;
    }
    else {
-      Self->Fill[0].reset();
-      Self->Fill[1].reset();
+      Self->reset_fill();
       return error;
    }
 }

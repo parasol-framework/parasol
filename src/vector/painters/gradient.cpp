@@ -118,8 +118,10 @@ static void invalidate_gradient_painter_table(extPainter &Painter, extGradient *
 static void invalidate_gradient_tables(extVector *Vector, extGradient *Target)
 {
    for (auto node=Vector; node; node=(extVector *)node->Next) {
-      invalidate_gradient_painter_table(node->Fill[0], Target);
-      invalidate_gradient_painter_table(node->Fill[1], Target);
+      invalidate_gradient_painter_table(node->Fill, Target);
+      if (node->ExtFill) {
+         for (auto &fill : *node->ExtFill) invalidate_gradient_painter_table(fill, Target);
+      }
       invalidate_gradient_painter_table(node->Stroke, Target);
 
       if (node->Child) invalidate_gradient_tables((extVector *)node->Child, Target);

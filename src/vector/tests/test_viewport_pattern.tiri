@@ -226,3 +226,41 @@ end
    assert(isBlack(bmp, VP_X + 25, VP_Y + 25), 'A full-size tile should not repeat its content')
    checkOutside(bmp, 'Full tile')
 end
+
+-- Registers a filter that floods the alpha coverage of its target with blue.
+
+function newBlueFilter(Scene):str
+   filter = Scene.new('VectorFilter')
+   filter.new('FloodFX', { colour=struct<FRGB> { red=0, green=0, blue=1, alpha=1 } })
+   filter.new('CompositeFX', { operator=OP_IN, mixType='Alpha' })
+   check Scene.mtAddDef('blue', filter)
+   return 'url(#blue)'
+end
+
+@Test function FilterOnPatternViewportRenders()
+   -- A pattern's viewport is the root of the pattern's scene and has no parent view.  Filtering it previously
+   -- crashed the renderer.
+
+   scene, viewport = newScene(PAGE)
+   pattern = newMarkerPattern(scene, { spreadMethod=VSPREAD_REPEAT })
+   pattern.viewport.filter = newBlueFilter(pattern.scene)
+   newFilledViewport(viewport)
+   bmp = newBitmap(PAGE, PAGE)
+
+   drawScene(scene, bmp)
+   assert(isBlue(bmp, VP_X + 5, VP_Y + 5), 'The filter should recolour the marker')
+   assert(isBlue(bmp, VP_X + 15, VP_Y + 15), 'The filter should recolour the tile background')
+   assert(isBlack(bmp, VP_X + 25, VP_Y + 25), 'The filter should not extend the tile content')
+   checkOutside(bmp, 'Filtered pattern viewport')
+end
+
+@Test function FilterOnSceneRootViewportRenders()
+   scene, viewport = newScene(PAGE)
+   viewport.new('VectorRectangle', { x=VP_X, y=VP_Y, width=VP_SIZE, height=VP_SIZE, fill='rgb(255,0,0)' })
+   viewport.filter = newBlueFilter(scene)
+   bmp = newBitmap(PAGE, PAGE)
+
+   drawScene(scene, bmp)
+   assert(isBlue(bmp, VP_X + 20, VP_Y + 20), 'The filter should recolour the root viewport content')
+   checkOutside(bmp, 'Filtered root viewport')
+end

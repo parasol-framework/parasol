@@ -695,10 +695,10 @@ static double distal_fill_inflation(extVector *Shape, double ViewWidth, double V
 {
    double inflation = 0;
 
-   for (auto &fill : Shape->Fill) {
-      if (not fill.Gradient) continue;
+   auto check_fill = [&](const extPainter &Fill) {
+      if (not Fill.Gradient) return;
 
-      auto gradient = (extGradient *)fill.Gradient;
+      auto gradient = (extGradient *)Fill.Gradient;
       if ((gradient->classID() IS CLASSID::GRADIENTDISTAL) and (gradient->SpreadMethod != VSPREAD::CLIP)) {
          auto distal = (extGradientDistal *)gradient;
          const double max_bound = (Shape->Bounds.width() > Shape->Bounds.height()) ? Shape->Bounds.width() :
@@ -717,6 +717,11 @@ static double distal_fill_inflation(extVector *Shape, double ViewWidth, double V
 
          if (extent > inflation) inflation = extent;
       }
+   };
+
+   check_fill(Shape->Fill);
+   if (Shape->ExtFill) {
+      for (auto &fill : *Shape->ExtFill) check_fill(fill);
    }
 
    return inflation * Shape->Transform.scale();
@@ -894,7 +899,10 @@ void SceneRenderer::draw_vectors(extVector *CurrentVector, VectorState &ParentSt
       }
 
       if (shape->classID() IS CLASSID::VECTORVIEWPORT) {
-         const bool has_fill_pattern = shape->Fill[0].Pattern or (shape->FGFill and shape->Fill[1].Pattern);
+         bool has_fill_pattern = shape->Fill.Pattern;
+         if ((not has_fill_pattern) and shape->ExtFill) {
+            has_fill_pattern = std::ranges::any_of(*shape->ExtFill, [](const auto &Fill) { return Fill.Pattern; });
+         }
          if ((shape->Child) or (has_input_boundary(shape)) or has_fill_pattern) {
             auto view = (extVectorViewport *)shape;
 
@@ -1005,10 +1013,12 @@ void SceneRenderer::draw_vectors(extVector *CurrentVector, VectorState &ParentSt
                      draw_vectors((extVectorViewport *)Pattern->Viewport, state);
                   };
 
-                  if (view->Fill[0].Pattern) draw_pattern((extVectorPattern *)view->Fill[0].Pattern);
+                  if (view->Fill.Pattern) draw_pattern((extVectorPattern *)view->Fill.Pattern);
 
-                  if ((view->FGFill) and (view->Fill[1].Pattern)) { // Support for foreground fill patterns
-                     draw_pattern((extVectorPattern *)view->Fill[1].Pattern);
+                  if (view->ExtFill) { // Support for foreground fill patterns
+                     for (auto &fill : *view->ExtFill) {
+                        if (fill.Pattern) draw_pattern((extVectorPattern *)fill.Pattern);
+                     }
                   }
                }
 
@@ -1191,8 +1201,10 @@ void SceneRenderer::draw_vectors(extVector *CurrentVector, VectorState &ParentSt
 
             if (render_path) {
                if (shape->FillRaster) {
-                  render_fill(state, *shape, *shape->FillRaster, shape->Fill[0]);
-                  if (shape->FGFill) render_fill(state, *shape, *shape->FillRaster, shape->Fill[1]);
+                  render_fill(state, *shape, *shape->FillRaster, shape->Fill);
+                  if (shape->ExtFill) {
+                     for (auto &fill : *shape->ExtFill) render_fill(state, *shape, *shape->FillRaster, fill);
+                  }
                }
 
                if (shape->StrokeRaster) {
