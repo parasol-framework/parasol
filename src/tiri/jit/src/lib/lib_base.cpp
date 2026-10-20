@@ -1271,16 +1271,19 @@ extern int luaopen_base(lua_State* L)
    reg_func_prototype("tostring", { TiriType::Str }, { TiriType::Any });
    reg_func_prototype("pairs", { TiriType::Func, TiriType::Table, TiriType::Nil }, { TiriType::Any });
    reg_func_prototype("ipairs", { TiriType::Func, TiriType::Table, TiriType::Num }, { TiriType::Any });
-   reg_func_prototype("values", { TiriType::Func, TiriType::Table, TiriType::Num }, { TiriType::Any });
+   reg_func_prototype("values", { TiriType::Func, TiriType::Nil, TiriType::Nil }, { TiriType::Any });
    reg_func_prototype("keys", { TiriType::Func, TiriType::Nil, TiriType::Nil }, { TiriType::Table });
    reg_func_prototype("forEach", { TiriType::Any }, { TiriType::Any, TiriType::Func });
    reg_func_prototype("rawget", { TiriType::Any }, { TiriType::Table, TiriType::Any });
+   reg_func_prototype("rawequal", { TiriType::Bool }, { TiriType::Any, TiriType::Any });
+   reg_func_prototype("rawlen", { TiriType::Num }, { TiriType::Any });
    reg_func_prototype("rawset", { TiriType::Table }, { TiriType::Table, TiriType::Any, TiriType::Any });
    reg_func_prototype("getmetatable", { TiriType::Any }, { TiriType::Any });
    reg_func_prototype("setmetatable", { TiriType::Table }, { TiriType::Table, TiriType::Table });
    reg_func_prototype("next", { TiriType::Any, TiriType::Any }, { TiriType::Table, TiriType::Any }, FProtoFlags::None,
       FProtoArity::required(1));
    reg_func_prototype("ltr", { TiriType::Str }, { TiriType::Str });
+   reg_func_prototype("isthunk", { TiriType::Bool }, { TiriType::Any });
    reg_func_prototype("resolve", { TiriType::Any }, { TiriType::Any });
 
    return 2;

@@ -414,7 +414,16 @@
       <type>STRING</type>
       <description>
 <p>The painter used for filling a vector path can be defined through this field using SVG compatible formatting.  The string is parsed through the <function module="Vector">ReadPainter</function> function.  Please refer to it for further details on valid formatting.</p>
-<p>It is possible to enable dual-fill painting via this field, whereby a second fill operation can follow the first by separating them with a semi-colon <code>;</code> character.  This feature makes it easy to use a common background fill and follow it with an independent foreground, alleviating the need for additional vector objects.  Be aware that this feature is intended for programmed use-cases and is not SVG compliant.</p>
+<p>A solid fallback colour can follow a <code>url()</code> reference, separated by whitespace, e.g. <code>url(#hatch) red</code>.  The fallback colour is drawn beneath the referenced paint server.</p>
+<p>Two painters can be layered by separating them with a comma or a semi-colon.  This makes it easy to use a common background fill and follow it with an independent foreground, alleviating the need for additional vector objects.  The separator determines the order in which the painters are drawn:</p>
+<list type="bullet">
+<li>Comma separated painters follow the SVG 2 paint list convention, whereby the first painter is drawn on top, e.g.
+<code>url(#hatch), powderblue</code> draws the hatch pattern over a solid fill.  Only the last painter in the list may declare a
+fallback colour.</li>
+<li>Semi-colon separated painters are drawn in the order that they are listed, e.g. <code>powderblue;url(#hatch)</code> draws the
+hatch pattern over a solid fill.  This format is a Kōtuku extension and is not SVG compliant.</li>
+</list>
+<p>If the second painter in the list cannot be read, e.g. because it references a definition that is not registered with the scene, it is ignored and the first painter is retained.  A <code>Syntax</code> error is returned if more than two painters are listed.</p>
       </description>
     </field>
 

@@ -183,7 +183,7 @@
       <type>STRING</type>
       <description>
 <p>The painter used for filling a vector path can be defined through this field using SVG compatible formatting.  The string is parsed through the <function module="Vector">ReadPainter</function> function.  Please refer to it for further details on valid formatting.</p>
-<p>It is possible to enable dual-fill painting via this field, whereby a second fill operation can follow the first by separating them with a semi-colon <code>;</code> character.  This feature makes it easy to use a common background fill and follow it with an independent foreground, alleviating the need for additional vector objects.  Be aware that this feature is intended for programmed use-cases and is not SVG compliant.</p>
+<p>Fallback colours and dual-fill painting are supported in the same way as the <class name="Vector" field="Fill">Vector.Fill</class> field.  Please refer to it for further details.</p>
       </description>
     </field>
 

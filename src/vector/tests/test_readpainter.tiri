@@ -526,6 +526,70 @@ end
 end
 
 -----------------------------------------------------------------------------------------------------------------------
+-- Result: the content following a painter, used for painter lists and SVG fallback colours
+-----------------------------------------------------------------------------------------------------------------------
+
+function readResult(IRI:str!):<num, str>
+   local painter = struct.new('VectorPainter')
+   local err, result = mVec.ReadPainter(nil, IRI, painter)
+   check err
+   return painter.colour.red, result ?? ''
+end
+
+@Test function ResultExposesCommaSeparator()
+   local red, result = readResult('red, blue')
+   assert(red is 1, 'The first painter of a comma-separated list should be parsed')
+   assert(result is ', blue', f'Result should start at the comma separator, got [{result}]')
+
+   red, result = readResult('#ff0000 , blue')
+   assert(result is ', blue', f'Whitespace before a hex separator should be skipped, got [{result}]')
+
+   red, result = readResult('rgb(255 0 0) ,blue')
+   assert(result is ',blue', f'Whitespace before a function separator should be skipped, got [{result}]')
+end
+
+@Test function ResultExposesSemicolonSeparator()
+   local red, result = readResult('red;blue')
+   assert(result is ';blue', f'Named colour result should point at the next painter, got [{result}]')
+
+   red, result = readResult('#f00 ;blue')
+   assert(result is ';blue', f'Hex result should point at the next painter, got [{result}]')
+end
+
+@Test function ResultExposesFallbackColour()
+   -- Content that does not start with a separator must be returned intact so that it can be read as a fallback.
+
+   local red, result = readResult('rgb(255,0,0) blue')
+   assert(red is 1, 'The colour preceding a fallback should be parsed')
+   assert(result is 'blue', f'Function colours must not discard trailing content, got [{result}]')
+
+   red, result = readResult('red blue')
+   assert(red is 1, 'Named colours should terminate at whitespace')
+   assert(result is 'blue', f'Named colour result should expose the trailing token, got [{result}]')
+
+   red, result = readResult('#ff0000 junk;blue')
+   assert(result is 'junk;blue', f'Hex colours must not skip ahead to the next separator, got [{result}]')
+end
+
+@Test function ResultEmptyAtEnd()
+   local red, result = readResult('rgb(255 0 0)  ')
+   assert(result is '', f'Trailing whitespace should produce an empty result, got [{result}]')
+
+   red, result = readResult('red')
+   assert(result is '', f'A lone painter should produce an empty result, got [{result}]')
+end
+
+@Test function LeadingSeparatorSkipped()
+   -- The result of a previous call can be passed back to ReadPainter() as-is.
+
+   painter = struct.new('VectorPainter')
+   check mVec.ReadPainter(nil, ', blue', painter)
+   assert(checkRGB(painter, 0, 0, 1.0, 1.0), 'A leading comma should be skipped')
+   check mVec.ReadPainter(nil, ';blue', painter)
+   assert(checkRGB(painter, 0, 0, 1.0, 1.0), 'A leading semi-colon should be skipped')
+end
+
+-----------------------------------------------------------------------------------------------------------------------
 -- Cross-verification: equivalent colours in different formats produce the same result
 -----------------------------------------------------------------------------------------------------------------------
 

@@ -1272,6 +1272,93 @@ static ERR VECTOR_GET_DisplayScale(extVector *Self, double *Value)
    return ERR::Okay;
 }
 
+//********************************************************************************************************************
+// Return the position of the first painter separator that is not enclosed by brackets, or the end of the string.
+
+static std::size_t find_painter_separator(std::string_view IRI)
+{
+   int depth = 0;
+   for (std::size_t i = 0; i < IRI.size(); i++) {
+      if (IRI[i] IS '(') depth++;
+      else if ((IRI[i] IS ')') and (depth > 0)) depth--;
+      else if ((depth IS 0) and ((IRI[i] IS ';') or (IRI[i] IS ','))) return i;
+   }
+   return IRI.size();
+}
+
+//********************************************************************************************************************
+// Read a single painter and its optional SVG fallback colour, e.g. 'url(#thing) rgb(values)'.  The fallback colour
+// is only applied to paint server references (the renderer draws it beneath them), and unreadable fallbacks are
+// ignored.  On return, Next refers to the
+// remaining content, which is either empty or starts with a painter separator.
+
+static ERR read_painter_layer(objVectorScene *Scene, std::string_view IRI, VectorPainter &Painter,
+   std::string_view &Next, bool &Fallback)
+{
+   Fallback = false;
+   if (auto error = vec::ReadPainter(Scene, IRI, &Painter, &Next); error != ERR::Okay) {
+      Next = std::string_view();
+      return error;
+   }
+
+   if ((not Next.empty()) and (not Next.starts_with(';')) and (not Next.starts_with(','))) {
+      Fallback = true;
+      auto end = find_painter_separator(Next);
+      if (Painter.Gradient or Painter.Image or Painter.Pattern) {
+         VectorPainter fallback;
+         if ((vec::ReadPainter(Scene, Next.substr(0, end), &fallback, nullptr) IS ERR::Okay) and
+             (fallback.Colour.Alpha)) {
+            Painter.Colour = fallback.Colour;
+         }
+      }
+      Next.remove_prefix(end);
+   }
+
+   return ERR::Okay;
+}
+
+//********************************************************************************************************************
+// Parse a Fill string into its painters.  Painters separated by ',' follow the SVG 2 convention of being listed from
+// top to bottom, while ';' is a Kotuku extension that lists them from bottom to top.  A maximum of two painters is
+// supported.
+
+static ERR read_fill_painters(objVectorScene *Scene, std::string_view Value, extPainter (&Fill)[2], bool &FGFill)
+{
+   kt::Log log(__FUNCTION__);
+
+   FGFill = false;
+
+   std::string_view next;
+   bool fallback;
+   if (auto error = read_painter_layer(Scene, Value, Fill[0], next, fallback); error != ERR::Okay) return error;
+   if (next.empty()) return ERR::Okay;
+
+   const char separator = next[0];
+   if ((separator IS ',') and fallback) {
+      log.warning("Only the last painter in a list may declare a fallback colour: %.*s", int(Value.size()),
+         Value.data());
+      return ERR::Syntax;
+   }
+
+   // An unreadable second painter is ignored for backwards compatibility, e.g. it may reference a definition that
+   // has not been registered with this particular scene.
+
+   next.remove_prefix(1);
+   if (read_painter_layer(Scene, next, Fill[1], next, fallback) != ERR::Okay) {
+      Fill[1].reset();
+      return ERR::Okay;
+   }
+
+   if (not next.empty()) {
+      log.warning("A maximum of two fill painters is supported: %.*s", int(Value.size()), Value.data());
+      return ERR::Syntax;
+   }
+
+   if (separator IS ',') std::swap(Fill[0], Fill[1]);
+   FGFill = true;
+   return ERR::Okay;
+}
+
 /*********************************************************************************************************************
 
 -FIELD-
@@ -1281,10 +1368,24 @@ The painter used for filling a vector path can be defined through this field usi
 string is parsed through the ~Vector.ReadPainter() function.  Please refer to it for further details on
 valid formatting.
 
-It is possible to enable dual-fill painting via this field, whereby a second fill operation can follow the first by
-separating them with a semi-colon `;` character.  This feature makes it easy to use a common background fill and
-follow it with an independent foreground, alleviating the need for additional vector objects.  Be aware that this
-feature is intended for programmed use-cases and is not SVG compliant.
+A solid fallback colour can follow a `url()` reference, separated by whitespace, e.g. `url(#hatch) red`.  The
+fallback colour is drawn beneath the referenced paint server.
+
+Two painters can be layered by separating them with a comma or a semi-colon.  This makes it easy to use a common
+background fill and follow it with an independent foreground, alleviating the need for additional vector objects.  The
+separator determines the order in which the painters are drawn:
+
+<list type="bullet">
+<li>Comma separated painters follow the SVG 2 paint list convention, whereby the first painter is drawn on top, e.g.
+`url(#hatch), powderblue` draws the hatch pattern over a solid fill.  Only the last painter in the list may declare a
+fallback colour.</li>
+<li>Semi-colon separated painters are drawn in the order that they are listed, e.g. `powderblue;url(#hatch)` draws the
+hatch pattern over a solid fill.  This format is a Kōtuku extension and is not SVG compliant.</li>
+</list>
+
+If the second painter in the list cannot be read, e.g. because it references a definition that is not registered with
+the scene, it is ignored and the first painter is retained.  A `Syntax` error is returned if more than two painters
+are listed.
 
 *********************************************************************************************************************/
 
@@ -1298,25 +1399,10 @@ static ERR VECTOR_SET_Fill(extVector *Self, const std::string_view &Value)
 
    if (Value.empty()) return ERR::Okay;
 
-   std::string_view next;
-   if (auto error = vec::ReadPainter(Self->Scene, Value, &Self->Fill[0], &next); !error) {
+   bool fg_fill;
+   if (auto error = read_fill_painters(Self->Scene, Value, Self->Fill, fg_fill); !error) {
       Self->FillString = Value;
-
-      if (not next.empty()) {
-         if (next.starts_with(';')) {
-            next.remove_prefix(1);
-            vec::ReadPainter(Self->Scene, next, &Self->Fill[1], nullptr);
-            Self->FGFill = true;
-         }
-         else {
-            // SVG rules allow for a solid colour fallback to follow the initial painter reference.
-            // This typically looks something like 'url(#thing) rgb(values)'
-            VectorPainter fallback;
-            vec::ReadPainter(Self->Scene, next, &fallback, nullptr);
-            if (fallback.Colour.Alpha) Self->Fill[0].Colour = fallback.Colour;
-         }
-      }
-      else Self->FGFill = false;
+      Self->FGFill = fg_fill;
 
       // If the raster filler doesn't exist for this vector then we'll need to regenerate it.
 
@@ -1327,6 +1413,7 @@ static ERR VECTOR_SET_Fill(extVector *Self, const std::string_view &Value)
    }
    else {
       Self->Fill[0].reset();
+      Self->Fill[1].reset();
       mark_buffers_for_refresh(Self);
       return error;
    }
@@ -2042,14 +2129,8 @@ static ERR VECTOR_SET_Stroke(extVector *Self, const std::string_view &Value)
    if (not Value.empty()) {
       Self->StrokeString = Value;
       std::string_view next;
-      vec::ReadPainter(Self->Scene, Self->StrokeString, &Self->Stroke, &next);
-      if (not next.empty()) {
-         // SVG rules allow for a solid colour fallback to follow the initial painter reference.
-         // This typically looks something like 'url(#thing) rgb(values)'
-         VectorPainter fallback;
-         vec::ReadPainter(Self->Scene, next, &fallback, nullptr);
-         if (fallback.Colour.Alpha) Self->Stroke.Colour = fallback.Colour;
-      }
+      bool fallback;
+      read_painter_layer(Self->Scene, Self->StrokeString, Self->Stroke, next, fallback);
    }
 
    Self->Stroked = Self->is_stroked();

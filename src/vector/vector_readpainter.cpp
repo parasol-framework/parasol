@@ -58,26 +58,21 @@ static double parse_number(std::string_view &IRI, std::errc *Error = nullptr)
    return value;
 }
 
-// Advance the IRI past the current value and set the Result pointer.
+// Expose the content that follows the current value, which will start with a separator or a fallback colour.
 
 inline void advance_result(std::string_view IRI, std::string_view &Result)
 {
-   if (auto pos = IRI.find(';'); pos != std::string_view::npos) Result = IRI.substr(pos);
-   else Result = std::string_view();
+   skip_whitespace(IRI);
+   Result = IRI;
 }
 
-// Advance a function-style colour parser past its closing bracket and expose the next painter token, if present.
+// Advance a function-style colour parser past its closing bracket and expose the content that follows it.
 
 static void advance_function_result(std::string_view &IRI, std::string_view &Result)
 {
    skip_whitespace(IRI);
-   if (IRI.starts_with(')')) {
-      IRI.remove_prefix(1);
-      skip_whitespace(IRI);
-   }
-
-   if (IRI.starts_with(';')) Result = IRI;
-   else Result = std::string_view();
+   if (IRI.starts_with(')')) IRI.remove_prefix(1);
+   advance_result(IRI, Result);
 }
 
 // Parse a CSS colour component: reads a double, applies percentage scaling, and skips trailing whitespace.
@@ -545,9 +540,7 @@ static ERR parse_hex(std::string_view IRI, VectorPainter *Painter, std::string_v
 static ERR parse_named_colour(kt::Log &Log, std::string_view IRI, std::size_t Separator, VectorPainter *Painter,
    std::string_view &Result)
 {
-   auto colour = (Separator != std::string_view::npos) ? IRI.substr(0, Separator) : IRI;
-   while ((not colour.empty()) and (uint8_t(colour.back()) <= 0x20)) colour.remove_suffix(1);
-
+   auto colour = IRI.substr(0, Separator);
    auto hash = strihash(colour);
 
    const RGB8 *src = nullptr;
@@ -565,7 +558,7 @@ static ERR parse_named_colour(kt::Log &Log, std::string_view IRI, std::size_t Se
       rgb.Green = (float)src->Green * (1.0 / 255.0);
       rgb.Blue  = (float)src->Blue  * (1.0 / 255.0);
       rgb.Alpha = (float)src->Alpha * (1.0 / 255.0);
-      advance_result(IRI, Result);
+      advance_result(IRI.substr(Separator), Result);
       return ERR::Okay;
    }
 
@@ -627,8 +620,21 @@ a linear gradient that belongs to the `Scene`.  Valid colourmap names are `cmap:
 `cmap:viridis`.
 
 A !VectorPainter structure must be provided by the client and will be used to store the final result.  All pointers
-that are returned will remain valid as long as the provided Scene exists with its registered painter definitions.  An
-optional `Result` string can store a reference to the character position up to which the IRI was parsed.
+that are returned will remain valid as long as the provided Scene exists with its registered painter definitions.
+
+Only the first painter in the IRI is parsed.  If the optional `Result` parameter is provided, it will refer to the
+content that follows the painter, with leading whitespace removed.  This makes it possible for the client to process
+painter lists and fallback colours:
+
+<list type="bullet">
+<li>A `,` or `;` prefix indicates that another painter follows, e.g. `url(#hatch), red` or `url(#hatch);red`.  The
+remainder can be passed back to ReadPainter() as-is, as a leading separator is skipped.</li>
+<li>Any other content is an SVG fallback colour, e.g. `red` in `url(#hatch) red`.  SVG only permits a fallback to
+follow a `url()` reference.</li>
+</list>
+
+ReadPainter() does not apply fallback colours or interpret painter lists itself.  Refer to the @Vector.Fill field for
+how they are interpreted when painting a vector.
 
 Note: To ensure that colour values are never clipped, values stored in the Colour field are unclamped from the sRGB
 colour space (colours may be negative or exceed 1.0).  Clients must clamp colours as necessary when converting to their
@@ -638,7 +644,7 @@ target colour space.
 obj(VectorScene) Scene: Optional.  Required if `url()` references are to be resolved.
 strview IRI: The IRI string to be translated.
 struct(*VectorPainter) Painter: This !VectorPainter structure will store the deserialised result.
-&strview Result: Optional reference for storing the end of the parsed IRI string.  An empty string is returned if there is no further content to parse or an error occurred.
+&strview Result: Optional reference for storing the content that follows the parsed painter.  An empty string is returned if there is no further content to parse or an error occurred.
 
 -ERRORS-
 Okay:
@@ -665,15 +671,20 @@ ERR ReadPainter(objVectorScene *Scene, const std::string_view &IRI, VectorPainte
 
    log.trace("IRI: %.*s", int(iri.size()), iri.data());
 
-   if (iri.starts_with(';')) iri.remove_prefix(1);
+   if (iri.starts_with(';') or iri.starts_with(',')) iri.remove_prefix(1);
    skip_whitespace(iri);
 
    std::string_view result;
    ERR error;
    if (iri.starts_with('#')) error = parse_hex(iri, Painter, result);
    else {
-      auto sep = iri.find_first_of("(;");
-      if ((sep != std::string_view::npos) and (iri[sep] IS '(')) {
+      // The painter name terminates at an opening bracket, a painter separator or whitespace.
+
+      std::size_t sep = 0;
+      while ((sep < iri.size()) and (uint8_t(iri[sep]) > 0x20) and (iri[sep] != '(') and (iri[sep] != ';') and
+         (iri[sep] != ',')) sep++;
+
+      if ((sep < iri.size()) and (iri[sep] IS '(')) {
          auto body = iri.substr(sep + 1);
          switch (kt::strhash(iri.substr(0, sep))) {
             case HASH_URL:   error = parse_url(log, Scene, body, Painter, result); break;

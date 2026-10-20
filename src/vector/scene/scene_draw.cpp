@@ -889,7 +889,8 @@ void SceneRenderer::draw_vectors(extVector *CurrentVector, VectorState &ParentSt
       }
 
       if (shape->classID() IS CLASSID::VECTORVIEWPORT) {
-         if ((shape->Child) or (has_input_boundary(shape)) or (shape->Fill[0].Pattern)) {
+         const bool has_fill_pattern = shape->Fill[0].Pattern or (shape->FGFill and shape->Fill[1].Pattern);
+         if ((shape->Child) or (has_input_boundary(shape)) or has_fill_pattern) {
             auto view = (extVectorViewport *)shape;
 
             if (view->vpOverflowX != VOF::INHERIT) state.mOverflowX = view->vpOverflowX;
@@ -959,7 +960,7 @@ void SceneRenderer::draw_vectors(extVector *CurrentVector, VectorState &ParentSt
                   agg::render_scanlines(stroke_raster, mScanLine, renderer);
                }
 
-               if (view->Fill[0].Pattern) {
+               if (has_fill_pattern) {
                   // Viewports can use FillPattern objects to render a different scene graph internally.
                   // This is useful for creating common graphics that can be re-used multiple times without
                   // them being pre-rendered to a cache as they would be for filled vector paths.
@@ -999,7 +1000,7 @@ void SceneRenderer::draw_vectors(extVector *CurrentVector, VectorState &ParentSt
                      draw_vectors((extVectorViewport *)Pattern->Viewport, state);
                   };
 
-                  draw_pattern((extVectorPattern *)view->Fill[0].Pattern);
+                  if (view->Fill[0].Pattern) draw_pattern((extVectorPattern *)view->Fill[0].Pattern);
 
                   if ((view->FGFill) and (view->Fill[1].Pattern)) { // Support for foreground fill patterns
                      draw_pattern((extVectorPattern *)view->Fill[1].Pattern);
