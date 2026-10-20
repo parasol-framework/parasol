@@ -472,6 +472,7 @@ end
       label  = 'Alarm',
       size   = 80,
       draggable = true,
+      theme = { effect = 'fill(orange) emboss()' },
       events = {
          show = function()
             vfx.fadeIn(&viewport, { seconds=1.0, delay=0.1 })
@@ -502,6 +503,7 @@ end
       image  = 'programs/filemanager',
       label  = 'Wilhelm\'s House',
       draggable = true,
+      theme = { effect = 'fill(pearl) glow(colour=#000000)' },
       events = {
          show = function()
             vfx.rotate(&viewport, { seconds=0.8 })

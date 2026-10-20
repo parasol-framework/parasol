@@ -613,13 +613,13 @@ gui.columnView = function(Options):table
             if not col.checkBoxes and col.showIcons and item.icon then
                try
                   local theme = item.iconTheme ?? View.theme.page.icon
-                  local uid   = f'{theme}+{item.icon}'
+                  local uid   = f'{gui.parseFill(theme).key}+{item.icon}'
                   local info  = gui.createIcon(View.scene, item.icon, glIconSize, theme, uid)
                   item._iconFill = info.fill
 
                   if View.theme.page.iconHighlight and View.theme.page.iconHighlight != theme then
                      theme = View.theme.page.iconHighlight
-                     uid   = f'{theme}+{item.icon}'
+                     uid   = f'{gui.parseFill(theme).key}+{item.icon}'
                      info  = gui.createIcon(View.scene, item.icon, glIconSize, theme, uid)
                      item._iconHighlight = info.fill
                   end

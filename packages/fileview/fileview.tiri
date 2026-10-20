@@ -536,7 +536,7 @@ function createFileItem(self, Info)
       new_item = {
          type        = 'folder',
          icon        = getFileIcon(self.path .. Info.name),
-         iconTheme   = 'yellow',
+         iconTheme   = 'fill(yellow)',
          sort        = '\x03' .. Info.name.lower(),
          filename    = Info.name,
          fill        = glFolderFill,
