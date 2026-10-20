@@ -548,7 +548,6 @@ end
 
 gui.applyIconTheme = function(Theme:any!, Viewport:obj!, ID:str):obj
    config, key = resolveIconTheme(Theme)
-   assert(config.first and config.last, 'Icon themes require first and last colours.')
 
    ID ??= f'icon_{key}'
 
@@ -557,9 +556,16 @@ gui.applyIconTheme = function(Theme:any!, Viewport:obj!, ID:str):obj
 
    scene = Viewport.scene
    scene = scene.hostScene ?? scene
-   gradient = gui.simpleGradient(scene, ID, config, 0, 0, 0, 1, 'boundingbox', true)
 
-   Viewport.child ?! return gradient
+   if config.first and config.last then
+      gui.simpleGradient(scene, ID, config, 0, 0, 0, 1, 'boundingbox', true)
+   elseif config.apply is <func> then
+      config.apply(scene, ID, config)
+   else
+      raise 'Icon theme incorrectly configured.'
+   end
+
+   Viewport.child ?! return
 
    gui.forVector(Viewport.child, function(Vector)
       if Vector.fill != 'none' then
@@ -573,8 +579,6 @@ gui.applyIconTheme = function(Theme:any!, Viewport:obj!, ID:str):obj
          Vector.strokeWidth = '1.5%'
       end
    end)
-
-   return gradient
 end
 
 ----------------------------------------------------------------------------------------------------------------------
@@ -837,7 +841,8 @@ gui.iconThemes = {
    grey    = { first=gui.strToRGB('oklch(0.503 0.000 89.876)'),  last=gui.strToRGB('oklch(0.394 0.000 89.876)') },
    pearl   = { first=gui.strToRGB('oklch(0.983 0.002 67.803)'),  last=gui.strToRGB('oklch(0.804 0.002 247.844)') },
    emboss  = {
-      apply = function()
+      apply = function(Scene, ID, Config)
+         gui.simpleGradient(Scene, ID, { first=gui.strToRGB('oklch(0.468 0.000 89.876)'),  last=gui.strToRGB('oklch(0.412 0.066 283.103)') }, 0, 0, 0, 1, 'boundingbox', true)
       end
    }
 }
