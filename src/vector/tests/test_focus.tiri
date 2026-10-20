@@ -111,3 +111,35 @@ end
    surface.acLostFocus()
    assert(vectors.child.acFocus() is ERR_NothingDone, 'An inactive surface must not acquire vector focus')
 end
+
+-- The scene orders its keyboard subscribers by tab order.  Changing the tab order of a vector after it has subscribed
+-- must not prevent other subscribers from receiving keys.  Here the focused vector is the oldest subscriber, so it
+-- precedes the later subscribers until their tab orders are raised; a stale ordering would hide it from key dispatch.
+
+@Test function TabOrderChangeAfterSubscription()
+   local surface <close> = obj.new('Surface', { width=100, height=100 })
+   local scene = surface.new('VectorScene', { surface=surface })
+   local root = scene.new('VectorViewport', { x=0, y=0, width=100, height=100 })
+
+   local hits = 0
+   local target = root.new('VectorViewport', { x=0, y=0, width=10, height=10 })
+   target.mtSubscribeKeyboard(function(Vector, Qualifiers, Code, Unicode) hits++ end)
+
+   local others = array<obj>
+   for i in {0 to 8} do
+      local vp = root.new('VectorViewport', { x=10, y=0, width=10, height=10 })
+      vp.mtSubscribeKeyboard(function(Vector, Qualifiers, Code, Unicode) end)
+      others.push(vp)
+   end
+
+   for vp in values(others) do vp.tabOrder = 2 end
+   assert(others[0].tabOrder is 2, 'The tab order must be updated')
+
+   surface.acShow()
+   surface.acFocus()
+   check target.acFocus()
+   processing.sleep(0)
+
+   sendKey(KEY_A)
+   assert(hits is 1, 'Changing the tab order of other subscribers removed the focused vector from key dispatch')
+end
