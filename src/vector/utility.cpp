@@ -371,6 +371,63 @@ void calc_full_boundary(extVector *Vector, TClipRectangle<double> &Bounds, bool 
 }
 
 //********************************************************************************************************************
+// Calculate the boundary of Vector and its children in the coordinate system of Vector, i.e. without Vector's own
+// Transform applied.  The transforms of the children are expressed relative to Vector, so content that is scaled by
+// a nested viewBox or transformed group is measured in the same units as Vector.  Siblings are not included.
+//
+// Used by filters to compute bounding-box regions, which are later mapped to the display by Vector->Transform.
+
+static void extend_local_boundary(extVector *Vector, const agg::trans_affine &Base, const agg::trans_affine &Inverse,
+   TClipRectangle<double> &Bounds, bool IncludeSiblings)
+{
+   for (; Vector; Vector=(extVector *)Vector->Next) {
+      if (Vector->dirty()) gen_vector_path(Vector);
+
+      // Viewport sizes are not considered when determining content dimensions.
+
+      if ((Vector->classID() != CLASSID::VECTORVIEWPORT) and (Vector->BasePath.total_vertices())) {
+         if (Vector->Transform.is_equal(Base)) {
+            if (Vector->Bounds.left   < Bounds.left)   Bounds.left   = Vector->Bounds.left;
+            if (Vector->Bounds.top    < Bounds.top)    Bounds.top    = Vector->Bounds.top;
+            if (Vector->Bounds.right  > Bounds.right)  Bounds.right  = Vector->Bounds.right;
+            if (Vector->Bounds.bottom > Bounds.bottom) Bounds.bottom = Vector->Bounds.bottom;
+         }
+         else {
+            auto relative = Vector->Transform;
+            relative.multiply(Inverse);
+            agg::conv_transform<agg::path_storage, agg::trans_affine> path(Vector->BasePath, relative);
+            auto pb = get_bounds(path);
+            if (pb.left   < Bounds.left)   Bounds.left   = pb.left;
+            if (pb.top    < Bounds.top)    Bounds.top    = pb.top;
+            if (pb.right  > Bounds.right)  Bounds.right  = pb.right;
+            if (pb.bottom > Bounds.bottom) Bounds.bottom = pb.bottom;
+         }
+      }
+
+      if (Vector->Child) extend_local_boundary((extVector *)Vector->Child, Base, Inverse, Bounds, true);
+
+      if (!IncludeSiblings) break;
+   }
+}
+
+void calc_local_boundary(extVector *Vector, TClipRectangle<double> &Bounds)
+{
+   if (!Vector) return;
+
+   if (Vector->dirty()) gen_vector_path(Vector);
+
+   if (std::abs(Vector->Transform.determinant()) < agg::affine_epsilon) {
+      // A degenerate transform cannot be inverted; fall back to the untransformed bounds of each vector.
+      calc_full_boundary(Vector, Bounds, false, false);
+      return;
+   }
+
+   auto inverse = Vector->Transform;
+   inverse.invert();
+   extend_local_boundary(Vector, Vector->Transform, inverse, Bounds, false);
+}
+
+//********************************************************************************************************************
 // Designed for reading unit values such as '50%' and '6px'.  The returned value is scaled to pixels.
 
 double read_unit(CSTRING &Value, bool &Percent)

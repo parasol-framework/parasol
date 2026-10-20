@@ -163,12 +163,14 @@ template <class T> void render_to_filter(T *Self, objBitmap *Bitmap, ARF AspectR
 //
 // BoundsWidth/Height reflect the bounds of the client vector and its children.  These values are to
 // be used by effects to compute their area when PrimitiveUnits = BOUNDING_BOX.
+//
+// The bounds are measured in the client vector's coordinate system.  Children that are transformed relative to the
+// client, e.g. by a nested viewBox, are mapped into that system so that the area matches the rendered content.
 
 static void compute_target_area(extVectorFilter *Self)
 {
    TClipRectangle<double> bounds = { std::numeric_limits<double>::max(), std::numeric_limits<double>::max(), 0, 0 };
-   //TClipRectangle<double> bounds = { Self->ClientViewport->vpFixedWidth, Self->ClientViewport->vpFixedHeight, 0, 0 };
-   calc_full_boundary(Self->ClientVector, bounds, false, false);
+   calc_local_boundary(Self->ClientVector, bounds);
    double boundX = std::round(bounds.left);
    double boundY = std::round(bounds.top);
    Self->BoundWidth  = std::round(bounds.width());

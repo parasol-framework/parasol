@@ -230,10 +230,8 @@ static ERR TURBULENCEFX_Draw(extTurbulenceFX *Self, struct acDraw *Args)
             uint8_t *data = Self->Bitmap->Data;
 
             if (Self->Stitch) {
-               TClipRectangle<double> bounds = { Self->Filter->ClientViewport->vpFixedWidth, Self->Filter->ClientViewport->vpFixedHeight, 0, 0 };
-               calc_full_boundary(Self->Filter->ClientVector, bounds, false, false);
-               const int tile_width  = std::lrint(bounds.width());
-               const int tile_height = std::lrint(bounds.height());
+               const int tile_width  = std::lrint(Self->Filter->BoundWidth);
+               const int tile_height = std::lrint(Self->Filter->BoundHeight);
 
                // When stitching tiled turbulence, the frequencies must be adjusted so that the tile borders will be continuous.
 

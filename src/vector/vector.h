@@ -1285,6 +1285,7 @@ extern void calc_aspectratio(CSTRING, ARF, double, double, double, double, doubl
 extern void prepare_pattern(extVectorPattern *, double, double, double);
 extern ERR render_pattern(extVectorPattern *);
 extern void calc_full_boundary(extVector *, TClipRectangle<double> &, bool IncludeSiblings = true, bool IncludeTransforms = true, bool IncludeStrokes = false);
+extern void calc_local_boundary(extVector *, TClipRectangle<double> &);
 extern void convert_to_aggpath(extVectorPath *, std::vector<PathCommand> &, agg::path_storage &);
 extern void debug_tree(extVector *, int &);
 extern void gen_vector_path(extVector *);
