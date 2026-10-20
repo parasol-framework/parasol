@@ -499,7 +499,6 @@ gui.columnView = function(Options):table
             })
 
             col.resizeVP.dragCallback = function(SizeVP, X, Y)
-               print('dragCallback')
                -- Rearrange layout
                delta_x = X - SizeVP.x
                col.px_width += delta_x

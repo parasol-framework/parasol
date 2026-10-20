@@ -1,0 +1,157 @@
+   include 'display', 'vector'
+   module display as mGfx
+
+-- The Fill field accepts two layered painters.  Comma separated painters follow the SVG 2 convention of listing the
+-- top-most painter first, while semi-colon separated painters are drawn in the order that they are listed.  A
+-- whitespace separated colour that follows a url() reference is a fallback colour, which is drawn beneath the paint
+-- server and never over it.
+--
+-- The 'half' gradient is opaque green on the left half of the page and transparent on the right, so a layer beneath
+-- it is only visible on the right, while a solid layer above it covers the entire page.
+
+function readPixel(Bitmap, X:num, Y:num):table
+   return struct.toTable(mGfx.ReadRGBPixel(Bitmap, X, Y))
+end
+
+function stop(Offset:num, Alpha:num)
+   local s = struct<GradientStop>
+   s.offset    = Offset
+   s.rgb.green = 1.0
+   s.rgb.alpha = Alpha
+   return s
+end
+
+function newScene()
+   local scene = obj.new('VectorScene', { pageWidth=100, pageHeight=100 })
+   local viewport = scene.new('VectorViewport', { x=0, y=0, width='100%', height='100%' })
+   local gradient = scene.new('GradientLinear', {
+      units=VUNIT_USERSPACE, x1=0, y1=50, x2=100, y2=50,
+      stops=array<struct<GradientStop>> { stop(0, 1), stop(0.5, 1), stop(0.5, 0), stop(1, 0) }
+   })
+   check scene.mtAddDef('half', gradient)
+   return scene, viewport
+end
+
+function draw(Scene)
+   local bmp = obj.new('bitmap', { width=100, height=100, bitsPerPixel=32, bkgd='0,0,0,255' })
+   bmp.acClear()
+   Scene.bitmap = bmp
+   check Scene.acDraw()
+   return bmp
+end
+
+-- Render a page-sized rectangle with the given fill and return the left and right pixels.
+
+function renderFill(Fill:str!):<table, table>
+   local scene, viewport = newScene()
+   viewport.new('VectorRectangle', { x=0, y=0, width='100%', height='100%', fill=Fill })
+   local bmp = draw(scene)
+   return readPixel(bmp, 20, 50), readPixel(bmp, 80, 50)
+end
+
+function isGreen(Pixel:table):bool
+   return (Pixel.green > 200) and (Pixel.red < 50) and (Pixel.blue < 50)
+end
+
+function isBlue(Pixel:table):bool
+   return (Pixel.blue > 200) and (Pixel.red < 50) and (Pixel.green < 50)
+end
+
+function fmt(Pixel:table):str
+   return f'{Pixel.red},{Pixel.green},{Pixel.blue}'
+end
+
+@Test function CommaListsTopPainterFirst()
+   local left, right = renderFill('url(#half), blue')
+   assert(isGreen(left), f'The first painter of a comma list must be drawn on top (got {fmt(left)})')
+   assert(isBlue(right), f'The second painter of a comma list must be drawn beneath (got {fmt(right)})')
+
+   left, right = renderFill('blue, url(#half)')
+   assert(isBlue(left) and isBlue(right),
+      f'A solid first painter must cover the second (got {fmt(left)} / {fmt(right)})')
+end
+
+@Test function SemicolonListsBottomPainterFirst()
+   local left, right = renderFill('blue;url(#half)')
+   assert(isGreen(left), f'The second painter of a semi-colon list must be drawn on top (got {fmt(left)})')
+   assert(isBlue(right), f'The first painter of a semi-colon list must be drawn beneath (got {fmt(right)})')
+
+   left, right = renderFill('url(#half);blue')
+   assert(isBlue(left) and isBlue(right),
+      f'A solid second painter must cover the first (got {fmt(left)} / {fmt(right)})')
+end
+
+@Test function FallbackColourNotDrawnOver()
+   local left, right = renderFill('url(#half) blue')
+   assert(isGreen(left), f'A fallback colour must not be drawn over the paint server (got {fmt(left)})')
+end
+
+@Test function FallbackPermittedOnLastPainter()
+   local left, right = renderFill('blue, url(#half) red')
+   assert(isBlue(left) and isBlue(right),
+      f'A fallback on the last painter of a comma list must be accepted (got {fmt(left)} / {fmt(right)})')
+end
+
+@Test function UnresolvedSecondPainterIgnored()
+   -- Painter lists may reference definitions that are not registered with every scene.
+
+   local left, right = renderFill('blue;url(#missing)')
+   assert(isBlue(left) and isBlue(right),
+      f'An unresolved second painter must not prevent the first from drawing (got {fmt(left)} / {fmt(right)})')
+
+   left, right = renderFill('blue, url(#missing)')
+   assert(isBlue(left) and isBlue(right),
+      f'An unresolved second painter in a comma list must be ignored (got {fmt(left)} / {fmt(right)})')
+end
+
+@Test function InvalidListsRejected()
+   local scene, viewport = newScene()
+   local rect = viewport.new('VectorRectangle', { x=0, y=0, width='100%', height='100%', fill='blue' })
+
+   for _, fill in array<str> { 'url(#half) red, blue', 'red, green, blue', 'red;green;blue' } do
+      try
+         rect.fill = fill
+      except e when ERR_Syntax
+      success
+         raise f'Fill "{fill}" must be rejected with ERR_Syntax'
+      end
+   end
+end
+
+-- Render text with the given fill and count the green and blue pixels on the left half of the page, where the 'half'
+-- gradient is opaque.
+
+function countTextLeft(Fill:str!):<num, num>
+   local scene, viewport = newScene()
+   viewport.new('VectorText', { x=0, y=90, fontSize=90, string='MMMM', fill=Fill })
+   local bmp = draw(scene)
+
+   local green = 0
+   local blue = 0
+   for y in {0 to 100 by 2} do
+      for x in {0 to 50 by 2} do
+         local pixel = readPixel(bmp, x, y)
+         if isGreen(pixel) then green++ end
+         if isBlue(pixel) then blue++ end
+      end
+   end
+   return green, blue
+end
+
+@Test function TextFallbackColourNotDrawnOver()
+   -- VectorText previously treated a fallback colour as a second fill layer, drawing it over the paint server.
+
+   local green, blue = countTextLeft('url(#half) blue')
+   assert(green > 0, 'Text glyphs must be drawn with the paint server')
+   assert(blue is 0, f'The fallback colour must not be drawn over the paint server ({blue} blue pixels found)')
+end
+
+@Test function TextCommaListsTopPainterFirst()
+   local green, blue = countTextLeft('url(#half), blue')
+   assert(green > 0, 'The top painter must be visible on the left half of the text')
+   assert(blue is 0, f'The bottom painter must be hidden on the left half of the text ({blue} found)')
+
+   green, blue = countTextLeft('url(#half);blue')
+   assert(blue > 0, 'The second painter of a semi-colon list must be drawn over the text')
+   assert(green is 0, f'The first painter of a semi-colon list must be hidden ({green} found)')
+end

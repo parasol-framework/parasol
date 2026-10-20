@@ -136,6 +136,33 @@ end
    checkOutside(bmp, 'USERSPACE')
 end
 
+function checkForegroundPattern(Live:bool)
+   local scene, viewport = newScene(PAGE)
+   local options = Live ? { width='100%', height='100%', units=VUNIT_BOUNDING_BOX } :
+      { x=0, y=0, width=TILE, height=TILE, units=VUNIT_USERSPACE, spreadMethod=VSPREAD_REPEAT }
+   newMarkerPattern(scene, options)
+   local filled = newFilledViewport(viewport)
+   local bmp = newBitmap(PAGE, PAGE)
+
+   -- Keep the filled viewport childless so its foreground pattern alone must trigger rendering.
+
+   for _, fill in array<str> { 'url(#pat)', 'url(#pat), blue', 'blue;url(#pat)' } do
+      filled.fill = fill
+      drawScene(scene, bmp)
+      assert(isRed(bmp, VP_X + 5, VP_Y + 5), f'{fill}: the foreground pattern marker must remain visible')
+      assert(isGreen(bmp, VP_X + 15, VP_Y + 5), f'{fill}: the foreground pattern background must remain visible')
+      checkOutside(bmp, fill)
+   end
+end
+
+@Test function ForegroundTiledPatternRenders()
+   checkForegroundPattern(false)
+end
+
+@Test function ForegroundLivePatternRenders()
+   checkForegroundPattern(true)
+end
+
 @Test function ReflectMirrorsBothAxes()
    scene, viewport = newScene(PAGE)
    newMarkerPattern(scene, { x=0, y=0, width=TILE, height=TILE, units=VUNIT_USERSPACE, spreadMethod=VSPREAD_REFLECT })

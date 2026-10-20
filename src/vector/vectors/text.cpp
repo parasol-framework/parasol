@@ -831,10 +831,8 @@ The painter used for filling a vector path can be defined through this field usi
 string is parsed through the ~Vector.ReadPainter() function.  Please refer to it for further details on
 valid formatting.
 
-It is possible to enable dual-fill painting via this field, whereby a second fill operation can follow the first by
-separating them with a semi-colon `;` character.  This feature makes it easy to use a common background fill and
-follow it with an independent foreground, alleviating the need for additional vector objects.  Be aware that this
-feature is intended for programmed use-cases and is not SVG compliant.
+Fallback colours and dual-fill painting are supported in the same way as the @Vector.Fill field.  Please refer to it
+for further details.
 
 *********************************************************************************************************************/
 // Override the existing Vector Fill field - this is required for bitmap fonts as they need a path reset to be
@@ -857,22 +855,21 @@ static ERR TEXT_SET_Fill(extVectorText *Self, const std::string_view &Value)
       return ERR::Okay;
    }
 
-   std::string_view next;
-   if (auto error = vec::ReadPainter(Self->Scene, Value, &Self->Fill[0], &next); !error) {
+   bool fg_fill;
+   if (auto error = read_fill_painters(Self->Scene, Value, Self->Fill, fg_fill); !error) {
       Self->FillString = Value;
-
-      if (not next.empty()) {
-         vec::ReadPainter(Self->Scene, next, &Self->Fill[1], nullptr);
-         Self->FGFill = true;
-      }
-      else Self->FGFill = false;
+      Self->FGFill = fg_fill;
 
       // Bitmap font reset/redraw required
       if (Self->txBitmapFont) reset_path(Self);
 
       return ERR::Okay;
    }
-   else return error;
+   else {
+      Self->Fill[0].reset();
+      Self->Fill[1].reset();
+      return error;
+   }
 }
 
 /*********************************************************************************************************************
