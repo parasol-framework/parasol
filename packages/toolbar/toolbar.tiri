@@ -323,12 +323,12 @@ gui.toolbar = function(Options)
                })
 
                if &_iconHighlight and (&_iconTheme != &_iconHighlight) then
-                  gui.applyIconTheme(&_iconHighlight, text_group)
+                  gui.applyFillEffect(&_iconHighlight, text_group)
                   item.textAltFill = item.vectorText.fill
                   item.vectorText.stroke = nil -- Prevent the highlight stroke from carrying into the normal theme
                end
 
-               gui.applyIconTheme(&_iconTheme, text_group)
+               gui.applyFillEffect(&_iconTheme, text_group)
                item.textFill = item.vectorText.fill
 
                -- Text widens its cell in horizontal toolbars.  Vertical toolbars retain a uniform column width.
@@ -555,7 +555,7 @@ gui.toolbar = function(Options)
          if Content is <num> then
             if Content > 9 then
                size = math.floor(tb_theme.iconSize * 0.33)
-               gui.createIcon(&viewport.scene, 'items/add', size, 'pearl', 'sticker_plus')
+               gui.createIcon(&viewport.scene, 'items/add', size, 'fill(pearl)', 'sticker_plus')
                item.sticker.content = item.sticker.viewport.new('VectorRectangle', {
                   fill = 'url(#sticker_plus)', x=math.floor((sticker_size - size)*0.5), y=math.floor((sticker_size - size)*0.5), width=size, height=size
                })

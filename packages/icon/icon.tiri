@@ -44,7 +44,7 @@ gui.icon = function(Options:table!)
 
    -- Weak bindings retain the widget only for the duration of each callback.
 
-   text_words:array<str>, text_group:obj, icon_theme:any, theme:table
+   text_words:array<str>, text_group:obj, icon_effect:any, theme:table
 
    click_state  = { held=false, x=0, y=0 }
    words        = array<table>
@@ -226,7 +226,7 @@ gui.icon = function(Options:table!)
             path   = imageLocation(Path)
          })
 
-         gui.applyIconTheme(icon_theme, replacement_vp)
+         gui.applyFillEffect(icon_effect, replacement_vp)
       except ex
          replacement_svg?.free()
          replacement_vp.free()
@@ -274,8 +274,7 @@ gui.icon = function(Options:table!)
 
       theme = gui.getTheme(Options.target).icon
       if Options.theme then theme = table.merge(theme, Options.theme, true, true) end
-      icon_theme = theme.theme ?? 'carbon'
-      if not gui.iconThemes[icon_theme] then icon_theme = 'carbon' end -- Sanity check on name
+      icon_effect = theme.effect ?? 'fill(carbon)'
 
       &viewport = Options.target.new('VectorViewport', {
          x           = Options.x ?? 0,
@@ -303,7 +302,7 @@ gui.icon = function(Options:table!)
       assert(src, 'Invalid image source ' .. Options.image)
 
       &svg = obj.new('svg', { target=&iconVP, path=src })
-      gui.applyIconTheme(icon_theme, &iconVP)
+      gui.applyFillEffect(icon_effect, &iconVP)
 
       check vp.mtSubscribeInput(JTYPE_BUTTON, inputFeedback)
 

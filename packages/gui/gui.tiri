@@ -25,9 +25,9 @@ gui.fontList = thunk():table
    return exec([[
    import 'config'
 
-   local fonts = { }
+   fonts = { }
    catalogue = config.decode(io.readAll('fonts:fonts.cfg'))
-   local options = { }
+   options = { }
    try
       options = config.decode(io.readAll('fonts:options.cfg'))
    end
@@ -261,17 +261,17 @@ function gui.mtRGB.toHSL():table
    if g > max then max = g end
    if b > max then max = b end
 
-   local min = r
+   min = r
    if g < min then min = g end
    if b < min then min = b end
 
-   local l = (max + min) / 2
+   l = (max + min) / 2
    if max is min then
       return { h = 0, s = 0, l = l }
    end
 
-   local delta = max - min
-   local s = (l > 0.5) ? (delta / (2 - max - min)) : (delta / (max + min))
+   delta = max - min
+   s = (l > 0.5) ? (delta / (2 - max - min)) : (delta / (max + min))
    local h
 
    if r >= max then
@@ -435,7 +435,7 @@ gui.rgbToIconTheme = function(Value:any!):str
       Value = gui.strToRGB(Value)
    end
 
-   return (Value.brightness() > 0.5) ? 'pearl' : 'carbon'
+   return (Value.brightness() > 0.5) ? 'fill(pearl)' : 'fill(carbon)'
 end
 
 ----------------------------------------------------------------------------------------------------------------------
@@ -465,38 +465,44 @@ gui.applyFill = function(Vector:obj!, Fill)
 end
 
 ----------------------------------------------------------------------------------------------------------------------
--- Generate a simple gradient fill for vectors.
+-- Generate a simple gradient fill for vectors.  Colours is a list of colours, a { first, last } table, or a
+-- { colourMap } table that names a colourmap such as 'cmap:magma'.
 
 gui.simpleGradient = function(Scene:obj!, Name:str!, Colours:any!, X1:num!, Y1:num!, X2:num!, Y2:num!, Units:str,
    IgnoreClashes:bool)
 
-   local colours:any
+   options = { name=Name, x1=X1, y1=Y1, x2=X2, y2=Y2, units=(Units ?? 'boundingbox') }
 
-   if #Colours then
-      colours = Colours
+   if Colours is <table> and Colours.colourMap then
+      options.colourMap = Colours.colourMap
    else
-      colours = array<table>
-      colours.push(Colours.first)
-      colours.push(Colours.last)
+      colours:any
+
+      if #Colours then
+         colours = Colours
+      else
+         colours = array<table>
+         colours.push(Colours.first)
+         colours.push(Colours.last)
+      end
+
+      assert(#colours > 1, 'At least two colours are required to create a gradient.')
+
+      stops = { }
+      i = 0
+      for col in values(colours) do
+         vc = struct<GradientStop>
+         vc.offset    = col.offset ? col.offset : (i / (#colours - 1))
+         vc.rgb.{ red = col.r, green = col.g, blue = col.b, alpha = col.a ? col.a : 1.0 }
+         stops.insert(vc)
+         i++
+      end
+      options.stops = stops
    end
 
-   assert(#colours > 1, 'At least two colours are required to create a gradient.')
+   local gradient = Scene.new('GradientLinear', options)
 
-   stops = { }
-   i = 0
-   for col in values(colours) do
-      vc = struct<GradientStop>
-      vc.offset    = col.offset ? col.offset : (i / (#colours - 1))
-      vc.rgb.{ red = col.r, green = col.g, blue = col.b, alpha = col.a ? col.a : 1.0 }
-      stops.insert(vc)
-      i++
-   end
-
-   local gradient = Scene.new('GradientLinear', {
-      name=Name, stops=stops, x1=X1, y1=Y1, x2=X2, y2=Y2, units=(Units ?? 'boundingbox')
-   })
-
-   local err = Scene.mtAddDef(Name, gradient)
+   err = Scene.mtAddDef(Name, gradient)
    if err is ERR_ResourceExists and IgnoreClashes then -- Do not fail if the name is already registered
       gradient.free()
       return
@@ -509,9 +515,9 @@ gui.simpleGradient = function(Scene:obj!, Name:str!, Colours:any!, X1:num!, Y1:n
 end
 
 ----------------------------------------------------------------------------------------------------------------------
--- Theme colours are hashed by value so that equal table themes share a pattern and differing ones never collide.
+-- Effect colours are hashed by value so that equal table effects share a pattern and differing ones never collide.
 
-function iconThemeHash(Theme:table!):num
+function effectHash(Theme:table!):num
    key = ''
    for field in values(array<str> { 'first', 'last', 'stroke' }) do
       c = Theme[field]
@@ -525,55 +531,577 @@ function iconThemeHash(Theme:table!):num
 end
 
 ----------------------------------------------------------------------------------------------------------------------
--- Resolve an icon theme name or custom theme table to its configuration and a key that identifies it in definition
--- names.  Named themes are keyed by name; custom tables are keyed by a hash of their colours.
+-- Effects are written as a sequence of function calls, e.g. 'fill(orange) emboss(87, 65) glow(yellow)'.  Parsing
+-- reduces a spec to a canonical form in which every call has its full argument list in positional order, and numbers
+-- and colours are normalised.  Definition keys are hashed from the canonical form, so equal specs share one set of
+-- definitions in the scene.
 
-function resolveIconTheme(Theme:any!):<table, str>
-   if Theme is <table> then
-      return Theme, f'theme_{iconThemeHash(Theme)}'
-   elseif Theme is <str> then
-      config = gui.iconThemes[Theme]
-      config ?! raise f'Icon theme {Theme} not recognised.'
-      return config, Theme
+glIconSpecs = { } -- Parsed string specs, keyed by the raw string
+glIconKeys  = { } -- Hash keys, mapped to the canonical string that each was built from
+
+function effectError(Spec:str!, Pos:num!, Message:str!, Hint:str)
+   if Hint then
+      raise f'Effect "{Spec}": {Message} at position {Pos}; {Hint}'
    else
-      raise 'Invalid icon theme specified.'
+      raise f'Effect "{Spec}": {Message} at position {Pos}.'
+   end
+end
+
+-- Returns the key for a canonical string.  Keys only contain [a-z0-9] so that they are valid in url() references.  A
+-- collision raises an error rather than allowing two different specs to share definitions.
+
+function effectKey(Canonical:str!):str
+   hash = Canonical.hash()
+   key = string.format('h%08x', (hash < 0) ? hash + 4294967296 : hash)
+   prior = glIconKeys[key]
+   if prior and prior != Canonical then
+      raise f'Icon theme key {key} is shared by "{prior}" and "{Canonical}".'
+   end
+   glIconKeys[key] = Canonical
+   return key
+end
+
+-- Returns a colour value in the canonical '#rrggbbaa' form, or nil if the value is not a colour.
+
+function effectColour(Value:str!):str
+   if Value.startsWith('url') then return nil end
+   if mVec.ReadPainter(nil, Value, glPainter) != ERR_Okay then return nil end
+   c = glPainter.colour
+   return string.format('#%02x%02x%02x%02x', math.round(math.clamp(c.red, 0, 1) * 255),
+      math.round(math.clamp(c.green, 0, 1) * 255), math.round(math.clamp(c.blue, 0, 1) * 255),
+      math.round(math.clamp(c.alpha, 0, 1) * 255))
+end
+
+function isDigit(C:num):bool
+   return C != nil and C >= 48 and C <= 57
+end
+
+function isHexDigit(C:num):bool
+   return isDigit(C) or (C != nil and ((C >= 65 and C <= 70) or (C >= 97 and C <= 102)))
+end
+
+function isNameStart(C:num):bool
+   return C != nil and ((C >= 65 and C <= 90) or (C >= 97 and C <= 122))
+end
+
+function isNameChar(C:num):bool
+   return isNameStart(C) or isDigit(C) or C is 95
+end
+
+----------------------------------------------------------------------------------------------------------------------
+-- Split a spec into calls.  Each call records its name, its positional and named argument tokens, and their positions
+-- so that later errors can refer to them.  A token is { kind, text, value, pos }, where kind is 'name', 'number' or
+-- 'colour'.  Colour calls such as 'rgb(255 255 0)' are kept verbatim for gui.strToRGB().
+
+function parseIconCalls(Spec:str!):array<table>
+   pos = 0
+   calls = array<table>
+
+   function fail(Message:str!, Hint:str)
+      effectError(Spec, pos, Message, Hint)
+   end
+
+   function skipSpace()
+      c = Spec.byte(pos)
+      while c is 32 or c is 9 or c is 10 do
+         pos++
+         c = Spec.byte(pos)
+      end
+   end
+
+   function readName():str
+      start = pos
+      while isNameChar(Spec.byte(pos)) do pos++ end
+      return Spec.sub(start, pos)
+   end
+
+   function readDigits():num
+      start = pos
+      while isDigit(Spec.byte(pos)) do pos++ end
+      return pos - start
+   end
+
+   function readValue():table
+      start = pos
+      c = Spec.byte(pos)
+      if isNameStart(c) then
+         name = readName()
+         if Spec.byte(pos) is 58 and isNameStart(Spec.byte(pos + 1)) then -- Qualified name, e.g. 'cmap:magma'
+            pos++
+            readName()
+            name = Spec.sub(start, pos)
+         end
+         after = pos
+         skipSpace()
+
+         if Spec.byte(pos) != 40 then
+            pos = after
+            return { kind='name', text=name, pos=start }
+         end
+
+         pos++
+         depth = 1
+         while depth > 0 do
+            c = Spec.byte(pos)
+            if c is nil then
+               pos = start
+               fail(f'unbalanced parentheses in "{name}"')
+            elseif c is 40 then
+               depth++
+            elseif c is 41 then
+               depth -= 1
+            end
+            pos++
+         end
+
+         return { kind='colour', text=Spec.sub(start, pos), pos=start }
+      elseif c is 35 then -- '#'
+         pos++
+
+         while isHexDigit(Spec.byte(pos)) do pos++ end
+
+         digits = pos - start - 1
+         if digits != 3 and digits != 4 and digits != 6 and digits != 8 then
+            pos = start
+            fail('expected a hex colour of 3, 4, 6 or 8 digits')
+         end
+
+         return { kind='colour', text=Spec.sub(start, pos), pos=start }
+      elseif c is 45 or isDigit(c) then -- '-' or digit
+         if c is 45 then pos++ end
+         if readDigits() is 0 then fail('expected a number') end
+
+         if Spec.byte(pos) is 46 then -- '.'
+            pos++
+            if readDigits() is 0 then fail('expected a digit after "."') end
+         end
+
+         c = Spec.byte(pos)
+         if c is 101 or c is 69 then -- Exponent
+            pos++
+            c = Spec.byte(pos)
+            if c is 43 or c is 45 then pos++ end
+            if readDigits() is 0 then fail('expected an exponent') end
+         end
+
+         text = Spec.sub(start, pos)
+         return { kind='number', text=text, value=tonumber(text), pos=start }
+      else
+         fail('expected an argument')
+      end
+   end
+
+   skipSpace()
+   if pos >= #Spec then fail('expected a function call') end
+
+   while pos < #Spec do
+      if not isNameStart(Spec.byte(pos)) then fail(f'unexpected "{Spec.sub(pos, pos + 1)}"') end
+
+      call = { pos=pos, positional=array<table>, named={ } }
+      call.name = readName()
+      skipSpace()
+
+      if Spec.byte(pos) != 40 then
+         hint:str
+         if gui.effects[call.name] then
+            hint = f'did you mean {call.name}()?'
+         elseif call.name != 'fill' then
+            hint = f'did you mean fill({call.name})?'
+         end
+         fail(f'expected "(" after "{call.name}"', hint)
+      end
+
+      pos++
+      skipSpace()
+
+      if Spec.byte(pos) is 41 then
+         pos++
+      else
+         while true do
+            arg_pos = pos
+            param:str
+            if isNameStart(Spec.byte(pos)) then
+               local name = readName()
+               skipSpace()
+               if Spec.byte(pos) is 61 then -- '='
+                  param = name
+                  pos++
+                  skipSpace()
+               else
+                  pos = arg_pos
+               end
+            end
+
+            token = readValue()
+
+            if param then
+               if call.named[param] then
+                  pos = arg_pos
+                  fail(f'"{param}" is named more than once')
+               end
+               token.namePos = arg_pos
+               call.named[param] = token
+            elseif not table.empty(call.named) then
+               pos = arg_pos
+               fail('positional arguments must come before named arguments')
+            else
+               call.positional.push(token)
+            end
+
+            skipSpace()
+            local c = Spec.byte(pos)
+            if c is 44 then -- ','
+               pos++
+               skipSpace()
+               if Spec.byte(pos) is 41 then fail('expected an argument after ","') end
+            elseif c is 41 then -- ')'
+               pos++
+               break
+            elseif c is nil then
+               fail('expected ")"')
+            else
+               fail('expected "," or ")"')
+            end
+         end
+      end
+
+      calls.push(call)
+      skipSpace()
+   end
+
+   return calls
+end
+
+----------------------------------------------------------------------------------------------------------------------
+-- Convert an argument token to the type of its parameter.  Returns the value passed to the builder and its canonical
+-- text.
+
+function effectArg(Spec:str!, Call:table!, Param:table!, Token:table!):<any, str>
+   if Param.type is 'num' then
+      if Token.kind != 'number' then
+         effectError(Spec, Token.pos, f'{Call.name}() expects a number for "{Param.name}"')
+      end
+      text = string.format('%.6g', Token.value)
+      return tonumber(text), text
+   elseif Param.type is 'colour' then
+      hex = (Token.kind != 'number') ? effectColour(Token.text) : nil
+      if not hex then
+         effectError(Spec, Token.pos, f'{Call.name}() expects a colour for "{Param.name}"')
+      end
+      return gui.strToRGB(hex), hex
+   elseif Param.type is 'enum' then
+      if Token.kind != 'name' or not (Token.text in Param.values) then
+         names = ''
+         for name in values(Param.values) do
+            names ..= (names is '') ? name : f', {name}'
+         end
+         effectError(Spec, Token.pos, f'{Call.name}() expects one of {names} for "{Param.name}"')
+      end
+      return Token.text, Token.text
+   else
+      raise f'Icon effect {Call.name}() declares "{Param.name}" with unsupported type "{Param.type}".'
    end
 end
 
 ----------------------------------------------------------------------------------------------------------------------
--- Apply an icon theme to the vectors already loaded into Viewport.  Theme is a name from gui.iconThemes or a custom
--- theme table.  The theme gradient is registered once as ID (by default 'icon_<theme>') in the hosting scene and is
--- shared by every icon that uses the theme.  The gradient is returned if it was created by this call, otherwise nil.
--- Siblings of Viewport are not affected.
+-- Match the arguments of an effect call to its declared parameters.  Returns the arguments keyed by parameter name,
+-- with defaults filled in, and the canonical text of the call.
 
-gui.applyIconTheme = function(Theme:any!, Viewport:obj!, ID:str):obj
-   config, key = resolveIconTheme(Theme)
+function effectArgs(Spec:str!, Call:table!, Params:any):<table, str>
+   count = Params ? #Params : 0
+   tokens = { }
 
-   ID ??= f'icon_{key}'
+   if #Call.positional > count then
+      effectError(Spec, Call.positional[count].pos, f'{Call.name}() accepts at most {count} argument(s)')
+   end
 
-   -- The gradient must be owned by the scene that holds the definition, or freeing a pattern would remove a gradient
-   -- that other icons still reference.
+   for i, token in Call.positional do
+      tokens[Params[i].name] = token
+   end
+
+   for name, token in Call.named do
+      index = nil
+      for i in {0 to count} do
+         if Params[i].name is name then
+            index = i
+            break
+         end
+      end
+
+      if index is nil then
+         effectError(Spec, token.namePos, f'{Call.name}() has no parameter named "{name}"')
+      elseif index < #Call.positional then
+         effectError(Spec, token.namePos, f'"{name}" is already set by a positional argument')
+      end
+
+      tokens[name] = token
+   end
+
+   args = { }
+   text = ''
+   for i in {0 to count} do
+      param = Params[i]
+      token = tokens[param.name]
+      if not token then
+         if param.default is nil then
+            effectError(Spec, Call.pos, f'{Call.name}() requires a value for "{param.name}"')
+         end
+
+         kind = choose param.type from
+            'num'    -> 'number'
+            'colour' -> 'colour'
+            else     -> 'name'
+         end
+
+         token = { kind=kind, text=tostring(param.default), value=param.default, pos=Call.pos }
+      end
+
+      value, canonical = effectArg(Spec, Call, param, token)
+      args[param.name] = value
+      text ..= (i > 0) ? f',{canonical}' : canonical
+   end
+
+   return args, f'{Call.name}({text})'
+end
+
+----------------------------------------------------------------------------------------------------------------------
+-- Resolve a fill preset, writing out the preset that 'default' aliases.
+
+function effectPreset(Name:str!):table
+   config = gui.fills[Name]
+   if Name is 'default' then
+      for name, preset in gui.fills do
+         if name != 'default' and rawequal(preset, config) then
+            Name = name
+            break
+         end
+      end
+   end
+   return { key=Name, config=config, canonical=f'fill({Name})' }
+end
+
+-- Returns true if Name is a colourmap known to the Vector module, e.g. 'cmap:magma'.
+
+glColourMaps = { }
+
+-- Resolve the fill() call.  A single name refers to a preset in gui.fills before it refers to a colour.  A 'cmap:'
+-- name refers to a colourmap.
+
+function effectFill(Spec:str!, Call:table!):table
+   if not table.empty(Call.named) then
+      effectError(Spec, Call.pos, 'fill() does not accept named arguments')
+   end
+
+   count = #Call.positional
+   if count is 0 then
+      effectError(Spec, Call.pos, 'fill() requires a preset or a colour')
+   elseif count > 2 then
+      effectError(Spec, Call.positional[2].pos, 'fill() accepts at most 2 arguments')
+   end
+
+   first = Call.positional[0]
+   if count is 1 and first.kind is 'name' and gui.fills[first.text] then
+      return effectPreset(first.text)
+   end
+
+   for token in values(Call.positional) do
+      if token.kind is 'name' and token.text.startsWith('cmap:') then
+         if count > 1 then
+            effectError(Spec, token.pos, f'colourmap "{token.text}" cannot be combined with another fill')
+         end
+         canonical = f'fill({token.text})'
+         return { key=effectKey(canonical), config={ colourMap=token.text }, canonical=canonical }
+      end
+   end
+
+   colours = array<str>
+   for token in values(Call.positional) do
+      hex = (token.kind != 'number') ? effectColour(token.text) : nil
+      if not hex then
+         if count is 1 then
+            effectError(Spec, token.pos, f'unknown fill preset or colour "{token.text}"')
+         else
+            effectError(Spec, token.pos, f'"{token.text}" is not a colour')
+         end
+      end
+      colours.push(hex)
+   end
+
+   if count is 1 then
+      canonical = f'fill({colours[0]})'
+      return { key=effectKey(canonical), config={ colour=colours[0] }, canonical=canonical }
+   else
+      canonical = f'fill({colours[0]},{colours[1]})'
+      return {
+         key=effectKey(canonical), config={ first=gui.strToRGB(colours[0]), last=gui.strToRGB(colours[1]) },
+         canonical=canonical
+      }
+   end
+end
+
+----------------------------------------------------------------------------------------------------------------------
+-- Parse an effect theme spec, such as 'fill(orange) emboss(elevation=20)'.  Results for strings are memoised by the
+-- raw string, so callers must not modify them.  A table is a custom fill, equivalent to fill(<table>) with no effects.
+
+gui.parseFill = function(Spec:any!):table
+   if Spec is <table> then
+      if not (Spec.first and Spec.last) then raise 'Icon theme tables require first and last colours.' end
+      key = f'theme_{effectHash(Spec)}'
+      return {
+         canonical=key, key=key, fill={ key=key, config=Spec }, paints=array<table>, effects=array<table>
+      }
+   elseif Spec is <str> then
+      cached = glIconSpecs[Spec]
+      if cached then return cached end
+   else
+      raise 'Invalid effect specified.'
+   end
+
+   calls = parseIconCalls(Spec)
+
+   fill:table
+   first = 0
+   if calls[0].name is 'fill' then
+      fill = effectFill(Spec, calls[0])
+      first = 1
+   else
+      fill = effectPreset('default')
+   end
+
+   canonical = fill.canonical
+   paints, effects = array<table>, array<table>
+   paint_text, effect_text = '', ''
+
+   for i in {first to #calls} do
+      call = calls[i]
+      if call.name is 'fill' then
+         effectError(Spec, call.pos, (first is 1) ? 'fill() can only appear once' : 'fill() must be the first call')
+      end
+
+      def = gui.effects[call.name]
+      if not def then effectError(Spec, call.pos, f'unknown function "{call.name}"') end
+
+      args, text = effectArgs(Spec, call, def.params)
+      canonical ..= ' ' .. text
+
+      if def.kind is 'paint' then
+         if #effects > 0 then
+            effectError(Spec, call.pos, f'{call.name}() paints the fill and must come before {effects[0].name}()')
+         end
+         paints.push({ name=call.name, def=def, args=args, key=effectKey(text) })
+         if paint_text != '' then paint_text ..= ' ' end
+         paint_text ..= text
+      elseif def.kind is 'filter' then
+         effects.push({ name=call.name, def=def, args=args })
+         if effect_text != '' then effect_text ..= ' ' end
+         effect_text ..= text
+      else
+         raise f'Icon effect {call.name}() has unsupported kind "{def.kind}".'
+      end
+   end
+
+   result = {
+      canonical=canonical, key=fill.key, fill={ key=fill.key, config=fill.config }, paints=paints, effects=effects
+   }
+
+   if paint_text != '' then
+      result.paintKey = effectKey(paint_text)
+      result.key ..= '_' .. result.paintKey
+   end
+
+   if effect_text != '' then
+      result.effectKey = effectKey(effect_text)
+      result.key ..= '_' .. result.effectKey
+   end
+
+   glIconSpecs[Spec] = result
+   return result
+end
+
+----------------------------------------------------------------------------------------------------------------------
+-- Build the filter chain for the effects of a parsed theme, or reuse the chain if it is already registered in Scene.
+-- Each effect reads the output of the effect before it.
+
+function effectFilter(Scene:obj!, Theme:table!, Ctx:table!):str
+   name = f'effect_filter_{Theme.effectKey}'
+   if Scene.mtFindDef(name) is ERR_Okay then return name end
+
+   filter = Scene.new('VectorFilter', { primitiveUnits = VUNIT_BOUNDING_BOX })
+
+   try
+      Ctx.filter = filter
+      Ctx.input  = nil
+      for effect in values(Theme.effects) do
+         Ctx.input = effect.def.build(Ctx, effect.args)
+      end
+      check Scene.mtAddDef(name, filter)
+   except ex
+      filter.free()
+      raise
+   end
+
+   return name
+end
+
+----------------------------------------------------------------------------------------------------------------------
+-- Apply an fill effect to the vectors already loaded into Viewport.  FillEffect is a spec such as 'fill(pearl) emboss()', or
+-- a custom fill table.  Definitions are registered once in the hosting scene and are shared universally.
+-- The base fill is registered as ID.  Paint effects are layered over the fill.
+-- Filter effects are applied to Viewport, and a filter left by a previous theme is cleared.  Siblings of Viewport are
+-- not affected.
+
+gui.applyFillEffect = function(FillEffect:any!, Viewport:obj!, ID:str)
+   spec = gui.parseFill(FillEffect)
+   config = spec.fill.config
+
+   -- Definitions must be owned by the scene that holds them, or freeing a pattern would remove definitions that other
+   -- users still reference.
 
    scene = Viewport.scene
    scene = scene.hostScene ?? scene
 
-   if config.first and config.last then
-      gui.simpleGradient(scene, ID, config, 0, 0, 0, 1, 'boundingbox', true)
-   elseif config.apply is <func> then
-      config.apply(scene, ID, config)
+   base:str
+   if config.colour then
+      base = config.colour
    else
-      raise 'Icon theme incorrectly configured.'
+      ID ??= f'effect_{spec.fill.key}'
+      gui.simpleGradient(scene, ID, config, 0, 0, 0, 1, 'boundingbox', true)
+      base = f'url(#{ID})'
+   end
+
+   -- Overlays are registered before the fill is assigned, because the vector parser silently skips a layer that it
+   -- cannot resolve.  Layers are listed bottom to top.
+
+   ctx = { scene=scene, viewport=Viewport, fill=spec.fill }
+   fill = base
+   for paint in values(spec.paints) do
+      id = f'effect_paint_{paint.key}'
+      painter = f'url(#{id})'
+      if scene.mtFindDef(id) != ERR_Okay then
+         ctx.id = id
+         painter = paint.def.build(ctx, paint.args) ?? painter
+         if scene.mtFindDef(id) != ERR_Okay then
+            raise f'Effect {paint.name}() did not register its paint server as "{id}".'
+         end
+      end
+      fill ..= f';{painter}'
+   end
+
+   if spec.effectKey then
+      Viewport.filter = f'url(#{effectFilter(scene, spec, ctx)})'
+   elseif Viewport.filter then
+      Viewport.filter = nil
    end
 
    Viewport.child ?! return
 
    gui.forVector(Viewport.child, function(Vector)
       if Vector.fill != 'none' then
-         Vector.fill = f'url(#{ID})'
+         Vector.fill = fill
       end
 
-      if Vector.stroke?? then
-         Vector.stroke = f'url(#{ID})'
+      if Vector.stroke?? then -- A stroke takes one painter, so it only receives the base fill
+         Vector.stroke = base
       elseif config.stroke then
          Vector.stroke = tostring(config.stroke)
          Vector.strokeWidth = '1.5%'
@@ -582,13 +1110,13 @@ gui.applyIconTheme = function(Theme:any!, Viewport:obj!, ID:str):obj
 end
 
 ----------------------------------------------------------------------------------------------------------------------
--- Build an icon styled with the current theme and register it as a pattern.  The pattern can then be used as a fill,
+-- Build an icon styled with the current effect theme and register it as a pattern.  The pattern can then be used as a fill,
 -- i.e. "url(#Path)".  Using it in a VectorRectangle is akin to a cached bitmap (fast), or apply to a VectorViewport
 -- for live rendering (higher quality transforms).
 
-gui.createIcon = function(Scene:obj!, Path:str!, Size:num, Theme:any!, Name:str):table
+gui.createIcon = function(Scene:obj!, Path:str!, Size:num, FillEffect:any!, Name:str):table
    Size ??= 16
-   _, key = resolveIconTheme(Theme)
+   key = gui.parseFill(FillEffect).key
    Name ??= f'{key}/{Path.lower()}'
 
    if not Path.startsWith('icons:') then
@@ -596,7 +1124,7 @@ gui.createIcon = function(Scene:obj!, Path:str!, Size:num, Theme:any!, Name:str)
    end
 
    if Scene.mtFindDef(Name) is ERR_Okay then -- Return if the icon pattern is already registered
-      return { name = Name, theme = Theme, size = Size, path = Path, fill = f'url(#{Name})' }
+      return { name = Name, theme = FillEffect, size = Size, path = Path, fill = f'url(#{Name})' }
    end
 
    -- Hosting the pattern's scene in Scene allows its vectors to reference the theme gradient that is shared by all
@@ -609,14 +1137,14 @@ gui.createIcon = function(Scene:obj!, Path:str!, Size:num, Theme:any!, Name:str)
       pattern.spreadMethod = VSPREAD_PAD
       pattern.init()
       obj.new('svg', { target=pattern.viewport, path=Path })
-      gui.applyIconTheme(Theme, pattern.viewport)
+      gui.applyFillEffect(FillEffect, pattern.viewport)
       check Scene.mtAddDef(Name, pattern)
    except ex
       pattern.free()
       raise
    end
 
-   return { name = Name, theme = Theme, size = Size, path = Path, fill = f'url(#{Name})' }
+   return { name = Name, theme = FillEffect, size = Size, path = Path, fill = f'url(#{Name})' }
 end
 
 ----------------------------------------------------------------------------------------------------------------------
@@ -662,7 +1190,7 @@ end
 gui.getThemeName = function(Object:obj):str
    Object ?! return gui.theme
 
-   local scene:obj
+   scene:obj
    if obj.class(Object).name is 'VectorViewport' then
       scene = Object.scene
    elseif obj.class(Object).name is 'VectorScene' then
@@ -827,27 +1355,131 @@ gui.fonts = scaledFonts({
    label    = { face='Noto Sans,Source Sans Pro', size='100%' } -- Text for labels and outside widgets
 })
 
-gui.iconThemes = {
-   carbon  = { first=gui.strToRGB('oklch(0.468 0.000 89.876)'),  last=gui.strToRGB('oklch(0.412 0.066 283.103)') },
-   yellow  = { first=gui.strToRGB('oklch(0.841 0.173 111.771)'), last=gui.strToRGB('oklch(0.690 0.148 68.131)'), stroke=gui.strToRGB('oklch(0.276 0.047 20.527)') },
-   orange  = { first=gui.strToRGB('oklch(0.857 0.164 87.613)'),  last=gui.strToRGB('oklch(0.698 0.174 43.865)') },
-   blue    = { first=gui.strToRGB('oklch(0.543 0.124 264.706)'), last=gui.strToRGB('oklch(0.281 0.063 262.910)') },
-   ocean   = { first=gui.strToRGB('oklch(0.813 0.093 268.180)'), last=gui.strToRGB('oklch(0.385 0.165 284.067)') },
-   green   = { first=gui.strToRGB('oklch(0.649 0.154 122.868)'), last=gui.strToRGB('oklch(0.444 0.116 152.499)') },
-   red     = { first=gui.strToRGB('oklch(0.800 0.162 78.770)'),  last=gui.strToRGB('oklch(0.615 0.235 30.433)') },
-   indigo  = { first=gui.strToRGB('oklch(0.570 0.134 345.216)'), last=gui.strToRGB('oklch(0.284 0.117 311.021)') },
-   rose    = { first=gui.strToRGB('oklch(0.863 0.083 51.527)'),  last=gui.strToRGB('oklch(0.834 0.095 7.824)') },
-   pink    = { first=gui.strToRGB('oklch(0.927 0.038 9.810)'),   last=gui.strToRGB('oklch(0.777 0.099 10.847)') },
-   grey    = { first=gui.strToRGB('oklch(0.503 0.000 89.876)'),  last=gui.strToRGB('oklch(0.394 0.000 89.876)') },
-   pearl   = { first=gui.strToRGB('oklch(0.983 0.002 67.803)'),  last=gui.strToRGB('oklch(0.804 0.002 247.844)') },
-   emboss  = {
-      apply = function(Scene, ID, Config)
-         gui.simpleGradient(Scene, ID, { first=gui.strToRGB('oklch(0.468 0.000 89.876)'),  last=gui.strToRGB('oklch(0.412 0.066 283.103)') }, 0, 0, 0, 1, 'boundingbox', true)
+-- Fill presets for effects, used as fill(<name>).  Each is a vertical gradient from first to last.  An optional
+-- stroke is applied to icon paths that have no stroke of their own.
+
+gui.fills = {
+   carbon  = { first=gui.strToRGB('oklch(0.468 0.000 89.8)'),  last=gui.strToRGB('oklch(0.412 0.066 283.1)') },
+   yellow  = { first=gui.strToRGB('oklch(0.841 0.173 111.7)'), last=gui.strToRGB('oklch(0.690 0.148 68.1)'), stroke=gui.strToRGB('oklch(0.276 0.047 20.527)') },
+   orange  = { first=gui.strToRGB('oklch(0.857 0.164 87.6)'),  last=gui.strToRGB('oklch(0.698 0.174 43.8)') },
+   blue    = { first=gui.strToRGB('oklch(0.543 0.124 264.7)'), last=gui.strToRGB('oklch(0.281 0.063 262.9)') },
+   ocean   = { first=gui.strToRGB('oklch(0.813 0.093 268.1)'), last=gui.strToRGB('oklch(0.385 0.165 284)') },
+   green   = { first=gui.strToRGB('oklch(0.649 0.154 122.8)'), last=gui.strToRGB('oklch(0.444 0.116 152.4)') },
+   red     = { first=gui.strToRGB('oklch(0.615 0.835 40.4)'),  last=gui.strToRGB('oklch(0.615 0.235 30.4)') },
+   indigo  = { first=gui.strToRGB('oklch(0.570 0.134 345.2)'), last=gui.strToRGB('oklch(0.284 0.117 311.0)') },
+   rose    = { first=gui.strToRGB('oklch(0.863 0.083 51.5)'),  last=gui.strToRGB('oklch(0.834 0.095 7.8)') },
+   pink    = { first=gui.strToRGB('oklch(0.927 0.038 9.8)'),   last=gui.strToRGB('oklch(0.777 0.099 10.8)') },
+   grey    = { first=gui.strToRGB('oklch(0.503 0.000 89.8)'),  last=gui.strToRGB('oklch(0.394 0.000 89.8)') },
+   pearl   = { first=gui.strToRGB('oklch(0.983 0.002 67.8)'),  last=gui.strToRGB('oklch(0.804 0.002 247.8)') }
+}
+
+gui.fills.default = gui.fills.carbon
+
+-- Universal effects.  A 'paint' effect registers a paint server as Ctx.id and returns its painter, which is
+-- layered over the base fill.  A 'filter' effect appends effects to Ctx.filter that read Ctx.input (nil for the source
+-- graphic), and returns the effect that the next stage reads.  Parameter types are 'num', 'colour' and 'enum'.
+--
+-- Future candidates: wood() and metal() (paint), and halo(), shadow(), inset() and outline() (filter).
+
+gui.effects = {
+   -- A gloss highlight over the upper half of the fill.
+
+   sheen = {
+      kind   = 'paint',
+      params = array<table> {
+         { name='opacity', type='num', default=0.4 }
+      },
+      build = function(Ctx:table!, Args:table!):str
+         stops = array<table> {
+            { r=1, g=1, b=1, a=Args.opacity, offset=0 },
+            { r=1, g=1, b=1, a=Args.opacity * 0.25, offset=0.5 },
+            { r=1, g=1, b=1, a=0, offset=0.5 },
+            { r=1, g=1, b=1, a=0, offset=1 }
+         }
+         gui.simpleGradient(Ctx.scene, Ctx.id, stops, 0, 0, 0, 1, 'boundingbox')
+         return f'url(#{Ctx.id})'
+      end
+   },
+
+   -- The alpha channel is blurred and lit as a bump map, clipped to the path and mixed with the fill using an
+   -- arithmetic composite (result = k1*light*fill + k2*light + k3*fill).  Light angles are in degrees.  The blur is
+   -- relative to the bounding box.
+
+   emboss = {
+      kind   = 'filter',
+      params = array<table> {
+         { name='azimuth',   type='num', default=218 },
+         { name='elevation', type='num', default=23 },
+         { name='blur',      type='num', default=0.0292 },
+         { name='light',     type='enum', values=array<str> { 'specular', 'diffuse' }, default='specular' },
+         { name='constant',  type='num', default=0.87 },
+         { name='scale',     type='num', default=1.131 },
+         { name='exponent',  type='num', default=4 },
+         { name='k1',        type='num', default=1.81 },
+         { name='k2',        type='num', default=0.412 },
+         { name='k3',        type='num', default=0.552 }
+         -- 218, 23, 0.0292, specular, 0.87, 1.131, 4, 1.81, 0.412, 0.552
+         -- 87, 65, 0.006, specular, 1.34, 0.5, 42, 1, 0.26, 0.56
+      },
+      build = function(Ctx:table!, Args:table!):obj
+         filter = Ctx.filter
+         source = Ctx.input
+
+         -- The blur, lighting and IN operations only use the alpha channel, so a later stage can read the previous
+         -- output directly in place of SourceAlpha.
+
+         blur = { sx=Args.blur, sy=Args.blur }
+         if source then blur.input = source else blur.sourceType = 'Alpha' end
+         filter.new('BlurFX', blur)
+
+         light = filter.new('LightingFX', {
+            type=(Args.light is 'specular') ? LT_SPECULAR : LT_DIFFUSE, constant=Args.constant, scale=Args.scale,
+            exponent=Args.exponent
+         })
+         check light.mtSetDistantLight(Args.azimuth, Args.elevation)
+
+         clip = { operator=OP_IN }
+         if source then clip.mix = source else clip.mixType = 'Alpha' end
+         filter.new('CompositeFX', clip)
+
+         mix = { operator=OP_ARITHMETIC, k1=Args.k1, k2=Args.k2, k3=Args.k3 }
+         if source then mix.mix = source else mix.mixType = 'Graphic' end
+         return filter.new('CompositeFX', mix)
+      end
+   },
+
+   -- A soft glow around the path, drawn under it.  The radius is relative to the bounding box.  The blurred
+   -- alpha is multiplied by strength, because it falls below half at the path's edge.  The glow is clipped by the
+   -- filter region, so large radii are cut off at the edges.
+
+   glow = {
+      kind   = 'filter',
+      params = array<table> {
+         { name='colour',   type='colour', default='#ffffff' },
+         { name='radius',   type='num', default=0.04 },
+         { name='strength', type='num', default=2 }
+      },
+      build = function(Ctx:table!, Args:table!):obj
+         filter = Ctx.filter
+         source = Ctx.input
+         colour = Args.colour
+
+         spread = { sx=Args.radius, sy=Args.radius }
+         if source then spread.input = source else spread.sourceType = 'Alpha' end
+         blur = filter.new('BlurFX', spread)
+         boost = filter.new('CompositeFX', { operator=OP_ARITHMETIC, input=blur, mix=blur, k2=Args.strength })
+
+         flood = filter.new('FloodFX', {
+            colour=struct<FRGB> { red=colour.r, green=colour.g, blue=colour.b, alpha=colour.a }
+         })
+         halo = filter.new('CompositeFX', { operator=OP_IN, input=flood, mix=boost })
+
+         over = { operator=OP_OVER, mix=halo }
+         if source then over.input = source else over.sourceType = 'Graphic' end
+         return filter.new('CompositeFX', over)
       end
    }
 }
-
-gui.iconThemes.default = gui.iconThemes.carbon
 
 gui.palettes = {
    -- bkgd is the standard background colour for large amounts of text (documents & code).  In a light theme it should be near-white.
@@ -916,6 +1548,7 @@ gui.palettes = {
       gui.theme        = 'light' -- Default
       gui.paletteTheme = 'light' -- 'light' or 'dark' only
       gui.palette      = gui.palettes.ocean
+      gui.defaultFill  = nil -- User has not defined a preferred fill effect
 
       if mSys.AnalysePath(glStyleConfig) is ERR_Okay then
          try
@@ -923,6 +1556,10 @@ gui.palettes = {
             theme        = [_*]cfg.mtReadValue('Style', 'Theme')
             palette      = [_*]cfg.mtReadValue('Style', 'Palette')
             paletteTheme = [_*]cfg.mtReadValue('Style', 'PaletteTheme')
+            defaultFill  = [_*]cfg.mtReadValue('Style', 'Fill')
+
+            if defaultFill?? then gui.defaultFill = defaultFill end
+
             gui.theme    = theme
             if gui.palettes[palette] then
                gui.paletteTheme = gui.palettes?[palette]?[paletteTheme] ? paletteTheme : 'light'
@@ -1015,8 +1652,8 @@ gui.themes = <table{ linkThemes({
          textHighlightBkgd = gui.palette.dark.contrast, -- Background fill for 'text' during user hover
          textSelect        = gui.palette.dark.altText,  -- Colour for 'text' when selected
          textSelectBkgd    = gui.palette.dark.prime,    -- Background fill for 'text' when selected
-         icon              = 'pearl',                   -- Default icon theme for icons drawn over 'bkgd'
-         iconHighlight     = 'pearl'                    -- Recommended icon theme when highlighted or selected
+         icon              = gui.defaultFill or 'fill(pearl)', -- Default icon theme for icons drawn over 'bkgd'
+         iconHighlight     = gui.defaultFill or 'fill(pearl)'  -- Recommended icon theme when highlighted or selected
       },
       widget = { -- Non-input widgets only (exc. checkbox, combobox, etc.)
          text        = { fill = gui.palette.dark.text, face = gui.fonts.widget.face, fontSize = string.format('%.2fpt', gui.fonts.widget.size), fontStyle = gui.fonts.widget.style },
@@ -1027,7 +1664,7 @@ gui.themes = <table{ linkThemes({
       },
       icon = {
          text = { fill = gui.palette.dark.text, face = gui.fonts.icon.face, fontSize = string.format('%.2fpt', gui.fonts.icon.size), fontStyle = gui.fonts.icon.style },
-         theme = 'pearl'
+         effect = gui.defaultFill or 'fill(pearl)'
       },
       input = { -- Used by checkbox, input, combobox
          bkgd  = { fill = gui.palette.dark.bkgd, stroke = gui.palette.dark.edge, strokeWidth = 2, roundX = 4, roundY = 4, opacity = 1 },
@@ -1039,7 +1676,7 @@ gui.themes = <table{ linkThemes({
          bkgd   = { fill = gui.palette.dark.neutral },
          text   = { fill = gui.palette.dark.text, face = gui.fonts.window.face, fontSize =  string.format('%.2fpt', gui.fonts.window.size), fontStyle = gui.fonts.window.style },
          stroke = { stroke = modifyAlpha(gui.palette.dark.text, 0.25), strokeWidth = 2 }, -- Stroking of lines/paths (not borders of widgets)
-         icon   = 'pearl'
+         icon   = gui.defaultFill or 'fill(pearl)'
       },
       button = {
          bkgd      = { fill = gui.palette.dark.neutral, stroke = gui.palette.dark.edge, strokeWidth = 2, roundX = 4, roundY = 4, opacity = 1 },
@@ -1059,7 +1696,7 @@ gui.themes = <table{ linkThemes({
          border    = { stroke = gui.palette.dark.inverse, opacity = 0.5 }, -- VectorRectangle
          highlight = { fill = gui.palette.dark.contrast }, -- VectorRectangle
          text      = { fill = gui.palette.dark.text, face = gui.fonts.menu.face, fontSize = string.format('%.2fpt', gui.fonts.menu.size), fontStyle = gui.fonts.menu.style }, -- VectorText
-         icon      = 'pearl'
+         icon      = gui.defaultFill or 'fill(pearl)'
       },
       dropdown = { -- Exclusive to combobox
          bkgd          = { fill = gui.palette.dark.bkgd },
@@ -1067,8 +1704,8 @@ gui.themes = <table{ linkThemes({
          highlight     = { fill = gui.palette.dark.contrast },
          text          = { fill = gui.palette.dark.text, face = gui.fonts.input.face, fontSize = string.format('%.2fpt', gui.fonts.input.size), fontStyle = gui.fonts.input.style },
          textHighlight = { fill = gui.palette.dark.altText, face = gui.fonts.input.face, fontSize = string.format('%.2fpt', gui.fonts.input.size), fontStyle = gui.fonts.input.style },
-         icon          = 'pearl',
-         iconHighlight = 'pearl'
+         icon          = gui.defaultFill or 'fill(pearl)',
+         iconHighlight = gui.defaultFill or 'fill(pearl)'
       },
       slider = {
          bkgd          = { fill = gui.palette.dark.mid, stroke = 'none', roundX = 4, roundY = 4, strokeWidth = 2, opacity = 1 },
@@ -1095,8 +1732,8 @@ gui.themes = <table{ linkThemes({
          groupBorder   = { stroke = gui.palette.dark.edge, strokeWidth = gui.pixel('1.5pt') },
          highlight     = { fill = gui.palette.dark.contrast },
          iconSize      = gui.pixel('16pt'),
-         icon          = 'pearl',
-         iconHighlight = 'pearl'
+         icon          = gui.defaultFill or 'fill(pearl)',
+         iconHighlight = gui.defaultFill or 'fill(pearl)'
       },
       tooltip = {
          bkgd = { fill = gui.palette.dark.bkgd, roundX = gui.pixel('4pt'), roundY = gui.pixel('4pt'), strokeWidth = 2, stroke = gui.palette.dark.edge },
@@ -1126,8 +1763,8 @@ gui.themes = <table{ linkThemes({
          textHighlightBkgd = gui.palette.light.contrast,
          textSelect        = gui.palette.light.altText,
          textSelectBkgd    = gui.palette.light.prime,
-         icon              = 'carbon',
-         iconHighlight     = 'pearl'
+         icon              = gui.defaultFill or 'fill(carbon)',
+         iconHighlight     = gui.defaultFill or 'fill(pearl)'
       },
       widget = {
          text        = { fill = gui.palette.light.altText, face = gui.fonts.widget.face, fontSize = string.format('%.2fpt', gui.fonts.widget.size), fontStyle = gui.fonts.widget.style },
@@ -1138,7 +1775,7 @@ gui.themes = <table{ linkThemes({
       },
       icon = {
          text = { fill = gui.palette.light.altText, face = gui.fonts.icon.face, fontSize = string.format('%.2fpt', gui.fonts.icon.size), fontStyle = gui.fonts.icon.style },
-         theme = 'carbon'
+         effect = gui.defaultFill or 'fill(carbon)'
       },
       input = {
          bkgd  = { fill = gui.palette.light.bkgd, stroke = gui.palette.light.edge, strokeWidth = 2, roundX = 4, roundY = 4, opacity = 1 },
@@ -1150,7 +1787,7 @@ gui.themes = <table{ linkThemes({
          bkgd   = { fill = gui.palette.light.neutral },
          text   = { fill = gui.palette.light.text, face = gui.fonts.window.face, fontSize = string.format('%.2fpt', gui.fonts.window.size), fontStyle = gui.fonts.window.style },
          stroke = { stroke = modifyAlpha(gui.palette.light.inverse, 0.5), strokeWidth = 2 },
-         icon   = 'carbon'
+         icon   = gui.defaultFill or 'fill(carbon)'
       },
       button = {
          bkgd      = { fill = gui.palette.light.inverse, stroke = gui.palette.light.edge, strokeWidth = 2, roundX = 4, roundY = 4, opacity = 1 },
@@ -1170,7 +1807,7 @@ gui.themes = <table{ linkThemes({
          border    = { stroke  = gui.palette.light.neutral, opacity = 0.5 },
          highlight = { fill = gui.palette.light.contrast },
          text      = { fill = gui.palette.light.altText, face = gui.fonts.menu.face, fontSize = string.format('%.2fpt', gui.fonts.menu.size), fontStyle = gui.fonts.menu.style },
-         icon      = 'pearl'
+         icon      = gui.defaultFill or 'fill(pearl)'
       },
       dropdown = {
          bkgd          = { fill = gui.palette.light.bkgd },
@@ -1178,8 +1815,8 @@ gui.themes = <table{ linkThemes({
          highlight     = { fill = gui.palette.light.contrast },
          text          = { fill = gui.palette.light.text, face = gui.fonts.input.face, fontSize = string.format('%.2fpt', gui.fonts.input.size), fontStyle = gui.fonts.input.style },
          textHighlight = { fill = gui.palette.light.altText, face = gui.fonts.input.face, fontSize = string.format('%.2fpt', gui.fonts.input.size), fontStyle = gui.fonts.input.style },
-         icon          = 'carbon',
-         iconHighlight = 'pearl'
+         icon          = gui.defaultFill or 'fill(carbon)',
+         iconHighlight = gui.defaultFill or 'fill(pearl)'
       },
       slider = {
          bkgd          = { fill = gui.palette.light.mid, stroke = 'none', roundX = 4, roundY = 4, strokeWidth = 2, opacity = 1 },
@@ -1200,8 +1837,8 @@ gui.themes = <table{ linkThemes({
          groupBorder   = { stroke = gui.palette.light.inverse, strokeWidth = gui.pixel('1.5pt') },
          highlight     = { fill = gui.palette.light.contrast },
          iconSize      = gui.pixel('16pt'),
-         icon          = 'carbon',
-         iconHighlight = 'pearl'
+         icon          = gui.defaultFill or 'fill(carbon)',
+         iconHighlight = gui.defaultFill or 'fill(pearl)'
       },
       tooltip = {
          bkgd = { fill = gui.palette.light.bkgd, roundX = 4, roundY = 4, strokeWidth = 2, stroke = gui.palette.light.edge },
