@@ -1319,43 +1319,58 @@ static ERR read_painter_layer(objVectorScene *Scene, std::string_view IRI, Vecto
 
 //********************************************************************************************************************
 // Parse a Fill string into its painters.  Painters separated by ',' follow the SVG 2 convention of being listed from
-// top to bottom, while ';' is a Kotuku extension that lists them from bottom to top.  A maximum of two painters is
-// supported.
+// top to bottom, while ';' is a Kotuku extension that lists them from bottom to top.  On return, Fill holds the
+// bottom-most painter and ExtFill holds any painters drawn over it in drawing order.  ExtFill is only allocated if
+// more than one painter is readable.
 
-static ERR read_fill_painters(objVectorScene *Scene, std::string_view Value, extPainter (&Fill)[2], bool &FGFill)
+static ERR read_fill_painters(objVectorScene *Scene, std::string_view Value, extPainter &Fill,
+   std::unique_ptr<std::vector<extPainter>> &ExtFill)
 {
    kt::Log log(__FUNCTION__);
 
-   FGFill = false;
-
    std::string_view next;
    bool fallback;
-   if (auto error = read_painter_layer(Scene, Value, Fill[0], next, fallback); error != ERR::Okay) return error;
+   if (auto error = read_painter_layer(Scene, Value, Fill, next, fallback); error != ERR::Okay) return error;
    if (next.empty()) return ERR::Okay;
 
    const char separator = next[0];
-   if ((separator IS ',') and fallback) {
-      log.warning("Only the last painter in a list may declare a fallback colour: %.*s", int(Value.size()),
-         Value.data());
-      return ERR::Syntax;
+   while (not next.empty()) {
+      if (next[0] != separator) {
+         log.warning("Painter lists cannot mix ',' and ';' separators: %.*s", int(Value.size()), Value.data());
+         return ERR::Syntax;
+      }
+
+      if ((separator IS ',') and fallback) {
+         log.warning("Only the last painter in a list may declare a fallback colour: %.*s", int(Value.size()),
+            Value.data());
+         return ERR::Syntax;
+      }
+
+      next.remove_prefix(1);
+
+      // An unreadable painter that follows the first is ignored for backwards compatibility, e.g. it may reference a
+      // definition that has not been registered with this particular scene.
+
+      const auto layer = next;
+      extPainter painter{};
+      if (read_painter_layer(Scene, layer, painter, next, fallback) != ERR::Okay) {
+         next = layer.substr(find_painter_separator(layer));
+         fallback = false;
+         continue;
+      }
+
+      if (not ExtFill) ExtFill = std::make_unique<std::vector<extPainter>>();
+      ExtFill->push_back(std::move(painter));
    }
 
-   // An unreadable second painter is ignored for backwards compatibility, e.g. it may reference a definition that
-   // has not been registered with this particular scene.
-
-   next.remove_prefix(1);
-   if (read_painter_layer(Scene, next, Fill[1], next, fallback) != ERR::Okay) {
-      Fill[1].reset();
-      return ERR::Okay;
+   if ((separator IS ',') and ExtFill) { // Reverse the top-to-bottom order of the comma list
+      auto &ext = *ExtFill;
+      ext.insert(ext.begin(), std::move(Fill));
+      Fill = std::move(ext.back());
+      ext.pop_back();
+      std::reverse(ext.begin(), ext.end());
    }
 
-   if (not next.empty()) {
-      log.warning("A maximum of two fill painters is supported: %.*s", int(Value.size()), Value.data());
-      return ERR::Syntax;
-   }
-
-   if (separator IS ',') std::swap(Fill[0], Fill[1]);
-   FGFill = true;
    return ERR::Okay;
 }
 
@@ -1371,9 +1386,9 @@ valid formatting.
 A solid fallback colour can follow a `url()` reference, separated by whitespace, e.g. `url(#hatch) red`.  The
 fallback colour is drawn beneath the referenced paint server.
 
-Two painters can be layered by separating them with a comma or a semi-colon.  This makes it easy to use a common
-background fill and follow it with an independent foreground, alleviating the need for additional vector objects.  The
-separator determines the order in which the painters are drawn:
+Multiple painters can be layered by separating them with commas or semi-colons.  This makes it easy to use a common
+background fill and follow it with independent foregrounds, alleviating the need for additional vector objects.  The
+separator determines the order in which the painters are drawn, and a list must use the same separator throughout:
 
 <list type="bullet">
 <li>Comma separated painters follow the SVG 2 paint list convention, whereby the first painter is drawn on top, e.g.
@@ -1383,9 +1398,9 @@ fallback colour.</li>
 hatch pattern over a solid fill.  This format is a Kōtuku extension and is not SVG compliant.</li>
 </list>
 
-If the second painter in the list cannot be read, e.g. because it references a definition that is not registered with
-the scene, it is ignored and the first painter is retained.  A `Syntax` error is returned if more than two painters
-are listed.
+If a painter that follows the first in the list cannot be read, e.g. because it references a definition that is not
+registered with the scene, it is ignored and the remaining painters are retained.  A `Syntax` error is returned if
+the list mixes separators, or if a painter other than the last in a comma separated list declares a fallback colour.
 
 *********************************************************************************************************************/
 
@@ -1393,16 +1408,12 @@ static ERR VECTOR_SET_Fill(extVector *Self, const std::string_view &Value)
 {
    // Note that if an internal routine sets DisableFillColour then the colour will be stored but effectively does nothing.
    Self->FillString.clear();
-   Self->FGFill = false;
-   Self->Fill[0].reset();
-   Self->Fill[1].reset();
+   Self->reset_fill();
 
    if (Value.empty()) return ERR::Okay;
 
-   bool fg_fill;
-   if (auto error = read_fill_painters(Self->Scene, Value, Self->Fill, fg_fill); !error) {
+   if (auto error = read_fill_painters(Self->Scene, Value, Self->Fill, Self->ExtFill); !error) {
       Self->FillString = Value;
-      Self->FGFill = fg_fill;
 
       // If the raster filler doesn't exist for this vector then we'll need to regenerate it.
 
@@ -1412,8 +1423,7 @@ static ERR VECTOR_SET_Fill(extVector *Self, const std::string_view &Value)
       return ERR::Okay;
    }
    else {
-      Self->Fill[0].reset();
-      Self->Fill[1].reset();
+      Self->reset_fill();
       mark_buffers_for_refresh(Self);
       return error;
    }
@@ -1434,14 +1444,14 @@ If the Alpha component is set to zero then the FillColour will be ignored by the
 
 static ERR VECTOR_GET_FillColour(extVector *Self, struct FRGB **Value)
 {
-   *Value = &Self->Fill[0].Colour;
+   *Value = &Self->Fill.Colour;
    return ERR::Okay;
 }
 
 static ERR VECTOR_SET_FillColour(extVector *Self, struct FRGB *Value)
 {
    if (Value) {
-      Self->Fill[0].Colour = Value[0];
+      Self->Fill.Colour = Value[0];
 
       // If the raster filler doesn't exist for this vector then we'll need to regenerate it.
 
@@ -1449,7 +1459,7 @@ static ERR VECTOR_SET_FillColour(extVector *Self, struct FRGB *Value)
       else mark_buffers_for_refresh(Self);
    }
    else {
-      Self->Fill[0].Colour.Alpha = 0;
+      Self->Fill.Colour.Alpha = 0;
       mark_buffers_for_refresh(Self);
    }
 

@@ -253,6 +253,17 @@
     </field>
 
     <field>
+      <name>RootScene</name>
+      <comment>Returns the top-most VectorScene object.</comment>
+      <access read="G">Get</access>
+      <type>OBJECTPTR</type>
+      <description>
+<p>Returns the top-most VectorScene object according to the object graph.  If the targeted scene has no parent vectors, it is considered the root and is returned as the value.</p>
+<p>If a HostScene is defined, it will be used as the starting point and its parents will be traversed using the same process.</p>
+      </description>
+    </field>
+
+    <field>
       <name>SampleMethod</name>
       <comment>The sampling method to use when interpolating images and patterns.</comment>
       <access read="R" write="S">Read/Set</access>

@@ -113,8 +113,8 @@ void SceneRenderer::ClipBuffer::draw_clips(SceneRenderer &Render, extVector *Sha
                if ((m_clip->Flags & VCLF::APPLY_FILLS) != VCLF::NIL) {
                   // When the APPLY_FILLS option is enabled, regular fill painting rules will be applied.
 
-                  if ((node->Fill->Colour.Alpha > 0) and (!node->DisableFillColour)) {
-                     double value = (node->Fill->Colour.Red * 0.2126) + (node->Fill->Colour.Green * 0.7152) + (node->Fill->Colour.Blue * 0.0722);
+                  if ((node->Fill.Colour.Alpha > 0) and (!node->DisableFillColour)) {
+                     double value = (node->Fill.Colour.Red * 0.2126) + (node->Fill.Colour.Green * 0.7152) + (node->Fill.Colour.Blue * 0.0722);
                      value *= opacity * node->FillOpacity;
                      solid.color(agg::gray8(value * 0xff, 0xff));
 
@@ -124,7 +124,7 @@ void SceneRenderer::ClipBuffer::draw_clips(SceneRenderer &Render, extVector *Sha
                      agg::render_scanlines(Raster, sl, solid);
                   }
 
-                  if ((node->Fill->Gradient) or (node->Fill->Image) or (node->Fill->Pattern)) {
+                  if ((node->Fill.Gradient) or (node->Fill.Image) or (node->Fill.Pattern)) {
                      // The fill routines are written for 32-bit colour rendering, so we have to use active conversion
                      // of RGB colours to grey-scale.  This isn't that much of a problem if the masks remain static and
                      // we cache the results.
@@ -141,8 +141,8 @@ void SceneRenderer::ClipBuffer::draw_clips(SceneRenderer &Render, extVector *Sha
                      Raster.reset();
                      Raster.add_path(final_path);
 
-                     if (node->Fill->Gradient) {
-                        auto gradient = (extGradient *)node->Fill->Gradient;
+                     if (node->Fill.Gradient) {
+                        auto gradient = (extGradient *)node->Fill.Gradient;
                         if (gradient->classID() IS CLASSID::GRADIENTGOURAUD) {
                            fill_gouraud(state, node->Bounds, Render.view_width(), Render.view_height(), *(extGradientGouraud *)gradient,
                               state.mOpacity * node->FillOpacity, rb, Raster, t);
@@ -155,21 +155,21 @@ void SceneRenderer::ClipBuffer::draw_clips(SceneRenderer &Render, extVector *Sha
                            fill_mesh(state, node->Bounds, Render.view_width(), Render.view_height(), *(extGradientMesh *)gradient,
                               state.mOpacity * node->FillOpacity, rb, Raster, t);
                         }
-                        else if (auto table = get_fill_gradient_table(node->Fill[0], state.mOpacity * node->FillOpacity)) {
+                        else if (auto table = get_fill_gradient_table(node->Fill, state.mOpacity * node->FillOpacity)) {
                            fill_gradient(state, node->Bounds, &node->BasePath, t, Render.view_width(), Render.view_height(),
                               *gradient, table, rb, Raster);
                         }
                       }
 
-                     if (node->Fill->Image) { // Bitmap image fill.  NB: The SVG class creates a standard VectorRectangle and associates an image with it in order to support <image> tags.
+                     if (node->Fill.Image) { // Bitmap image fill.  NB: The SVG class creates a standard VectorRectangle and associates an image with it in order to support <image> tags.
                         fill_image(state, node->Bounds, node->BasePath, node->Scene->SampleMethod, t,
-                           Render.view_width(), Render.view_height(), *((extVectorImage *)node->Fill->Image), rb, Raster,
+                           Render.view_width(), Render.view_height(), *((extVectorImage *)node->Fill.Image), rb, Raster,
                            opacity * node->FillOpacity);
                      }
 
-                     if (node->Fill->Pattern) {
+                     if (node->Fill.Pattern) {
                         fill_pattern(state, node->Bounds, &node->BasePath, node->Scene->SampleMethod, t,
-                           Render.view_width(), Render.view_height(), *((extVectorPattern *)node->Fill->Pattern),
+                           Render.view_width(), Render.view_height(), *((extVectorPattern *)node->Fill.Pattern),
                            rb, Raster, opacity * node->FillOpacity);
                      }
                   }
