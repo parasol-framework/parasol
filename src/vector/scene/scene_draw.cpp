@@ -832,8 +832,13 @@ void SceneRenderer::draw_vectors(extVector *CurrentVector, VectorState &ParentSt
             log.traceBranch("Rendering filter for %s.", get_name(shape));
          #endif
 
+         // A scene's root viewport has no parent view, so it is the container for its own filter.
+
+         auto container = mView;
+         if ((not container) and (shape->classID() IS CLASSID::VECTORVIEWPORT)) container = (extVectorViewport *)shape;
+
          objBitmap *bmp;
-         if (not render_filter(filter, mView, shape, mBitmap, &bmp)) {
+         if ((container) and (not render_filter(filter, container, shape, mBitmap, &bmp))) {
             copy_filter_bitmap(bmp, filter);
          }
          continue;

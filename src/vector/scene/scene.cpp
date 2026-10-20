@@ -903,6 +903,35 @@ static ERR GET_RenderTime(extVectorScene *Self, int64_t *Value)
 /*********************************************************************************************************************
 
 -FIELD-
+RootScene: Returns the top-most VectorScene object.
+
+Returns the top-most VectorScene object according to the object graph.  If the targeted scene has no parent vectors,
+it is considered the root and is returned as the value.
+
+If a HostScene is defined, it will be used as the starting point and its parents will be traversed using the same
+process.
+
+*********************************************************************************************************************/
+
+static ERR GET_RootScene(extVectorScene *Self, extVectorScene * &Value)
+{
+   extVectorScene *scene = Self;
+
+   if (scene->HostScene) scene = (extVectorScene *)scene->HostScene;
+
+   OBJECTPTR owner = scene->Owner;
+   while (owner) {
+      if (owner->classID() IS CLASSID::VECTORSCENE) scene = (extVectorScene *)owner;
+      owner = owner->Owner;
+   }
+
+   Value = scene;
+   return ERR::Okay;
+}
+
+/*********************************************************************************************************************
+
+-FIELD-
 SampleMethod: The sampling method to use when interpolating images and patterns.
 
 The SampleMethod controls the sampling algorithm that is used when images and patterns in the vector definition are affected
@@ -1173,6 +1202,7 @@ static const FieldArray clSceneFields[] = {
    { "PageWidth",    FDF_INT|FDF_RW,      nullptr, SET_PageWidth },
    { "PageHeight",   FDF_INT|FDF_RW,      nullptr, SET_PageHeight },
    { "SampleMethod", FDF_INT|FDF_LOOKUP|FDF_RW, nullptr, SET_SampleMethod, &clVectorSceneSampleMethod },
+   { "RootScene",    FDF_OBJECT|FDF_R,    GET_RootScene, nullptr, CLASSID::VECTORSCENE },
    // Virtual fields
    { "Defs",         FDF_PTR|FDF_SYSTEM|FDF_R|FDF_PURE, GET_Defs, nullptr },
    END_FIELD
