@@ -46,10 +46,8 @@ gui.icon = function(Options:table!)
 
    -- Weak bindings retain the widget only for the duration of each callback.
 
-   local text_words:array<str>
-   local text_group:obj
-   local theme_colour:table
-   local theme:table
+   text_words:array<str>, text_group:obj, icon_theme:table, theme:table
+
    click_state  = { held=false, x=0, y=0 }
    words        = array<table>
    lines        = array<str>
@@ -66,9 +64,7 @@ gui.icon = function(Options:table!)
          local activation:str
          if Msg.type is JET_BUTTON_1 then
             if Msg.value > 0 then
-               click_state.held = true
-               click_state.x = Msg.absX
-               click_state.y = Msg.absY
+               click_state.{ held = true, x = Msg.absX, y = Msg.absY }
                Viewport.opacity = 0.5
             else
                held = click_state.held
@@ -112,11 +108,11 @@ gui.icon = function(Options:table!)
       font_size    = string.format('%.2fpt', font_size_pt)
       pixel_size   = gui.pixel(font_size, 96)
 
-      err, font = check mVec.GetFontHandle(theme.icon.text.face, theme.icon.text.fontStyle ?? "Regular", 0, pixel_size)
-      metrics = struct.new('FontMetrics')
-      err = check mVec.GetFontMetrics(font, metrics)
+      err, font    = check mVec.GetFontHandle(theme.icon.text.face, theme.icon.text.fontStyle ?? "Regular", 0, pixel_size)
+      metrics      = struct.new('FontMetrics')
+      err          = check mVec.GetFontMetrics(font, metrics)
       line_height  = metrics.lineSpacing
-      margin = math.floor(metrics.height * 0.5) + 1
+      margin       = math.floor(metrics.height * 0.5) + 1
 
       -- Extract each word's pixel width
 
@@ -140,7 +136,7 @@ gui.icon = function(Options:table!)
             current_line = word.word
          else
             new_line = current_line .. ' ' .. word.word
-            width = mVec.StringWidth(font, new_line, -1)
+            width    = mVec.StringWidth(font, new_line, -1)
             if width + (margin * 2) < icon_width then
                current_line = new_line
             else

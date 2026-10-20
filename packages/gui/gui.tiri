@@ -292,7 +292,7 @@ end
 -- Result is in [0,1] where 0 is black and 1 is white.
 
 function gui.mtRGB.luminance():num
-   local linear = &linearise()
+   linear = &linearise()
    return (0.2126 * linear.r) + (0.7152 * linear.g) + (0.0722 * linear.b)
 end
 
@@ -300,17 +300,17 @@ end
 -- Values are in [0,1].  Out-of-gamut sRGB colours may produce values outside [0,1].
 
 function gui.mtRGB.toDisplayP3():table
-   local linear = &linearise()
+   linear = &linearise()
 
    -- sRGB linear → XYZ D65
-   local x =  0.4124564 * linear.r + 0.3575761 * linear.g + 0.1804375 * linear.b
-   local y =  0.2126729 * linear.r + 0.7151522 * linear.g + 0.0721750 * linear.b
-   local z =  0.0193339 * linear.r + 0.1191920 * linear.g + 0.9503041 * linear.b
+   x =  0.4124564 * linear.r + 0.3575761 * linear.g + 0.1804375 * linear.b
+   y =  0.2126729 * linear.r + 0.7151522 * linear.g + 0.0721750 * linear.b
+   z =  0.0193339 * linear.r + 0.1191920 * linear.g + 0.9503041 * linear.b
 
    -- XYZ D65 → Display P3 linear
-   local pr =  2.4934969 * x - 0.9313836 * y - 0.4027108 * z
-   local pg = -0.8294890 * x + 1.7626641 * y + 0.0236247 * z
-   local pb =  0.0358458 * x - 0.0761724 * y + 0.9568845 * z
+   pr =  2.4934969 * x - 0.9313836 * y - 0.4027108 * z
+   pg = -0.8294890 * x + 1.7626641 * y + 0.0236247 * z
+   pb =  0.0358458 * x - 0.0761724 * y + 0.9568845 * z
 
    -- Apply sRGB-style gamma (Display P3 uses the same transfer function)
    gamma = (u) => (u <= 0.0031308) ? (u * 12.92) : (1.055 * (u ** (1 / 2.4)) - 0.055)
@@ -322,7 +322,7 @@ end
 -- okl is lightness in [0,1], oka is green-red axis, okb is blue-yellow axis (both typically -0.5 to 0.5).
 
 function gui.mtRGB.toOKLab():table
-   local linear = &linearise()
+   linear = &linearise()
 
    -- Linear sRGB → LMS (OKLab M1 matrix)
    lms_l = 0.4122214708 * linear.r + 0.5363325363 * linear.g + 0.0514459929 * linear.b
@@ -347,9 +347,9 @@ end
 -- okl is lightness in [0,1], okc is chroma (unbounded, typically 0-0.4), okh is hue in degrees [0,360).
 
 function gui.mtRGB.toOKLCH():table
-   local lab = &toOKLab()
-   local c = math.sqrt(lab.oka * lab.oka + lab.okb * lab.okb)
-   local h = math.deg(math.atan2(lab.okb, lab.oka))
+   lab = &toOKLab()
+   c = math.sqrt(lab.oka * lab.oka + lab.okb * lab.okb)
+   h = math.deg(math.atan2(lab.okb, lab.oka))
    if h < 0 then h = h + 360 end
    return setmetatable({ okl = lab.okl, okc = c, okh = h, a = &a },
       { __tostring = () => &a is 1 ?
@@ -400,11 +400,11 @@ gui.pixel = function(Val:str, Density:num):num
    assert(num, f'Invalid graphics unit \'{Val}\'')
    dpi = Density ?? gui.interface.dpi
    return math.round(choose alpha from
-      'px' -> num
+      'px' -> num                -- direct pixel escape hatch
       'in' -> dpi * num
       'mm' -> dpi * (num / 25.4) -- 25.4 units per inch
-      'pt' -> dpi * (num / 72) -- 72 units per inch, matches Freetype default
-      'dp' -> num * (dpi / 160) -- 160 units per inch
+      'pt' -> dpi * (num / 72)   -- 72 units per inch, matches Freetype default
+      'dp' -> num * (dpi / 160)  -- density independent; 160 units per inch
       else -> num
    end)
 end
@@ -919,14 +919,16 @@ gui.themes = <table{ linkThemes({
 
          try <trace>
             if Scene.mtFindDef('dark_vslider') != ERR_Okay then
+               dot = gui.pixel('6dp')
                pattern = Scene.new('VectorPattern', {
-                  name='vslider_pattern', width=gui.pixel('4px'), height=gui.pixel('18px'),
-                  spreadMethod=VSPREAD_PAD, units=VUNIT_USERSPACE
-                  aspectRatio= ARF_MEET|ARF_X_MID|ARF_Y_MID,  x='50%', y='50%', transform='translate(-2,-8)'
+                  name = 'vslider_pattern', width = dot, height = dot * 4,
+                  spreadMethod = VSPREAD_PAD, units = VUNIT_USERSPACE
+                  aspectRatio = ARF_MEET|ARF_X_MID|ARF_Y_MID,  x='50%', y='50%',
+                  transform=f'translate(-{dot/2},-{dot*4/2})'
                })
 
                pattern.viewport.new('VectorPolygon', {
-                  strokeWidth = 4, stroke = 'rgb(0 0 0 / .5)', dashArray = array<double> { 3, 3 },
+                  strokeWidth = 4, stroke = 'rgb(0 0 0 / .5)', dashArray = array<double> { dot, dot },
                   x1 = '50%', x2 = '50%', y1 = 0, y2 = pattern.height
                })
 
@@ -934,13 +936,14 @@ gui.themes = <table{ linkThemes({
             end
 
             if Scene.mtFindDef('dark_hslider') != ERR_Okay then
+               dot = gui.pixel('6dp')
                pattern = Scene.new('VectorPattern', {
-                  name='hslider_pattern', width=18, height=4, spreadMethod=VSPREAD_PAD, units=VUNIT_USERSPACE
-                  aspectRatio= ARF_MEET|ARF_X_MID|ARF_Y_MID,  x='50%', y='50%', transform='translate(-8,-2)'
+                  name='hslider_pattern', width=dot * 3, height=dot, spreadMethod=VSPREAD_PAD, units=VUNIT_USERSPACE
+                  aspectRatio= ARF_MEET|ARF_X_MID|ARF_Y_MID,  x='50%', y='50%', transform=f'translate(-{dot*3/2},-{dot/2})'
                })
 
                pattern.viewport.new('VectorPolygon', {
-                  strokeWidth = 4, stroke = 'rgb(0 0 0 / .5)', dashArray = array<double> { 3, 3 },
+                  strokeWidth = 4, stroke = 'rgb(0 0 0 / .5)', dashArray = array<double> { dot, dot },
                   y1 = '50%', y2 = '50%', x1 = 0, x2 = pattern.width
                })
 
@@ -1034,12 +1037,14 @@ gui.themes = <table{ linkThemes({
       scrollbar_v = {
          bkgd          = { fill = gui.palette.dark.mid, stroke = 'none', strokeWidth = 2 },
          fore          = { fill = f'{gui.palette.dark.inverse};url(#dark_vslider)', stroke = 'none', opacity = 0.75, strokeWidth = 2 },
-         foreHighlight = { fill = f'{gui.palette.dark.contrast};url(#dark_vslider)', opacity = 1 }
+         foreHighlight = { fill = f'{gui.palette.dark.contrast};url(#dark_vslider)', opacity = 1 },
+         thickness     = gui.pixel('18dp')
       },
       scrollbar_h = {
          bkgd          = { fill = gui.palette.dark.mid, stroke = 'none', strokeWidth = 2 },
          fore          = { fill = f'{gui.palette.dark.inverse};url(#dark_hslider)', stroke = 'none', opacity = 0.75, strokeWidth = 2 },
-         foreHighlight = { fill = f'{gui.palette.dark.contrast};url(#dark_hslider)', opacity = 1 }
+         foreHighlight = { fill = f'{gui.palette.dark.contrast};url(#dark_hslider)', opacity = 1 },
+         thickness     = gui.pixel('18dp')
       },
       toolbar = {
          bkgd          = { fill = gui.palette.dark.bkgd },
@@ -1142,7 +1147,8 @@ gui.themes = <table{ linkThemes({
       scrollbar = {
          bkgd          = { fill = gui.palette.light.mid, stroke = 'none', strokeWidth = 2 },
          fore          = { fill = gui.palette.light.inverse, stroke = 'none', opacity = 0.75, strokeWidth = 2 },
-         foreHighlight = { fill = gui.palette.light.contrast, opacity = 1 }
+         foreHighlight = { fill = gui.palette.light.contrast, opacity = 1 },
+         thickness     = gui.pixel('12dp')
       },
       toolbar = {
          bkgd          = { fill = gui.palette.light.bkgd },
