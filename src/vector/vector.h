@@ -984,6 +984,7 @@ class extVectorViewport : public extVector {
    uint8_t *vpBufferData;
    int vpBufferSize; // Size of the vpBufferData in bytes
    uint64_t vpSeenShareVersion; // Scene ShareVersion that was current when vpBuffer was last rendered.
+   double vpBufferPhaseX, vpBufferPhaseY; // Sub-pixel offset of vpBounds when vpBuffer was last rendered.
    std::unique_ptr<std::vector<class InputBoundary>> vpInputBounds; // Cached boundaries for buffered viewports; allocated on first use only.
    extVectorClip *vpClipOwner;
    bool  vpClip; // Viewport requires non-rectangular clipping, e.g. because it is rotated or sheared.

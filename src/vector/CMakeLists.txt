@@ -89,6 +89,7 @@ flute_test(vector_viewport_pattern "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_viewp
 flute_test(vector_callback_lifetimes "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_callback_lifetimes.tiri")
 flute_test(vector_viewport_input_free "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_viewport_input_free.tiri")
 flute_test(vector_focus "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_focus.tiri")
+flute_test(vector_buffered_viewport "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_buffered_viewport.tiri")
 flute_test(vector_path_command_spans "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_path_command_spans.tiri")
 flute_test(vector_dash_array "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_dash_array.tiri")
 flute_test(vector_text_path_length "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_text_path_length.tiri")

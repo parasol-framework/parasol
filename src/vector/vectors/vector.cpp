@@ -2246,11 +2246,20 @@ static ERR VECTOR_GET_TabOrder(extVector *Self, int *Value)
 
 static ERR VECTOR_SET_TabOrder(extVector *Self, int Value)
 {
-   if ((Value >= 1) and (Value <= 255)) {
+   if ((Value < 1) or (Value > 255)) return ERR::OutOfRange;
+   if (Value IS Self->TabOrder) return ERR::Okay;
+
+   // The scene's keyboard subscribers are ordered by TabOrder, so a subscribed vector is removed before its key
+   // changes and then reinserted.  Changing the key in place would corrupt the set's ordering.
+
+   const std::lock_guard<std::recursive_mutex> lock(glVectorFocusLock);
+   auto scene = (extVectorScene *)Self->Scene;
+   if ((scene) and (scene->KeyboardSubscriptions.erase(Self))) {
       Self->TabOrder = Value;
-      return ERR::Okay;
+      scene->KeyboardSubscriptions.emplace(Self);
    }
-   else return ERR::OutOfRange;
+   else Self->TabOrder = Value;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************

@@ -1010,7 +1010,17 @@ void SceneRenderer::draw_vectors(extVector *CurrentVector, VectorState &ParentSt
                if (view->Child) {
                   constexpr int MAX_AREA = 4096 * 4096; // Maximum allowable area for enabling a viewport buffer
 
-                  if ((view->vpBuffered) and (view->vpFixedWidth * view->vpFixedHeight < MAX_AREA)) {
+                  // The buffer covers the viewport's device-space bounds, aligned to whole pixels, so that it can be
+                  // composited with a 1:1 copy.  Children are drawn in device coordinates and therefore already
+                  // include the viewport's transform, including any scaling inherited from its parents.
+
+                  const int buffer_left   = int(std::floor(view->vpBounds.left));
+                  const int buffer_top    = int(std::floor(view->vpBounds.top));
+                  const int buffer_width  = int(std::ceil(view->vpBounds.right)) - buffer_left;
+                  const int buffer_height = int(std::ceil(view->vpBounds.bottom)) - buffer_top;
+
+                  if ((view->vpBuffered) and (buffer_width > 0) and (buffer_height > 0) and
+                      (int64_t(buffer_width) * int64_t(buffer_height) < MAX_AREA)) {
                      // In buffered mode, children will be drawn to an independent bitmap that is permanently
                      // cached.
 
@@ -1019,17 +1029,24 @@ void SceneRenderer::draw_vectors(extVector *CurrentVector, VectorState &ParentSt
 
                      if ((not redraw) and (view->vpSeenShareVersion != Scene->ShareVersion)) redraw = true;
 
+                     // Content is rendered at a sub-pixel phase, so a fractional move requires a redraw.  Whole-pixel
+                     // moves, such as scrolling, reuse the buffer.
+
+                     const double phase_x = view->vpBounds.left - buffer_left;
+                     const double phase_y = view->vpBounds.top - buffer_top;
+                     if ((phase_x != view->vpBufferPhaseX) or (phase_y != view->vpBufferPhaseY)) redraw = true;
+
                      if (view->vpBuffer) {
-                        if ((view->vpBuffer->Width != view->vpFixedWidth) or (view->vpBuffer->Height != view->vpFixedHeight)) {
-                           view->vpBuffer->resize(view->vpFixedWidth, view->vpFixedHeight);
+                        if ((view->vpBuffer->Width != buffer_width) or (view->vpBuffer->Height != buffer_height)) {
+                           view->vpBuffer->resize(buffer_width, buffer_height);
                            redraw = true;
                         }
                      }
                      else {
                         view->vpBuffer = objBitmap::create::local(fl::Name("vp_buffer"),
                            fl::Owner(view->UID),
-                           fl::Width(view->vpFixedWidth),
-                           fl::Height(view->vpFixedHeight),
+                           fl::Width(buffer_width),
+                           fl::Height(buffer_height),
                            fl::BitsPerPixel(32),
                            fl::Flags(BMF::ALPHA_CHANNEL));
                            //fl::ColourSpace(view->vpColourSpace));
@@ -1039,6 +1056,8 @@ void SceneRenderer::draw_vectors(extVector *CurrentVector, VectorState &ParentSt
                      if (redraw) {
                         view->vpBuffer->BkgdIndex = 0;
                         view->vpBuffer->clear();
+                        view->vpBufferPhaseX = phase_x;
+                        view->vpBufferPhaseY = phase_y;
 
                         // A new state is allocated for drawing the children.  Clipping to the bitmap is enforced with
                         // the overflow values.
@@ -1057,10 +1076,19 @@ void SceneRenderer::draw_vectors(extVector *CurrentVector, VectorState &ParentSt
                         // make adjustments to the bitmap to orient to (0,0).
 
                         mBitmap = view->vpBuffer;
-                        mBitmapOriginX = int(view->vpBounds.left);
-                        mBitmapOriginY = int(view->vpBounds.top);
+                        mBitmapOriginX = buffer_left;
+                        mBitmapOriginY = buffer_top;
                         auto save_data = mBitmap->offset(-mBitmapOriginX, -mBitmapOriginY);
                         mFormat.setBitmap(*view->vpBuffer);
+
+                        // The inherited clip box is inclusive and can extend beyond the buffer, e.g. to the right
+                        // edge of the viewport's bounds.  Drawing must never reach outside the buffer's memory.
+
+                        auto &buffer_clip = mRenderBase.m_clip_box;
+                        buffer_clip.x1 = std::max(buffer_clip.x1, buffer_left);
+                        buffer_clip.y1 = std::max(buffer_clip.y1, buffer_top);
+                        buffer_clip.x2 = std::min(buffer_clip.x2, buffer_left + buffer_width - 1);
+                        buffer_clip.y2 = std::min(buffer_clip.y2, buffer_top + buffer_height - 1);
 
                         auto ib_size = mInputBounds.size();
 
@@ -1098,12 +1126,12 @@ void SceneRenderer::draw_vectors(extVector *CurrentVector, VectorState &ParentSt
                         mInputBounds.insert(mInputBounds.end(), view->vpInputBounds->begin(), view->vpInputBounds->end());
                      }
 
-                     // Draw the cached bitmap buffer
+                     // Draw the cached bitmap buffer.  The buffer is in device pixels, so it is copied 1:1 at its
+                     // origin and masked by the viewport's path.
 
                      view->BasePath.approximation_scale(view->Transform.scale());
 
-                     auto transform = view->Transform;
-                     transform.invert();
+                     agg::trans_affine_translation transform(-buffer_left, -buffer_top);
 
                      agg::rasterizer_scanline_aa<> raster;
                      raster.add_path(view->BasePath);
@@ -1111,11 +1139,13 @@ void SceneRenderer::draw_vectors(extVector *CurrentVector, VectorState &ParentSt
                      if (not mClipStack.empty()) {
                         agg::alpha_mask_gray8 alpha_mask(mClipStack.top().m_renderer);
                         agg::scanline_u8_am<agg::alpha_mask_gray8> masked_scanline(alpha_mask);
-                        drawBitmap(masked_scanline, VSM::AUTO, mRenderBase, raster, view->vpBuffer, VSPREAD::REPEAT, view->Opacity, &transform);
+                        drawBitmap(masked_scanline, VSM::AUTO, mRenderBase, raster, view->vpBuffer, VSPREAD::CLIP, view->Opacity,
+                           &transform);
                      }
                      else {
                         agg::scanline_u8 scanline;
-                        drawBitmap(scanline, VSM::AUTO, mRenderBase, raster, view->vpBuffer, VSPREAD::REPEAT, view->Opacity, &transform);
+                        drawBitmap(scanline, VSM::AUTO, mRenderBase, raster, view->vpBuffer, VSPREAD::CLIP, view->Opacity,
+                           &transform);
                      }
                   }
                   else draw_vectors((extVector *)view->Child, state);
