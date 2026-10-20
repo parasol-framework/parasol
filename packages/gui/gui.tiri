@@ -10,7 +10,6 @@
 
    namespace gui {
       theme = nil,
-      _counter = 0,
       configureScene = function(Window, Scene)
          -- Themes can set a custom configuration function that adds definitions to all window scenes, e.g. images
          -- and patterns for fills.
@@ -526,33 +525,67 @@ function iconThemeHash(Theme:table!):num
 end
 
 ----------------------------------------------------------------------------------------------------------------------
+-- Resolve an icon theme name or custom theme table to its configuration and a key that identifies it in definition
+-- names.  Named themes are keyed by name; custom tables are keyed by a hash of their colours.
+
+function resolveIconTheme(Theme:any!):<table, str>
+   if Theme is <table> then
+      return Theme, f'theme_{iconThemeHash(Theme)}'
+   elseif Theme is <str> then
+      config = gui.iconThemes[Theme]
+      config ?! raise f'Icon theme {Theme} not recognised.'
+      return config, Theme
+   else
+      raise 'Invalid icon theme specified.'
+   end
+end
+
+----------------------------------------------------------------------------------------------------------------------
+-- Apply an icon theme to the vectors already loaded into Viewport.  Theme is a name from gui.iconThemes or a custom
+-- theme table.  The theme gradient is registered once as ID (by default 'icon_<theme>') in the hosting scene and is
+-- shared by every icon that uses the theme.  The gradient is returned if it was created by this call, otherwise nil.
+-- Siblings of Viewport are not affected.
+
+gui.applyIconTheme = function(Theme:any!, Viewport:obj!, ID:str):obj
+   config, key = resolveIconTheme(Theme)
+   assert(config.first and config.last, 'Icon themes require first and last colours.')
+
+   ID ??= f'icon_{key}'
+
+   -- The gradient must be owned by the scene that holds the definition, or freeing a pattern would remove a gradient
+   -- that other icons still reference.
+
+   scene = Viewport.scene
+   scene = scene.hostScene ?? scene
+   gradient = gui.simpleGradient(scene, ID, config, 0, 0, 0, 1, 'boundingbox', true)
+
+   Viewport.child ?! return gradient
+
+   gui.forVector(Viewport.child, function(Vector)
+      if Vector.fill != 'none' then
+         Vector.fill = f'url(#{ID})'
+      end
+
+      if Vector.stroke?? then
+         Vector.stroke = f'url(#{ID})'
+      elseif config.stroke then
+         Vector.stroke = tostring(config.stroke)
+         Vector.strokeWidth = '1.5%'
+      end
+   end)
+
+   return gradient
+end
+
+----------------------------------------------------------------------------------------------------------------------
 -- Build an icon styled with the current theme and register it as a pattern.  The pattern can then be used as a fill,
 -- i.e. "url(#Path)".  Using it in a VectorRectangle is akin to a cached bitmap (fast), or apply to a VectorViewport
 -- for live rendering (higher quality transforms).
 
 gui.createIcon = function(Scene:obj!, Path:str!, Size:num, Theme:any!, Name:str):table
    Size ??= 16
-   lGradient = gui.iconThemes.default
-   icon = { size=Size }
-
-   gui._counter++
-   gname = 'icon_grd' .. gui._counter
-
-   if Theme is <table> then
-      lGradient = Theme
-      Name ??= f'theme_{iconThemeHash(Theme)}/{Path.lower()}'
-   elseif Theme is <str> then
-      gname = f'icon_{Theme}'
-      if gui.iconThemes[Theme] then
-         lGradient = gui.iconThemes[Theme]
-      else
-         raise f'gui.createIcon() theme {Theme} not recognised.'
-      end
-
-      Name ??= Theme.lower() .. '/' .. Path.lower()
-   else
-      raise 'Invalid Theme specified.'
-   end
+   _, key = resolveIconTheme(Theme)
+   Name ??= f'{key}/{Path.lower()}'
 
    if not Path.startsWith('icons:') then
       Path = f'icons:{Path}.svg'
@@ -562,24 +595,22 @@ gui.createIcon = function(Scene:obj!, Path:str!, Size:num, Theme:any!, Name:str)
       return { name = Name, theme = Theme, size = Size, path = Path, fill = f'url(#{Name})' }
    end
 
-   icon.pattern  = Scene.new('VectorPattern', { spreadMethod=VSPREAD_PAD })
-   icon.gradient = gui.simpleGradient(icon.pattern.scene, gname, { lGradient.first, lGradient.last }, 0, 0, 0, 1, 'boundingbox', true)
-   icon.svg      = obj.new('svg', { target=icon.pattern.viewport, path=Path })
+   -- Hosting the pattern's scene in Scene allows its vectors to reference the theme gradient that is shared by all
+   -- icons of the same theme.  The host can only be set before the pattern is initialised.
 
-   gui.forVector(icon.pattern.viewport, function(Vector)
-      if Vector.fill != 'none' then
-         Vector.fill = f'url(#{gname})'
-      end
+   pattern = Scene.new('VectorPattern')
 
-      if Vector.stroke?? then
-         Vector.stroke = f'url(#{gname})'
-      elseif lGradient.stroke then
-         Vector.stroke = tostring(lGradient.stroke)
-         Vector.strokeWidth = '1.5%'
-      end
-   end)
-
-   check Scene.mtAddDef(Name, icon.pattern)
+   try
+      pattern.scene.hostScene = Scene
+      pattern.spreadMethod = VSPREAD_PAD
+      pattern.init()
+      obj.new('svg', { target=pattern.viewport, path=Path })
+      gui.applyIconTheme(Theme, pattern.viewport)
+      check Scene.mtAddDef(Name, pattern)
+   except ex
+      pattern.free()
+      raise
+   end
 
    return { name = Name, theme = Theme, size = Size, path = Path, fill = f'url(#{Name})' }
 end
@@ -793,7 +824,6 @@ gui.fonts = scaledFonts({
 })
 
 gui.iconThemes = {
-   default = { first=gui.strToRGB('oklch(0.468 0.000 89.876)'),  last=gui.strToRGB('oklch(0.412 0.066 283.103)') },
    carbon  = { first=gui.strToRGB('oklch(0.468 0.000 89.876)'),  last=gui.strToRGB('oklch(0.412 0.066 283.103)') },
    yellow  = { first=gui.strToRGB('oklch(0.841 0.173 111.771)'), last=gui.strToRGB('oklch(0.690 0.148 68.131)'), stroke=gui.strToRGB('oklch(0.276 0.047 20.527)') },
    orange  = { first=gui.strToRGB('oklch(0.857 0.164 87.613)'),  last=gui.strToRGB('oklch(0.698 0.174 43.865)') },
@@ -805,7 +835,11 @@ gui.iconThemes = {
    rose    = { first=gui.strToRGB('oklch(0.863 0.083 51.527)'),  last=gui.strToRGB('oklch(0.834 0.095 7.824)') },
    pink    = { first=gui.strToRGB('oklch(0.927 0.038 9.810)'),   last=gui.strToRGB('oklch(0.777 0.099 10.847)') },
    grey    = { first=gui.strToRGB('oklch(0.503 0.000 89.876)'),  last=gui.strToRGB('oklch(0.394 0.000 89.876)') },
-   pearl   = { first=gui.strToRGB('oklch(0.983 0.002 67.803)'),  last=gui.strToRGB('oklch(0.804 0.002 247.844)') }
+   pearl   = { first=gui.strToRGB('oklch(0.983 0.002 67.803)'),  last=gui.strToRGB('oklch(0.804 0.002 247.844)') },
+   emboss  = {
+      apply = function()
+      end
+   }
 }
 
 gui.palettes = {
