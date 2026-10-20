@@ -959,13 +959,14 @@ gui.themes = <table{ linkThemes({
          if Scene.hostScene then return end
 
          try <trace>
+            dot = gui.pixel('6dp')
+
             if Scene.mtFindDef('dark_vslider') != ERR_Okay then
-               dot = gui.pixel('6dp')
                pattern = Scene.new('VectorPattern', {
                   name = 'vslider_pattern', width = dot, height = dot * 4,
                   spreadMethod = VSPREAD_PAD, units = VUNIT_USERSPACE
-                  aspectRatio = ARF_MEET|ARF_X_MID|ARF_Y_MID,  x='50%', y='50%',
-                  transform=f'translate(-{dot/2},-{dot*4/2})'
+                  aspectRatio = ARF_MEET|ARF_X_MID|ARF_Y_MID, x='50%', y='50%',
+                  transform = f'translate(-{dot/2},-{dot*4/2})'
                })
 
                pattern.viewport.new('VectorPolygon', {
@@ -977,10 +978,11 @@ gui.themes = <table{ linkThemes({
             end
 
             if Scene.mtFindDef('dark_hslider') != ERR_Okay then
-               dot = gui.pixel('6dp')
                pattern = Scene.new('VectorPattern', {
-                  name='hslider_pattern', width=dot * 3, height=dot, spreadMethod=VSPREAD_PAD, units=VUNIT_USERSPACE
-                  aspectRatio= ARF_MEET|ARF_X_MID|ARF_Y_MID,  x='50%', y='50%', transform=f'translate(-{dot*3/2},-{dot/2})'
+                  name = 'hslider_pattern', width = dot * 3, height = dot,
+                  spreadMethod = VSPREAD_PAD, units = VUNIT_USERSPACE
+                  aspectRatio = ARF_MEET|ARF_X_MID|ARF_Y_MID, x = '50%', y = '50%',
+                  transform = f'translate(-{dot*3/2},-{dot/2})'
                })
 
                pattern.viewport.new('VectorPolygon', {
@@ -1025,7 +1027,8 @@ gui.themes = <table{ linkThemes({
       },
       icon = {
          text = { fill = gui.palette.dark.text, face = gui.fonts.icon.face, fontSize = string.format('%.2fpt', gui.fonts.icon.size), fontStyle = gui.fonts.icon.style },
-      }
+         theme = 'pearl'
+      },
       input = { -- Used by checkbox, input, combobox
          bkgd  = { fill = gui.palette.dark.bkgd, stroke = gui.palette.dark.edge, strokeWidth = 2, roundX = 4, roundY = 4, opacity = 1 },
          focus = { stroke = gui.palette.dark.contrast },
@@ -1135,6 +1138,7 @@ gui.themes = <table{ linkThemes({
       },
       icon = {
          text = { fill = gui.palette.light.altText, face = gui.fonts.icon.face, fontSize = string.format('%.2fpt', gui.fonts.icon.size), fontStyle = gui.fonts.icon.style },
+         theme = 'carbon'
       },
       input = {
          bkgd  = { fill = gui.palette.light.bkgd, stroke = gui.palette.light.edge, strokeWidth = 2, roundX = 4, roundY = 4, opacity = 1 },

@@ -106,8 +106,8 @@ gui.icon = function(Options:table!)
       font_size    = string.format('%.2fpt', font_size_pt)
       pixel_size   = gui.pixel(font_size, 96)
 
-      err, font    = check mVec.GetFontHandle(theme.icon.text.face, theme.icon.text.fontStyle ?? "Regular", 0, pixel_size)
-      metrics      = struct.new('FontMetrics')
+      err, font    = check mVec.GetFontHandle(theme.text.face, theme.text.fontStyle ?? "Regular", 0, pixel_size)
+      metrics      = struct<FontMetrics>
       err          = check mVec.GetFontMetrics(font, metrics)
       line_height  = metrics.lineSpacing
       margin       = math.floor(metrics.height * 0.5) + 1
@@ -176,7 +176,7 @@ gui.icon = function(Options:table!)
             fontSize  = string.format('%.2fpt', font_size_pt),
             align     = 'horizontal',
             string    = line
-         }, theme.icon.text, false))
+         }, theme.text, false))
 
          y += line_height
          text_vector.y = math.floor(y)
@@ -187,9 +187,8 @@ gui.icon = function(Options:table!)
       text_group?.free()
       text_group = nil
       calcWords()
-      &viewport.width = icon_width
       &iconVP.x = (icon_width - icon_size) * 0.5
-      &viewport.height = icon_size
+      &viewport.{ width = icon_width, height = icon_size }
 
       if #lines > 0 then
          &viewport.height += math.max(icon_size * 0.1, 2) + margin + (line_height * #lines)
@@ -273,16 +272,17 @@ gui.icon = function(Options:table!)
       assert(Options.target, 'A target viewport is required.')
       assert(Options.image??, 'The image option is required.')
 
-      theme = gui.getTheme(Options.target)
-      icon_theme = theme.page.icon ?? 'carbon'
-      if icon_theme is <str> and not gui.iconThemes[icon_theme] then icon_theme = 'carbon' end
+      theme = gui.getTheme(Options.target).icon
+      if Options.theme then theme = table.merge(theme, Options.theme, true, true) end
+      icon_theme = theme.theme ?? 'carbon'
+      if not gui.iconThemes[icon_theme] then icon_theme = 'carbon' end -- Sanity check on name
 
       &viewport = Options.target.new('VectorViewport', {
          x           = Options.x ?? 0,
          y           = Options.y ?? 0,
          width       = icon_size,
          height      = icon_size,
-         aspectRatio = 'XMid|YMin|Meet',
+         aspectRatio = ARF_X_MID|ARF_Y_MIN|ARF_MEET,
          cursor      = 'hand'
       })
 
@@ -294,8 +294,7 @@ gui.icon = function(Options:table!)
       if Options.draggable then
          vp.dragCallback = function[<weak> self](Viewport:obj!, X:num!, Y:num!)
             if &disabled then return end
-            Viewport.x = X
-            Viewport.y = Y
+            Viewport.{ x = X, y = Y }
             Viewport.acDraw()
          end
       end
