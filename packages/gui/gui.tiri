@@ -842,6 +842,8 @@ gui.iconThemes = {
    }
 }
 
+gui.iconThemes.default = gui.iconThemes.carbon
+
 gui.palettes = {
    -- bkgd is the standard background colour for large amounts of text (documents & code).  In a light theme it should be near-white.
    -- inverse is the inverse light value of bkgd (or must contrast significantly). Useful for heavy contrast against bkgd, e.g. stroking menu borders.
