@@ -15,6 +15,9 @@ the standard deviation in the y direction, as specified by #SX and #SY.
 
 At least one of #SX or #SY should be greater than 0, otherwise no rendering is performed.
 
+The blur is not restricted to whole pixels.  It changes continuously with the standard deviation and the display
+scale, so a blur that covers less than a pixel still softens the input.
+
 -END-
 
 W3C: Frequently this operation will take place on alpha-only images, such as that produced by the built-in input,
@@ -207,6 +210,142 @@ static void stack_blur_axis_sse2(const uint8_t *InData, uint8_t *OutData, int Li
 #endif
 
 //********************************************************************************************************************
+// Scalar implementation of the stack blur pass, with the same interface and output as the SSE2 version.
+
+#ifndef FILTER_SSE2
+
+static void stack_blur_axis(const uint8_t *InData, uint8_t *OutData, int LineStep, int PixelStep,
+   int Lines, int Count, int Radius, uint32_t MulSum, uint32_t ShrSum)
+{
+   const int max_index = Count - 1;
+   const uint32_t div = (Radius * 2) + 1;
+   std::vector<std::array<uint8_t, 4>> stack(div);
+
+   for (int line=0; line < Lines; line++) {
+      const uint8_t *line_in = InData + (LineStep * line);
+      uint8_t *line_out = OutData + (LineStep * line);
+
+      uint32_t sum[4] = { 0, 0, 0, 0 }, sum_in[4] = { 0, 0, 0, 0 }, sum_out[4] = { 0, 0, 0, 0 };
+
+      auto src = line_in;
+      for (int i=0; i <= Radius; i++) {
+         for (int c=0; c < 4; c++) {
+            stack[i][c] = src[c];
+            sum[c]     += src[c] * (i + 1);
+            sum_out[c] += src[c];
+         }
+      }
+
+      for (int i=1; i <= Radius; i++) {
+         if (i <= max_index) src += PixelStep;
+         for (int c=0; c < 4; c++) {
+            stack[i + Radius][c] = src[c];
+            sum[c]    += src[c] * (Radius + 1 - i);
+            sum_in[c] += src[c];
+         }
+      }
+
+      uint32_t stack_ptr = Radius;
+      int xp = (Radius > max_index) ? max_index : Radius;
+      src = line_in + (xp * PixelStep);
+      auto dst = line_out;
+      for (int i=0; i < Count; i++) {
+         for (int c=0; c < 4; c++) dst[c] = uint8_t((sum[c] * MulSum) >> ShrSum);
+         dst += PixelStep;
+
+         uint32_t stack_start = stack_ptr + div - Radius;
+         if (stack_start >= div) stack_start -= div;
+         auto &start = stack[stack_start];
+
+         if (xp < max_index) {
+            src += PixelStep;
+            ++xp;
+         }
+
+         for (int c=0; c < 4; c++) {
+            sum[c]     -= sum_out[c];
+            sum_out[c] -= start[c];
+            start[c]    = src[c];
+            sum_in[c]  += src[c];
+            sum[c]     += sum_in[c];
+         }
+
+         ++stack_ptr;
+         if (stack_ptr >= div) stack_ptr = 0;
+         auto &next = stack[stack_ptr];
+
+         for (int c=0; c < 4; c++) {
+            sum_out[c] += next[c];
+            sum_in[c]  -= next[c];
+         }
+      }
+   }
+}
+
+#endif
+
+//********************************************************************************************************************
+// Blurs one axis of a Width x Height region with a fractional Radius.  The stack blur only supports integral radii,
+// so the results of the two nearest radii are blended according to the fraction.  This keeps the blur continuous as
+// the radius changes, so that a magnified graphic is blurred in proportion and small radii are not lost to
+// truncation.  A radius below 1 is blended with the unblurred input.
+//
+// InData and OutData can refer to the same region.  Temp is resized as necessary to hold the larger radius.
+
+constexpr double MIN_BLUR_RADIUS = 0.5 / 256.0; // Below this, the blend weight rounds to zero
+constexpr double MAX_BLUR_RADIUS = 254.0;       // Limited by the size of the stack blur tables
+
+static void blur_axis(const uint8_t *InData, uint8_t *OutData, std::vector<uint8_t> &Temp, int Width, int Height,
+   int Stride, bool Vertical, double Radius)
+{
+   const int line_step  = Vertical ? 4 : Stride;
+   const int pixel_step = Vertical ? Stride : 4;
+   const int lines      = Vertical ? Width : Height;
+   const int count      = Vertical ? Height : Width;
+
+   auto stack_blur = [&](const uint8_t *Src, uint8_t *Dest, int R) {
+#ifdef FILTER_SSE2
+      stack_blur_axis_sse2(Src, Dest, line_step, pixel_step, lines, count, R,
+         stack_blur_tables<int>::g_stack_blur8_mul[R], stack_blur_tables<int>::g_stack_blur8_shr[R]);
+#else
+      stack_blur_axis(Src, Dest, line_step, pixel_step, lines, count, R,
+         stack_blur_tables<int>::g_stack_blur8_mul[R], stack_blur_tables<int>::g_stack_blur8_shr[R]);
+#endif
+   };
+
+   if (Radius > MAX_BLUR_RADIUS) Radius = MAX_BLUR_RADIUS;
+   const int lower  = int(Radius);
+   const int weight = int(std::lround((Radius - lower) * 256.0)); // Weight of the upper radius, out of 256
+
+   if (weight >= 256) {
+      stack_blur(InData, OutData, lower + 1);
+      return;
+   }
+
+   uint8_t *upper = nullptr;
+   if (weight > 0) { // The upper radius is rendered first because the lower pass may overwrite InData
+      Temp.resize(size_t(Stride) * Height);
+      upper = Temp.data();
+      stack_blur(InData, upper, lower + 1);
+   }
+
+   if (lower > 0) stack_blur(InData, OutData, lower);
+   else if (InData != OutData) {
+      for (int y=0; y < Height; y++) copymem(InData + (y * Stride), OutData + (y * Stride), Width * 4);
+   }
+
+   if (upper) {
+      for (int y=0; y < Height; y++) {
+         auto dst = OutData + (y * Stride);
+         auto src = upper + (y * Stride);
+         for (int i=0; i < Width * 4; i++) {
+            dst[i] = uint8_t(dst[i] + ((((int(src[i]) - int(dst[i])) * weight) + 128) >> 8));
+         }
+      }
+   }
+}
+
+//********************************************************************************************************************
 // This is the stack blur algorithm originally implemented in AGG.  It is intended to produce a near identical output
 // to that of a standard gaussian blur algorithm.
 //
@@ -221,28 +360,31 @@ static ERR BLURFX_Draw(extBlurFX *Self, struct acDraw *Args)
    double scale = 1.0;
    if (Self->Filter->ClientVector) scale = Self->Filter->ClientVector->Transform.scale();
 
-   int rx, ry;
+   double rx, ry;
    if (Self->Filter->PrimitiveUnits IS VUNIT::BOUNDING_BOX) {
       if (Self->Filter->AspectRatio IS VFA::NONE) {
          // Scaling is applied evenly on both axis.  Uses the same formula as a scaled stroke-width.
          double diag = dist(0, 0, Self->Filter->BoundWidth, Self->Filter->BoundHeight) * INV_SQRT2;
-         rx = int(Self->SX * diag * 2 * scale);
-         ry = int(Self->SY * diag * 2 * scale);
+         rx = Self->SX * diag * 2 * scale;
+         ry = Self->SY * diag * 2 * scale;
       }
       else {
          // Scaling is stretched independently of each axis
-         rx = int(Self->SX * Self->Filter->BoundWidth * 2 * scale);
-         ry = int(Self->SY * Self->Filter->BoundHeight * 2 * scale);
+         rx = Self->SX * Self->Filter->BoundWidth * 2 * scale;
+         ry = Self->SY * Self->Filter->BoundHeight * 2 * scale;
       }
    }
    else {
-      rx = int(Self->SX * 2 * scale);
-      ry = int(Self->SY * 2 * scale);
+      rx = Self->SX * 2 * scale;
+      ry = Self->SY * 2 * scale;
    }
+
+   const bool blur_x = rx >= MIN_BLUR_RADIUS;
+   const bool blur_y = ry >= MIN_BLUR_RADIUS;
 
    objBitmap *inBmp;
 
-   if ((rx < 1) and (ry < 1)) {
+   if ((not blur_x) and (not blur_y)) {
       if (get_source_bitmap(Self->Filter, &inBmp, Self->SourceType, Self->Input, false) != ERR::Okay) return ERR::NoData;
       BAF copy_flags = (Self->Filter->ColourSpace IS VCS::LINEAR_RGB) ? BAF::LINEAR : BAF::NIL;
       gfx::CopyArea(inBmp, outBmp, copy_flags, 0, 0, inBmp->Width, inBmp->Height, 0, 0);
@@ -276,258 +418,11 @@ static ERR BLURFX_Draw(extBlurFX *Self, struct acDraw *Args)
    uint8_t *in_data  = inBmp->Data + (outBmp->Clip.Left<<2) + (outBmp->Clip.Top * inBmp->LineWidth);
    uint8_t *out_data = outBmp->Data + (outBmp->Clip.Left<<2) + (outBmp->Clip.Top * inBmp->LineWidth);
 
-#ifdef FILTER_SSE2
-   if (rx > 0) {
-      if (rx > 254) rx = 254;
-      stack_blur_axis_sse2(in_data, out_data, outBmp->LineWidth, 4, h, w, rx,
-         stack_blur_tables<int>::g_stack_blur8_mul[rx], stack_blur_tables<int>::g_stack_blur8_shr[rx]);
-   }
+   std::vector<uint8_t> temp;
+   if (blur_x) blur_axis(in_data, out_data, temp, w, h, outBmp->LineWidth, false, rx);
 
-   if (ry > 0) {
-      if (ry > 254) ry = 254;
-      // If rx was already processed, the dest becomes the source
-      stack_blur_axis_sse2((rx > 0) ? out_data : in_data, out_data, 4, outBmp->LineWidth, w, h, ry,
-         stack_blur_tables<int>::g_stack_blur8_mul[ry], stack_blur_tables<int>::g_stack_blur8_shr[ry]);
-   }
-#else
-   uint8_t *dst_pix_ptr;
-   agg::rgba8 *stack_pix_ptr;
-
-   const int wm = w - 1;
-   const int hm = h - 1;
-
-   uint8_t A = inBmp->ColourFormat->AlphaPos>>3;
-   uint8_t R = inBmp->ColourFormat->RedPos>>3;
-   uint8_t G = inBmp->ColourFormat->GreenPos>>3;
-   uint8_t B = inBmp->ColourFormat->BluePos>>3;
-
-   uint32_t sum_r, sum_g, sum_b, sum_a;
-   uint32_t sum_in_r, sum_in_g, sum_in_b, sum_in_a;
-   uint32_t sum_out_r, sum_out_g, sum_out_b, sum_out_a;
-   int x, y, xp, yp;
-   uint32_t stack_ptr;
-   uint32_t stack_start;
-   uint32_t div;
-   uint32_t mul_sum;
-   uint32_t shr_sum;
-
-   std::vector<agg::rgba8> stack;
-
-   if (rx > 0) {
-      if (rx > 254) rx = 254;
-      div = rx * 2 + 1;
-      mul_sum = stack_blur_tables<int>::g_stack_blur8_mul[rx];
-      shr_sum = stack_blur_tables<int>::g_stack_blur8_shr[rx];
-      stack.resize(div);
-
-      for (y=0; y < h; y++) {
-         sum_r = sum_g = sum_b = sum_a = sum_in_r = sum_in_g = sum_in_b = sum_in_a = sum_out_r = sum_out_g = sum_out_b = sum_out_a = 0;
-
-         const uint8_t * src_pix_ptr = in_data + (outBmp->LineWidth * y);
-         for (int i=0; i <= rx; i++) {
-             stack_pix_ptr    = &stack[i];
-             stack_pix_ptr->r = src_pix_ptr[R];
-             stack_pix_ptr->g = src_pix_ptr[G];
-             stack_pix_ptr->b = src_pix_ptr[B];
-             stack_pix_ptr->a = src_pix_ptr[A];
-             sum_r     += src_pix_ptr[R] * (i + 1);
-             sum_g     += src_pix_ptr[G] * (i + 1);
-             sum_b     += src_pix_ptr[B] * (i + 1);
-             sum_a     += src_pix_ptr[A] * (i + 1);
-             sum_out_r += src_pix_ptr[R];
-             sum_out_g += src_pix_ptr[G];
-             sum_out_b += src_pix_ptr[B];
-             sum_out_a += src_pix_ptr[A];
-         }
-
-         for (int i=1; i <= rx; i++) {
-            if (i <= wm) src_pix_ptr += 4;
-            stack_pix_ptr = &stack[i + rx];
-            stack_pix_ptr->r = src_pix_ptr[R];
-            stack_pix_ptr->g = src_pix_ptr[G];
-            stack_pix_ptr->b = src_pix_ptr[B];
-            stack_pix_ptr->a = src_pix_ptr[A];
-            sum_r    += src_pix_ptr[R] * (rx + 1 - i);
-            sum_g    += src_pix_ptr[G] * (rx + 1 - i);
-            sum_b    += src_pix_ptr[B] * (rx + 1 - i);
-            sum_a    += src_pix_ptr[A] * (rx + 1 - i);
-            sum_in_r += src_pix_ptr[R];
-            sum_in_g += src_pix_ptr[G];
-            sum_in_b += src_pix_ptr[B];
-            sum_in_a += src_pix_ptr[A];
-         }
-
-         stack_ptr = rx;
-         xp = rx;
-         if (xp > wm) xp = wm;
-         src_pix_ptr = in_data + (outBmp->LineWidth * y) + (xp<<2);
-         dst_pix_ptr = out_data + (outBmp->LineWidth * y);
-         for (int x=0; x < w; x++) {
-            dst_pix_ptr[R] = (sum_r * mul_sum) >> shr_sum;
-            dst_pix_ptr[G] = (sum_g * mul_sum) >> shr_sum;
-            dst_pix_ptr[B] = (sum_b * mul_sum) >> shr_sum;
-            dst_pix_ptr[A] = (sum_a * mul_sum) >> shr_sum;
-            dst_pix_ptr += 4;
-
-            sum_r -= sum_out_r;
-            sum_g -= sum_out_g;
-            sum_b -= sum_out_b;
-            sum_a -= sum_out_a;
-
-            stack_start = stack_ptr + div - rx;
-            if (stack_start >= div) stack_start -= div;
-            stack_pix_ptr = &stack[stack_start];
-
-            sum_out_r -= stack_pix_ptr->r;
-            sum_out_g -= stack_pix_ptr->g;
-            sum_out_b -= stack_pix_ptr->b;
-            sum_out_a -= stack_pix_ptr->a;
-
-            if (xp < wm) {
-               src_pix_ptr += 4;
-               ++xp;
-            }
-
-            stack_pix_ptr->r = src_pix_ptr[R];
-            stack_pix_ptr->g = src_pix_ptr[G];
-            stack_pix_ptr->b = src_pix_ptr[B];
-            stack_pix_ptr->a = src_pix_ptr[A];
-
-            sum_in_r += src_pix_ptr[R];
-            sum_in_g += src_pix_ptr[G];
-            sum_in_b += src_pix_ptr[B];
-            sum_in_a += src_pix_ptr[A];
-            sum_r    += sum_in_r;
-            sum_g    += sum_in_g;
-            sum_b    += sum_in_b;
-            sum_a    += sum_in_a;
-
-            ++stack_ptr;
-            if (stack_ptr >= div) stack_ptr = 0;
-            stack_pix_ptr = &stack[stack_ptr];
-
-            sum_out_r += stack_pix_ptr->r;
-            sum_out_g += stack_pix_ptr->g;
-            sum_out_b += stack_pix_ptr->b;
-            sum_out_a += stack_pix_ptr->a;
-            sum_in_r  -= stack_pix_ptr->r;
-            sum_in_g  -= stack_pix_ptr->g;
-            sum_in_b  -= stack_pix_ptr->b;
-            sum_in_a  -= stack_pix_ptr->a;
-         }
-      }
-   }
-
-   if (ry > 0) {
-      if (rx > 0) {
-         in_data = out_data; // If rx was already processed, the dest becomes the source
-      }
-
-      if (ry > 254) ry = 254;
-      div = ry * 2 + 1;
-      mul_sum = stack_blur_tables<int>::g_stack_blur8_mul[ry];
-      shr_sum = stack_blur_tables<int>::g_stack_blur8_shr[ry];
-      stack.resize(div);
-
-      int stride = outBmp->LineWidth;
-      for (x = 0; x < w; x++) {
-         sum_r = sum_g = sum_b = sum_a = sum_in_r = sum_in_g = sum_in_b = sum_in_a = sum_out_r = sum_out_g = sum_out_b = sum_out_a = 0;
-
-         const uint8_t * src_pix_ptr = in_data + (x<<2);
-         for (int i = 0; i <= ry; i++) {
-             stack_pix_ptr    = &stack[i];
-             stack_pix_ptr->r = src_pix_ptr[R];
-             stack_pix_ptr->g = src_pix_ptr[G];
-             stack_pix_ptr->b = src_pix_ptr[B];
-             stack_pix_ptr->a = src_pix_ptr[A];
-             sum_r += src_pix_ptr[R] * (i + 1);
-             sum_g += src_pix_ptr[G] * (i + 1);
-             sum_b += src_pix_ptr[B] * (i + 1);
-             sum_a += src_pix_ptr[A] * (i + 1);
-             sum_out_r += src_pix_ptr[R];
-             sum_out_g += src_pix_ptr[G];
-             sum_out_b += src_pix_ptr[B];
-             sum_out_a += src_pix_ptr[A];
-         }
-
-         for (int i = 1; i <= ry; i++) {
-             if (i <= hm) src_pix_ptr += stride;
-             stack_pix_ptr = &stack[i + ry];
-             stack_pix_ptr->r = src_pix_ptr[R];
-             stack_pix_ptr->g = src_pix_ptr[G];
-             stack_pix_ptr->b = src_pix_ptr[B];
-             stack_pix_ptr->a = src_pix_ptr[A];
-             sum_r += src_pix_ptr[R] * (ry + 1 - i);
-             sum_g += src_pix_ptr[G] * (ry + 1 - i);
-             sum_b += src_pix_ptr[B] * (ry + 1 - i);
-             sum_a += src_pix_ptr[A] * (ry + 1 - i);
-             sum_in_r += src_pix_ptr[R];
-             sum_in_g += src_pix_ptr[G];
-             sum_in_b += src_pix_ptr[B];
-             sum_in_a += src_pix_ptr[A];
-         }
-
-         stack_ptr = ry;
-         yp = ry;
-         if (yp > hm) yp = hm;
-         src_pix_ptr = in_data + (x<<2) + (outBmp->LineWidth * yp);
-         dst_pix_ptr = out_data + (x<<2);
-         for (int y = 0; y < h; y++) {
-            dst_pix_ptr[R] = (sum_r * mul_sum) >> shr_sum;
-            dst_pix_ptr[G] = (sum_g * mul_sum) >> shr_sum;
-            dst_pix_ptr[B] = (sum_b * mul_sum) >> shr_sum;
-            dst_pix_ptr[A] = (sum_a * mul_sum) >> shr_sum;
-            dst_pix_ptr += stride;
-
-            sum_r -= sum_out_r;
-            sum_g -= sum_out_g;
-            sum_b -= sum_out_b;
-            sum_a -= sum_out_a;
-
-            stack_start = stack_ptr + div - ry;
-            if (stack_start >= div) stack_start -= div;
-
-            stack_pix_ptr = &stack[stack_start];
-            sum_out_r -= stack_pix_ptr->r;
-            sum_out_g -= stack_pix_ptr->g;
-            sum_out_b -= stack_pix_ptr->b;
-            sum_out_a -= stack_pix_ptr->a;
-
-            if (yp < hm) {
-                src_pix_ptr += stride;
-                ++yp;
-            }
-
-            stack_pix_ptr->r = src_pix_ptr[R];
-            stack_pix_ptr->g = src_pix_ptr[G];
-            stack_pix_ptr->b = src_pix_ptr[B];
-            stack_pix_ptr->a = src_pix_ptr[A];
-
-            sum_in_r += src_pix_ptr[R];
-            sum_in_g += src_pix_ptr[G];
-            sum_in_b += src_pix_ptr[B];
-            sum_in_a += src_pix_ptr[A];
-            sum_r    += sum_in_r;
-            sum_g    += sum_in_g;
-            sum_b    += sum_in_b;
-            sum_a    += sum_in_a;
-
-            ++stack_ptr;
-            if (stack_ptr >= div) stack_ptr = 0;
-            stack_pix_ptr = &stack[stack_ptr];
-
-            sum_out_r += stack_pix_ptr->r;
-            sum_out_g += stack_pix_ptr->g;
-            sum_out_b += stack_pix_ptr->b;
-            sum_out_a += stack_pix_ptr->a;
-            sum_in_r  -= stack_pix_ptr->r;
-            sum_in_g  -= stack_pix_ptr->g;
-            sum_in_b  -= stack_pix_ptr->b;
-            sum_in_a  -= stack_pix_ptr->a;
-         }
-      }
-   }
-#endif
+   // If the X axis was already processed, the dest becomes the source
+   if (blur_y) blur_axis(blur_x ? out_data : in_data, out_data, temp, w, h, outBmp->LineWidth, true, ry);
 
    //bmpDemultiply(inBmp);
 

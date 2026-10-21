@@ -370,8 +370,8 @@ end
 @Test global function W3Transfer2()        hashTestSVG('filters/w3-filters-color-02-b.svg', 0x49928379) end
 @Test global function W3Filters()          hashTestSVG('filters/w3-filters.svg', 0x2f6ef991) end
 @Test global function W3Filters2()         hashTestSVG('filters/w3-filters2.svg', 0x64d8ac49) end
-@Test global function W3Gauss1()           hashTestSVG('filters/w3-filters-gauss-01-b.svg', 0x3c531bc1) end
-@Test global function W3Gauss2()           hashTestSVG('filters/w3-filters-gauss-02-f.svg', 0xb6b88740) end
+@Test global function W3Gauss1()           hashTestSVG('filters/w3-filters-gauss-01-b.svg', 0x331dabe8) end
+@Test global function W3Gauss2()           hashTestSVG('filters/w3-filters-gauss-02-f.svg', 0xae862211) end
 @Test global function W3Gauss3()           hashTestSVG('filters/w3-filters-gauss-03-f.svg', 0xd4cc8f68) end
 @Test global function W3Image()            hashTestSVG('filters/w3-image.svg', 0xec8cd283) end
 @Test global function W3Morphology()       hashTestSVG('filters/w3-morphology.svg', 0xf4350a95) end
@@ -416,7 +416,7 @@ end
 @Test; @Disabled global function BrushStrokes()       hashTestSVG('misc/brush-strokes.svg', 0x656a5e37) end
 
 @Test global function BottleTree()         hashTestSVG('images/bottletree.svg', 0xfc741c6e) end
-@Test global function Button()             hashTestSVG('images/button.svg', 0x0642f760) end
+@Test global function Button()             hashTestSVG('images/button.svg', 0x32065197) end
 @Test global function Clock()              hashTestSVG('images/clock.svg', 0x58821810) end
 @Test global function IceCube()            hashTestSVG('images/icecube.svg', 0xc733975a) end
 @Test global function Tiger()              hashTestSVG('images/tiger.svg', 0x6da857eb) end
