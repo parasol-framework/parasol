@@ -214,11 +214,11 @@ gui.combobox = function(Options)
       ICON_SIZE = math.min(FONT_HEIGHT, BOX_HEIGHT - (&input_theme.bkgd.strokeWidth * 2))
       down_icon = gui.createIcon(&viewport.scene, self.menuIcon, ICON_SIZE, iconTheme(self))
 
-      &iconRender = &viewport.new('VectorViewport', {
-         xOffset = MARGIN,
-         y       = (&viewport.height - ICON_SIZE) * 0.5,
-         width   = ICON_SIZE,
-         height  = ICON_SIZE,
+      &iconRender = &viewport.new('VectorViewport', { -- Padded to suit the pattern tile, see gui.createIcon()
+         xOffset = MARGIN - down_icon.margin,
+         y       = ((&viewport.height - ICON_SIZE) * 0.5) - down_icon.margin,
+         width   = ICON_SIZE + (down_icon.margin * 2),
+         height  = ICON_SIZE + (down_icon.margin * 2),
          fill    = down_icon.fill
       })
 
@@ -227,7 +227,7 @@ gui.combobox = function(Options)
             if &allowCustom then return 'text' end
          end)(),
          x = &input_theme.bkgd.strokeWidth, y = &input_theme.bkgd.strokeWidth,
-         xOffset = &iconRender.width + MARGIN + MARGIN, yOffset = &input_theme.bkgd.strokeWidth,
+         xOffset = ICON_SIZE + MARGIN + MARGIN, yOffset = &input_theme.bkgd.strokeWidth,
          overflow = VOF_HIDDEN
       })
 

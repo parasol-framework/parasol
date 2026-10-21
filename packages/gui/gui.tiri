@@ -1141,6 +1141,11 @@ end
 -- Build an icon styled with the current effect theme and register it as a pattern.  The pattern can then be used as a fill,
 -- i.e. "url(#Path)".  Using it in a VectorRectangle is akin to a cached bitmap (fast), or apply to a VectorViewport
 -- for live rendering (higher quality transforms).
+--
+-- A pattern cannot paint outside of the vector that consumes it, so the icon is drawn inside a padded tile to give
+-- effects such as emboss() and glow() room to extend beyond the artwork.  Consumers must paint the fill at
+-- (X - margin, Y - margin) with a size of Size + (margin * 2), where margin is returned in the result table.  The
+-- icon box (X, Y, Size) remains the area for layout and hit testing.
 
 gui.createIcon = function(Scene:obj!, Path:str!, Size:num, FillEffect:any!, Name:str):table
    Size ??= 16
@@ -1151,9 +1156,32 @@ gui.createIcon = function(Scene:obj!, Path:str!, Size:num, FillEffect:any!, Name
       Path = f'icons:{Path}.svg'
    end
 
-   if Scene.mtFindDef(Name) is ERR_Okay then -- Return if the icon pattern is already registered
-      return { name = Name, theme = FillEffect, size = Size, path = Path, fill = f'url(#{Name})' }
+   -- Definitions and their padding metadata belong to the outermost host, including patterns first made in a child.
+   while Scene.hostScene do Scene = Scene.hostScene end
+
+   icons = Scene.state().icons
+   if not icons then
+      icons = { }
+      Scene.state().icons = icons
    end
+
+   if Scene.mtFindDef(Name) is ERR_Okay then -- Return if the icon pattern is already registered
+      -- The padding is proportional to the tile, so the margin is scaled if the pattern was built for another size.
+      -- A pattern that was not built here has no padding.
+
+      margin = 0
+      padded = icons[Name]
+      if padded then
+         margin = (padded.size is Size) ? padded.margin : Size * padded.margin / padded.size
+      end
+      return { name = Name, theme = FillEffect, size = Size, path = Path, fill = f'url(#{Name})', margin = margin }
+   end
+
+   -- Filters extend up to 10% beyond the bounds of the artwork by default, which the margin must accommodate.
+   -- Whole units keep the icon aligned to the pixel grid in the common case of an integral icon position.
+
+   margin = math.ceil(Size * 0.1)
+   inset  = (margin * 100) / (Size + (margin * 2))
 
    -- Hosting the pattern's scene in Scene allows its vectors to reference the theme gradient that is shared by all
    -- icons of the same theme.  The host can only be set before the pattern is initialised.
@@ -1164,7 +1192,10 @@ gui.createIcon = function(Scene:obj!, Path:str!, Size:num, FillEffect:any!, Name
       pattern.scene.hostScene = Scene
       pattern.spreadMethod = VSPREAD_PAD
       pattern.init()
-      obj.new('svg', { target=pattern.viewport, path=Path })
+      box = pattern.viewport.new('VectorViewport', {
+         x = f'{inset}%', y = f'{inset}%', xOffset = f'{inset}%', yOffset = f'{inset}%'
+      })
+      obj.new('svg', { target=box, path=Path })
       gui.applyFillEffect(FillEffect, pattern.viewport)
       check Scene.mtAddDef(Name, pattern)
    except ex
@@ -1172,7 +1203,8 @@ gui.createIcon = function(Scene:obj!, Path:str!, Size:num, FillEffect:any!, Name
       raise
    end
 
-   return { name = Name, theme = FillEffect, size = Size, path = Path, fill = f'url(#{Name})' }
+   icons[Name] = { size = Size, margin = margin }
+   return { name = Name, theme = FillEffect, size = Size, path = Path, fill = f'url(#{Name})', margin = margin }
 end
 
 ----------------------------------------------------------------------------------------------------------------------
@@ -1646,7 +1678,7 @@ function linkThemes(Themes:table!):table
    return Themes
 end
 
-function iconTheme(Fill:str!)
+function iconTheme(Fill:str!):str
    if gui.defaultFX then
       return (gui.defaultFill or Fill) .. gui.defaultFX
    else

@@ -459,7 +459,9 @@ objBitmap * get_source_graphic(extVectorFilter *Self)
 }
 
 //********************************************************************************************************************
-// Defines the VectorClip values, which are utilised by the filter renderers.
+// Defines the VectorClip values utilised by the filter renderers.  Retain the processing region within the scene page,
+// including source pixels outside the drawing clip that effects may move into it.  The scene renderer clips the final
+// composite to the drawable area, including any clipping imposed by container viewports.
 
 static ERR set_clip_region(extVectorFilter *Self, extVectorViewport *Viewport, extVector *Vector)
 {
@@ -528,10 +530,10 @@ static ERR set_clip_region(extVectorFilter *Self, extVectorViewport *Viewport, e
       Self->VectorClip = get_bounds<agg::conv_transform<agg::path_storage, agg::trans_affine>, int>(path);
    }
 
-   if (Self->VectorClip.left < Viewport->vpBounds.left)     Self->VectorClip.left   = Viewport->vpBounds.left;
-   if (Self->VectorClip.top  < Viewport->vpBounds.top)      Self->VectorClip.top    = Viewport->vpBounds.top;
-   if (Self->VectorClip.right  > Viewport->vpBounds.right)  Self->VectorClip.right  = Viewport->vpBounds.right;
-   if (Self->VectorClip.bottom > Viewport->vpBounds.bottom) Self->VectorClip.bottom = Viewport->vpBounds.bottom;
+   Self->VectorClip.left   = std::max(Self->VectorClip.left, 0);
+   Self->VectorClip.top    = std::max(Self->VectorClip.top, 0);
+   Self->VectorClip.right  = std::min(Self->VectorClip.right, Viewport->Scene->PageWidth);
+   Self->VectorClip.bottom = std::min(Self->VectorClip.bottom, Viewport->Scene->PageHeight);
 
    if ((Self->VectorClip.bottom <= Self->VectorClip.top) or (Self->VectorClip.right <= Self->VectorClip.left)) {
       return log.warning(ERR::InvalidDimension);
@@ -543,7 +545,8 @@ static ERR set_clip_region(extVectorFilter *Self, extVectorViewport *Viewport, e
 //********************************************************************************************************************
 // Main rendering routine for filter effects.  Called by the scene graph renderer whenever a vector uses a filter.
 
-ERR render_filter(extVectorFilter *Self, extVectorViewport *Viewport, extVector *Vector, objBitmap *BkgdBitmap, objBitmap **Output)
+ERR render_filter(extVectorFilter *Self, extVectorViewport *Viewport, extVector *Vector,
+   objBitmap *BkgdBitmap, objBitmap **Output)
 {
    kt::Log log(__FUNCTION__);
 

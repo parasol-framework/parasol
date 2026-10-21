@@ -209,8 +209,8 @@ function arrangeItems()
       iconWidth = 0
       if item.icon then
          iconWidth = ICON_SIZE + VMARGIN
-         item.icon.x = x + VMARGIN
-         item.icon.y = y + VMARGIN
+         item.icon.x = x + VMARGIN - item.iconMargin
+         item.icon.y = y + VMARGIN - item.iconMargin
          item.icon.opacity = (&_disabled or item.disabled) ? 0.5 : 1
       end
 
@@ -263,8 +263,9 @@ gui.menubar = function(Options:table)
       if Icon then
          icon = gui.createIcon(&viewport.scene, Icon, ICON_SIZE, gui.rgbToIconTheme(&theme.text.fill))
 
+         item.iconMargin = icon.margin
          item.icon = &viewport.new('VectorRectangle', {
-            x=0, y=0, width=ICON_SIZE, height=ICON_SIZE, fill = icon.fill
+            x=0, y=0, width=ICON_SIZE + (icon.margin * 2), height=ICON_SIZE + (icon.margin * 2), fill = icon.fill
          })
       end
 

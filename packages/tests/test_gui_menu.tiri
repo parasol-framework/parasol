@@ -885,9 +885,14 @@ end
    } })
    assert(menu.getChecked('checked') and menu.items[0].checkmark.visibility is VIS_VISIBLE,
       'Initially checked items must render a checkmark')
-   assert(config.iconView and config.iconView.x is 6 and
-      menu.items[0].text.x > config.iconView.x + config.iconView.width,
-      'Icons must retain their original left-hand column')
+   -- The icon's pattern tile pads the artwork (see gui.createIcon()), so the column is found from the icon's centre.
+   -- The icon size follows the menu's own formula.
+   local font_max = gui.getFontHeight(gui.fonts.menu)
+   local icon_size = math.floor(math.floor(font_max * 1.5) * 0.8)
+   local icon = config.iconView
+   local icon_x = icon.x + ((icon.width - icon_size) * 0.5)
+   assert(math.abs(icon_x - 6) < 0.001 and icon.width > icon_size and menu.items[0].text.x > icon.x + icon.width,
+      f'Icons must retain their original left-hand column ({icon_x})')
    local _, text_x, _, text_width = menu.items[1].text.mtGetBoundary(0)
    local _, check_x, _, check_width = menu.items[0].checkmark.mtGetBoundary(0)
    local _, shortcut_x = menu.items[0].keyText.mtGetBoundary(0)

@@ -306,7 +306,7 @@ gui.toolbar = function(Options:table)
             item.{ x = x, y = y, width = cell_size, height = cell_size }
 
             if item.icon then
-               item.icon.{ x = x + &_cellMargin, y = y + &_cellMargin }
+               item.icon.{ x = x + &_cellMargin - item.iconMargin, y = y + &_cellMargin - item.iconMargin }
                item.icon.acMoveToFront()
             elseif item.displayName?? then
                -- The text is hosted by its own group so that gui.applyIconTheme() styles it without affecting
@@ -459,6 +459,7 @@ gui.toolbar = function(Options:table)
          try
             info = gui.createIcon(&viewport.scene, Icon, tb_theme.iconSize, &_iconTheme)
             item.iconFill = info.fill
+            item.iconMargin = info.margin
 
             if &_iconHighlight and (&_iconTheme != &_iconHighlight) then
                local info = gui.createIcon(&viewport.scene, Icon, tb_theme.iconSize, &_iconHighlight)
@@ -466,7 +467,8 @@ gui.toolbar = function(Options:table)
             end
 
             item.icon = &viewport.new('VectorRectangle', {
-               fill = info.fill, x=0, y=0, width=tb_theme.iconSize, height=tb_theme.iconSize
+               fill = info.fill, x=0, y=0,
+               width = tb_theme.iconSize + (info.margin * 2), height = tb_theme.iconSize + (info.margin * 2)
             })
          end
       end
@@ -552,9 +554,10 @@ gui.toolbar = function(Options:table)
          if Content is <num> then
             if Content > 9 then
                size = math.floor(tb_theme.iconSize * 0.33)
-               gui.createIcon(&viewport.scene, 'items/add', size, 'fill(pearl)', 'sticker_plus')
+               plus = gui.createIcon(&viewport.scene, 'items/add', size, 'fill(pearl)', 'sticker_plus')
+               pos = math.floor((sticker_size - size) * 0.5) - plus.margin
                item.sticker.content = item.sticker.viewport.new('VectorRectangle', {
-                  fill = 'url(#sticker_plus)', x=math.floor((sticker_size - size)*0.5), y=math.floor((sticker_size - size)*0.5), width=size, height=size
+                  fill = plus.fill, x=pos, y=pos, width=size + (plus.margin * 2), height=size + (plus.margin * 2)
                })
                return
             elseif Content < 0 then
