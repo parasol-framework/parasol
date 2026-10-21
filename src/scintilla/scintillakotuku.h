@@ -24,6 +24,8 @@ class extScintilla : public objScintilla {
    ClipRectangle Dirty;          // Area of the client that is waiting to be repainted
    double CanvasX;               // Sub-pixel offset of the Canvas that aligns the Bitmap with whole device pixels
    double CanvasY;
+   double PointerX;              // Client position of the pointer, as of the most recent movement event
+   double PointerY;
    int    ScrollX;             // Scroll position reflected by the Page, i.e. Scintilla's xOffset in pixels
    int    ScrollY;             // Scroll position reflected by the Page, i.e. Scintilla's topLine in pixels
    int    PageWidth;           // Extent of the Page, as computed by ModifyScrollBars()
@@ -52,6 +54,7 @@ class extScintilla : public objScintilla {
    uint16_t AllowTabs:1;
    uint16_t RepaintQueued:1;   // A Repaint message is queued for the Dirty area
    uint16_t HasFocus:1;        // The Focus viewport, or one of its children, has the user focus
+   uint16_t PointerStale:1;    // The pointer entered the Canvas without a movement event, so PointerX/Y are outdated
    uint8_t  ScrollLocked;      // Set while the editor is scrolling in response to a Page change
 
    extScintilla(objMetaClass *ClassPtr, OBJECTID ObjectID) : objScintilla(ClassPtr, ObjectID) {
@@ -92,7 +95,6 @@ public:
 //    virtual int KeyCommand(unsigned int iMessage);
    virtual void CreateCallTipWindow(Scintilla::PRectangle rc);
    virtual void AddToPopUp(const char *label, int cmd=0, bool enabled=true);
-//    virtual void ButtonDown(Point pt, unsigned int curTime, bool shift, bool ctrl, bool alt);
 //    virtual void NotifyStyleToNeeded(int endStyleNeeded);
    virtual void SetVerticalScrollPos();
    virtual void SetHorizontalScrollPos();
@@ -110,6 +112,7 @@ public:
    virtual void SetTicking(bool on);
    virtual bool SetIdle(bool on);
    virtual void SetMouseCapture(bool on);
+   virtual void DisplayCursor(Scintilla::Window::Cursor Cursor);
    virtual bool HaveMouseCapture();
    virtual sptr_t DefWndProc(unsigned int iMessage, uptr_t wParam, sptr_t lParam);
    static sptr_t DirectFunction(ScintillaKTK *sci, unsigned int iMessage, uptr_t wParam, sptr_t lParam);
@@ -124,9 +127,10 @@ public:
    virtual bool panTick();
    virtual bool panIdle();
    virtual void panKeyDown(KEY Code, KQ Qualifiers, int Unicode);
-   virtual void panMousePress(JET ButtonFlags, double x, double y);
-   virtual void panMouseRelease(JET ButtonFlags, double x, double y);
-   virtual void panMouseMove(double x, double y);
+   virtual void panMousePress(JET Button, double X, double Y, unsigned int Time);
+   virtual void panMouseRelease(JET Button, double X, double Y, unsigned int Time);
+   virtual void panMouseMove(double X, double Y);
+   virtual void panReleaseMouse();
    virtual void panResized();
    virtual void panScrollTo(double X, double Y);
    virtual void panScrollBy(int Columns, int Lines);

@@ -212,7 +212,6 @@ static ERR SET_Wordwrap(extScintilla *, int);
 
 //********************************************************************************************************************
 
-[[maybe_unused]] static ERR consume_input_events(const InputEvent *, int);
 static void create_styled_fonts(extScintilla *);
 static ERR create_scintilla(void);
 static ERR create_canvas(extScintilla *);
@@ -426,10 +425,24 @@ static ERR feedback_page(objVectorViewport *Page, FM Event)
 }
 
 //********************************************************************************************************************
-// Wheel input is received by the Canvas because it is the top-most vector in the editor.  This also prevents the
-// event from reaching a scrollbar's subscription to the Page, which would otherwise scroll the Page a second time.
-// Each event scrolls by a fixed step because wheel values are not consistent between platforms.  Holding Ctrl scrolls
-// by a page.  Input events do not carry the modifier state, so the state that key_event() tracks is used.
+// Pointer input is received by the Canvas because it is the top-most vector in the editor.  This also prevents wheel
+// events from reaching a scrollbar's subscription to the Page, which would otherwise scroll the Page a second time.
+//
+// The Canvas reports positions in the coordinate system of the Page, which are converted to Scintilla's client
+// coordinates by removing the Canvas position.  While the left mouse button is held, the scene continues to deliver
+// movement to the Canvas when the pointer is outside of it, which Scintilla uses to extend the selection and scroll.
+//
+// Button events are reported at the position of the most recent movement event, in the coordinate system of the Page
+// at that time.  The editor may have scrolled since then (e.g. while autoscrolling), so button events use the client
+// position that was recorded for that movement.
+//
+// The scene can make the Canvas its active vector without delivering a movement event, e.g. when a drag that started
+// in another vector is released over the Canvas.  The Canvas then receives only an enter event, and the recorded
+// position belongs to an earlier visit.  The next button or wheel event carries the position that the scene computed
+// on entry, so it is used to resolve the client position before the editor can scroll.
+//
+// Each wheel event scrolls by a fixed step because wheel values are not consistent between platforms.  Holding Ctrl
+// scrolls by a page.  Input events do not carry the modifier state, so the state that key_event() tracks is used.
 
 static ERR input_canvas(objVectorRectangle *Canvas, const InputEvent *Events)
 {
@@ -437,18 +450,55 @@ static ERR input_canvas(objVectorRectangle *Canvas, const InputEvent *Events)
    static const int WHEEL_COLUMNS = 6;
 
    auto Self = (extScintilla *)CurrentContext();
+   if (not Self->API) return ERR::Okay;
 
    for (auto event=Events; event; event=event->Next) {
-      if ((Self->Flags & SCIF::DISABLED) != SCIF::NIL) continue;
-      if (event->Value IS 0) continue;
+      // The pointer position is recorded while disabled, because the scene does not repeat a movement event if the
+      // pointer has not moved.
 
-      int direction = (event->Value > 0) ? 1 : -1;
-      if (event->Type IS JET::WHEEL) {
-         int lines = WHEEL_LINES;
-         if (Self->KeyCtrl) lines = std::max(1, int(SCICALL(SCI_LINESONSCREEN)) - 1);
-         Self->API->panScrollBy(0, direction * lines);
+      if ((event->Flags & JTYPE::MOVEMENT) != JTYPE::NIL) {
+         Self->PointerX = event->X - (Self->ScrollX + Self->CanvasX);
+         Self->PointerY = event->Y - (Self->ScrollY + Self->CanvasY);
+         Self->PointerStale = false;
       }
-      else if (event->Type IS JET::WHEEL_X) Self->API->panScrollBy(direction * WHEEL_COLUMNS, 0);
+      else if ((event->Flags & JTYPE::CROSSING) != JTYPE::NIL) {
+         // Enter events are not in the coordinate system of the Page, so they only mark the position as outdated.
+         if (event->Type IS JET::CROSSED_IN) Self->PointerStale = true;
+         continue;
+      }
+      else if (Self->PointerStale) {
+         Self->PointerX = event->X - (Self->ScrollX + Self->CanvasX);
+         Self->PointerY = event->Y - (Self->ScrollY + Self->CanvasY);
+         Self->PointerStale = false;
+      }
+
+      if ((Self->Flags & SCIF::DISABLED) != SCIF::NIL) continue;
+
+      if ((event->Flags & JTYPE::BUTTON) != JTYPE::NIL) {
+         const auto time = (unsigned int)(event->Timestamp / 1000LL); // Scintilla measures time in milliseconds
+         if (event->Value > 0) {
+            // The scene focuses the viewport under the pointer, which is not the Focus viewport if the client has
+            // chosen one outside of the editor.
+
+            if ((event->Type IS JET::LMB) and (not Self->HasFocus) and (Self->Focus)) acFocus(Self->Focus);
+            Self->API->panMousePress(event->Type, Self->PointerX, Self->PointerY, time);
+         }
+         else Self->API->panMouseRelease(event->Type, Self->PointerX, Self->PointerY, time);
+      }
+      else if ((event->Flags & JTYPE::MOVEMENT) != JTYPE::NIL) {
+         Self->API->panMouseMove(Self->PointerX, Self->PointerY);
+      }
+      else if ((event->Type IS JET::WHEEL) or (event->Type IS JET::WHEEL_X)) {
+         if (event->Value IS 0) continue;
+
+         int direction = (event->Value > 0) ? 1 : -1;
+         if (event->Type IS JET::WHEEL) {
+            int lines = WHEEL_LINES;
+            if (Self->KeyCtrl) lines = std::max(1, int(SCICALL(SCI_LINESONSCREEN)) - 1);
+            Self->API->panScrollBy(0, direction * lines);
+         }
+         else Self->API->panScrollBy(direction * WHEEL_COLUMNS, 0);
+      }
    }
 
    return ERR::Okay;
@@ -761,6 +811,7 @@ static ERR SCINTILLA_Disable(extScintilla *Self)
 {
    if ((Self->Flags & SCIF::DISABLED) IS SCIF::NIL) {
       Self->Flags |= SCIF::DISABLED;
+      if (Self->API) Self->API->panReleaseMouse(); // Button releases are ignored while disabled
       update_focus(Self);
       acDraw(Self);
    }
@@ -944,10 +995,12 @@ static ERR SCINTILLA_Init(extScintilla *Self, APTR)
       Self->Focus->subscribeFeedback(FM::HAS_FOCUS|FM::CHILD_HAS_FOCUS|FM::LOST_FOCUS, C_FUNCTION(feedback_focus));
       Self->Focus->subscribeKeyboard(C_FUNCTION(key_event));
 
-      Self->Canvas->subscribeInput(JTYPE::EXT_MOVEMENT, C_FUNCTION(input_canvas));
+      // Pointer input is received by the Canvas.  The View is unsuitable because input is delivered to the top-most
+      // subscriber, and a scrollbar subscribes to the Page.
 
-      // TODO Phase 5: Subscribe the Canvas to JTYPE::MOVEMENT|JTYPE::BUTTON with consume_input_events().  The View
-      // is unsuitable because input is delivered to the top-most subscriber, and a scrollbar subscribes to the Page.
+      Self->Canvas->subscribeInput(JTYPE::BUTTON|JTYPE::MOVEMENT|JTYPE::EXT_MOVEMENT|JTYPE::CROSSING,
+         C_FUNCTION(input_canvas));
+
       // TODO Phase 7: Drag and drop support via notify_dragdrop()
    }
 
@@ -2274,6 +2327,7 @@ static ERR create_canvas(extScintilla *Self)
          fl::Owner(Self->Page->UID),
          fl::X(0), fl::Y(0),
          fl::Width(Self->Bitmap->Width), fl::Height(Self->Bitmap->Height),
+         fl::Cursor(PTC::TEXT),
          fl::Fill(std::format("url(#{})", def_name))))) return log.warning(ERR::CreateObject);
 
    // The View's path has already been generated in order to read its size, so the first path change is not reported
@@ -2487,29 +2541,6 @@ static int shortcut_key(KEY Code)
       case KEY::SPACE:         return ' ';
       default: return 0;
    }
-}
-
-//********************************************************************************************************************
-
-static ERR consume_input_events(const InputEvent *Events, int TotalEvents)
-{
-   auto Self = (extScintilla *)CurrentContext();
-
-   for (auto event=Events; event; event=event->Next) {
-      if ((Self->Flags & SCIF::DISABLED) != SCIF::NIL) continue;
-
-      if ((event->Flags & JTYPE::BUTTON) != JTYPE::NIL) {
-         if (event->Value > 0) {
-            Self->API->panMousePress(event->Type, event->X, event->Y);
-         }
-         else Self->API->panMouseRelease(event->Type, event->X, event->Y);
-      }
-      else if ((event->Flags & JTYPE::MOVEMENT) != JTYPE::NIL) {
-         Self->API->panMouseMove(event->X, event->Y);
-      }
-   }
-
-   return ERR::Okay;
 }
 
 //********************************************************************************************************************
