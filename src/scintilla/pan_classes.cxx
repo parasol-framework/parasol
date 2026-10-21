@@ -186,9 +186,16 @@ int Scintilla::Platform::DefaultFontSize()
    return 20;
 }
 
+// The interval for double and triple clicks follows the system pointer, in milliseconds.
+
 unsigned int Scintilla::Platform::DoubleClickTime()
 {
-   return 500; // Half a second
+   unsigned int interval = 300;
+   if (auto pointer = gfx::AccessPointer()) {
+      if (pointer->DoubleClick > 0) interval = (unsigned int)std::lround(pointer->DoubleClick * 1000.0);
+      ReleaseObject(pointer);
+   }
+   return interval;
 }
 
 bool Scintilla::Platform::MouseButtonBounce()

@@ -120,15 +120,26 @@ void Scintilla::Window::SetFont(Scintilla::Font &)
 }
 
 //********************************************************************************************************************
-// Change the cursor for the drawable.
+// Change the pointer cursor that is shown over the client.  The cursor belongs to the Canvas because it receives the
+// pointer input; the scene uses the cursor of the top-most vector under the pointer.
 
-void Scintilla::Window::SetCursor(Cursor curs)
+void Scintilla::Window::SetCursor(Cursor Curs)
 {
-   // TODO Phase 5: Set the Cursor field of the View, mapping the Scintilla cursor to PTC values as follows:
-   //
-   //   cursorText:  PTC::TEXT;  cursorArrow: PTC::DEFAULT;          cursorUp:    PTC::SIZE_TOP;
-   //   cursorWait:  PTC::SLEEP; cursorHoriz: PTC::SPLIT_HORIZONTAL; cursorVert:  PTC::SPLIT_VERTICAL;
-   //   cursorHand:  PTC::HAND;  default:     PTC::DEFAULT
+   auto scintilla = get_scintilla(this);
+   if ((not scintilla) or (not scintilla->Canvas)) return;
+
+   PTC cursor;
+   switch (Curs) {
+      case cursorText:  cursor = PTC::TEXT; break;
+      case cursorUp:    cursor = PTC::SIZE_TOP; break;
+      case cursorWait:  cursor = PTC::SLEEP; break;
+      case cursorHoriz: cursor = PTC::SPLIT_HORIZONTAL; break;
+      case cursorVert:  cursor = PTC::SPLIT_VERTICAL; break;
+      case cursorHand:  cursor = PTC::HAND; break;
+      default:          cursor = PTC::DEFAULT; break; // Includes cursorArrow and cursorReverseArrow
+   }
+
+   if (scintilla->Canvas->Cursor != cursor) scintilla->Canvas->setCursor(cursor);
 }
 
 //********************************************************************************************************************

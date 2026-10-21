@@ -630,12 +630,13 @@ void ScintillaKTK::UpdateTimers()
 
 /*********************************************************************************************************************
 ** Ticking is only necessary for blinking the caret while the editor has the focus, and for scrolling while the mouse
-** is captured.
+** is captured.  Tick() repeats the last mouse movement while the mouse is captured, which scrolls the document if the
+** pointer is held outside the client area.
 */
 
 bool ScintillaKTK::TickRequired()
 {
-   return (ticking_on) and (((hasFocus) and (caret.period > 0)) or (HaveMouseCapture()));
+   return (HaveMouseCapture()) or ((ticking_on) and (hasFocus) and (caret.period > 0));
 }
 
 //********************************************************************************************************************
@@ -658,8 +659,9 @@ bool ScintillaKTK::panIdle()
 }
 
 //********************************************************************************************************************
-// Grab or release the mouse and keyboard.  This is usually called when the user clicks a mouse button and holds it
-// while dragging the mouse (e.g. when highlighting text).
+// Scintilla captures the mouse while the user holds a button and drags (e.g. when selecting text).  The scene already
+// directs all pointer input to the Canvas while the LMB is held, so the capture state is only recorded here.  The tick
+// timer runs while the mouse is captured, so that holding the pointer outside the client keeps scrolling.
 
 void ScintillaKTK::SetMouseCapture(bool On)
 {
@@ -669,13 +671,20 @@ void ScintillaKTK::SetMouseCapture(bool On)
    if (On) UpdateTimers();
 }
 
-/*********************************************************************************************************************
-** Simply returns the capture state.
-*/
+//********************************************************************************************************************
+// Scintilla shows the arrow over the selection to indicate that the text can be dragged.  Text drag and drop is not
+// supported yet (see panMousePress()), so the text cursor is kept.  Margins use the reverse arrow and are unaffected.
+
+void ScintillaKTK::DisplayCursor(Scintilla::Window::Cursor Cursor)
+{
+   if (Cursor IS Scintilla::Window::cursorArrow) Cursor = Scintilla::Window::cursorText; // TODO Phase 7
+   ScintillaBase::DisplayCursor(Cursor);
+}
+
+//********************************************************************************************************************
 
 bool ScintillaKTK::HaveMouseCapture()
 {
-   //log.trace("HaveMouseCapture()");
    return captured_mouse;
 }
 
@@ -836,49 +845,58 @@ void ScintillaKTK::panKeyDown(KEY Code, KQ Qualifiers, int Unicode)
    if (read_only) SendScintilla(SCI_SETREADONLY, 0UL);
 }
 
-//********************************************************************************************************************
+/*********************************************************************************************************************
+** Process a mouse button press at a client position.  The Time is in milliseconds and allows Scintilla to detect
+** double and triple clicks.  Modifier keys are taken from the state that key_event() tracks: Shift extends the
+** selection, and Alt starts a rectangular selection.
+**
+** Scintilla's internal text drag is not supported yet, so a click inside the selection clears it first.  This turns
+** the click into an ordinary click, and a drag from that point into a new selection.  Shift clicks are excluded so
+** that they extend the selection from its anchor.
+*/
 
-void ScintillaKTK::panMousePress(JET Button, double x, double y)
+void ScintillaKTK::panMousePress(JET Button, double X, double Y, unsigned int Time)
 {
    kt::Log log(__FUNCTION__);
-
-   log.traceBranch("%.0fx%.0f", x, y);
+   log.traceBranch("%.0fx%.0f", X, Y);
 
    if (Button IS JET::LMB) {
-      // This disables the current selection (effectively eliminating the potential for drag and drop).
+      Scintilla::Point point(int(std::floor(X)), int(std::floor(Y)));
 
-      SetEmptySelection(CurrentPosition());
-      Scintilla::Point point((int)x, (int)y);
-      ButtonDown(point, (PreciseTime()/1000LL), scintilla->KeyShift, scintilla->KeyCtrl, scintilla->KeyAlt);
+      if ((not scintilla->KeyShift) and (not SelectionEmpty()) and (PointInSelection(point))) {
+         SetEmptySelection(CurrentPosition()); // TODO Phase 7: Text drag and drop
+      }
+
+      ButtonDown(point, Time, scintilla->KeyShift, scintilla->KeyCtrl, scintilla->KeyAlt);
    }
-   else if (Button IS JET::RMB) {
-
-
-
-
-   }
+   // TODO Phase 7: The RMB will open a context menu.
 }
 
 //********************************************************************************************************************
 
-void ScintillaKTK::panMouseMove(double x, double y)
+void ScintillaKTK::panMouseMove(double X, double Y)
 {
-   Scintilla::Point point((int)x, (int)y);
-   ButtonMove(point);
+   ButtonMove(Scintilla::Point(int(std::floor(X)), int(std::floor(Y))));
 }
 
 //********************************************************************************************************************
 
-void ScintillaKTK::panMouseRelease(JET Button, double x, double y)
+void ScintillaKTK::panMouseRelease(JET Button, double X, double Y, unsigned int Time)
 {
    kt::Log log(__FUNCTION__);
-   Scintilla::Point point((int)x, (int)y);
-
-   log.trace("%.0fx%.0f", x, y);
+   log.trace("%.0fx%.0f", X, Y);
 
    if (Button IS JET::LMB) {
-      ButtonUp(point, (PreciseTime()/1000LL), scintilla->KeyCtrl);
+      ButtonUp(Scintilla::Point(int(std::floor(X)), int(std::floor(Y))), Time, scintilla->KeyCtrl);
    }
+}
+
+//********************************************************************************************************************
+// Abandon a mouse drag, e.g. when the editor is disabled while a button is held.  The selection is left as it is.
+
+void ScintillaKTK::panReleaseMouse()
+{
+   if (HaveMouseCapture()) SetMouseCapture(false);
 }
 
 //********************************************************************************************************************
