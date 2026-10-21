@@ -1046,11 +1046,12 @@ end
 
 ----------------------------------------------------------------------------------------------------------------------
 -- Build the filter chain for the effects of a parsed theme, or reuse the chain if it is already registered in Scene.
--- Each effect reads the output of the effect before it.
+-- Each effect reads the output of the effect before it.  Returns the definition name, and true if it was registered
+-- by this call.
 
-function effectFilter(Scene:obj!, Theme:table!, Ctx:table!):str
+function effectFilter(Scene:obj!, Theme:table!, Ctx:table!):<str, bool>
    name = f'effect_filter_{Theme.effectKey}'
-   if Scene.mtFindDef(name) is ERR_Okay then return name end
+   if Scene.mtFindDef(name) is ERR_Okay then return name, false end
 
    filter = Scene.new('VectorFilter', { primitiveUnits = VUNIT_BOUNDING_BOX })
 
@@ -1066,7 +1067,25 @@ function effectFilter(Scene:obj!, Theme:table!, Ctx:table!):str
       raise
    end
 
-   return name
+   return name, true
+end
+
+----------------------------------------------------------------------------------------------------------------------
+-- Returns the handle for gui.applyFillEffect().  Each entry of Defs is a { name, id } pair, and free() only removes a
+-- definition if the name still refers to the object that was registered.
+
+function fillEffectHandle(Scene:obj!, Defs:array<table>!):table
+   handle = { defs=Defs }
+   handle.free = function()
+      if Scene.exists() then
+         for _, entry in Defs do
+            err, def = Scene.mtFindDef(entry.name)
+            if err is ERR_Okay and def.id is entry.id then def.free() end
+         end
+      end
+      Defs.clear()
+   end
+   return handle
 end
 
 ----------------------------------------------------------------------------------------------------------------------
@@ -1076,8 +1095,13 @@ end
 -- Vector effects such as outline() modify each vector after the fill is assigned.  To change the style, load fresh
 -- vectors and apply the new effect.  Filter effects are applied to Viewport, and a previous filter is cleared.
 -- Siblings of Viewport are not affected.
+--
+-- Definitions are never removed automatically.  The returned handle lists the definitions that this call registered,
+-- and its free() method removes them, which is useful for privately controlled effects that change often.  A
+-- definition that already existed is reused and not listed, so it belongs to the call that registered it.  Vectors
+-- that use a freed definition must be given a new fill effect, or be freed, before the next draw.
 
-gui.applyFillEffect = function(FillEffect:any!, Viewport:obj!, ID:str)
+gui.applyFillEffect = function(FillEffect:any!, Viewport:obj!, ID:str):table
    spec = gui.parseFill(FillEffect)
    config = spec.fill.config
 
@@ -1087,12 +1111,21 @@ gui.applyFillEffect = function(FillEffect:any!, Viewport:obj!, ID:str)
    scene = Viewport.scene
    scene = scene.hostScene ?? scene
 
+   registered = array<table>
+   function register(Name:str!)
+      _, def = check scene.mtFindDef(Name)
+      registered.push({ name=Name, id=def.id })
+   end
+
    base:str
    if config.colour then
       base = config.colour
    else
       ID ??= f'effect_{spec.fill.key}'
-      gui.simpleGradient(scene, ID, config, 0, 0, 0, 1, 'boundingbox', true)
+      if scene.mtFindDef(ID) != ERR_Okay then
+         gui.simpleGradient(scene, ID, config, 0, 0, 0, 1, 'boundingbox')
+         register(ID)
+      end
       base = f'url(#{ID})'
    end
 
@@ -1110,17 +1143,22 @@ gui.applyFillEffect = function(FillEffect:any!, Viewport:obj!, ID:str)
          if scene.mtFindDef(id) != ERR_Okay then
             raise f'Effect {paint.name}() did not register its paint server as "{id}".'
          end
+         register(id)
       end
       fill ..= f';{painter}'
    end
 
    if spec.effectKey then
-      Viewport.filter = f'url(#{effectFilter(scene, spec, ctx)})'
+      name, created = effectFilter(scene, spec, ctx)
+      if created then register(name) end
+      Viewport.filter = f'url(#{name})'
    elseif Viewport.filter then
       Viewport.filter = nil
    end
 
-   Viewport.child ?! return
+   handle = fillEffectHandle(scene, registered)
+
+   Viewport.child ?! return handle
 
    gui.forVector(Viewport.child, function(Vector)
       if Vector.fill != 'none' then
@@ -1135,6 +1173,8 @@ gui.applyFillEffect = function(FillEffect:any!, Viewport:obj!, ID:str)
          effect.def.apply(ctx, effect.args, Vector)
       end
    end)
+
+   return handle
 end
 
 ----------------------------------------------------------------------------------------------------------------------
