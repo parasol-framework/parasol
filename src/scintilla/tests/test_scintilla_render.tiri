@@ -325,3 +325,25 @@ end
    assert(small_profile != clean_profile, 'The editors must render with their own fonts')
    assert(small_profile.sub(10, 20) != '0000000000', 'Line 1 of the Small editor must start within 10 pixels')
 end
+
+@Test function LexerChangeAfterInit()
+   -- Loading a file with DETECT_LEXER changes the lexer after initialisation.  The style data must be refreshed, or
+   -- the document is painted with stale colours (previously black).
+   local path = 'temp:scintilla_render_lexer.c'
+   defer mSys.DeleteFile(path) end
+   do
+      local file <close> = obj.new('file', { path=path, flags=FL_NEW|FL_WRITE })
+      check file.acWrite('int x;')
+   end
+
+   local scene <close>, vp, sci, bmp = newEditor({ flags=SCIF_DETECT_LEXER, bkgdColour='250,240,200,255' })
+   sci.string = 'Hello'
+   render(scene)
+   sci.path = path
+   render(scene)
+
+   assert(sci.lexer is SCLEX_CPP, 'The C lexer must be detected')
+   assert(colourAt(bmp, 200, 6) is '250,240,200', f'The text line must use BkgdColour, got {colourAt(bmp, 200, 6)}')
+   assert(colourAt(bmp, 200, 60) is '250,240,200', 'The area beyond the last line must use BkgdColour')
+   assert(darkPixels(bmp, TEXT_LEFT, 0, 6 * 7, LINE_HEIGHT) > 20, 'The text must be drawn')
+end

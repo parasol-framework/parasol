@@ -5,9 +5,8 @@ int GetFontLeading(void *TheFont)
    return static_cast<objFont *>(TheFont)->Leading;
 }
 
-/*********************************************************************************************************************
-** Point class
-*/
+//********************************************************************************************************************
+// Point class
 
 Scintilla::Point Scintilla::Point::FromLong(long lpoint)
 {
@@ -15,9 +14,8 @@ Scintilla::Point Scintilla::Point::FromLong(long lpoint)
       Scintilla::Platform::HighShortFromLong(lpoint));
 }
 
-/*********************************************************************************************************************
-** Palette class.  Functionality not required as we only use 32 bit colours.
-*/
+//********************************************************************************************************************
+// Palette class.  Functionality not required as we only use 32 bit colours.
 
 Scintilla::Palette::Palette() { }
 Scintilla::Palette::~Palette() { }
@@ -29,14 +27,13 @@ void Scintilla::Palette::WantFind(Scintilla::ColourPair &cp, bool want)
    cp.allocated.Set(cp.desired.AsLong());
 }
 
-/*********************************************************************************************************************
-** Font class
-**
-** Scintilla will try to create a font for every style allocated, which is overkill.  Instead, each Scintilla object
-** allocates a regular, bold, italic and bold-italic font, and Font::Create() only records the bold and italic state of
-** the style.  SurfacePan::GetFont() resolves that state to the font objects of the Scintilla object that owns the
-** surface.  The face name and size requested by the style are ignored.
-*/
+//********************************************************************************************************************
+// Font class
+//
+// Scintilla will try to create a font for every style allocated, which is overkill.  Instead, each Scintilla object
+// allocates a regular, bold, italic and bold-italic font, and Font::Create() only records the bold and italic state of
+// the style.  SurfacePan::GetFont() resolves that state to the font objects of the Scintilla object that owns the
+// surface.  The face name and size requested by the style are ignored.
 
 Scintilla::Font::Font()
 {
@@ -63,11 +60,10 @@ void Scintilla::Font::Release()
 {
 }
 
-/*********************************************************************************************************************
-** BitmapClipper class
-**
-** Utility class used by SurfacePan
-*/
+//********************************************************************************************************************
+// BitmapClipper class
+//
+// Utility class used by SurfacePan
 
 class BitmapClipper
 {
@@ -104,9 +100,8 @@ private:
    Scintilla::PRectangle saved_cliprect;
 };
 
-/*********************************************************************************************************************
-** DynamicLibraryImpl class
-*/
+//********************************************************************************************************************
+// DynamicLibraryImpl class
 
 class DynamicLibraryImpl : public Scintilla::DynamicLibrary
 {
@@ -139,9 +134,8 @@ Scintilla::DynamicLibrary * Scintilla::DynamicLibrary::Load(const char *modulePa
    return static_cast<DynamicLibrary *>(new DynamicLibraryImpl(modulePath));
 }
 
-/*********************************************************************************************************************
-** ElapsedTime class
-*/
+//********************************************************************************************************************
+// ElapsedTime class
 
 Scintilla::ElapsedTime::ElapsedTime()
 {

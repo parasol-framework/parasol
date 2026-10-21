@@ -132,6 +132,38 @@
 
   <methods>
     <method>
+      <name>AddMarker</name>
+      <comment>Adds a marker to a line.</comment>
+      <prototype>ERR sci::AddMarker(OBJECTPTR Object, INT Line, INT Marker)</prototype>
+      <tiriPrototype>err = AddMarker(Line:num, Marker:num)</tiriPrototype>
+      <input>
+        <param type="INT" name="Line">The index of the line.</param>
+        <param type="INT" name="Marker">The marker number, from 0 to 24.</param>
+      </input>
+      <description>
+<p>A marker is a symbol that is drawn in the symbol margin beside a line, or a highlight of the line's text, as configured by <method>DefineMarker</method>.  Markers are typically used to indicate bookmarks, breakpoints and errors.  The symbol margin is enabled with <fl>Symbols</fl>.  While it is hidden, a line that carries markers is highlighted with their background colour instead.</p>
+<p>There are 25 markers, numbered from 0 to 24.  A line can carry any combination of them, and adding a marker that the line already carries has no effect.  A marker stays with its line as text is inserted and deleted.  If the line is joined to the previous line, the markers of both lines are combined.</p>
+      </description>
+    </method>
+
+    <method>
+      <name>DefineMarker</name>
+      <comment>Defines the appearance of a marker.</comment>
+      <prototype>ERR sci::DefineMarker(OBJECTPTR Object, INT Marker, SCMK Symbol, struct RGB8 * Fore, struct RGB8 * Bkgd)</prototype>
+      <tiriPrototype>err = DefineMarker(Marker:num, Symbol:num, Fore:any, Bkgd:any)</tiriPrototype>
+      <input>
+        <param type="INT" name="Marker">The marker number, from 0 to 24.</param>
+        <param type="SCMK" name="Symbol" lookup="SCMK">The symbol to draw.</param>
+        <param type="struct RGB8 *" name="Fore">The foreground colour.  If <code>NULL</code>, the current colour is retained.</param>
+        <param type="struct RGB8 *" name="Bkgd">The background colour.  If <code>NULL</code>, the current colour is retained.</param>
+      </input>
+      <description>
+<p>This method sets the symbol and colours of a marker, which can then be added to lines with <method>AddMarker</method>.  Lines that already carry the marker are redrawn with the new definition.  Until it is defined, a marker is drawn as a circle with a black outline and a white fill.</p>
+<p>Symbols are drawn in the symbol margin in the <code>Bkgd</code> colour, with the outline and any inner sign in the <code>Fore</code> colour. The <code>SCMK::BACKGROUND</code> and <code>SCMK::UNDERLINE</code> symbols are drawn in the text area instead, in the <code>Bkgd</code> colour.  If the alpha component of <code>Bkgd</code> is less than 255, these two symbols are blended over the line, which also tints its text. Otherwise they are drawn opaquely beneath the text.  The alpha components are ignored for all other symbols.</p>
+      </description>
+    </method>
+
+    <method>
       <name>DeleteLine</name>
       <comment>Deletes a line.</comment>
       <prototype>ERR sci::DeleteLine(OBJECTPTR Object, INT Line)</prototype>
@@ -157,6 +189,20 @@
 <p>This method retrieves the string for a <code>Line</code> at a given index.  The string is copied to the supplied <code>Buffer</code>, which must have enough space for the line content and a terminating null byte.</p>
       </description>
       <tags>mutates-input</tags>
+    </method>
+
+    <method>
+      <name>GetMarkers</name>
+      <comment>Returns the markers of a line.</comment>
+      <prototype>ERR sci::GetMarkers(OBJECTPTR Object, INT Line, INT * Markers)</prototype>
+      <tiriPrototype>err, Markers:num = GetMarkers(Line:num)</tiriPrototype>
+      <input>
+        <param type="INT" name="Line">The index of the line.</param>
+        <param type="INT *" name="Markers">The bit mask of the line's markers is returned here.</param>
+      </input>
+      <description>
+<p>This method returns the markers that a line carries, as a bit mask in which bit <code>N</code> is set for marker <code>N</code>.  For example, a result of <code>0x5</code> indicates that the line carries markers 0 and 2.</p>
+      </description>
     </method>
 
     <method>
@@ -199,6 +245,20 @@
       <description>
 <p>Use InsertText to insert a string at any point in the document (if adding text to the end of the document, we recommend using data channels instead).</p>
 <p>You will need to specify the character position at which the provided String should be inserted.  Two special character positions are also supported as an alternative - a value of -1 inserts the text at the current cursor position and a value of -2 replaces currently selected text.</p>
+      </description>
+    </method>
+
+    <method>
+      <name>RemoveMarker</name>
+      <comment>Removes markers from one line or from the whole document.</comment>
+      <prototype>ERR sci::RemoveMarker(OBJECTPTR Object, INT Line, INT Marker)</prototype>
+      <tiriPrototype>err = RemoveMarker(Line:num, Marker:num)</tiriPrototype>
+      <input>
+        <param type="INT" name="Line">The index of the line, or -1 for every line.</param>
+        <param type="INT" name="Marker">The marker number from 0 to 24, or -1 for every marker.</param>
+      </input>
+      <description>
+<p>This method removes a marker that was added with <method>AddMarker</method>.  A <code>Line</code> of -1 removes the marker from every line, and a <code>Marker</code> of -1 removes every marker.  Removing a marker that is not present is not an error.</p>
       </description>
     </method>
 
@@ -274,6 +334,19 @@
       <description>
 <p>Call SetFont() to change the font face that is used for displaying text.  The <code>Face</code> is a family name as accepted by the Face field of the <class name="Font">Font</class> class, e.g. <code>Clean</code>.  The point size of the current font is retained.</p>
 <p>If the new face is invalid or fails to load, the current font will remain unchanged.</p>
+      </description>
+    </method>
+
+    <method>
+      <name>ToggleFold</name>
+      <comment>Contracts or expands a fold.</comment>
+      <prototype>ERR sci::ToggleFold(OBJECTPTR Object, INT Line)</prototype>
+      <tiriPrototype>err = ToggleFold(Line:num)</tiriPrototype>
+      <input>
+        <param type="INT" name="Line">The index of the line, or -1 for the line of the cursor.</param>
+      </input>
+      <description>
+<p>This method toggles the fold that starts at a line, which hides or shows the lines within the fold.  If the line does not start a fold, the innermost fold that contains it is toggled.  Folding must be enabled with <fl>FoldingMarkers</fl>, and the document needs a <fl>Lexer</fl> that supports folding.</p>
       </description>
     </method>
 
@@ -402,9 +475,13 @@
 
     <field>
       <name>FoldingMarkers</name>
-      <comment>Folding markers in the left margin will be visible when this value is TRUE.</comment>
+      <comment>Enables code folding and shows the fold margin.</comment>
       <access read="G" write="S">Get/Set</access>
       <type>INT</type>
+      <description>
+<p>Set this field to <code>true</code> to enable code folding.  Folding is computed by the active <fl>Lexer</fl>, so a document without a lexer, or with a lexer that does not support folding, has no folds.  The fold margin is shown to the left of the text and marks each fold with a box that contains a plus (contracted) or minus (expanded) sign.  Clicking the box of a fold toggles it.  Folds can also be toggled with <method>ToggleFold</method>.</p>
+<p>The lines of a contracted fold are hidden.  They are shown again if the fold is expanded, if the cursor is moved into them with <method>GotoLine</method> or <method>SelectRange</method>, or if they are edited.  Setting FoldingMarkers to <code>false</code> expands every fold.</p>
+      </description>
     </field>
 
     <field>
@@ -455,6 +532,18 @@
       <comment>Line numbers will appear on the left when this value is TRUE.</comment>
       <access read="G" write="S">Get/Set</access>
       <type>INT</type>
+    </field>
+
+    <field>
+      <name>MarginClick</name>
+      <comment>A callback for receiving clicks in the symbol and fold margins.</comment>
+      <access read="G" write="S">Get/Set</access>
+      <type>FUNCTION</type>
+      <description>
+<p>Set this field with a function reference to receive notifications when the user clicks in the symbol margin or the fold margin.  This is typically used to toggle breakpoints or bookmarks with <method>AddMarker</method> and <method>RemoveMarker</method>.  The prototype for the callback function is <code>Function(*Scintilla, SCMG Margin, INT Line, KQ Qualifiers)</code>.</p>
+<p>The <code>Margin</code> is <code>SCMG::SYMBOLS</code> or <code>SCMG::FOLDING</code>, and the <code>Line</code> is the index of the line that was clicked.  The <code>Qualifiers</code> indicate the modifier keys that were held, as a combination of <code>KQ::SHIFT</code>, <code>KQ::CTRL</code> and <code>KQ::ALT</code>. Modifier keys are only known while the editor has the user focus.</p>
+<p>A click in the fold margin has already toggled the fold of the line (if it is a fold header) when the callback is made.  While MarginClick is defined, a click in the symbol margin is reported instead of selecting the line.  Clicks in the line number margin always select the line and are not reported.</p>
+      </description>
     </field>
 
     <field>
@@ -540,9 +629,13 @@
 
     <field>
       <name>Symbols</name>
-      <comment>Symbols can be displayed in the left margin when this value is TRUE.</comment>
+      <comment>Shows the symbol margin, in which markers are displayed.</comment>
       <access read="G" write="S">Get/Set</access>
       <type>INT</type>
+      <description>
+<p>Set this field to <code>true</code> to show the symbol margin to the left of the text.  The margin displays the markers that are added to lines with <method>AddMarker</method>.  While the margin is hidden, a line that carries markers is highlighted with their background colour instead.  Markers that highlight the text itself, such as <code>SCMK::BACKGROUND</code>, are displayed regardless of this setting.</p>
+<p>If <fl>MarginClick</fl> is defined, clicks in the symbol margin are reported to it.  Otherwise a click in the margin selects the line, as it does in the line number margin.</p>
+      </description>
     </field>
 
     <field>
@@ -621,6 +714,37 @@
       <const name="VB">Visual Basic</const>
       <const name="VBSCRIPT">VBScript</const>
       <const name="XML">XML</const>
+    </constants>
+
+    <constants lookup="SCMK" comment="Marker symbols for DefineMarker(), as defined by the Scintilla library.">
+      <const name="ARROW">An arrow that points right.</const>
+      <const name="ARROWS">Three arrows that point right.</const>
+      <const name="ARROW_DOWN">An arrow that points down.</const>
+      <const name="BACKGROUND">Fills the background of the line's text with the marker's background colour.</const>
+      <const name="BOX_MINUS">A minus sign in a box.</const>
+      <const name="BOX_MINUS_CONNECTED">A minus sign in a box, with a connecting vertical line.</const>
+      <const name="BOX_PLUS">A plus sign in a box.</const>
+      <const name="BOX_PLUS_CONNECTED">A plus sign in a box, with a connecting vertical line.</const>
+      <const name="CIRCLE">A filled circle.</const>
+      <const name="CIRCLE_MINUS">A minus sign in a circle.</const>
+      <const name="CIRCLE_MINUS_CONNECTED">A minus sign in a circle, with a connecting vertical line.</const>
+      <const name="CIRCLE_PLUS">A plus sign in a circle.</const>
+      <const name="CIRCLE_PLUS_CONNECTED">A plus sign in a circle, with a connecting vertical line.</const>
+      <const name="DOTS">Three dots.</const>
+      <const name="EMPTY">Invisible.  Use this to reserve a marker number without drawing anything.</const>
+      <const name="FULL_RECT">Fills the margin of the line with the marker's background colour.</const>
+      <const name="LCORNER">A corner that joins a vertical line from above to the right.</const>
+      <const name="LCORNER_CURVE">A curved corner that joins a vertical line from above to the right.</const>
+      <const name="LEFT_RECT">Fills a narrow band at the left of the margin with the marker's background colour.</const>
+      <const name="MINUS">A minus sign.</const>
+      <const name="PLUS">A plus sign.</const>
+      <const name="ROUND_RECT">A rectangle with rounded corners.</const>
+      <const name="SHORT_ARROW">A short arrow that points right.</const>
+      <const name="SMALL_RECT">A small rectangle.</const>
+      <const name="TCORNER">A vertical line with a branch to the right.</const>
+      <const name="TCORNER_CURVE">A vertical line with a curved branch to the right.</const>
+      <const name="UNDERLINE">Underlines the line's text with the marker's background colour.</const>
+      <const name="VLINE">A vertical line through the line height.</const>
     </constants>
 
     <constants lookup="SEF" comment="Flags for EventCallback and EventFlags">

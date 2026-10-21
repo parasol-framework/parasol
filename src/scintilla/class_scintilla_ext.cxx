@@ -117,10 +117,23 @@ ScintillaKTK::ScintillaKTK(extScintilla *Scintilla)
    SetStyles(c_styles, std::ssize(c_styles));
    SetStyles(std_styles, std::ssize(std_styles));
 
-   SendScintilla(SCI_SETMODEVENTMASK, SC_MOD_INSERTTEXT, SC_MOD_DELETETEXT |
+   // SC_MOD_CHANGEFOLD is required by FoldChanged()
+
+   SendScintilla(SCI_SETMODEVENTMASK, SC_MOD_INSERTTEXT | SC_MOD_DELETETEXT | SC_MOD_CHANGEFOLD |
       SC_PERFORMED_USER | SC_PERFORMED_UNDO | SC_PERFORMED_REDO |
       SC_MULTISTEPUNDOREDO | SC_LASTSTEPINUNDOREDO | SC_MOD_BEFOREINSERT |
       SC_MOD_BEFOREDELETE | SC_MULTILINEUNDOREDO);
+
+   // Margin 1 shows the client's markers and margin 2 shows the fold markers.  Their widths are managed by the Symbols
+   // and FoldingMarkers fields, and the symbol margin is made sensitive while a MarginClick callback is defined.
+
+   SendScintilla(SCI_SETMARGINTYPEN, 1UL, long(SC_MARGIN_SYMBOL));
+   SendScintilla(SCI_SETMARGINMASKN, 1UL, long(~SC_MASK_FOLDERS));
+   SendScintilla(SCI_SETMARGINTYPEN, 2UL, long(SC_MARGIN_SYMBOL));
+   SendScintilla(SCI_SETMARGINMASKN, 2UL, long(SC_MASK_FOLDERS));
+   SendScintilla(SCI_SETMARGINSENSITIVEN, 2UL, 1L);
+   SendScintilla(SCI_SETFOLDFLAGS, (unsigned long)SC_FOLDFLAG_LINEAFTER_CONTRACTED);
+   DefineFoldMarkers();
 
    // We're always UTF-8
 
@@ -571,6 +584,8 @@ void ScintillaKTK::NotifyParent(Scintilla::SCNotification scn)
       // See HTML documentation for more information.
 
       log.trace("[MODIFIED] Type: %d, Length: %d, LinesAdded: %d, Line: %d", scn.modificationType, scn.length, scn.linesAdded, scn.line);
+
+      if (scn.modificationType & SC_MOD_CHANGEFOLD) FoldChanged(scn.line, scn.foldLevelNow, scn.foldLevelPrev);
    }
    else if (code IS SCEN_SETFOCUS) {
       log.trace("[SETFOCUS]");
@@ -591,16 +606,19 @@ void ScintillaKTK::NotifyParent(Scintilla::SCNotification scn)
       log.trace("[MACRORECORD]");
    }
    else if (code IS SCN_MARGINCLICK) {
-      // This notification tells the container that the mouse was clicked inside a margin that was marked as sensitive
-      // (see SCI_SETMARGINSENSITIVEN). This can be used to perform folding or to place breakpoints. The following
-      // SCNotification fields are used:
-      //
-      // Field   Usage
-      // modifiers The appropriate combination of SCI_SHIFT, SCI_CTRL and SCI_ALT to indicate the keys that were held down at the time of the margin click.
-      // position  The position of the start of the line in the document that corresponds to the margin click.
-      // margin    The margin number that was clicked.
+      // The mouse was clicked inside a sensitive margin.  The position is the start of the clicked line.  A click in
+      // the fold margin toggles the fold of a header line, and every click is then reported to the client.
 
-      log.trace("[MARGINCLICK]");
+      int line = pdoc->LineFromPosition(scn.position);
+      log.traceBranch("[MARGINCLICK] Margin: %d, Line: %d", scn.margin, line);
+
+      if ((scn.margin IS 2) and (pdoc->GetLevel(line) & SC_FOLDLEVELHEADERFLAG)) ToggleContraction(line);
+
+      KQ qualifiers = KQ::NIL;
+      if (scn.modifiers & SCI_SHIFT) qualifiers |= KQ::SHIFT;
+      if (scn.modifiers & SCI_CTRL)  qualifiers |= KQ::CTRL;
+      if (scn.modifiers & SCI_ALT)   qualifiers |= KQ::ALT;
+      report_margin_click(scintilla, SCMG(scn.margin), line, qualifiers);
    }
    else if (code IS SCN_NEEDSHOWN) {
       // Scintilla has determined that a range of lines that is currently invisible should be made visible. An example of where this may be
@@ -609,16 +627,14 @@ void ScintillaKTK::NotifyParent(Scintilla::SCNotification scn)
       // visible by calling SCI_ENSUREVISIBLE. The position and length fields of SCNotification indicate the range of the document that should be
       // made visible.
 
-      int i, first, last;
+      // The range is inclusive of the line at position + length, as an insertion has a length of zero.
 
-      first = SendScintilla(SCI_LINEFROMPOSITION, scn.position);
-      last = SendScintilla(SCI_LINEFROMPOSITION, scn.position + scn.length - 1);
+      int first = SendScintilla(SCI_LINEFROMPOSITION, scn.position);
+      int last = SendScintilla(SCI_LINEFROMPOSITION, scn.position + scn.length);
 
       log.trace("[NEEDSHOWN] First: %d, Last: %d", first, last);
 
-      for (i=first; i < last; ++i) {
-         SendScintilla(SCI_ENSUREVISIBLE, i);
-      }
+      for (int line=first; line <= last; line++) SendScintilla(SCI_ENSUREVISIBLE, line);
    }
    else if (code IS SCN_PAINTED) {
       // Painting has just been done. Useful when you want to update some other widgets based on a change in Scintilla,
@@ -1134,7 +1150,114 @@ void ScintillaKTK::panEnsureLineVisible(int line)
 }
 
 /*********************************************************************************************************************
-** Set the lexer.  To turn off the lexer, use SCLEX_NULL.
+** Enable or disable folding.  The lexers only compute fold levels while the 'fold' property is set.  Disabling folding
+** expands every fold first, because the lines of a contracted fold could not be shown again.
+*/
+
+void ScintillaKTK::panSetFolding(bool Enable)
+{
+   if (not Enable) ExpandAllFolds();
+   SendScintilla(SCI_SETPROPERTY, "fold", Enable ? "1" : "0");
+}
+
+/*********************************************************************************************************************
+** Toggle the fold of a header line, or of the fold that contains the line if it is not a header.  Fold levels are
+** computed when a line is styled, so the document is styled up to the end of the line first.  Returns false if
+** folding is disabled, or if the line is not within a fold that has content.
+*/
+
+bool ScintillaKTK::panToggleFold(int Line)
+{
+   if (not scintilla->FoldingMarkers) return false; // The fold levels are stale while folding is disabled
+   if ((Line < 0) or (Line >= pdoc->LinesTotal())) return false;
+
+   pdoc->EnsureStyledTo(pdoc->LineStart(Line + 1));
+
+   if (not (pdoc->GetLevel(Line) & SC_FOLDLEVELHEADERFLAG)) {
+      Line = pdoc->GetFoldParent(Line);
+      if (Line < 0) return false;
+   }
+
+   if (pdoc->GetLastChild(Line) <= Line) return false;
+
+   ToggleContraction(Line);
+   return true;
+}
+
+/*********************************************************************************************************************
+** The fold margin uses the 'box tree' style.  The markers are drawn in the background colour with a contrasting
+** foreground, so they are visible on the margin's chequer pattern.
+*/
+
+void ScintillaKTK::DefineFoldMarkers()
+{
+   static const struct { int Marker, Symbol; } folders[] = {
+      { SC_MARKNUM_FOLDEROPEN,    SC_MARK_BOXMINUS },
+      { SC_MARKNUM_FOLDER,        SC_MARK_BOXPLUS },
+      { SC_MARKNUM_FOLDERSUB,     SC_MARK_VLINE },
+      { SC_MARKNUM_FOLDERTAIL,    SC_MARK_LCORNER },
+      { SC_MARKNUM_FOLDEREND,     SC_MARK_BOXPLUSCONNECTED },
+      { SC_MARKNUM_FOLDEROPENMID, SC_MARK_BOXMINUSCONNECTED },
+      { SC_MARKNUM_FOLDERMIDTAIL, SC_MARK_TCORNER }
+   };
+
+   for (auto &folder : folders) {
+      SendScintilla(SCI_MARKERDEFINE, folder.Marker, folder.Symbol);
+      SendScintilla(SCI_MARKERSETFORE, folder.Marker, SCICOLOUR(255, 255, 255));
+      SendScintilla(SCI_MARKERSETBACK, folder.Marker, SCICOLOUR(128, 128, 128));
+   }
+}
+
+//********************************************************************************************************************
+// Show every line and mark every fold as expanded.
+
+void ScintillaKTK::ExpandAllFolds()
+{
+   int total = pdoc->LinesTotal();
+   bool changed = cs.HiddenLines();
+   for (int line=0; line < total; line++) {
+      if (cs.SetExpanded(line, true)) changed = true;
+   }
+
+   if (changed) {
+      cs.SetVisible(0, total - 1, true);
+      SetScrollBars();
+      Redraw();
+   }
+}
+
+/*********************************************************************************************************************
+** Called when the fold level of a line changes.  If a contracted fold loses its header, for instance because its
+** opening brace was deleted, its lines would remain hidden with no means of showing them.  The hidden lines that
+** follow the line are therefore shown, and any contracted folds among them are expanded so that their markers match.
+** This is called while the lexer is folding, so it relies only on the contraction state.
+*/
+
+void ScintillaKTK::FoldChanged(int Line, int LevelNow, int LevelPrev)
+{
+   if ((not (LevelPrev & SC_FOLDLEVELHEADERFLAG)) or (LevelNow & SC_FOLDLEVELHEADERFLAG)) return;
+   if (cs.GetExpanded(Line)) return;
+
+   cs.SetExpanded(Line, true);
+   if (not cs.GetVisible(Line)) return; // The lines are revealed when the enclosing fold is expanded
+
+   int last = Line;
+   for (int line=Line + 1; (line < pdoc->LinesTotal()) and (not cs.GetVisible(line)); line++) {
+      cs.SetExpanded(line, true);
+      last = line;
+   }
+
+   if (last > Line) {
+      cs.SetVisible(Line + 1, last, true);
+      SetScrollBars();
+      Redraw();
+   }
+}
+
+/*********************************************************************************************************************
+** Set the lexer.  To turn off the lexer, use SCLEX_NULL.  The fold levels of the previous lexer no longer apply, so all
+** folds are expanded.  Scintilla does not pass its stored properties to a new lexer, so the 'fold' property is set
+** again.
 */
 
 void ScintillaKTK::SetLexer(uptr_t LexID)
@@ -1142,12 +1265,12 @@ void ScintillaKTK::SetLexer(uptr_t LexID)
    kt::Log log(__FUNCTION__);
    log.branch("Using lexer %d", (int)LexID);
 
-//   SendScintilla(SCI_STYLERESETDEFAULT);
+   ExpandAllFolds();
    SendScintilla(SCI_SETLEXER, LexID);
-   //SendScintilla(SCI_CLEARDOCUMENTSTYLE);
+   SendScintilla(SCI_SETPROPERTY, "fold", scintilla->FoldingMarkers ? "1" : "0");
 
    SendScintilla(SCI_STARTSTYLING, 0, 0x1f);
-   Redraw();
+   InvalidateStyleRedraw();
 }
 
 void ScintillaKTK::SetLexerLanguage(const char *languageName)

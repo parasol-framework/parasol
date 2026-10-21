@@ -11,6 +11,7 @@ class extScintilla : public objScintilla {
    public:
    FUNCTION FileDrop;
    FUNCTION EventCallback;
+   FUNCTION MarginClick;
    objFile *FileStream;
    objFont *BoldFont;            // Bold version of the current font
    objFont *ItalicFont;          // Italic version of the current font
@@ -139,6 +140,8 @@ public:
    virtual void panSetCursorPosition(int line, int index);
    virtual void panEnsureLineVisible(int line);
    virtual void panWordwrap(int);
+   virtual void panSetFolding(bool Enable);
+   virtual bool panToggleFold(int Line);
    ERR panClipboard(CLIPMODE Mode);
 
    // Brace match handling
@@ -176,6 +179,9 @@ public:
 
 private:
    void SetupStyles();
+   void DefineFoldMarkers();
+   void ExpandAllFolds();
+   void FoldChanged(int Line, int LevelNow, int LevelPrev);
    void NotifyKey(int key, int modifiers);
    void UpdateTimers();
    bool TickRequired();

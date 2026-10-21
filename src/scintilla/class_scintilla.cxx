@@ -120,6 +120,7 @@ JUMPTABLE_VECTOR
 JUMPTABLE_FONT
 
 static const double IDLE_INTERVAL = 0.01; // Seconds between calls to Idle() while Scintilla has background work
+static const int MAX_MARKER = SC_MARKNUM_FOLDEREND - 1; // Markers above this number are reserved for the fold margin
 
 static OBJECTPTR clScintilla = nullptr;
 static OBJECTPTR modDisplay = nullptr, modFont = nullptr, modVector = nullptr;
@@ -176,6 +177,7 @@ static ERR GET_FileDrop(extScintilla *, FUNCTION * &);
 static ERR GET_FoldingMarkers(extScintilla *, int *);
 static ERR GET_LineCount(extScintilla *, int *);
 static ERR GET_LineNumbers(extScintilla *, int *);
+static ERR GET_MarginClick(extScintilla *, FUNCTION * &);
 static ERR GET_ShowWhitespace(extScintilla *, int *);
 static ERR GET_EventCallback(extScintilla *, FUNCTION * &);
 static ERR GET_String(extScintilla *, std::string_view &);
@@ -193,6 +195,7 @@ static ERR SET_LeftMargin(extScintilla *, int);
 static ERR SET_Lexer(extScintilla *, SCLEX);
 static ERR SET_LineHighlight(extScintilla *, RGB8 *);
 static ERR SET_LineNumbers(extScintilla *, int);
+static ERR SET_MarginClick(extScintilla *, FUNCTION *);
 static ERR SET_Path(extScintilla *, const std::string_view &);
 static ERR SET_Modified(extScintilla *, int);
 static ERR SET_Origin(extScintilla *, const std::string_view &);
@@ -229,6 +232,7 @@ static ERR key_event(objVectorViewport *, KQ, KEY, int);
 static int command_key(KEY, bool);
 static int shortcut_key(KEY);
 static void report_event(extScintilla *, SEF Event);
+static void report_margin_click(extScintilla *, SCMG, int, KQ);
 static ERR tick_timer(extScintilla *, int64_t, int64_t);
 static ERR idle_timer(extScintilla *, int64_t, int64_t);
 extern ERR init_search(void);
@@ -640,6 +644,47 @@ static void notify_write(OBJECTPTR Object, ACTIONID ActionID, ERR Result, struct
 }
 
 /*********************************************************************************************************************
+
+-METHOD-
+AddMarker: Adds a marker to a line.
+
+A marker is a symbol that is drawn in the symbol margin beside a line, or a highlight of the line's text, as configured
+by #DefineMarker().  Markers are typically used to indicate bookmarks, breakpoints and errors.  The symbol margin is
+enabled with #Symbols.  While it is hidden, a line that carries markers is highlighted with their background colour
+instead.
+
+There are 25 markers, numbered from 0 to 24.  A line can carry any combination of them, and adding a marker that the
+line already carries has no effect.  A marker stays with its line as text is inserted and deleted.  If the line is
+joined to the previous line, the markers of both lines are combined.
+
+-INPUT-
+int Line: The index of the line.
+int Marker: The marker number, from 0 to 24.
+
+-RESULT-
+Okay:
+NullArgs:
+OutOfRange: The `Line` or `Marker` is out of range.
+
+*********************************************************************************************************************/
+
+static ERR SCINTILLA_AddMarker(extScintilla *Self, struct sci::AddMarker *Args)
+{
+   kt::Log log;
+
+   if (!Args) return log.warning(ERR::NullArgs);
+   if ((Args->Marker < 0) or (Args->Marker > MAX_MARKER)) return log.warning(ERR::OutOfRange);
+   if ((Args->Line < 0) or (Args->Line >= SCICALL(SCI_GETLINECOUNT))) return log.warning(ERR::OutOfRange);
+
+   // Scintilla would record a second instance of the marker, so a marker that is already present is not added again.
+
+   if (not (SCICALL(SCI_MARKERGET, Args->Line) & (1 << Args->Marker))) {
+      SCICALL(SCI_MARKERADD, Args->Line, Args->Marker);
+   }
+   return ERR::Okay;
+}
+
+/*********************************************************************************************************************
 -ACTION-
 Clear: Clears all content from the editor.
 
@@ -763,6 +808,57 @@ static ERR SCINTILLA_DataFeed(extScintilla *Self, struct acDataFeed *Args)
 /*********************************************************************************************************************
 
 -METHOD-
+DefineMarker: Defines the appearance of a marker.
+
+This method sets the symbol and colours of a marker, which can then be added to lines with #AddMarker().  Lines that
+already carry the marker are redrawn with the new definition.  Until it is defined, a marker is drawn as a circle with
+a black outline and a white fill.
+
+Symbols are drawn in the symbol margin in the `Bkgd` colour, with the outline and any inner sign in the `Fore` colour.
+The `SCMK::BACKGROUND` and `SCMK::UNDERLINE` symbols are drawn in the text area instead, in the `Bkgd` colour.  If the
+alpha component of `Bkgd` is less than 255, these two symbols are blended over the line, which also tints its text.
+Otherwise they are drawn opaquely beneath the text.  The alpha components are ignored for all other symbols.
+
+-INPUT-
+int Marker: The marker number, from 0 to 24.
+int(SCMK) Symbol: The symbol to draw.
+struct(*RGB8) Fore: The foreground colour.  If `NULL`, the current colour is retained.
+struct(*RGB8) Bkgd: The background colour.  If `NULL`, the current colour is retained.
+
+-RESULT-
+Okay:
+NullArgs:
+OutOfRange: The `Marker` is out of range.
+InvalidValue: The `Symbol` is not supported.
+
+*********************************************************************************************************************/
+
+static ERR SCINTILLA_DefineMarker(extScintilla *Self, struct sci::DefineMarker *Args)
+{
+   kt::Log log;
+
+   if (!Args) return log.warning(ERR::NullArgs);
+   if ((Args->Marker < 0) or (Args->Marker > MAX_MARKER)) return log.warning(ERR::OutOfRange);
+
+   auto symbol = int(Args->Symbol);
+   if ((symbol < SC_MARK_CIRCLE) or (symbol > SC_MARK_UNDERLINE) or (symbol IS SC_MARK_PIXMAP) or
+       (symbol IS SC_MARK_AVAILABLE)) return log.warning(ERR::InvalidValue);
+
+   SCICALL(SCI_MARKERDEFINE, Args->Marker, symbol);
+
+   if (auto c = Args->Fore) SCICALL(SCI_MARKERSETFORE, Args->Marker, (long)SCICOLOUR(c->Red, c->Green, c->Blue));
+
+   if (auto c = Args->Bkgd) {
+      SCICALL(SCI_MARKERSETBACK, Args->Marker, (long)SCICOLOUR(c->Red, c->Green, c->Blue));
+      SCICALL(SCI_MARKERSETALPHA, Args->Marker, (c->Alpha < 255) ? long(c->Alpha) : long(SC_ALPHA_NOALPHA));
+   }
+
+   return ERR::Okay;
+}
+
+/*********************************************************************************************************************
+
+-METHOD-
 DeleteLine: Deletes a line.
 
 This method will delete a single line at the position indicated by the Line parameter.  If no parameters are provided
@@ -878,6 +974,37 @@ static ERR SCINTILLA_Focus(extScintilla *Self)
 /*********************************************************************************************************************
 
 -METHOD-
+GetMarkers: Returns the markers of a line.
+
+This method returns the markers that a line carries, as a bit mask in which bit `N` is set for marker `N`.  For
+example, a result of `0x5` indicates that the line carries markers 0 and 2.
+
+-INPUT-
+int Line: The index of the line.
+&int Markers: The bit mask of the line's markers is returned here.
+
+-RESULT-
+Okay:
+NullArgs:
+OutOfRange: The `Line` is out of range.
+
+*********************************************************************************************************************/
+
+static ERR SCINTILLA_GetMarkers(extScintilla *Self, struct sci::GetMarkers *Args)
+{
+   kt::Log log;
+
+   if (!Args) return log.warning(ERR::NullArgs);
+   Args->Markers = 0;
+   if ((Args->Line < 0) or (Args->Line >= SCICALL(SCI_GETLINECOUNT))) return log.warning(ERR::OutOfRange);
+
+   Args->Markers = int(SCICALL(SCI_MARKERGET, Args->Line) & ~SC_MASK_FOLDERS);
+   return ERR::Okay;
+}
+
+/*********************************************************************************************************************
+
+-METHOD-
 GetLine: Copies the text content of any line to a user-supplied buffer.
 
 This method retrieves the string for a `Line` at a given index.  The string is copied to the supplied `Buffer`, which
@@ -964,6 +1091,7 @@ static ERR SCINTILLA_GotoLine(extScintilla *Self, struct sci::GotoLine *Args)
    if (Args->Line < 0) return ERR::OutOfRange;
 
    log.branch("Line: %d", Args->Line);
+   SCICALL(SCI_ENSUREVISIBLE, std::min(Args->Line, int(SCICALL(SCI_GETLINECOUNT)) - 1)); // Expands contracted folds
    SCICALL(SCI_GOTOLINE, Args->Line);
    return ERR::Okay;
 }
@@ -1100,7 +1228,6 @@ static ERR SCINTILLA_Init(extScintilla *Self, APTR)
    // Miscellaneous options
 
    SCICALL(SCI_SETEOLMODE, SC_EOL_LF);
-   SCICALL(SCI_SETPROPERTY, "fold","0");
 
    if (Self->AllowTabs) SCICALL(SCI_SETUSETABS, 1UL);
    else  SCICALL(SCI_SETUSETABS, 0UL);
@@ -1115,6 +1242,9 @@ static ERR SCINTILLA_Init(extScintilla *Self, APTR)
 
    if (Self->FoldingMarkers) SCICALL(SCI_SETMARGINWIDTHN, 2, 20L);
    else SCICALL(SCI_SETMARGINWIDTHN, 2, 0L);
+
+   SCICALL(SCI_SETMARGINSENSITIVEN, 1, (long)Self->MarginClick.defined());
+   Self->API->panSetFolding(Self->FoldingMarkers);
 
    if (Self->Wordwrap) SCICALL(SCI_SETWRAPMODE, 1UL);
    else SCICALL(SCI_SETWRAPMODE, 0UL);
@@ -1194,6 +1324,40 @@ static ERR SCINTILLA_Redo(extScintilla *Self, struct acRedo *Args)
    log.branch();
 
    SCICALL(SCI_REDO);
+   return ERR::Okay;
+}
+
+/*********************************************************************************************************************
+
+-METHOD-
+RemoveMarker: Removes markers from one line or from the whole document.
+
+This method removes a marker that was added with #AddMarker().  A `Line` of -1 removes the marker from every line, and
+a `Marker` of -1 removes every marker.  Removing a marker that is not present is not an error.
+
+-INPUT-
+int Line: The index of the line, or -1 for every line.
+int Marker: The marker number from 0 to 24, or -1 for every marker.
+
+-RESULT-
+Okay:
+NullArgs:
+OutOfRange: The `Line` or `Marker` is out of range.
+
+*********************************************************************************************************************/
+
+static ERR SCINTILLA_RemoveMarker(extScintilla *Self, struct sci::RemoveMarker *Args)
+{
+   kt::Log log;
+
+   if (!Args) return log.warning(ERR::NullArgs);
+   if ((Args->Marker < -1) or (Args->Marker > MAX_MARKER)) return log.warning(ERR::OutOfRange);
+   if ((Args->Line < -1) or (Args->Line >= SCICALL(SCI_GETLINECOUNT))) return log.warning(ERR::OutOfRange);
+
+   // Scintilla removes every instance of the marker from a line, including those that joining lines can produce.
+
+   if (Args->Line IS -1) SCICALL(SCI_MARKERDELETEALL, Args->Marker);
+   else SCICALL(SCI_MARKERDELETE, Args->Line, Args->Marker);
    return ERR::Okay;
 }
 
@@ -1496,15 +1660,11 @@ static ERR SCINTILLA_SelectRange(extScintilla *Self, struct sci::SelectRange *Ar
 
    log.branch("Selecting area %d to %d", Args->Start, Args->End);
 
-   if (Args->End < 0) {
-      int end = SCICALL(SCI_GETLENGTH);
-      SCICALL(SCI_SETSEL, Args->Start, end);
-      SCICALL(SCI_SCROLLCARET);
-   }
-   else {
-      SCICALL(SCI_SETSEL, Args->Start, Args->End);
-      SCICALL(SCI_SCROLLCARET);
-   }
+   if (Args->End < 0) SCICALL(SCI_SETSEL, Args->Start, SCICALL(SCI_GETLENGTH));
+   else SCICALL(SCI_SETSEL, Args->Start, Args->End);
+
+   SCICALL(SCI_ENSUREVISIBLE, SCICALL(SCI_LINEFROMPOSITION, SCICALL(SCI_GETCURRENTPOS))); // Expands contracted folds
+   SCICALL(SCI_SCROLLCARET);
 
    return ERR::Okay;
 }
@@ -1515,6 +1675,40 @@ static ERR SCINTILLA_Show(extScintilla *Self)
 {
    if (Self->View) return acShow(Self->View);
    else return ERR::Okay;
+}
+
+/*********************************************************************************************************************
+
+-METHOD-
+ToggleFold: Contracts or expands a fold.
+
+This method toggles the fold that starts at a line, which hides or shows the lines within the fold.  If the line does
+not start a fold, the innermost fold that contains it is toggled.  Folding must be enabled with #FoldingMarkers, and
+the document needs a #Lexer that supports folding.
+
+-INPUT-
+int Line: The index of the line, or -1 for the line of the cursor.
+
+-RESULT-
+Okay:
+NullArgs:
+OutOfRange: The `Line` is out of range.
+NothingDone: The line is not within a fold.
+
+*********************************************************************************************************************/
+
+static ERR SCINTILLA_ToggleFold(extScintilla *Self, struct sci::ToggleFold *Args)
+{
+   kt::Log log;
+
+   if (!Args) return log.warning(ERR::NullArgs);
+
+   int line = Args->Line;
+   if (line IS -1) line = SCICALL(SCI_LINEFROMPOSITION, SCICALL(SCI_GETCURRENTPOS));
+   else if ((line < 0) or (line >= SCICALL(SCI_GETLINECOUNT))) return log.warning(ERR::OutOfRange);
+
+   log.branch("Line: %d", line);
+   return Self->API->panToggleFold(line) ? ERR::Okay : ERR::NothingDone;
 }
 
 /*********************************************************************************************************************
@@ -1747,7 +1941,15 @@ Keyboard input requires a @VectorScene that is linked to a @Surface.  The scene 
 between keyboard subscribers unless its `IGNORE_TAB` flag is set, in which case the Tab key reaches the editor.
 
 -FIELD-
-FoldingMarkers: Folding markers in the left margin will be visible when this value is TRUE.
+FoldingMarkers: Enables code folding and shows the fold margin.
+
+Set this field to `true` to enable code folding.  Folding is computed by the active #Lexer, so a document without a
+lexer, or with a lexer that does not support folding, has no folds.  The fold margin is shown to the left of the text
+and marks each fold with a box that contains a plus (contracted) or minus (expanded) sign.  Clicking the box of a fold
+toggles it.  Folds can also be toggled with #ToggleFold().
+
+The lines of a contracted fold are hidden.  They are shown again if the fold is expanded, if the cursor is moved into
+them with #GotoLine() or #SelectRange(), or if they are edited.  Setting FoldingMarkers to `false` expands every fold.
 
 *********************************************************************************************************************/
 
@@ -1761,11 +1963,17 @@ static ERR SET_FoldingMarkers(extScintilla *Self, int Value)
 {
    if (Value) {
       Self->FoldingMarkers = TRUE;
-      if (Self->initialised()) SCICALL(SCI_SETMARGINWIDTHN, 2, 20L);
+      if (Self->initialised()) {
+         SCICALL(SCI_SETMARGINWIDTHN, 2, 20L);
+         Self->API->panSetFolding(true);
+      }
    }
    else {
       Self->FoldingMarkers = FALSE;
-      if (Self->initialised()) SCICALL(SCI_SETMARGINWIDTHN, 2, 0L);
+      if (Self->initialised()) {
+         SCICALL(SCI_SETMARGINWIDTHN, 2, 0L);
+         Self->API->panSetFolding(false);
+      }
    }
    return ERR::Okay;
 }
@@ -1796,6 +2004,47 @@ static ERR SET_LeftMargin(extScintilla *Self, int Value)
       return ERR::Okay;
    }
    else return ERR::OutOfRange;
+}
+
+/*********************************************************************************************************************
+
+-FIELD-
+MarginClick: A callback for receiving clicks in the symbol and fold margins.
+
+Set this field with a function reference to receive notifications when the user clicks in the symbol margin or the
+fold margin.  This is typically used to toggle breakpoints or bookmarks with #AddMarker() and #RemoveMarker().  The
+prototype for the callback function is `Function(*Scintilla, SCMG Margin, INT Line, KQ Qualifiers)`.
+
+The `Margin` is `SCMG::SYMBOLS` or `SCMG::FOLDING`, and the `Line` is the index of the line that was clicked.  The
+`Qualifiers` indicate the modifier keys that were held, as a combination of `KQ::SHIFT`, `KQ::CTRL` and `KQ::ALT`.
+Modifier keys are only known while the editor has the user focus.
+
+A click in the fold margin has already toggled the fold of the line (if it is a fold header) when the callback is
+made.  While MarginClick is defined, a click in the symbol margin is reported instead of selecting the line.  Clicks in
+the line number margin always select the line and are not reported.
+
+*********************************************************************************************************************/
+
+static ERR GET_MarginClick(extScintilla *Self, FUNCTION * &Value)
+{
+   if (Self->MarginClick.defined()) {
+      Value = &Self->MarginClick;
+      return ERR::Okay;
+   }
+   else return ERR::FieldNotSet;
+}
+
+static ERR SET_MarginClick(extScintilla *Self, FUNCTION *Value)
+{
+   if (Self->MarginClick.defined()) Self->MarginClick.unpin();
+   if (Value) {
+      Self->MarginClick = *Value;
+      if (Self->MarginClick.defined()) Self->MarginClick.pin();
+   }
+   else Self->MarginClick.clear();
+
+   if (Self->API) SCICALL(SCI_SETMARGINSENSITIVEN, 1, (long)Self->MarginClick.defined());
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -2137,7 +2386,15 @@ static ERR SET_String(extScintilla *Self, const std::string_view &Value)
 /*********************************************************************************************************************
 
 -FIELD-
-Symbols: Symbols can be displayed in the left margin when this value is TRUE.
+Symbols: Shows the symbol margin, in which markers are displayed.
+
+Set this field to `true` to show the symbol margin to the left of the text.  The margin displays the markers that are
+added to lines with #AddMarker().  While the margin is hidden, a line that carries markers is highlighted with their
+background colour instead.  Markers that highlight the text itself, such as `SCMK::BACKGROUND`, are displayed
+regardless of this setting.
+
+If #MarginClick is defined, clicks in the symbol margin are reported to it.  Otherwise a click in the margin selects
+the line, as it does in the line number margin.
 
 *********************************************************************************************************************/
 
@@ -2531,6 +2788,31 @@ static void report_event(extScintilla *Self, SEF Event)
 }
 
 //********************************************************************************************************************
+// Report a click in a sensitive margin to the MarginClick callback.
+
+static void report_margin_click(extScintilla *Self, SCMG Margin, int Line, KQ Qualifiers)
+{
+   if (Self->MarginClick.stale()) {
+      Self->MarginClick.unpin();
+      Self->MarginClick.clear();
+   }
+
+   if (Self->MarginClick.isC()) {
+      kt::SwitchContext ctx(Self->MarginClick.Context);
+      auto routine = (void (*)(extScintilla *, SCMG, int, KQ, APTR))Self->MarginClick.Routine;
+      routine(Self, Margin, Line, Qualifiers, Self->MarginClick.Meta);
+   }
+   else if (Self->MarginClick.isScript()) {
+      sc::Call(Self->MarginClick, std::to_array<ScriptArg>({
+         { "Scintilla", Self, FD_OBJECTPTR },
+         { "Margin", int(Margin) },
+         { "Line", Line },
+         { "Qualifiers", int(Qualifiers) }
+      }));
+   }
+}
+
+//********************************************************************************************************************
 
 static void calc_longest_line(extScintilla *Self)
 {
@@ -2656,6 +2938,11 @@ extScintilla::~extScintilla() {
       EventCallback.clear();
    }
 
+   if (MarginClick.defined()) {
+      MarginClick.unpin();
+      MarginClick.clear();
+   }
+
    if (TickTimer) UpdateTimer(TickTimer, 0);
    if (IdleTimer) UpdateTimer(IdleTimer, 0);
 
@@ -2716,6 +3003,7 @@ static const FieldArray clFields[] = {
    { "FoldingMarkers", FDF_INT|FDF_RW|FDF_PURE,   GET_FoldingMarkers, SET_FoldingMarkers },
    { "LineCount",      FDF_INT|FDF_R,    GET_LineCount },
    { "LineNumbers",    FDF_INT|FDF_RW|FDF_PURE,   GET_LineNumbers, SET_LineNumbers },
+   { "MarginClick",    FDF_FUNCTION|FDF_RW|FDF_PURE, GET_MarginClick, SET_MarginClick },
    { "Origin",         FDF_CPPSTRING|FDF_W, nullptr, SET_Origin },
    { "ShowWhitespace", FDF_INT|FDF_RW|FDF_PURE,   GET_ShowWhitespace, SET_ShowWhitespace },
    { "EventCallback",  FDF_FUNCTION|FDF_RW|FDF_PURE, GET_EventCallback, SET_EventCallback },
