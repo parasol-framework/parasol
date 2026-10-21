@@ -1,20 +1,8 @@
 
-int GetFontHeight(void *TheFont)
-{
-   //log.trace("GetFontHeight()");
-   return static_cast<objFont *>(TheFont)->MaxHeight;
-}
-
 int GetFontLeading(void *TheFont)
 {
    //log.trace("GetFontLeading()");
    return static_cast<objFont *>(TheFont)->Leading;
-}
-
-int GetFontGutter(void *TheFont)
-{
-   //log.trace("GetFontGutter()");
-   return static_cast<objFont *>(TheFont)->Gutter;
 }
 
 /*********************************************************************************************************************

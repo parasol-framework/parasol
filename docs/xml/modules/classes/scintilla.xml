@@ -40,14 +40,14 @@
 
     <action>
       <name>Disable</name>
-      <comment>Disables the target <fl>Surface</fl>.</comment>
+      <comment>Disables user interaction with the editor.</comment>
       <prototype>ERR acDisable(*Object)</prototype>
       <tiriPrototype>err = Object.acDisable()</tiriPrototype>
     </action>
 
     <action>
       <name>Draw</name>
-      <comment>Draws the Scintilla object's graphics.</comment>
+      <comment>Redraws the editor content.</comment>
       <prototype>ERR acDraw(*Object, DOUBLE X, DOUBLE Y, DOUBLE Width, DOUBLE Height)</prototype>
       <tiriPrototype>err = Object.acDraw(X:num, Y:num, Width:num, Height:num)</tiriPrototype>
       <input>
@@ -56,18 +56,21 @@
         <param type="INT" name="Width">The width of the region to be drawn.</param>
         <param type="INT" name="Height">The height of the region to be drawn.</param>
       </input>
+      <description>
+<p>The entire content of the editor is marked for redrawing.  Painting is deferred until the next cycle of message processing, after which the scene is redrawn.</p>
+      </description>
     </action>
 
     <action>
       <name>Enable</name>
-      <comment>Enables the target <fl>Surface</fl>.</comment>
+      <comment>Enables user interaction with the editor.</comment>
       <prototype>ERR acEnable(*Object)</prototype>
       <tiriPrototype>err = Object.acEnable()</tiriPrototype>
     </action>
 
     <action>
       <name>Focus</name>
-      <comment>Focus on the Scintilla surface.</comment>
+      <comment>Moves the user focus to the <fl>Focus</fl> viewport.</comment>
       <prototype>ERR acFocus(*Object)</prototype>
       <tiriPrototype>err = Object.acFocus()</tiriPrototype>
     </action>
@@ -139,6 +142,7 @@
       <description>
 <p>This method retrieves the string for a <code>Line</code> at a given index.  The string is copied to the supplied <code>Buffer</code>, which must have enough space for the line content and a terminating null byte.</p>
       </description>
+      <tags>mutates-input</tags>
     </method>
 
     <method>
@@ -218,15 +222,16 @@
 
     <method>
       <name>ScrollToPoint</name>
-      <comment>Scrolls text by moving the Page.</comment>
+      <comment>Scrolls the document to a pixel position.</comment>
       <prototype>ERR sci::ScrollToPoint(OBJECTPTR Object, INT X, INT Y)</prototype>
       <tiriPrototype>err = ScrollToPoint(X:num, Y:num)</tiriPrototype>
       <input>
-        <param type="INT" name="X">New horizontal position.</param>
-        <param type="INT" name="Y">New vertical position.</param>
+        <param type="INT" name="X">Horizontal scroll position in pixels.</param>
+        <param type="INT" name="Y">Vertical scroll position in pixels.</param>
       </input>
       <description>
-<p>This method will scroll text in the Scintilla document by moving the page position.</p>
+<p>This method scrolls the document so that the point (<code>X</code>, <code>Y</code>), measured in pixels from the top-left corner of the document, appears at the top-left corner of the <fl>View</fl>.  The <fl>Page</fl> is moved to <code>(-X, -Y)</code> to reflect the change.</p>
+<p>The editor scrolls vertically by whole lines, so <code>Y</code> is rounded to the nearest line.  Both coordinates are clamped to the scrollable range of the document.</p>
       </description>
     </method>
 
@@ -253,7 +258,7 @@
         <param type="STRVIEW" name="Face">The name of the new font face.</param>
       </input>
       <description>
-<p>Call SetFont() to change the font face that is used for displaying text.  The string format follows the standard for font requests, e.g. <code>Helvete:12:Bold Italic:#ff0000</code>.  Refer to the Face field in the <class name="Font">Font</class> class for more details.</p>
+<p>Call SetFont() to change the font face that is used for displaying text.  The <code>Face</code> is a family name as accepted by the Face field of the <class name="Font">Font</class> class, e.g. <code>Clean</code>.  The point size of the current font is retained.</p>
 <p>If the new face is invalid or fails to load, the current font will remain unchanged.</p>
       </description>
     </method>
@@ -277,6 +282,9 @@
       <comment>If enabled, use of the tab key produces real tabs and not spaces.</comment>
       <access read="G" write="S">Get/Set</access>
       <type>INT</type>
+      <description>
+<p>The Tab key is only received by the editor if the <code>IGNORE_TAB</code> flag is set on its <class name="VectorScene">VectorScene</class>.  Refer to <fl>Focus</fl> for details.</p>
+      </description>
     </field>
 
     <field>
@@ -291,15 +299,18 @@
       <comment>Defines the background colour.  Alpha blending is not supported.</comment>
       <access read="R" write="S">Read/Set</access>
       <type>RGB8</type>
+      <description>
+<p>The BkgdColour applies to the text area and to all lexer styles.  The margins use their own colours.</p>
+      </description>
     </field>
 
     <field>
       <name>CursorCol</name>
       <comment>The current column of the text cursor.</comment>
-      <access read="R" write="W">Read/Write</access>
+      <access read="G">Get</access>
       <type>INT</type>
       <description>
-<p>The CursorCol and <fl>CursorRow</fl> fields reflect the current row and column of the user's text cursor.  The values are updated every time that the cursor is moved.  Use <fl>EventCallback</fl> and listen for the event SEF_CURSOR_POS to receive updates on changes to CursorCol and <fl>CursorRow</fl>.</p>
+<p>The CursorCol and <fl>CursorRow</fl> fields reflect the current row and column of the user's text cursor.  Use <fl>EventCallback</fl> and listen for the event <code>SEF::CURSOR_POS</code> to receive updates on changes to CursorCol and <fl>CursorRow</fl>.</p>
       </description>
     </field>
 
@@ -313,10 +324,10 @@
     <field>
       <name>CursorRow</name>
       <comment>The current row of the text cursor.</comment>
-      <access read="R" write="W">Read/Write</access>
+      <access read="G">Get</access>
       <type>INT</type>
       <description>
-<p>The <fl>CursorCol</fl> and CursorRow fields reflect the current row and column of the user's text cursor.  The values are updated every time that the cursor is moved.  Use <fl>EventCallback</fl> and listen for the event SEF_CURSOR_POS to receive updates on changes to <fl>CursorCol</fl> and CursorRow.</p>
+<p>The <fl>CursorCol</fl> and CursorRow fields reflect the current row and column of the user's text cursor.  Use <fl>EventCallback</fl> and listen for the event <code>SEF::CURSOR_POS</code> to receive updates on changes to <fl>CursorCol</fl> and CursorRow.</p>
       </description>
     </field>
 
@@ -366,11 +377,12 @@
 
     <field>
       <name>Focus</name>
-      <comment>Defines the object that is monitored for user focus changes.</comment>
+      <comment>Defines the viewport that is monitored for user focus changes.</comment>
       <access read="R" write="I">Read/Init</access>
-      <type>OBJECTID</type>
+      <type class="VectorViewport">*VectorViewport</type>
       <description>
-<p>By default, the user focus is managed by monitoring the target <fl>Surface</fl> for changes (for instance, clicking on or away from the surface will result in a focus state change).  If another object should be monitored for focus state changes, it can be defined here prior to initialisation.</p>
+<p>The editor has the user focus while the Focus viewport or any of its children has the focus.  Keyboard input is received from the Focus viewport during that time, and the caret is shown and blinks.  If not set prior to initialisation, the <fl>Viewport</fl> is used.  Clicking within the editor gives the focus to one of its internal viewports, which are children of the <fl>Viewport</fl>.</p>
+<p>Keyboard input requires a <class name="VectorScene">VectorScene</class> that is linked to a <class name="Surface">Surface</class>.  The scene uses the Tab key to move the focus between keyboard subscribers unless its <code>IGNORE_TAB</code> flag is set, in which case the Tab key reaches the editor.</p>
       </description>
     </field>
 
@@ -453,6 +465,17 @@
     </field>
 
     <field>
+      <name>Page</name>
+      <comment>An internally created viewport that represents the extent of the document.</comment>
+      <access read="R">Read</access>
+      <type class="VectorViewport">*VectorViewport</type>
+      <description>
+<p>The Page is created on initialisation as a child of the <fl>View</fl>.  It represents the virtual extent of the document, and scrolling is achieved by moving the Page within the View.  The Page can be referenced as the <code>page</code> of a scrollbar.</p>
+<p>The editor manages the size of the Page.  Its height allows the last line of the document to be scrolled to the bottom of the View, and its width allows the longest line to be scrolled into view.  If the Page is moved by a third party, the editor scrolls to match and then snaps the Page to the nearest whole line.</p>
+      </description>
+    </field>
+
+    <field>
       <name>Path</name>
       <comment>Identifies the location of a text file to load.</comment>
       <access read="R" write="S">Read/Set</access>
@@ -502,16 +525,6 @@
     </field>
 
     <field>
-      <name>Surface</name>
-      <comment>Refers to the <class name="Surface">Surface</class> targeted by the Scintilla object.</comment>
-      <access read="R" write="I">Read/Init</access>
-      <type>OBJECTID</type>
-      <description>
-<p>This compulsory field refers to the <class name="Surface">Surface</class> that the Scintilla object is targeting for graphics operations.  If not set prior to initialisation, the Scintilla object will search for the nearest <class name="Surface">Surface</class> object based on its ownership hierarchy.</p>
-      </description>
-    </field>
-
-    <field>
       <name>Symbols</name>
       <comment>Symbols can be displayed in the left margin when this value is TRUE.</comment>
       <access read="G" write="S">Get/Set</access>
@@ -527,18 +540,31 @@
 
     <field>
       <name>TextColour</name>
-      <comment>Defines the default colour of foreground text.  Supports alpha blending.</comment>
+      <comment>Defines the default colour of foreground text.  Alpha blending is not supported.</comment>
       <access read="R" write="S">Read/Set</access>
       <type>RGB8</type>
+      <description>
+<p>The TextColour applies to plain text and to the default style of the active lexer.  Other lexer styles use their own colours.</p>
+      </description>
     </field>
 
     <field>
-      <name>Visible</name>
-      <comment>If TRUE, indicates the Scintilla object is visible in the target <fl>Surface</fl>.</comment>
-      <access read="R" write="I">Read/Init</access>
-      <type>INT</type>
+      <name>View</name>
+      <comment>An internally created viewport that clips the visible content of the editor.</comment>
+      <access read="R">Read</access>
+      <type class="VectorViewport">*VectorViewport</type>
       <description>
-<p>This field is set to TRUE if the Scintilla object is visible in the target <fl>Surface</fl>.  To control visibility, please use the <action>Show</action> and <action>Hide</action> actions appropriately.  This field can be set to FALSE prior to initialisation if the Scintilla object should start in a hidden state.</p>
+<p>The View is created on initialisation as a child of the <fl>Viewport</fl>, and covers its entire area.  It represents the visible window into the document and clips the <fl>Page</fl>.  The View can be referenced as the <code>view</code> of a scrollbar, which may reduce the size of the View by changing its <code>XOffset</code> and <code>YOffset</code> values.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>Viewport</name>
+      <comment>The viewport that will host the editor.</comment>
+      <access read="R" write="I">Read/Init</access>
+      <type class="VectorViewport">*VectorViewport</type>
+      <description>
+<p>This compulsory field refers to the <class name="VectorViewport">VectorViewport</class> that will host the editor's graphics.  If not set prior to initialisation, the Scintilla object's owner will be used if it is a <class name="VectorViewport">VectorViewport</class>.</p>
       </description>
     </field>
 
@@ -554,7 +580,7 @@
     <constants lookup="SCIF" comment="Optional flags.">
       <const name="DETECT_LEXER">Automatic lexer detection will occur on initialisation and at any time that a source file is loaded.</const>
       <const name="DISABLED">Read-only.  This flag is set if the Scintilla object has been deactivated with the Disable action.</const>
-      <const name="EDIT">Must be defined if the document is to be editable via user input.</const>
+      <const name="EDIT">Must be defined if the document is to be editable via user input.  Without it, the user can navigate and select, but edits are refused and reported as SEF::FAIL_RO.  The API can modify the document regardless.</const>
       <const name="EXT_PAGE">Extends the length of the document by one blank page.  This is a visual effect that only has an impact when the user scrolls to the end of the document.</const>
     </constants>
 

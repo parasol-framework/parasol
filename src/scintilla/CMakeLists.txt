@@ -85,3 +85,6 @@ target_include_directories (scintilla PRIVATE
    "${CMAKE_CURRENT_SOURCE_DIR}/scintilla/include")
 
 flute_test (scintilla_document "tests/test_scintilla_document.tiri")
+flute_test (scintilla_render "tests/test_scintilla_render.tiri")
+flute_test (scintilla_scroll "tests/test_scintilla_scroll.tiri")
+flute_test (scintilla_keyboard "tests/test_scintilla_keyboard.tiri")

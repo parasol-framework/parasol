@@ -19,15 +19,25 @@ class extScintilla : public objScintilla {
    objVectorRectangle *Canvas;   // Displays the Bitmap within the Page
    objVectorImage *Image;        // Scene definition that wraps the Bitmap for use as the Canvas fill
    objBitmap *Bitmap;            // Scintilla paints into this bitmap; it covers the visible area of the View
+   objVectorColour *FillColour;  // Solid fill for shapes drawn with vec::DrawPath()
+   objVectorColour *StrokeColour; // Solid stroke for shapes drawn with vec::DrawPath()
+   ClipRectangle Dirty;          // Area of the client that is waiting to be repainted
+   double CanvasX;               // Sub-pixel offset of the Canvas that aligns the Bitmap with whole device pixels
+   double CanvasY;
+   int    ScrollX;             // Scroll position reflected by the Page, i.e. Scintilla's xOffset in pixels
+   int    ScrollY;             // Scroll position reflected by the Page, i.e. Scintilla's topLine in pixels
+   int    PageWidth;           // Extent of the Page, as computed by ModifyScrollBars()
+   int    PageHeight;
    ScintillaKTK *API;
-   APTR   prvKeyEvent;
    std::string StringBuffer;
    int    LongestLine;         // Longest line in the document
    int    LongestWidth;        // Pixel width of the longest line
    int    TabWidth;
    int    ViewWidth;           // Pixel width of the View, i.e. Scintilla's client area
    int    ViewHeight;          // Pixel height of the View
-   TIMER  TimerID;
+   int    MarginDigits;        // Number of digits that the line number margin is sized for
+   TIMER  TickTimer;           // Calls Tick() while the caret is blinking
+   TIMER  IdleTimer;           // Calls Idle() while Scintilla has background work, e.g. word wrapping
    SEF    ReportEventFlags;    // For delayed event reporting.
    uint16_t KeyAlt:1;
    uint16_t KeyCtrl:1;
@@ -40,7 +50,9 @@ class extScintilla : public objScintilla {
    uint16_t AutoIndent:1;
    uint16_t HoldModify:1;
    uint16_t AllowTabs:1;
-   uint8_t  ScrollLocked;
+   uint16_t RepaintQueued:1;   // A Repaint message is queued for the Dirty area
+   uint16_t HasFocus:1;        // The Focus viewport, or one of its children, has the user focus
+   uint8_t  ScrollLocked;      // Set while the editor is scrolling in response to a Page change
 
    extScintilla(objMetaClass *ClassPtr, OBJECTID ObjectID) : objScintilla(ClassPtr, ObjectID) {
       if (NewLocalObject(CLASSID::FONT, (OBJECTPTR *)&Font) != ERR::Okay) {
@@ -96,29 +108,30 @@ public:
    virtual void CopyToClipboard(const Scintilla::SelectionText &selectedText);
    virtual void ScrollText(int linesToMove);
    virtual void SetTicking(bool on);
+   virtual bool SetIdle(bool on);
    virtual void SetMouseCapture(bool on);
    virtual bool HaveMouseCapture();
    virtual sptr_t DefWndProc(unsigned int iMessage, uptr_t wParam, sptr_t lParam);
    static sptr_t DirectFunction(ScintillaKTK *sci, unsigned int iMessage, uptr_t wParam, sptr_t lParam);
-   // Non-abstract virtual methods from Editor
-   virtual int KeyDefault(int key, int modifiers);
 
    // Custom interfacing methods
 
    virtual void SetStyles(const struct styledef *Def, int Total);
-   virtual void panDraw(objBitmap *Bitmap);
+   virtual void SetStyleColours();
+   virtual void panPaint(Scintilla::PRectangle Area);
    virtual void panRedraw();
    virtual void panFontChanged();
-   virtual void panIdleEvent();
-   virtual void panKeyDown(int Key, KQ);
+   virtual bool panTick();
+   virtual bool panIdle();
+   virtual void panKeyDown(KEY Code, KQ Qualifiers, int Unicode);
    virtual void panMousePress(JET ButtonFlags, double x, double y);
    virtual void panMouseRelease(JET ButtonFlags, double x, double y);
    virtual void panMouseMove(double x, double y);
    virtual void panResized();
-   virtual void panScrollToX(double x);
-   virtual void panScrollToY(double y);
-   virtual void panGotFocus();
-   virtual void panLostFocus();
+   virtual void panScrollTo(double X, double Y);
+   virtual void panScrollBy(int Columns, int Lines);
+   virtual void panSyncPage();
+   virtual void panSetFocus(bool Focus);
    virtual void panGetCursorPosition(int *line, int *index);
    virtual void panSetCursorPosition(int line, int index);
    virtual void panEnsureLineVisible(int line);
@@ -157,18 +170,16 @@ public:
    // Public so scintilla_send_message can use it
    virtual sptr_t WndProc(unsigned int iMessage, uptr_t wParam, sptr_t lParam);
 
-   char   lastkeytrans[7];
-
 private:
    void SetupStyles();
    void NotifyKey(int key, int modifiers);
+   void UpdateTimers();
+   bool TickRequired();
 
    int braceMode;
    int oldpos = -1;
-   Scintilla::ElapsedTime timer;
-   int8_t idle_timer_on:1;
-   int8_t ticking_on:1;
-   int8_t captured_mouse:1;
-   double lastticktime;
+   uint8_t idle_on:1;
+   uint8_t ticking_on:1;
+   uint8_t captured_mouse:1;
    extScintilla *scintilla;
 };

@@ -37,7 +37,7 @@ module({ name="Scintilla", copyright="Paul Manias © 2005-2026", version=1.0, ti
   flags("SCIF", { comment="Optional flags." },
      "DISABLED:     Read-only.  This flag is set if the Scintilla object has been deactivated with the Disable action.",
      "DETECT_LEXER: Automatic lexer detection will occur on initialisation and at any time that a source file is loaded.",
-     "EDIT:         Must be defined if the document is to be editable via user input.",
+     "EDIT:         Must be defined if the document is to be editable via user input.  Without it, the user can navigate and select, but edits are refused and reported as SEF::FAIL_RO.  The API can modify the document regardless.",
      "EXT_PAGE:     Extends the length of the document by one blank page.  This is a visual effect that only has an impact when the user scrolls to the end of the document.")
    -- OVERWRITE
    -- AREA_SELECTED
@@ -69,7 +69,8 @@ module({ name="Scintilla", copyright="Paul Manias © 2005-2026", version=1.0, ti
     { id=9,  name="TrimWhitespace" },
     { id=10, name="GetPos" },
     { id=11, name="ReportEvent" },
-    { id=12, name="ScrollToPoint" }
+    { id=12, name="ScrollToPoint" },
+    { id=13, name="Repaint" }
   })
 
   klass("Scintilla", { src={ "class_scintilla.cxx" }, output="class_scintilla_def.cxx", extended=true }, [[

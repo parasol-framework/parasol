@@ -58,8 +58,12 @@ public:
    void SetUnicodeMode(bool unicodeMode_);
    void SetDBCSMode(int codePage);
 
+   void BlendRectangle(Scintilla::PRectangle rc, Scintilla::ColourAllocated colour, int alpha);
+
 private:
    OBJECTPTR GetFont(Scintilla::Font& font);
+   void draw_path(APTR Path, const Scintilla::ColourAllocated *Fill, int FillAlpha,
+      const Scintilla::ColourAllocated *Stroke, int StrokeAlpha);
 };
 
 SurfacePan::SurfacePan()
@@ -144,6 +148,52 @@ inline uint32_t to_pan_col(objBitmap *bitmap, const Scintilla::ColourAllocated& 
 
 /****************************************************************************/
 
+inline void set_vector_colour(objVectorColour *Colour, const Scintilla::ColourAllocated &Value, int Alpha)
+{
+   uint32_t col32 = Value.AsLong();
+   Colour->Red   = SCIRED(col32) / 255.0;
+   Colour->Green = SCIGREEN(col32) / 255.0;
+   Colour->Blue  = SCIBLUE(col32) / 255.0;
+   Colour->Alpha = std::clamp(Alpha, 0, 255) / 255.0;
+}
+
+/*********************************************************************************************************************
+** Shapes are drawn with vec::DrawPath(), which provides anti-aliasing and alpha blending.  The Path is a generated
+** vector path that is always freed by this function.  Strokes are one pixel wide.
+*/
+
+void SurfacePan::draw_path(APTR Path, const Scintilla::ColourAllocated *Fill, int FillAlpha,
+   const Scintilla::ColourAllocated *Stroke, int StrokeAlpha)
+{
+   if ((bitmap) and (scintilla) and (scintilla->FillColour) and (scintilla->StrokeColour)) {
+      BitmapClipper clipper(bitmap, cliprect);
+
+      if ((bitmap->Clip.Right > bitmap->Clip.Left) and (bitmap->Clip.Bottom > bitmap->Clip.Top)) {
+         if (Fill) set_vector_colour(scintilla->FillColour, *Fill, FillAlpha);
+         if (Stroke) set_vector_colour(scintilla->StrokeColour, *Stroke, StrokeAlpha);
+
+         vec::DrawPath(bitmap, Path, Stroke ? 1.0 : 0.0, Stroke ? scintilla->StrokeColour : nullptr,
+            Fill ? scintilla->FillColour : nullptr);
+      }
+   }
+
+   FreeResource(Path);
+}
+
+/****************************************************************************/
+
+void SurfacePan::BlendRectangle(Scintilla::PRectangle rc, Scintilla::ColourAllocated colour, int alpha)
+{
+   if ((not bitmap) or (rc.Width() <= 0) or (rc.Height() <= 0)) return;
+
+   APTR path;
+   if (vec::GenerateRectangle(rc.left, rc.top, rc.Width(), rc.Height(), &path) IS ERR::Okay) {
+      draw_path(path, &colour, alpha, nullptr, 0);
+   }
+}
+
+/****************************************************************************/
+
 void SurfacePan::PenColour(Scintilla::ColourAllocated fore)
 {
    if (bitmap) {
@@ -179,45 +229,91 @@ void SurfacePan::MoveTo(int x, int y)
 
 /****************************************************************************/
 
+/*********************************************************************************************************************
+** Draws a one pixel line from the pen position.  The end point is excluded, as Scintilla expects.
+*/
+
 void SurfacePan::LineTo(int x, int y)
 {
    if (bitmap) {
       BitmapClipper clipper(bitmap, cliprect);
 
-      //DBGDRAW("panLineTo:","%dx%d - %dx%d", penx, peny, x, y);
+      DBGDRAW("panLineTo:","%dx%d - %dx%d", penx, peny, x, y);
 
-      gfx::DrawRectangle(bitmap, penx, peny, x-penx, y-peny, pencol, BAF::FILL);
-      penx = x;
-      peny = y;
+      if (y IS peny) {
+         if (x > penx) gfx::DrawRectangle(bitmap, penx, y, x - penx, 1, pencol, BAF::FILL);
+         else if (x < penx) gfx::DrawRectangle(bitmap, x + 1, y, penx - x, 1, pencol, BAF::FILL);
+      }
+      else if (x IS penx) {
+         if (y > peny) gfx::DrawRectangle(bitmap, x, peny, 1, y - peny, pencol, BAF::FILL);
+         else gfx::DrawRectangle(bitmap, x, y + 1, 1, peny - y, pencol, BAF::FILL);
+      }
+      else { // Bresenham
+         const int dx = std::abs(x - penx), sx = (penx < x) ? 1 : -1;
+         const int dy = -std::abs(y - peny), sy = (peny < y) ? 1 : -1;
+         int err = dx + dy;
+         int cx = penx, cy = peny;
+         while ((cx != x) or (cy != y)) {
+            gfx::DrawRectangle(bitmap, cx, cy, 1, 1, pencol, BAF::FILL);
+            const int e2 = err * 2;
+            if (e2 >= dy) { err += dy; cx += sx; }
+            if (e2 <= dx) { err += dx; cy += sy; }
+         }
+      }
    }
+
+   penx = x;
+   peny = y;
 }
 
 /****************************************************************************/
+
+/*********************************************************************************************************************
+** Draws an image of RGBA bytes, centred within rc and alpha blended with the background.
+*/
 
 void SurfacePan::DrawRGBAImage(Scintilla::PRectangle rc, int width, int height, const unsigned char *pixelsImage)
 {
-   kt::Log log(__FUNCTION__);
-   log.warning("Unsupported.");
+   if ((not bitmap) or (not pixelsImage) or (width < 1) or (height < 1)) return;
+
+   if (rc.Width() > width) rc.left += (rc.Width() - width) / 2;
+   if (rc.Height() > height) rc.top += (rc.Height() - height) / 2;
+
+   if (auto image = objBitmap::create::local(fl::Width(width), fl::Height(height), fl::BitsPerPixel(32),
+         fl::Flags(BMF::ALPHA_CHANNEL))) {
+      for (int y=0; y < height; y++) {
+         auto dest = (uint32_t *)(image->Data + (image->LineWidth * y));
+         auto src  = pixelsImage + (width * y * 4);
+         for (int x=0; x < width; x++, src += 4) dest[x] = image->packPixel(src[0], src[1], src[2], src[3]);
+      }
+
+      BitmapClipper clipper(bitmap, cliprect);
+      gfx::CopyArea(image, bitmap, BAF::BLEND, 0, 0, width, height, rc.left, rc.top);
+      FreeResource(image);
+   }
 }
 
 /****************************************************************************/
 
+/*********************************************************************************************************************
+** Fills a polygon with the back colour and outlines it with the fore colour.  Points are offset to pixel centres so
+** that the outline is sharp, as the GTK platform does.
+*/
+
 void SurfacePan::Polygon(Scintilla::Point *pts, int npts, Scintilla::ColourAllocated fore, Scintilla::ColourAllocated back)
 {
-   // TEMP: For now, just draw the outline as lines (don't fill)
+   if ((not bitmap) or (npts < 2)) return;
 
-   if (bitmap) {
-      BitmapClipper clipper(bitmap, cliprect);
+   DBGDRAW("panPolygon","%d points", npts);
 
-      DBGDRAW("panPolygon","");
-
-      //ULONG col = to_pan_col(bitmap, fore);
-
-      int i;
-      for (i=0; i<npts-1; ++i) {
-         //gfx::DrawLine(bitmap, pts[i].x, pts[i].y, pts[i+1].x, pts[i+1].y, col);
-      }
+   std::string sequence;
+   for (int i=0; i < npts; i++) {
+      sequence += std::format("{}{} {} ", i ? 'L' : 'M', pts[i].x + 0.5, pts[i].y + 0.5);
    }
+   sequence += 'Z';
+
+   APTR path;
+   if (vec::GeneratePath(sequence, &path) IS ERR::Okay) draw_path(path, &back, 255, &fore, 255);
 }
 
 /****************************************************************************/
@@ -255,9 +351,30 @@ void SurfacePan::FillRectangle(Scintilla::PRectangle rc, Scintilla::ColourAlloca
 
 /****************************************************************************/
 
+/*********************************************************************************************************************
+** Tiles the bitmap of the pattern surface over rc, starting from the top-left corner of rc.
+*/
+
 void SurfacePan::FillRectangle(Scintilla::PRectangle rc, Scintilla::Surface &surfacePattern)
 {
-   DBGDRAW("panFillRectangle(2):","UNIMPLEMENTED");
+   if (not bitmap) return;
+
+   auto &pattern = static_cast<SurfacePan &>(surfacePattern);
+   if ((not pattern.bitmap) or (pattern.bitmap->Width < 1) or (pattern.bitmap->Height < 1)) {
+      FillRectangle(rc, Scintilla::ColourAllocated(0)); // Show the area as black, as the GTK platform does
+      return;
+   }
+
+   DBGDRAW("panFillRectangle(2):","%dx%d,%dx%d", rc.left, rc.top, rc.Width(), rc.Height());
+
+   BitmapClipper clipper(bitmap, cliprect);
+   const int pw = pattern.bitmap->Width, ph = pattern.bitmap->Height;
+   for (int y=rc.top; y < rc.bottom; y += ph) {
+      for (int x=rc.left; x < rc.right; x += pw) {
+         gfx::CopyArea(pattern.bitmap, bitmap, BAF::NIL, 0, 0, std::min(pw, rc.right - x),
+            std::min(ph, rc.bottom - y), x, y);
+      }
+   }
 }
 
 /****************************************************************************/
@@ -285,9 +402,22 @@ void SurfacePan::RoundedRectangle(Scintilla::PRectangle rc, Scintilla::ColourAll
 
 /****************************************************************************/
 
+/*********************************************************************************************************************
+** Draws a circle that fits the smaller dimension of rc, filled with the back colour and outlined with the fore colour.
+*/
+
 void SurfacePan::Ellipse(Scintilla::PRectangle rc, Scintilla::ColourAllocated fore, Scintilla::ColourAllocated back)
 {
-   DBGDRAW("panEllipse:","UNIMPLEMENTED");
+   if ((not bitmap) or (rc.Width() <= 0) or (rc.Height() <= 0)) return;
+
+   DBGDRAW("panEllipse:","%dx%d,%dx%d", rc.left, rc.top, rc.Width(), rc.Height());
+
+   const double radius = std::min(rc.Width(), rc.Height()) / 2;
+   APTR path;
+   if (vec::GenerateEllipse(((rc.left + rc.right) / 2) + 0.5, ((rc.top + rc.bottom) / 2) + 0.5, radius, radius, 0,
+         &path) IS ERR::Okay) {
+      draw_path(path, &back, 255, &fore, 255);
+   }
 }
 
 /****************************************************************************/
@@ -329,10 +459,12 @@ void SurfacePan::DrawTextBase(Scintilla::PRectangle rc, Scintilla::Font &font_, 
    if (auto font = (objFont *)GetFont(font_)) { //static_cast<OBJECTPTR>(font_.GetID());
       BitmapClipper clipper(bitmap, cliprect);
 
+      // The font draws its glyph cell from Y minus its Leading, and the cell's baseline is Ascent pixels below its top.
+
       font->setString(nstr);
       font->Bitmap = bitmap;
       font->X = rc.left;
-      font->Y = rc.top + font->Leading;
+      font->Y = ybase - font->Ascent + font->Leading;
       font->Colour.Red   = SCIRED(col32);
       font->Colour.Green = SCIGREEN(col32);
       font->Colour.Blue  = SCIBLUE(col32);
@@ -458,11 +590,14 @@ int SurfacePan::WidthChar(Scintilla::Font &font_, char ch)
 
 /****************************************************************************/
 
+/*********************************************************************************************************************
+** The ascent includes the internal leading, and the descent is the remainder of the glyph cell below the baseline.
+** Scintilla's line height is the sum of the two, which matches the font's glyph cell.
+*/
+
 int SurfacePan::Ascent(Scintilla::Font &font_)
 {
-   OBJECTPTR font = GetFont(font_);
-
-   if (font) return GetFontHeight(font) + GetFontLeading(font) - GetFontGutter(font);
+   if (auto font = (objFont *)GetFont(font_)) return font->Ascent;
    else return 10;
 }
 
@@ -470,9 +605,7 @@ int SurfacePan::Ascent(Scintilla::Font &font_)
 
 int SurfacePan::Descent(Scintilla::Font &font_)
 {
-   OBJECTPTR font = GetFont(font_);
-
-   if (font) return GetFontGutter(font);
+   if (auto font = (objFont *)GetFont(font_)) return std::max(0, font->MaxHeight - font->Ascent);
    else return 3;
 }
 
@@ -490,11 +623,7 @@ int SurfacePan::InternalLeading(Scintilla::Font &font_)
 
 int SurfacePan::ExternalLeading(Scintilla::Font &font_)
 {
-   /* NOTE: this right? */
-   OBJECTPTR font = GetFont(font_);//OBJECTPTR(font_.GetID());
-
-   if (font) return GetFontGutter(font);
-   else return 0;
+   return 0; // Bitmap fonts include their line spacing in the glyph cell
 }
 
 /****************************************************************************/
@@ -583,66 +712,31 @@ OBJECTPTR SurfacePan::GetFont(Scintilla::Font& font_)
 
 /****************************************************************************/
 
-void SurfacePan::AlphaRectangle(Scintilla::PRectangle rc, int cornerSize, Scintilla::ColourAllocated fill, int alphaFill,
-		Scintilla::ColourAllocated outline, int alphaOutline, int flags)
+void SurfacePan::AlphaRectangle(Scintilla::PRectangle rc, int cornerSize, Scintilla::ColourAllocated fill,
+   int alphaFill, Scintilla::ColourAllocated outline, int alphaOutline, int flags)
 {
-   kt::Log log(__FUNCTION__);
+   if ((not bitmap) or (rc.Width() <= 0) or (rc.Height() <= 0)) return;
 
-   log.trace("UNSUPPORTED");
+   // Following the GTK platform, the fill is inset by one pixel and the outline is drawn on the outer pixels.
 
-   if (bitmap) {
-      BitmapClipper clipper(bitmap, cliprect);
+   auto rounded = [](double X, double Y, double Width, double Height, double Radius) {
+      Radius = std::min({ Radius, Width * 0.5, Height * 0.5 });
+      if (Radius <= 0) {
+         return std::format("M{} {} L{} {} L{} {} L{} {} Z", X, Y, X+Width, Y, X+Width, Y+Height, X, Y+Height);
+      }
+      return std::format("M{0} {1} L{2} {1} A{4} {4} 0 0 1 {3} {5} L{3} {6} A{4} {4} 0 0 1 {2} {7} L{0} {7} "
+         "A{4} {4} 0 0 1 {8} {6} L{8} {5} A{4} {4} 0 0 1 {0} {1} Z",
+         X + Radius, Y, X + Width - Radius, X + Width, Radius, Y + Radius, Y + Height - Radius, Y + Height, X);
+   };
 
-      gfx::DrawRectangle(bitmap, rc.left, rc.top, rc.Width(), rc.Height(), to_pan_col(bitmap, fill), BAF::FILL);
-
-      gfx::DrawRectangle(bitmap, rc.left, rc.top, rc.Width(), rc.Height(), to_pan_col(bitmap, outline), BAF::NIL);
+   APTR path;
+   if ((rc.Width() > 2) and (rc.Height() > 2)) {
+      auto inner = rounded(rc.left + 1, rc.top + 1, rc.Width() - 2, rc.Height() - 2, cornerSize);
+      if (vec::GeneratePath(inner, &path) IS ERR::Okay) draw_path(path, &fill, alphaFill, nullptr, 0);
    }
-   else log.warning("Bitmap was NULL.");
 
-#if 0
-		int width = rc.Width();
-		int height = rc.Height();
-
-		guint8 pixVal[4] = {0};
-		guint32 valEmpty = *(reinterpret_cast<guint32 *>(pixVal));
-		pixVal[0] = GetRValue(fill.AsLong());
-		pixVal[1] = GetGValue(fill.AsLong());
-		pixVal[2] = GetBValue(fill.AsLong());
-		pixVal[3] = alphaFill;
-
-		guint32 valFill = *(reinterpret_cast<guint32 *>(pixVal));
-		pixVal[0] = GetRValue(outline.AsLong());
-		pixVal[1] = GetGValue(outline.AsLong());
-		pixVal[2] = GetBValue(outline.AsLong());
-		pixVal[3] = alphaOutline;
-
-		guint32 valOutline = *(reinterpret_cast<guint32 *>(pixVal));
-		guint32 *pixels = reinterpret_cast<guint32 *>(gdk_pixbuf_get_pixels(pixalpha));
-
-		int stride = gdk_pixbuf_get_rowstride(pixalpha) / 4;
-		for (int y=0; y<height; y++) {
-			for (int x=0; x<width; x++) {
-				if ((x==0) || (x==width-1) || (y == 0) || (y == height-1)) {
-					pixels[y*stride+x] = valOutline;
-				}
-            else pixels[y*stride+x] = valFill;
-			}
-		}
-		for (int c=0;c<cornerSize; c++) {
-			for (int x=0;x<c+1; x++) {
-				AllFour(pixels, stride, width, height, x, c-x, valEmpty);
-			}
-		}
-		for (int x=1;x<cornerSize; x++) {
-			AllFour(pixels, stride, width, height, x, cornerSize-x, valOutline);
-		}
-
-		// Draw with alpha
-		gdk_draw_pixbuf(drawable, gc, pixalpha,
-			0,0, rc.left,rc.top, width,height, GDK_RGB_DITHER_NORMAL, 0, 0);
-
-		g_object_unref(pixalpha);
-#endif
+   auto outer = rounded(rc.left + 0.5, rc.top + 0.5, rc.Width() - 1, rc.Height() - 1, cornerSize);
+   if (vec::GeneratePath(outer, &path) IS ERR::Okay) draw_path(path, nullptr, 0, &outline, alphaOutline);
 }
 
 /****************************************************************************/
