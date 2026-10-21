@@ -9,20 +9,24 @@ using namespace kt;
 
 class extScintilla : public objScintilla {
    public:
-   struct  SurfaceCoords Surface;
    FUNCTION FileDrop;
    FUNCTION EventCallback;
    objFile *FileStream;
-   objFont *BoldFont;        // Bold version of the current font
-   objFont *ItalicFont;      // Italic version of the current font
-   objFont *BIFont;          // Bold-Italic version of the current font
+   objFont *BoldFont;            // Bold version of the current font
+   objFont *ItalicFont;          // Italic version of the current font
+   objFont *BIFont;              // Bold-Italic version of the current font
+   objVectorScene *Scene;        // The scene that hosts the Viewport
+   objVectorRectangle *Canvas;   // Displays the Bitmap within the Page
+   objVectorImage *Image;        // Scene definition that wraps the Bitmap for use as the Canvas fill
+   objBitmap *Bitmap;            // Scintilla paints into this bitmap; it covers the visible area of the View
    ScintillaKTK *API;
    APTR   prvKeyEvent;
    std::string StringBuffer;
    int    LongestLine;         // Longest line in the document
    int    LongestWidth;        // Pixel width of the longest line
    int    TabWidth;
-   int    InputHandle;
+   int    ViewWidth;           // Pixel width of the View, i.e. Scintilla's client area
+   int    ViewHeight;          // Pixel height of the View
    TIMER  TimerID;
    SEF    ReportEventFlags;    // For delayed event reporting.
    uint16_t KeyAlt:1;
@@ -43,7 +47,9 @@ class extScintilla : public objScintilla {
          kt::Log().fatal(ERR::NewObject);
       }
 
-      Font->setFace("courier:10");
+      // Clean is a bundled bitmap face with monospaced glyphs, and 8 is the only point size that it offers.
+      Font->setFace("Clean");
+      Font->setPoint(8);
       LeftMargin  = 4;
       RightMargin = 30;
       AutoIndent  = TRUE;
@@ -64,7 +70,7 @@ class extScintilla : public objScintilla {
 
 class ScintillaKTK : public Scintilla::ScintillaBase {
 public:
-   ScintillaKTK(int SurfaceID, extScintilla *Scintilla);
+   ScintillaKTK(extScintilla *Scintilla);
    virtual ~ScintillaKTK();
    virtual void Initialise() {};
    virtual void Finalise();
@@ -100,8 +106,9 @@ public:
    // Custom interfacing methods
 
    virtual void SetStyles(const struct styledef *Def, int Total);
-   virtual void panDraw(objSurface *, objBitmap *Bitmap);
-   virtual void panFontChanged(void *Font, void *BoldFont, void *ItalicFont, void *BIFont);
+   virtual void panDraw(objBitmap *Bitmap);
+   virtual void panRedraw();
+   virtual void panFontChanged();
    virtual void panIdleEvent();
    virtual void panKeyDown(int Key, KQ);
    virtual void panMousePress(JET ButtonFlags, double x, double y);
@@ -154,7 +161,6 @@ public:
 
 private:
    void SetupStyles();
-   //void SetSelectedTextStyle(int style);
    void NotifyKey(int key, int modifiers);
 
    int braceMode;
@@ -165,5 +171,4 @@ private:
    int8_t captured_mouse:1;
    double lastticktime;
    extScintilla *scintilla;
-   OBJECTID surfaceid;
 };

@@ -2,7 +2,8 @@
 
 module({ name="Scintilla", copyright="Paul Manias © 2005-2026", version=1.0, timestamp=20240611 }, function()
   c_include("<kotuku/modules/display.h>",
-  "<kotuku/modules/font.h>")
+  "<kotuku/modules/font.h>",
+  "<kotuku/modules/vector.h>")
 
   restrict(function()
     loadFile(glPath .. 'common-graphics.tdl')
@@ -72,38 +73,38 @@ module({ name="Scintilla", copyright="Paul Manias © 2005-2026", version=1.0, ti
   })
 
   klass("Scintilla", { src={ "class_scintilla.cxx" }, output="class_scintilla_def.cxx", extended=true }, [[
-    obj(Font) Font             # Font to use for the text
-    string Path                # Source text file
-    int(SEF) EventFlags        # SEF flags.  Indicates the events that will be reported.
-    oid Surface                # The object that should be rendered to
-    int(SCIF) Flags            # Optional flags
-    oid Focus
-    int Visible                # TRUE if the text is visible
-    int LeftMargin             # Size of the left margin
-    int RightMargin            # Size of the right margin
-    struct(RGB8) LineHighlight # Background colour for the current line of the cursor
-    struct(RGB8) SelectFore    # Default colour for text highlighting (foreground)
-    struct(RGB8) SelectBkgd    # Default colour for text highlighting (background)
-    struct(RGB8) BkgdColour    # Colour for text background
-    struct(RGB8) CursorColour  # The colour of the cursor
-    struct(RGB8) TextColour    # The colour of foreground text
-    int CursorRow              # Current cursor row
-    int CursorCol              # Current cursor column
-    int(SCLEX) Lexer           # Chosen lexer
-    int Modified               # TRUE if the document has been modified since last save.
+    obj(Font) Font               # Font to use for the text
+    string Path                  # Source text file
+    int(SEF) EventFlags          # SEF flags.  Indicates the events that will be reported.
+    int(SCIF) Flags              # Optional flags
+    obj(VectorViewport) Viewport # The viewport that will host the editor
+    obj(VectorViewport) Focus    # Monitor this viewport for focus events
+    obj(VectorViewport) View     # An internally created viewport that clips the visible content
+    obj(VectorViewport) Page     # An internally created viewport that represents the document extent
+    int LeftMargin               # Size of the left margin
+    int RightMargin              # Size of the right margin
+    struct(RGB8) LineHighlight   # Background colour for the current line of the cursor
+    struct(RGB8) SelectFore      # Default colour for text highlighting (foreground)
+    struct(RGB8) SelectBkgd      # Default colour for text highlighting (background)
+    struct(RGB8) BkgdColour      # Colour for text background
+    struct(RGB8) CursorColour    # The colour of the cursor
+    struct(RGB8) TextColour      # The colour of foreground text
+    int CursorRow                # Current cursor row
+    int CursorCol                # Current cursor column
+    int(SCLEX) Lexer             # Chosen lexer
+    int Modified                 # TRUE if the document has been modified since last save.
   ]])
 
   methods("scintillasearch", "Ss", {
-    { id=1, name="Next" },
-    { id=2, name="Prev" },
-    { id=3, name="Find" }
+    { id=1, name="Find" }
   })
 
-  klass("ScintillaSearch", { comment="Simple search for Scintilla", src="class_scintilla_search.cxx" }, [[
-    obj(Scintilla) Scintilla  # The targeted Scintilla object.
-    string Text     # The text being searched for.
-    int(STF) Flags  # Optional flags affecting the search.
-    int Start       # Start of the current/most recent selection
-    int End         # End of the current/most recent selection
+  klass("ScintillaSearch", { comment="Simple search for Scintilla", src="class_scintilla_search.cxx",
+    output="class_scintilla_search_def.cxx", extended=true }, [[
+    obj(Scintilla) Scintilla     # The targeted Scintilla object.
+    string Text                  # The text being searched for.
+    int(STF) Flags               # Optional flags affecting the search.
+    int Start                    # Start of the most recent match
+    int End                      # End of the most recent match
   ]])
 end)

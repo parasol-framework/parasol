@@ -75,10 +75,6 @@ endif ()
 target_compile_definitions (scintilla PRIVATE "SCI_NAMESPACE" "__KOTUKU__" "SCI_LEXER")
 target_link_libraries (${MOD} PUBLIC unicode)
 
-if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
-   target_compile_options (scintilla PRIVATE "$<${GCC_COMPAT}:$<BUILD_INTERFACE:-fpermissive>>")
-endif ()
-
 set_module_defaults (scintilla "Sci")
 
 target_sources (scintilla PRIVATE ${SOURCE} ${LEXERS})
@@ -87,3 +83,5 @@ target_include_directories (scintilla PRIVATE
    "${CMAKE_CURRENT_SOURCE_DIR}/scintilla/src"
    "${CMAKE_CURRENT_SOURCE_DIR}/scintilla/lexlib"
    "${CMAKE_CURRENT_SOURCE_DIR}/scintilla/include")
+
+flute_test (scintilla_document "tests/test_scintilla_document.tiri")

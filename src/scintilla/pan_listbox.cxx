@@ -73,34 +73,7 @@ Scintilla::ListBox * Scintilla::ListBox::Allocate()
 
 void ListBoxImp::Create(Scintilla::Window &Window, int, Scintilla::Point, int, bool)
 {
-   kt::Log log(__FUNCTION__);
-
-   OBJECTID surface_id = getSurfaceID(&Window);
-
-   log.branch("Surface: %d", surface_id);
-/*
-   if (CreateObject(ID_MENU, 0, &menu,
-         FID_Surface|TINT,  surface_id,
-         TAGEND) != ERR_Okay) {
-
-      //error
-   }
-
-   //struct acDataFeed { OBJECTID ObjectID; LONG DataType; LONG Version;
-   //    APTR Buffer; LONG Size; LONG TotalEntries; };
-   struct acDataFeed dc_args;
-
-   dc_args.ObjectID = menu->UID;
-   dc_args.DataType = DATA_XML;
-   dc_args.Buffer = (STRING)"<menu name=\"Edit\">\
-      <item text=\"Cut\" icon=\"icons:tools/cut\" qualifier=\"CTRL\" key=\"X\">\
-         <action call=\"clipboard\" object=\"[@text]\" %mode=\"1\"/>\
-      </item>\
-   </menu>";
-   dc_args.Size = StrLength((STRING)dc_args.Buffer);
-   Action(AC::DataFeed, menu, &dc_args);
-   acShow(menu);
-*/
+   // TODO Phase 7: Auto-completion lists will be implemented as vector pop-ups.
 }
 
 /****************************************************************************/

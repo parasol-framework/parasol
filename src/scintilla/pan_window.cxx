@@ -1,21 +1,19 @@
 // Window class (see include/Platform.h)
 //
-// The 'id' member of the Window class references the Kotuku Scintilla object.
+// The 'id' member of the Window class references the Kotuku Scintilla object.  Windows that Scintilla creates for
+// itself (call tips and auto-completion lists) are not supported yet and will have a null id.
 //
-// The Window class is not the application window, but the target surface for scintilla draw operations.
+// The Window class is not the application window, but the View viewport that hosts the Scintilla client area.
 
-inline OBJECTID getSurfaceID(Scintilla::Window* win)
+inline extScintilla * get_scintilla(Scintilla::Window *Win)
 {
-   extScintilla *scintilla = (extScintilla *)win->GetID();
-   return scintilla->SurfaceID;
+   return (extScintilla *)Win->GetID();
 }
 
 //********************************************************************************************************************
 
 Scintilla::Window::~Window()
 {
-   kt::Log log(__FUNCTION__);
-   log.branch();
    Destroy();
 }
 
@@ -23,9 +21,6 @@ Scintilla::Window::~Window()
 
 void Scintilla::Window::Destroy()
 {
-   kt::Log log(__FUNCTION__);
-   log.branch();
-
    wid = 0; // this object doesn't actually own the Scintilla drawable
 }
 
@@ -33,37 +28,29 @@ void Scintilla::Window::Destroy()
 
 bool Scintilla::Window::HasFocus()
 {
-   kt::Log log(__FUNCTION__);
-   SURFACEINFO *info;
-
-   log.branch();
-
-   if (!gfx::GetSurfaceInfo(getSurfaceID(this), &info)) {
-      if (info->hasFocus()) return 1;
-   }
-
-   return 0;
+   auto scintilla = get_scintilla(this);
+   if ((!scintilla) or (!scintilla->Focus)) return false;
+   return (scintilla->Focus->Flags & VF::HAS_FOCUS) != VF::NIL;
 }
 
 //********************************************************************************************************************
-// We're returning the position in absolute screen coordinates
+// We're returning the position in absolute coordinates
 
 Scintilla::PRectangle Scintilla::Window::GetPosition()
 {
-   kt::Log log(__FUNCTION__);
-   SURFACEINFO *info;
-
    // Before any size allocated pretend its 1000 wide so not scrolled
    Scintilla::PRectangle rc(0, 0, 1000, 1000);
 
-   if (!gfx::GetSurfaceInfo(getSurfaceID(this), &info)) {
-      rc.left   = info->AbsX;
-      rc.top    = info->AbsY;
-      rc.right  = info->AbsX + info->Width;
-      rc.bottom = info->AbsY + info->Height;
+   auto scintilla = get_scintilla(this);
+   if ((scintilla) and (scintilla->View)) {
+      int x = 0, y = 0;
+      scintilla->View->getAbsX(x);
+      scintilla->View->getAbsY(y);
+      rc.left   = x;
+      rc.top    = y;
+      rc.right  = x + scintilla->ViewWidth;
+      rc.bottom = y + scintilla->ViewHeight;
    }
-
-   log.msg("%dx%d,%dx%d", rc.left, rc.top, rc.right, rc.bottom);
 
    return rc;
 }
@@ -72,44 +59,23 @@ Scintilla::PRectangle Scintilla::Window::GetPosition()
 
 void Scintilla::Window::SetPosition(Scintilla::PRectangle rc)
 {
-   kt::Log log(__FUNCTION__);
-   log.branch();
-
-   kt::ScopedObjectLock surface(getSurfaceID(this));
-   if (surface.granted()) acRedimension(*surface, rc.left, rc.top, 0, rc.Width(), rc.Height(), 0);
+   // TODO Phase 7: Required for call tip and auto-completion pop-ups.
 }
 
 //********************************************************************************************************************
 
 void Scintilla::Window::SetPositionRelative(Scintilla::PRectangle rc, Scintilla::Window relativeTo)
 {
-   kt::Log log(__FUNCTION__);
-   SURFACEINFO *info;
-
-   log.branch();
-
-   if (!relativeTo.wid) return;
-   if (!wid) return;
-
-   // Get the position of the other window
-
-   if (!gfx::GetSurfaceInfo(getSurfaceID(&relativeTo), &info)) {
-      rc.left -= info->X;
-      rc.top  -= info->Y;
-   }
-
-   SetPosition(rc);
+   // TODO Phase 7: Required for call tip and auto-completion pop-ups.
 }
 
 //********************************************************************************************************************
 
 Scintilla::PRectangle Scintilla::Window::GetClientPosition()
 {
-   kt::Log log(__FUNCTION__);
-   extScintilla *scintilla = (extScintilla *)this->GetID();
-
-   //log.trace("%dx%d", scintilla->Surface.Width, scintilla->Surface.Height);
-   return Scintilla::PRectangle(0, 0, scintilla->Surface.Width, scintilla->Surface.Height);
+   auto scintilla = get_scintilla(this);
+   if (scintilla) return Scintilla::PRectangle(0, 0, scintilla->ViewWidth, scintilla->ViewHeight);
+   else return Scintilla::PRectangle(0, 0, 0, 0);
 }
 
 //********************************************************************************************************************
@@ -127,56 +93,27 @@ Scintilla::PRectangle Scintilla::Window::GetMonitorRect(Scintilla::Point)
 
 void Scintilla::Window::Show(bool show)
 {
-   kt::Log log(__FUNCTION__);
-   log.branch();
-
-   kt::ScopedObjectLock surface(getSurfaceID(this));
-   if (surface.granted()) {
-      if (show) acShow(*surface);
-      else acHide(*surface);
-   }
+   // TODO Phase 7: Required for call tip and auto-completion pop-ups.
 }
 
 //********************************************************************************************************************
 
 void Scintilla::Window::InvalidateAll()
 {
-   kt::Log log(__FUNCTION__);
-
-   auto scintilla = (extScintilla *)this->GetID();
-
-   // Scintilla expects the invalidation to be buffered, so a delayed message is appropriate.
-
-   if (scintilla->Visible IS FALSE) return;
-
-   log.traceBranch();
-   QueueAction(AC::Draw, getSurfaceID(this));
+   // TODO Phase 2: Mark the full client area as dirty and schedule a deferred repaint of the Canvas bitmap.
 }
 
 //********************************************************************************************************************
 
 void Scintilla::Window::InvalidateRectangle(Scintilla::PRectangle rc)
 {
-   kt::Log log(__FUNCTION__);
-
-   auto scintilla = (extScintilla *)this->GetID();
-
-   if (!scintilla->Visible) return;
-
-   log.traceBranch("%dx%d,%dx%d", rc.left, rc.top, rc.Width(), rc.Height());
-
-   // Scintilla expects the invalidation to be buffered, so a delayed message is appropriate.
-
-   struct acDraw draw = { rc.left, rc.top, rc.Width(), rc.Height() };
-   QueueAction(AC::Draw, getSurfaceID(this), &draw);
+   // TODO Phase 2: Union rc with the dirty region and schedule a deferred repaint of the Canvas bitmap.
 }
 
 //********************************************************************************************************************
 
 void Scintilla::Window::SetFont(Scintilla::Font &)
 {
-   kt::Log log(__FUNCTION__);
-   log.branch("[UNSUPPORTED]");
    // Can not be done generically but only needed for ListBox
 }
 
@@ -185,27 +122,11 @@ void Scintilla::Window::SetFont(Scintilla::Font &)
 
 void Scintilla::Window::SetCursor(Cursor curs)
 {
-   PTC cursorid;
-
-   if (curs IS cursorLast) return;
-
-   switch (curs) {
-      case cursorText:  cursorid = PTC::TEXT; break;
-      case cursorArrow: cursorid = PTC::DEFAULT; break;
-      case cursorUp:    cursorid = PTC::SIZE_TOP; break;
-      case cursorWait:  cursorid = PTC::SLEEP; break;
-      case cursorHoriz: cursorid = PTC::SPLIT_HORIZONTAL; break;
-      case cursorVert:  cursorid = PTC::SPLIT_VERTICAL; break;
-      case cursorHand:  cursorid = PTC::HAND; break;
-      default:          cursorid = PTC::DEFAULT; break;
-   }
-
-   if (wid) {
-      if (kt::ScopedObjectLock<objSurface> surface(getSurfaceID(this), 500); surface.granted()) {
-         surface->setCursor(cursorid);
-         cursorLast = curs;
-      }
-   }
+   // TODO Phase 5: Set the Cursor field of the View, mapping the Scintilla cursor to PTC values as follows:
+   //
+   //   cursorText:  PTC::TEXT;  cursorArrow: PTC::DEFAULT;          cursorUp:    PTC::SIZE_TOP;
+   //   cursorWait:  PTC::SLEEP; cursorHoriz: PTC::SPLIT_HORIZONTAL; cursorVert:  PTC::SPLIT_VERTICAL;
+   //   cursorHand:  PTC::HAND;  default:     PTC::DEFAULT
 }
 
 //********************************************************************************************************************
@@ -213,6 +134,5 @@ void Scintilla::Window::SetCursor(Cursor curs)
 
 void Scintilla::Window::SetTitle(const char *s)
 {
-   extScintilla *scintilla = (extScintilla *)this->GetID();
-   scintilla->setName(s);
+   if (auto scintilla = get_scintilla(this)) scintilla->setName(s);
 }

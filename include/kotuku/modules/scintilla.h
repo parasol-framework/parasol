@@ -10,6 +10,7 @@
 
 #include <kotuku/modules/display.h>
 #include <kotuku/modules/font.h>
+#include <kotuku/modules/vector.h>
 
 class objScintilla;
 class objScintillaSearch;
@@ -41,7 +42,6 @@ enum class SCLEX : int {
    VB = 8,
    PROPERTIES = 9,
 };
-
 
 // Optional flags.
 
@@ -111,25 +111,26 @@ class objScintilla : public Object {
    using create = kt::Create<objScintilla>;
    objScintilla(objMetaClass *pClass, OBJECTID pUID) noexcept : Object(pClass, pUID) {}
 
-   objFont * Font;               // Refers to the font that is used for drawing text in the document.
-   std::string Path;             // Identifies the location of a text file to load.
-   SEF       EventFlags;         // Specifies events that need to be reported from the Scintilla object.
-   OBJECTID  SurfaceID;          // Refers to the Surface targeted by the Scintilla object.
-   SCIF      Flags;              // Optional flags.
-   OBJECTID  FocusID;            // Defines the object that is monitored for user focus changes.
-   int       Visible;            // If TRUE, indicates the Scintilla object is visible in the target Surface.
-   int       LeftMargin;         // The amount of white-space at the left side of the page.
-   int       RightMargin;        // Defines the amount of white-space at the right side of the page.
-   struct RGB8 LineHighlight;    // The colour to use when highlighting the line that contains the user's cursor.
-   struct RGB8 SelectFore;       // Defines the colour of selected text.  Supports alpha blending.
-   struct RGB8 SelectBkgd;       // Defines the background colour of selected text.  Supports alpha blending.
-   struct RGB8 BkgdColour;       // Defines the background colour.  Alpha blending is not supported.
-   struct RGB8 CursorColour;     // Defines the colour of the text cursor.  Alpha blending is not supported.
-   struct RGB8 TextColour;       // Defines the default colour of foreground text.  Supports alpha blending.
-   int       CursorRow;          // The current row of the text cursor.
-   int       CursorCol;          // The current column of the text cursor.
-   SCLEX     Lexer;              // The lexer for document styling is defined here.
-   int       Modified;           // Returns true if the document has been modified and not saved.
+   objFont * Font;                  // Refers to the font that is used for drawing text in the document.
+   std::string Path;                // Identifies the location of a text file to load.
+   SEF       EventFlags;            // Specifies events that need to be reported from the Scintilla object.
+   SCIF      Flags;                 // Optional flags.
+   objVectorViewport * Viewport;    // The viewport that will host the editor.
+   objVectorViewport * Focus;       // Defines the viewport that is monitored for user focus changes.
+   objVectorViewport * View;        // An internally created viewport that clips the visible content of the editor.
+   objVectorViewport * Page;        // An internally created viewport that represents the extent of the document.
+   int       LeftMargin;            // The amount of white-space at the left side of the page.
+   int       RightMargin;           // Defines the amount of white-space at the right side of the page.
+   struct RGB8 LineHighlight;       // The colour to use when highlighting the line that contains the user's cursor.
+   struct RGB8 SelectFore;          // Defines the colour of selected text.  Supports alpha blending.
+   struct RGB8 SelectBkgd;          // Defines the background colour of selected text.  Supports alpha blending.
+   struct RGB8 BkgdColour;          // Defines the background colour.  Alpha blending is not supported.
+   struct RGB8 CursorColour;        // Defines the colour of the text cursor.  Alpha blending is not supported.
+   struct RGB8 TextColour;          // Defines the default colour of foreground text.  Supports alpha blending.
+   int       CursorRow;             // The current row of the text cursor.
+   int       CursorCol;             // The current column of the text cursor.
+   SCLEX     Lexer;                 // The lexer for document styling is defined here.
+   int       Modified;              // Returns true if the document has been modified and not saved.
 
    // Action stubs
 
@@ -231,23 +232,28 @@ class objScintilla : public Object {
       return ERR::Okay;
    }
 
-   inline ERR getSurface(OBJECTID &Value) noexcept {
-      Value = this->SurfaceID;
-      return ERR::Okay;
-   }
-
    inline ERR getFlags(SCIF &Value) noexcept {
       Value = this->Flags;
       return ERR::Okay;
    }
 
-   inline ERR getFocus(OBJECTID &Value) noexcept {
-      Value = this->FocusID;
+   inline ERR getViewport(objVectorViewport * &Value) noexcept {
+      Value = this->Viewport;
       return ERR::Okay;
    }
 
-   inline ERR getVisible(int &Value) noexcept {
-      Value = this->Visible;
+   inline ERR getFocus(objVectorViewport * &Value) noexcept {
+      Value = this->Focus;
+      return ERR::Okay;
+   }
+
+   inline ERR getView(objVectorViewport * &Value) noexcept {
+      Value = this->View;
+      return ERR::Okay;
+   }
+
+   inline ERR getPage(objVectorViewport * &Value) noexcept {
+      Value = this->Page;
       return ERR::Okay;
    }
 
@@ -292,13 +298,19 @@ class objScintilla : public Object {
    }
 
    inline ERR getCursorRow(int &Value) noexcept {
-      Value = this->CursorRow;
-      return ERR::Okay;
+      auto field = &this->Class->Dictionary[12];
+      SetObjectContext(this, field, AC::NIL);
+      auto error = field->GetValue(this, &Value);
+      RestoreObjectContext();
+      return error;
    }
 
    inline ERR getCursorCol(int &Value) noexcept {
-      Value = this->CursorCol;
-      return ERR::Okay;
+      auto field = &this->Class->Dictionary[3];
+      SetObjectContext(this, field, AC::NIL);
+      auto error = field->GetValue(this, &Value);
+      RestoreObjectContext();
+      return error;
    }
 
    inline ERR getLexer(SCLEX &Value) noexcept {
@@ -393,37 +405,31 @@ class objScintilla : public Object {
       return ERR::Okay;
    }
 
-   inline ERR setSurface(OBJECTID Value) noexcept {
-      if (this->initialised()) return ERR::ImmutableField;
-      this->SurfaceID = Value;
-      return ERR::Okay;
-   }
-
    inline ERR setFlags(const SCIF Value) noexcept {
       if (this->initialised()) return ERR::ImmutableField;
       this->Flags = Value;
       return ERR::Okay;
    }
 
-   inline ERR setFocus(OBJECTID Value) noexcept {
+   inline ERR setViewport(objVectorViewport * Value) noexcept {
       if (this->initialised()) return ERR::ImmutableField;
-      this->FocusID = Value;
+      this->Viewport = Value;
       return ERR::Okay;
    }
 
-   inline ERR setVisible(const int Value) noexcept {
+   inline ERR setFocus(objVectorViewport * Value) noexcept {
       if (this->initialised()) return ERR::ImmutableField;
-      this->Visible = Value;
+      this->Focus = Value;
       return ERR::Okay;
    }
 
    inline ERR setLeftMargin(const int Value) noexcept {
-      auto field = &this->Class->Dictionary[36];
+      auto field = &this->Class->Dictionary[37];
       return field->WriteValue(this, field, FD_INT, &Value);
    }
 
    inline ERR setRightMargin(const int Value) noexcept {
-      auto field = &this->Class->Dictionary[35];
+      auto field = &this->Class->Dictionary[36];
       return field->WriteValue(this, field, FD_INT, &Value);
    }
 
@@ -433,7 +439,7 @@ class objScintilla : public Object {
    }
 
    inline ERR setSelectFore(const struct RGB8 & Value) noexcept {
-      auto field = &this->Class->Dictionary[31];
+      auto field = &this->Class->Dictionary[30];
       return field->WriteValue(this, field, FD_STRUCT, &Value);
    }
 
@@ -455,16 +461,6 @@ class objScintilla : public Object {
    inline ERR setTextColour(const struct RGB8 & Value) noexcept {
       auto field = &this->Class->Dictionary[10];
       return field->WriteValue(this, field, FD_STRUCT, &Value);
-   }
-
-   inline ERR setCursorRow(const int Value) noexcept {
-      this->CursorRow = Value;
-      return ERR::Okay;
-   }
-
-   inline ERR setCursorCol(const int Value) noexcept {
-      this->CursorCol = Value;
-      return ERR::Okay;
    }
 
    inline ERR setLexer(const SCLEX Value) noexcept {
@@ -546,9 +542,7 @@ class objScintilla : public Object {
 // ScintillaSearch methods
 
 namespace ss {
-struct Next { int Pos; static const AC id = AC(-1); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
-struct Prev { int Pos; static const AC id = AC(-2); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
-struct Find { int Pos; STF Flags; static const AC id = AC(-3); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct Find { int From; static const AC id = AC(-1); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
 
 } // namespace
 
@@ -563,29 +557,17 @@ class objScintillaSearch : public Object {
    objScintilla * Scintilla;    // Targets a Scintilla object for searching.
    std::string Text;            // The string sequence to search for.
    STF Flags;                   // Optional flags.
-   int Start;                   // Start of the current/most recent selection
-   int End;                     // End of the current/most recent selection
+   int Start;                   // The start of the most recent match.
+   int End;                     // The end of the most recent match.
 
    // Action stubs
 
    inline ERR init() noexcept { return InitObject(this); }
-   inline ERR next(int * Pos) noexcept {
-      struct ss::Next args = { (int)0 };
-      ERR error = Action(AC(-1), this, &args);
-      if (Pos) *Pos = args.Pos;
-      return error;
-   }
-   inline ERR prev(int * Pos) noexcept {
-      struct ss::Prev args = { (int)0 };
-      ERR error = Action(AC(-2), this, &args);
-      if (Pos) *Pos = args.Pos;
-      return error;
-   }
-   inline ERR find(int * Pos, STF Flags) noexcept {
-      struct ss::Find args = { (int)0, Flags };
-      ERR error = Action(AC(-3), this, &args);
-      if (Pos) *Pos = args.Pos;
-      return error;
+   inline ERR next() noexcept { return Action(AC::Next, this, nullptr); }
+   inline ERR prev() noexcept { return Action(AC::Prev, this, nullptr); }
+   inline ERR find(int From) noexcept {
+      struct ss::Find args = { From };
+      return Action(AC(-1), this, &args);
    }
 
    // Customised field getting
@@ -602,6 +584,16 @@ class objScintillaSearch : public Object {
 
    inline ERR getFlags(STF &Value) noexcept {
       Value = this->Flags;
+      return ERR::Okay;
+   }
+
+   inline ERR getStart(int &Value) noexcept {
+      Value = this->Start;
+      return ERR::Okay;
+   }
+
+   inline ERR getEnd(int &Value) noexcept {
+      Value = this->End;
       return ERR::Okay;
    }
 

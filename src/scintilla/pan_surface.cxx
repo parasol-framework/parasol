@@ -6,6 +6,7 @@ class SurfacePan : public Scintilla::Surface
 {
    int penx;
    int peny;
+   extScintilla *scintilla; // The Scintilla object that owns this surface; provides the font set
    objBitmap *bitmap;
    int8_t own_bitmap:1; /* True if this object owns the bitmap, and will free it */
    int pencol;
@@ -64,6 +65,7 @@ private:
 SurfacePan::SurfacePan()
 :  cliprect(0,0,0,0)
 {
+   scintilla = nullptr;
    bitmap = nullptr;
    own_bitmap = FALSE;
    penx   = 0;
@@ -88,12 +90,14 @@ bool SurfacePan::Initialised()
 
 void SurfacePan::Init(Scintilla::WindowID WinID)
 {
-
+   scintilla = (extScintilla *)WinID;
 }
 
-void SurfacePan::Init(Scintilla::SurfaceID sid, Scintilla::WindowID WID_NAME)
+void SurfacePan::Init(Scintilla::SurfaceID sid, Scintilla::WindowID WinID)
 {
    if (bitmap) return;
+
+   scintilla = (extScintilla *)WinID;
 
    // Surface id will be a bitmap object
    bitmap = static_cast<objBitmap *>(sid);
@@ -105,14 +109,17 @@ void SurfacePan::Init(Scintilla::SurfaceID sid, Scintilla::WindowID WID_NAME)
    cliprect.bottom = bitmap->Height;
 }
 
-void SurfacePan::InitPixMap(int width, int height, Scintilla::Surface *surface_, Scintilla::WindowID WID_NAME)
+void SurfacePan::InitPixMap(int width, int height, Scintilla::Surface *surface_, Scintilla::WindowID WinID)
 {
    if (bitmap) return;
 
    kt::Log log(__FUNCTION__);
    log.traceBranch("Size: %dx%d", width, height);
 
-   if (!(bitmap = objBitmap::create::global(fl::Name("sciPixmap"), fl::Width(width), fl::Height(height)))) {
+   scintilla = (extScintilla *)WinID;
+
+   if (!(bitmap = objBitmap::create::local(fl::Width(width), fl::Height(height), fl::BitsPerPixel(32),
+         fl::Flags(BMF::ALPHA_CHANNEL)))) {
       log.warning("Failed to create offscreen surface object.");
       return;
    }
@@ -148,7 +155,7 @@ void SurfacePan::PenColour(Scintilla::ColourAllocated fore)
 
 int SurfacePan::LogPixelsY()
 {
-   return 100;
+   return 96; // Kotuku's vector units are fixed at 96 DPI
 }
 
 /****************************************************************************/
@@ -434,8 +441,8 @@ int SurfacePan::WidthText(Scintilla::Font &font_, const char *s, int len)
    OBJECTPTR font = GetFont(font_);
 
    if (font) {
-      // Note: The length must be passed as the number of characters, not bytes
-      return fnt::StringWidth((objFont *)font, (STRING)s, len);
+      // The string view limits measurement to len bytes, so all of its characters are measured.
+      return fnt::StringWidth((objFont *)font, std::string_view(s, size_t(len)), -1);
    }
 
    return 5; // crashes if you return 0 here !!!
@@ -554,19 +561,24 @@ void SurfacePan::SetDBCSMode(int codePage)
 //   log.trace("CodePage: %d [UNSUPPORTED]", codePage);
 }
 
-/****************************************************************************/
+/*********************************************************************************************************************
+** Scintilla::Font only records the bold and italic state of a style (see pan_classes.cxx).  The font objects belong to
+** the Scintilla object that owns this surface, so each instance measures and draws with its own fonts.
+*/
 
 OBJECTPTR SurfacePan::GetFont(Scintilla::Font& font_)
 {
+   if (!scintilla) return nullptr;
+
    if (font_.bold) {
-      if ((font_.italic) and (glBIFont)) return glBIFont;
-      else if (glBoldFont) return glBoldFont;
+      if ((font_.italic) and (scintilla->BIFont)) return scintilla->BIFont;
+      else if (scintilla->BoldFont) return scintilla->BoldFont;
    }
-   else if ((font_.italic) and (glItalicFont)) {
-      return glItalicFont;
+   else if ((font_.italic) and (scintilla->ItalicFont)) {
+      return scintilla->ItalicFont;
    }
 
-   return glFont;
+   return scintilla->Font;
 }
 
 /****************************************************************************/

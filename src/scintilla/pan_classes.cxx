@@ -44,10 +44,10 @@ void Scintilla::Palette::WantFind(Scintilla::ColourPair &cp, bool want)
 /*********************************************************************************************************************
 ** Font class
 **
-** Not really supported as we only need to allocate 3 main fonts in the
-** Scintilla class to serve all of our font needs in an edited document.
-** Scintilla will try to create a font for every style allocated, which is
-** overkill.
+** Scintilla will try to create a font for every style allocated, which is overkill.  Instead, each Scintilla object
+** allocates a regular, bold, italic and bold-italic font, and Font::Create() only records the bold and italic state of
+** the style.  SurfacePan::GetFont() resolves that state to the font objects of the Scintilla object that owns the
+** surface.  The face name and size requested by the style are ignored.
 */
 
 Scintilla::Font::Font()
@@ -190,7 +190,7 @@ Scintilla::ColourDesired Scintilla::Platform::ChromeHighlight()
 
 const char * Scintilla::Platform::DefaultFont()
 {
-   return "Courier";
+   return "Clean";
 }
 
 int Scintilla::Platform::DefaultFontSize()

@@ -97,3 +97,4 @@ static const struct ActionArray clScintillaActions[] = {
    { AC::Undo, SCINTILLA_Undo },
    { AC::NIL, nullptr }
 };
+

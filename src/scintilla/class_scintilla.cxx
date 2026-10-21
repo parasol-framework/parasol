@@ -34,6 +34,8 @@ capabilities.
 #include <vector>
 #include <algorithm>
 #include <map>
+#include <format>
+#include <cmath>
 
 #include "Platform.h"
 
@@ -121,8 +123,6 @@ static OBJECTPTR modTiri = nullptr;
 
 static OBJECTPTR clScintilla = nullptr;
 static OBJECTPTR modDisplay = nullptr, modFont = nullptr, modVector = nullptr;
-//static OBJECTID glInputID = 0;
-static RGB8 glHighlight = { 220, 220, 255 };
 extern OBJECTPTR clScintillaSearch;
 
 struct styledef {
@@ -130,10 +130,6 @@ struct styledef {
    uint32_t Colour;
    FTF FontStyle;
 };
-
-// This is bad - the fonts should be stored in the class.
-
-static OBJECTPTR glFont = nullptr, glBoldFont = nullptr, glItalicFont = nullptr, glBIFont = nullptr;
 
 static const struct {
    CSTRING File;
@@ -174,6 +170,8 @@ static const struct {
 
 static ERR GET_AllowTabs(extScintilla *, int *);
 static ERR GET_AutoIndent(extScintilla *, int *);
+static ERR GET_CursorCol(extScintilla *, int *);
+static ERR GET_CursorRow(extScintilla *, int *);
 static ERR GET_FileDrop(extScintilla *, FUNCTION * &);
 static ERR GET_FoldingMarkers(extScintilla *, int *);
 static ERR GET_LineCount(extScintilla *, int *);
@@ -211,31 +209,17 @@ static ERR SET_Wordwrap(extScintilla *, int);
 
 //********************************************************************************************************************
 
-static ERR consume_input_events(const InputEvent *, int);
+[[maybe_unused]] static ERR consume_input_events(const InputEvent *, int);
 static void create_styled_fonts(extScintilla *);
 static ERR create_scintilla(void);
-static void draw_scintilla(extScintilla *, objSurface *, objBitmap *);
+static ERR create_canvas(extScintilla *);
+static ERR feedback_view(objVectorViewport *, FM);
 static ERR load_file(extScintilla *, std::string_view);
 static void calc_longest_line(extScintilla *);
-static void key_event(evKey *, int, extScintilla *);
+[[maybe_unused]] static void key_event(evKey *, int, extScintilla *);
 static void report_event(extScintilla *, SEF Event);
 static ERR idle_timer(extScintilla *Self, int64_t Elapsed, int64_t CurrentTime);
 extern ERR init_search(void);
-
-//********************************************************************************************************************
-
-static bool read_rgb8(std::string_view Value, RGB8 *RGB)
-{
-   VectorPainter painter;
-   if (!vec::ReadPainter(nullptr, Value, &painter, nullptr)) {
-      RGB->Red   = int(painter.Colour.Red   * 255.0);
-      RGB->Green = int(painter.Colour.Green * 255.0);
-      RGB->Blue  = int(painter.Colour.Blue  * 255.0);
-      RGB->Alpha = int(painter.Colour.Alpha * 255.0);
-      return true;
-   }
-   else return false;
-}
 
 //********************************************************************************************************************
 
@@ -247,14 +231,6 @@ static ERR MODInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
    if (objModule::load("font", &modFont, &FontBase) != ERR::Okay) return ERR::InitModule;
    if (objModule::load("vector", &modVector, &VectorBase) != ERR::Okay) return ERR::InitModule;
    if (objModule::load("tiri", &modTiri, &TiriBase) != ERR::Okay) return ERR::InitModule;
-
-   OBJECTID id;
-   if (!FindObject("glStyle", CLASSID::XML, &id)) {
-      std::string buffer;
-      if (!acGetKey(GetObjectPtr(id), "/colours/@texthighlight", buffer)) {
-         read_rgb8(buffer, &glHighlight);
-      }
-   }
 
    if (!init_search()) {
       return create_scintilla();
@@ -276,8 +252,9 @@ static ERR MODExpunge(void)
 }
 
 //********************************************************************************************************************
+// TODO Phase 7: Drag and drop support.  This was previously subscribed to the AC::DragDrop action of the host surface.
 
-static void notify_dragdrop(OBJECTPTR Object, ACTIONID ActionID, ERR Result, struct acDragDrop *Args)
+[[maybe_unused]] static void notify_dragdrop(OBJECTPTR Object, ACTIONID ActionID, ERR Result, struct acDragDrop *Args)
 {
    auto Self = (extScintilla *)CurrentContext();
 
@@ -310,22 +287,35 @@ static void notify_focus(OBJECTPTR Object, ACTIONID ActionID, ERR Result, APTR A
 
    if (Result != ERR::Okay) return;
 
-   if (!Self->prvKeyEvent) {
-      SubscribeEvent(EVID_IO_KEYBOARD_KEYPRESS, C_FUNCTION(key_event, Self), &Self->prvKeyEvent);
-   }
+   // TODO Phase 4: Keyboard input will be received from Viewport->subscribeKeyboard() instead of the global event.
+   //if (!Self->prvKeyEvent) {
+   //   SubscribeEvent(EVID_IO_KEYBOARD_KEYPRESS, C_FUNCTION(key_event, Self), &Self->prvKeyEvent);
+   //}
 
-   if ((Self->Visible) and ((Self->Flags & SCIF::DISABLED) IS SCIF::NIL)) {
-      Self->API->panGotFocus();
-   }
-   else log.msg("(Focus) Cannot receive focus, surface not visible or disabled.");
+   if ((Self->Flags & SCIF::DISABLED) IS SCIF::NIL) Self->API->panGotFocus();
+   else log.msg("(Focus) Cannot receive focus while disabled.");
 }
 
 //********************************************************************************************************************
+// The host viewport is being freed, which takes the View, Page and Canvas with it.
 
-static void notify_hide(OBJECTPTR Object, ACTIONID ActionID, ERR Result, APTR Args)
+static void notify_free_viewport(OBJECTPTR Object, ACTIONID ActionID, ERR Result, APTR Args)
 {
-   // Parent surface has been hidden
-   acHide(CurrentContext());
+   auto Self = (extScintilla *)CurrentContext();
+   Self->Viewport = nullptr;
+   Self->Focus    = nullptr;
+   Self->View     = nullptr;
+   Self->Page     = nullptr;
+   Self->Canvas   = nullptr;
+}
+
+//********************************************************************************************************************
+// The image definition belongs to the scene and will be freed with it.
+
+static void notify_free_image(OBJECTPTR Object, ACTIONID ActionID, ERR Result, APTR Args)
+{
+   auto Self = (extScintilla *)CurrentContext();
+   Self->Image = nullptr;
 }
 
 //********************************************************************************************************************
@@ -342,30 +332,27 @@ static void notify_lostfocus(OBJECTPTR Object, ACTIONID ActionID, ERR Result, AP
 }
 
 //********************************************************************************************************************
+// Receiver for path changes on the View, which reflect a change to the size of Scintilla's client area.
 
-static void notify_show(OBJECTPTR Object, ACTIONID ActionID, ERR Result, APTR Args)
+static ERR feedback_view(objVectorViewport *View, FM Event)
 {
-   // Parent surface now visible
-   acShow(CurrentContext());
-}
-
-//********************************************************************************************************************
-
-static void notify_redimension(OBJECTPTR Object, ACTIONID ActionID, ERR Result, struct acRedimension *Args)
-{
-   if ((!Args) or (Result != ERR::Okay)) return;
-
    auto Self = (extScintilla *)CurrentContext();
-   bool resized;
-   if ((Self->Surface.Width != int(Args->Width)) or (Self->Surface.Height != int(Args->Height))) resized = true;
-   else resized = false;
 
-   Self->Surface.X = int(Args->X);
-   Self->Surface.Y = int(Args->Y);
-   Self->Surface.Width  = int(Args->Width);
-   Self->Surface.Height = int(Args->Height);
+   Unit w, h;
+   View->getWidth(w);
+   View->getHeight(h);
+   int width  = std::max(1, int(std::lround(double(w))));
+   int height = std::max(1, int(std::lround(double(h))));
 
-   if (resized) Self->API->panResized();
+   if ((Self->ViewWidth IS width) and (Self->ViewHeight IS height)) return ERR::Okay;
+
+   Self->ViewWidth  = width;
+   Self->ViewHeight = height;
+
+   // TODO Phase 2: Resize the Bitmap and Canvas to match the View, then repaint.
+
+   if (Self->API) Self->API->panResized();
+   return ERR::Okay;
 }
 
 //********************************************************************************************************************
@@ -558,54 +545,52 @@ static ERR SCINTILLA_DeleteLine(extScintilla *Self, struct sci::DeleteLine *Args
 
 /*********************************************************************************************************************
 -ACTION-
-Disable: Disables the target #Surface.
+Disable: Disables user interaction with the editor.
 
 *********************************************************************************************************************/
 
 static ERR SCINTILLA_Disable(extScintilla *Self)
 {
    Self->Flags |= SCIF::DISABLED;
-   QueueAction(AC::Draw, Self->SurfaceID);
+   acDraw(Self);
    return ERR::Okay;
 }
 
 /*********************************************************************************************************************
 -ACTION-
-Draw: Draws the Scintilla object's graphics.
+Draw: Redraws the editor content.
 
 *********************************************************************************************************************/
 
 static ERR SCINTILLA_Draw(extScintilla *Self, struct acDraw *Args)
 {
-   kt::ScopedObjectLock surface(Self->SurfaceID);
-   if (surface.granted()) Action(AC::Draw, *surface, Args);
+   if (Self->API) Self->API->panRedraw();
    return ERR::Okay;
 }
 
 /*********************************************************************************************************************
 -ACTION-
-Enable: Enables the target #Surface.
+Enable: Enables user interaction with the editor.
 
 *********************************************************************************************************************/
 
 static ERR SCINTILLA_Enable(extScintilla *Self)
 {
    Self->Flags &= ~SCIF::DISABLED;
-   QueueAction(AC::Draw, Self->SurfaceID);
+   acDraw(Self);
    return ERR::Okay;
 }
 
 /*********************************************************************************************************************
 -ACTION-
-Focus: Focus on the Scintilla surface.
+Focus: Moves the user focus to the #Focus viewport.
 -END-
 *********************************************************************************************************************/
 
 static ERR SCINTILLA_Focus(extScintilla *Self)
 {
-   kt::ScopedObjectLock surface(Self->SurfaceID);
-   if (surface.granted()) return acFocus(*surface);
-   else return ERR::AccessObject;
+   if (Self->Focus) return acFocus(Self->Focus);
+   else return ERR::FieldNotSet;
 }
 
 /*********************************************************************************************************************
@@ -705,16 +690,8 @@ static ERR SCINTILLA_GotoLine(extScintilla *Self, struct sci::GotoLine *Args)
 
 static ERR SCINTILLA_Hide(extScintilla *Self)
 {
-   if (Self->Visible) {
-      kt::Log log;
-
-      log.branch();
-
-      Self->Visible = FALSE;
-      acDraw(Self);
-   }
-
-   return ERR::Okay;
+   if (Self->View) return acHide(Self->View);
+   else return ERR::Okay;
 }
 
 //*****************************************************************************
@@ -723,63 +700,45 @@ static ERR SCINTILLA_Init(extScintilla *Self, APTR)
 {
    kt::Log log;
 
-   if (!Self->SurfaceID) return log.warning(ERR::UnsupportedOwner);
-
-   if (!Self->FocusID) Self->FocusID = Self->SurfaceID;
-
-   // Subscribe to the object responsible for the user focus
-
-   if (kt::ScopedObjectLock object(Self->FocusID, 5000); object.granted()) {
-      SubscribeAction(*object, AC::Focus, C_FUNCTION(notify_focus));
-      SubscribeAction(*object, AC::LostFocus, C_FUNCTION(notify_lostfocus));
-   }
-
-   // Set up the target surface
-
-   log.trace("Configure target surface #%d", Self->SurfaceID);
-
-   if (kt::ScopedObjectLock<objSurface> surface(Self->SurfaceID, 3000); surface.granted()) {
-      surface->setFlags(surface->Flags|RNF::GRAB_FOCUS);
-
-      Self->Surface.X = surface->X;
-      Self->Surface.Y = surface->Y;
-      Self->Surface.Width  = surface->Width;
-      Self->Surface.Height = surface->Height;
-
-      surface->addCallback(C_FUNCTION(draw_scintilla));
-
-      //SubscribeFeed(surface); TODO: Deprecated
-
-      SubscribeAction(*surface, AC::DragDrop, C_FUNCTION(notify_dragdrop));
-      SubscribeAction(*surface, AC::Hide, C_FUNCTION(notify_hide));
-      SubscribeAction(*surface, AC::Redimension, C_FUNCTION(notify_redimension));
-      SubscribeAction(*surface, AC::Show, C_FUNCTION(notify_show));
-
-      if (surface->hasFocus()) {
-         SubscribeEvent(EVID_IO_KEYBOARD_KEYPRESS, C_FUNCTION(key_event, Self), &Self->prvKeyEvent);
+   if (not Self->Viewport) {
+      if ((Self->Owner) and (Self->Owner->classID() IS CLASSID::VECTORVIEWPORT)) {
+         Self->Viewport = (objVectorViewport *)Self->Owner;
       }
-   }
-   else return log.warning(ERR::AccessObject);
-
-   {
-      auto callback = C_FUNCTION(consume_input_events);
-      gfx::SubscribeInput(&callback, Self->SurfaceID, JTYPE::MOVEMENT|JTYPE::BUTTON, 0, &Self->InputHandle);
+      else return log.warning(ERR::UnsupportedOwner);
    }
 
-   // TODO: Run the scrollbar script here
+   if (Self->Viewport->classID() != CLASSID::VECTORVIEWPORT) return log.warning(ERR::WrongObjectType);
+
+   if (not Self->Focus) Self->Focus = Self->Viewport;
+
+   if (Self->Focus->classID() != CLASSID::VECTORVIEWPORT) return log.warning(ERR::WrongObjectType);
+
+   Self->Scene = Self->Viewport->Scene;
 
    if (InitObject(Self->Font) != ERR::Okay) return ERR::Init;
 
    create_styled_fonts(Self);
 
-   // Create a Scintilla class object, passing it the target surface and a pointer to our own structure to link us
-   // together.
+   if (auto error = create_canvas(Self); error != ERR::Okay) return error;
 
-   if (!(Self->API = new ScintillaKTK(Self->SurfaceID, Self))) {
+   if (Self->Scene->SurfaceID) { // Make UI subscriptions as long as we're not headless
+      SubscribeAction(Self->Focus, AC::Focus, C_FUNCTION(notify_focus));
+      SubscribeAction(Self->Focus, AC::LostFocus, C_FUNCTION(notify_lostfocus));
+
+      // TODO Phase 4: Self->Viewport->subscribeKeyboard(C_FUNCTION(key_event));
+      // TODO Phase 5: Self->View->subscribeInput(JTYPE::MOVEMENT|JTYPE::BUTTON, C_FUNCTION(consume_input_events));
+      // TODO Phase 7: Drag and drop support via notify_dragdrop()
+   }
+
+   SubscribeAction(Self->Viewport, AC::Free, C_FUNCTION(notify_free_viewport));
+
+   // Create the Scintilla editor and link it to this object.
+
+   if (!(Self->API = new ScintillaKTK(Self))) {
       return ERR::Failed;
    }
 
-   Self->API->panFontChanged(Self->Font, Self->BoldFont, Self->ItalicFont, Self->BIFont);
+   Self->API->panFontChanged();
 
    // Load a text file if required
 
@@ -792,13 +751,9 @@ static ERR SCINTILLA_Init(extScintilla *Self, APTR)
 
    SubscribeTimer(0.03, C_FUNCTION(idle_timer), &Self->TimerID);
 
-   if (Self->Visible IS -1) Self->Visible = TRUE;
-
    if (((Self->Flags & SCIF::DETECT_LEXER) IS SCIF::NIL) and (Self->Lexer != SCLEX::NIL)) {
       Self->API->SetLexer(int(Self->Lexer));
    }
-
-   QueueAction(AC::Draw, Self->SurfaceID);
 
    if (Self->LongestWidth) SCICALL(SCI_SETSCROLLWIDTH, Self->LongestWidth);
    else SCICALL(SCI_SETSCROLLWIDTH, 1UL);
@@ -816,8 +771,9 @@ static ERR SCINTILLA_Init(extScintilla *Self, APTR)
 
    // Selected text will be inversed with these colours
 
-   SCICALL(SCI_SETSELFORE, (unsigned long int)true, (long int)SCICOLOUR(Self->SelectFore.Red, Self->SelectFore.Green, Self->SelectFore.Blue));
-   SCICALL(SCI_SETSELBACK, (unsigned long int)true, (long int)SCICOLOUR(Self->SelectBkgd.Red, Self->SelectBkgd.Green, Self->SelectBkgd.Blue));
+   auto &sf = Self->SelectFore, &sb = Self->SelectBkgd;
+   SCICALL(SCI_SETSELFORE, (unsigned long int)(sf.Alpha > 0), (long int)SCICOLOUR(sf.Red, sf.Green, sf.Blue));
+   SCICALL(SCI_SETSELBACK, (unsigned long int)(sb.Alpha > 0), (long int)SCICOLOUR(sb.Red, sb.Green, sb.Blue));
    //SCICALL(SCI_SETSELALPHA, Self->SelectBkgd.Alpha); // Currently doesn't work as expected
 
    // Enable line colour for the line that contains the text cursor
@@ -876,6 +832,7 @@ static ERR SCINTILLA_Init(extScintilla *Self, APTR)
    if (Self->Wordwrap) SCICALL(SCI_SETWRAPMODE, 1UL);
    else SCICALL(SCI_SETWRAPMODE, 0UL);
 
+   Self->API->panRedraw();
    return ERR::Okay;
 }
 
@@ -988,7 +945,9 @@ static ERR SCINTILLA_ReplaceLine(extScintilla *Self, struct sci::ReplaceLine *Ar
 
    // Replace the targeted text
 
-   SCICALL(SCI_REPLACETARGET, Args->Length, Args->String.data());
+   size_t length = Args->String.size();
+   if ((Args->Length >= 0) and (size_t(Args->Length) < length)) length = Args->Length;
+   SCICALL(SCI_REPLACETARGET, (unsigned long)length, Args->String.data());
 
    return ERR::Okay;
 }
@@ -1042,13 +1001,7 @@ static ERR SCINTILLA_ReplaceText(extScintilla *Self, struct sci::ReplaceText *Ar
       if (start IS end) return ERR::Search;
    }
 
-   std::string_view replace = Args->Replace;
-
-   SCICALL(SCI_SETTARGETSTART, start);
-   SCICALL(SCI_SETTARGETEND, end);
-
    int findlen = Args->Find.size();
-   int replacelen = Args->Replace.size();
 
    int flags = (((Args->Flags & STF::CASE) != STF::NIL) ? SCFIND_MATCHCASE : 0) |
                 (((Args->Flags & STF::EXPRESSION) != STF::NIL) ? SCFIND_REGEXP : 0);
@@ -1057,36 +1010,39 @@ static ERR SCINTILLA_ReplaceText(extScintilla *Self, struct sci::ReplaceText *Ar
 
    SCICALL(SCI_BEGINUNDOACTION);
 
-   int pos = 0;
-   while (pos != -1) {
+   // Each search resumes from the end of the previous replacement, so that a replacement containing the keyword
+   // is not matched again.  The end position is adjusted by the difference between each match and its replacement.
+
+   int total = 0;
+   while (start <= end) {
       log.trace("Search between %d - %d", start, end);
 
       SCICALL(SCI_SETTARGETSTART, start);
       SCICALL(SCI_SETTARGETEND, end);
 
-      pos = SCICALL(SCI_SEARCHINTARGET, findlen, (char *)Args->Find.data());
+      int pos = SCICALL(SCI_SEARCHINTARGET, findlen, Args->Find.data());
+      if (pos IS -1) break;
 
-      if (pos != -1) {
-         log.trace("Found keyword at %d", pos);
-         //targstart  = SCICALL(SCI_GETTARGETSTART);
-         //targend    = SCICALL(SCI_GETTARGETEND);
+      log.trace("Found keyword at %d", pos);
 
-         // Do the replace
+      int match_len = SCICALL(SCI_GETTARGETEND) - pos;
 
-         if ((Args->Flags & STF::EXPRESSION) != STF::NIL) {
-            int len = SCICALL(SCI_REPLACETARGETRE, (long unsigned int)-1, replace.data());
-            end = end + (len - findlen);
-         }
-         else {
-            SCICALL(SCI_REPLACETARGET, (uint32_t)-1, replace.data());
-            end = end + (replacelen - findlen);
-         }
+      int len;
+      if ((Args->Flags & STF::EXPRESSION) != STF::NIL) {
+         len = SCICALL(SCI_REPLACETARGETRE, (unsigned long)Args->Replace.size(), Args->Replace.data());
       }
-      else log.trace("Keyword not found.");
+      else len = SCICALL(SCI_REPLACETARGET, (unsigned long)Args->Replace.size(), Args->Replace.data());
+
+      end  += len - match_len;
+      start = pos + len;
+      if (!match_len) start++; // An empty match must not be repeated at the same position
+      total++;
    }
 
    SCICALL(SCI_ENDUNDOACTION);
-   return ERR::Okay;
+
+   if (total) return ERR::Okay;
+   else return ERR::Search;
 }
 
 /*********************************************************************************************************************
@@ -1133,9 +1089,8 @@ static ERR SCINTILLA_SaveToObject(extScintilla *Self, struct acSaveToObject *Arg
 -METHOD-
 SetFont: Changes the font that is used for text display.
 
-Call SetFont() to change the font face that is used for displaying text.  The string format follows the standard for
-font requests, e.g. `Helvete:12:Bold Italic:#ff0000`.  Refer to the Face field in the @Font class for more
-details.
+Call SetFont() to change the font face that is used for displaying text.  The `Face` is a family name as accepted by
+the Face field of the @Font class, e.g. `Clean`.  The point size of the current font is retained.
 
 If the new face is invalid or fails to load, the current font will remain unchanged.
 
@@ -1158,10 +1113,15 @@ static ERR SCINTILLA_SetFont(extScintilla *Self, struct sci::SetFont *Args)
 
    log.branch("%.*s", int(Args->Face.size()), Args->Face.data());
 
-   if ((Self->Font = objFont::create::local(fl::Face(Args->Face)))) {
+   if (auto font = objFont::create::local(fl::Face(Args->Face), fl::Point(Self->Font->Point))) {
+      FreeResource(Self->Font);
+      Self->Font = font;
       create_styled_fonts(Self);
-      Self->API->panFontChanged(Self->Font, Self->BoldFont, Self->ItalicFont, Self->BIFont);
-      calc_longest_line(Self);
+
+      if (Self->initialised()) {
+         Self->API->panFontChanged();
+         calc_longest_line(Self);
+      }
       return ERR::Okay;
    }
    else return ERR::CreateObject;
@@ -1228,8 +1188,7 @@ static ERR SCINTILLA_SelectRange(extScintilla *Self, struct sci::SelectRange *Ar
    log.branch("Selecting area %d to %d", Args->Start, Args->End);
 
    if (Args->End < 0) {
-      int linecount = SCICALL(SCI_GETLINECOUNT);
-      int end = SCICALL(SCI_FINDCOLUMN, linecount, 0L);
+      int end = SCICALL(SCI_GETLENGTH);
       SCICALL(SCI_SETSEL, Args->Start, end);
       SCICALL(SCI_SCROLLCARET);
    }
@@ -1245,18 +1204,8 @@ static ERR SCINTILLA_SelectRange(extScintilla *Self, struct sci::SelectRange *Ar
 
 static ERR SCINTILLA_Show(extScintilla *Self)
 {
-   if (!Self->Visible) {
-      kt::Log log;
-
-      log.branch();
-
-      Self->Visible = TRUE;
-
-      acDraw(Self);
-
-      return ERR::Okay;
-   }
-   else return ERR::Okay|ERR::Notified;
+   if (Self->View) return acShow(Self->View);
+   else return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -1390,16 +1339,36 @@ static ERR SET_BkgdColour(extScintilla *Self, RGB8 *Value)
 -FIELD-
 CursorCol: The current column of the text cursor.
 
-The CursorCol and #CursorRow fields reflect the current row and column of the user's text cursor.  The values
-are updated every time that the cursor is moved.  Use #EventCallback and listen for the event SEF_CURSOR_POS to
-receive updates on changes to CursorCol and #CursorRow.
+The CursorCol and #CursorRow fields reflect the current row and column of the user's text cursor.  Use
+#EventCallback and listen for the event `SEF::CURSOR_POS` to receive updates on changes to CursorCol and #CursorRow.
+
+*********************************************************************************************************************/
+
+static ERR GET_CursorCol(extScintilla *Self, int *Value)
+{
+   if (Self->initialised()) *Value = SCICALL(SCI_GETCOLUMN, SCICALL(SCI_GETCURRENTPOS));
+   else *Value = 0;
+   return ERR::Okay;
+}
+
+/*********************************************************************************************************************
 
 -FIELD-
 CursorRow: The current row of the text cursor.
 
-The #CursorCol and CursorRow fields reflect the current row and column of the user's text cursor.  The values
-are updated every time that the cursor is moved.  Use #EventCallback and listen for the event SEF_CURSOR_POS to
-receive updates on changes to #CursorCol and CursorRow.
+The #CursorCol and CursorRow fields reflect the current row and column of the user's text cursor.  Use
+#EventCallback and listen for the event `SEF::CURSOR_POS` to receive updates on changes to #CursorCol and CursorRow.
+
+*********************************************************************************************************************/
+
+static ERR GET_CursorRow(extScintilla *Self, int *Value)
+{
+   if (Self->initialised()) *Value = SCICALL(SCI_LINEFROMPOSITION, SCICALL(SCI_GETCURRENTPOS));
+   else *Value = 0;
+   return ERR::Okay;
+}
+
+/*********************************************************************************************************************
 
 -FIELD-
 CursorColour: Defines the colour of the text cursor.  Alpha blending is not supported.
@@ -1411,7 +1380,8 @@ static ERR SET_CursorColour(extScintilla *Self, RGB8 *Value)
    Self->CursorColour = *Value;
 
    if (Self->initialised()) {
-      SCICALL(SCI_SETCARETFORE, STYLE_DEFAULT, (long int)SCICOLOUR(Self->CursorColour.Red, Self->CursorColour.Green, Self->CursorColour.Blue));
+      auto &c = Self->CursorColour;
+      SCICALL(SCI_SETCARETFORE, (unsigned long int)SCICOLOUR(c.Red, c.Green, c.Blue));
    }
 
    return ERR::Okay;
@@ -1451,11 +1421,11 @@ static ERR SET_FileDrop(extScintilla *Self, FUNCTION *Value)
 Flags: Optional flags.
 
 -FIELD-
-Focus: Defines the object that is monitored for user focus changes.
+Focus: Defines the viewport that is monitored for user focus changes.
 
-By default, the user focus is managed by monitoring the target #Surface for changes (for instance, clicking
-on or away from the surface will result in a focus state change).  If another object should be monitored for focus
-state changes, it can be defined here prior to initialisation.
+By default, the user focus is managed by monitoring the #Viewport for changes (for instance, clicking on or away from
+the viewport will result in a focus state change).  If another viewport should be monitored for focus state changes,
+it can be defined here prior to initialisation.
 
 -FIELD-
 FoldingMarkers: Folding markers in the left margin will be visible when this value is TRUE.
@@ -1613,6 +1583,12 @@ static ERR SET_Origin(extScintilla *Self, const std::string_view &Value)
 /*********************************************************************************************************************
 
 -FIELD-
+Page: An internally created viewport that represents the extent of the document.
+
+The Page is created on initialisation as a child of the #View.  It represents the virtual extent of the document, and
+scrolling is achieved by moving the Page within the View.  The Page can be referenced as the `page` of a scrollbar.
+
+-FIELD-
 Path: Identifies the location of a text file to load.
 
 To load data from a text file into a scintilla object, set the Path field.
@@ -1767,13 +1743,18 @@ static ERR SET_SelectBkgd(extScintilla *Self, RGB8 *Value)
 {
    if ((Value) and (Value->Alpha)) {
       Self->SelectBkgd = *Value;
-      SCICALL(SCI_SETSELBACK, (unsigned long int)true, (long int)SCICOLOUR(Self->SelectBkgd.Red, Self->SelectBkgd.Green, Self->SelectBkgd.Blue));
-      //SCICALL(SCI_SETSELALPHA, Self->SelectBkgd.Alpha);
+      if (Self->initialised()) {
+         auto &c = Self->SelectBkgd;
+         SCICALL(SCI_SETSELBACK, (unsigned long int)true, (long int)SCICOLOUR(c.Red, c.Green, c.Blue));
+         //SCICALL(SCI_SETSELALPHA, Self->SelectBkgd.Alpha);
+      }
    }
    else {
       Self->SelectBkgd.Alpha = 0;
-      SCICALL(SCI_SETSELBACK, (unsigned long int)false, 0L);
-      //SCICALL(SCI_SETSELALPHA, 0UL);
+      if (Self->initialised()) {
+         SCICALL(SCI_SETSELBACK, (unsigned long int)false, 0L);
+         //SCICALL(SCI_SETSELALPHA, 0UL);
+      }
    }
    return ERR::Okay;
 }
@@ -1787,16 +1768,16 @@ SelectFore: Defines the colour of selected text.  Supports alpha blending.
 
 static ERR SET_SelectFore(extScintilla *Self, RGB8 *Value)
 {
-   kt::Log log;
-
-   log.msg("New SelectFore colour: %d,%d,%d,%d", Value->Red, Value->Green, Value->Blue, Value->Alpha);
    if ((Value) and (Value->Alpha)) {
       Self->SelectFore = *Value;
-      SCICALL(SCI_SETSELFORE, (unsigned long int)true, (long int)SCICOLOUR(Self->SelectFore.Red, Self->SelectFore.Green, Self->SelectFore.Blue));
+      if (Self->initialised()) {
+         auto &c = Self->SelectFore;
+         SCICALL(SCI_SETSELFORE, (unsigned long int)true, (long int)SCICOLOUR(c.Red, c.Green, c.Blue));
+      }
    }
    else {
       Self->SelectFore.Alpha = 0;
-      SCICALL(SCI_SETSELFORE, (unsigned long int)false, 0L);
+      if (Self->initialised()) SCICALL(SCI_SETSELFORE, (unsigned long int)false, 0L);
    }
    return ERR::Okay;
 }
@@ -1836,13 +1817,6 @@ static ERR SET_String(extScintilla *Self, const std::string_view &Value)
 }
 
 /*********************************************************************************************************************
-
--FIELD-
-Surface: Refers to the @Surface targeted by the Scintilla object.
-
-This compulsory field refers to the @Surface that the Scintilla object is targeting for graphics operations.  If not
-set prior to initialisation, the Scintilla object will search for the nearest @Surface object based on its ownership
-hierarchy.
 
 -FIELD-
 Symbols: Symbols can be displayed in the left margin when this value is TRUE.
@@ -1913,11 +1887,16 @@ static ERR SET_TextColour(extScintilla *Self, RGB8 *Value)
 /*********************************************************************************************************************
 
 -FIELD-
-Visible: If TRUE, indicates the Scintilla object is visible in the target #Surface.
+View: An internally created viewport that clips the visible content of the editor.
 
-This field is set to TRUE if the Scintilla object is visible in the target #Surface.  To control visibility, please use
-the #Show() and #Hide() actions appropriately.  This field can be set to FALSE prior to initialisation if the Scintilla
-object should start in a hidden state.
+The View is created on initialisation as a child of the #Viewport, and covers its entire area.  It represents the
+visible window into the document and clips the #Page.  The View can be referenced as the `view` of a scrollbar.
+
+-FIELD-
+Viewport: The viewport that will host the editor.
+
+This compulsory field refers to the @VectorViewport that will host the editor's graphics.  If not set prior to
+initialisation, the Scintilla object's owner will be used if it is a @VectorViewport.
 
 -FIELD-
 Wordwrap: Enables automatic word wrapping when TRUE.
@@ -1960,52 +1939,86 @@ static void create_styled_fonts(extScintilla *Self)
          fl::Face(Self->Font->Face),
          fl::Point(Self->Font->Point),
          fl::Flags(Self->Font->Flags),
-         fl::Style("bold")))) {
+         fl::Style("Bold")))) {
    }
 
    if ((Self->ItalicFont = objFont::create::local(
          fl::Face(Self->Font->Face),
          fl::Point(Self->Font->Point),
          fl::Flags(Self->Font->Flags),
-         fl::Style("italics")))) {
+         fl::Style("Italic")))) {
    }
 
    if ((Self->BIFont = objFont::create::local(
          fl::Face(Self->Font->Face),
          fl::Point(Self->Font->Point),
          fl::Flags(Self->Font->Flags),
-         fl::Style("bold italics")))) {
+         fl::Style("Bold Italic")))) {
    }
 }
 
 //********************************************************************************************************************
-// Scintilla initiates drawing instructions through window::InvalidateRectangle()
+// Create the View and Page viewports within the host Viewport, and the Canvas rectangle that presents the Bitmap that
+// Scintilla paints into.  The Bitmap covers the visible area of the View (plus one line for sub-line scrolling) and
+// is wrapped by a VectorImage definition that serves as the Canvas fill.
 
-static thread_local objBitmap *glBitmap = nullptr;
-
-static void draw_scintilla(extScintilla *Self, objSurface *Surface, objBitmap *Bitmap)
+static ERR create_canvas(extScintilla *Self)
 {
-   kt::Log log;
+   kt::Log log(__FUNCTION__);
 
-   if (!Self->Visible) return;
-   if (!Self->initialised()) return;
+   if (!(Self->View = objVectorViewport::create::global(
+         fl::Name("sciView"),
+         fl::Owner(Self->Viewport->UID),
+         fl::Overflow(VOF::HIDDEN),
+         fl::X(0), fl::Y(0),
+         fl::Width(SCALE(1.0)), fl::Height(SCALE(1.0))))) return log.warning(ERR::CreateObject);
 
-   log.traceBranch("Surface: %d, Bitmap: %d. Clip: %dx%d,%dx%d", Surface->UID, Bitmap->UID, Bitmap->Clip.Left, Bitmap->Clip.Top, Bitmap->Clip.Right - Bitmap->Clip.Left, Bitmap->Clip.Bottom - Bitmap->Clip.Top);
+   if (!(Self->Page = objVectorViewport::create::global(
+         fl::Name("sciPage"),
+         fl::Owner(Self->View->UID),
+         fl::X(0), fl::Y(0),
+         fl::Width(SCALE(1.0)), fl::Height(SCALE(1.0))))) return log.warning(ERR::CreateObject);
 
-   glBitmap = Bitmap;
+   Unit w, h;
+   Self->View->getWidth(w);
+   Self->View->getHeight(h);
+   Self->ViewWidth  = std::max(1, int(std::lround(double(w))));
+   Self->ViewHeight = std::max(1, int(std::lround(double(h))));
 
-   glFont       = (OBJECTPTR)Self->Font;
-   glBoldFont   = (OBJECTPTR)Self->BoldFont;
-   glItalicFont = (OBJECTPTR)Self->ItalicFont;
-   glBIFont     = (OBJECTPTR)Self->BIFont;
+   if (!(Self->Bitmap = objBitmap::create::local(
+         fl::Width(Self->ViewWidth),
+         fl::Height(Self->ViewHeight + Self->Font->LineSpacing),
+         fl::BitsPerPixel(32),
+         fl::Flags(BMF::ALPHA_CHANNEL)))) return log.warning(ERR::CreateObject);
 
-   Self->API->panDraw(Surface, Bitmap);
+   auto &bkgd = Self->BkgdColour;
+   gfx::DrawRectangle(Self->Bitmap, 0, 0, Self->Bitmap->Width, Self->Bitmap->Height,
+      Self->Bitmap->packPixel(bkgd.Red, bkgd.Green, bkgd.Blue, 255), BAF::FILL);
 
-   glBitmap = nullptr;
+   // Scene definitions must belong to the scene.  The scene removes the definition automatically when the image is
+   // freed.
 
-   if ((Self->Flags & SCIF::DISABLED) != SCIF::NIL) {
-      gfx::DrawRectangle(Bitmap, 0, 0, Bitmap->Width, Bitmap->Height, Bitmap->packPixel(0, 0, 0, 64), BAF::FILL|BAF::BLEND);
-   }
+   if (!(Self->Image = objVectorImage::create::global(
+         fl::Owner(Self->Scene->UID),
+         fl::Bitmap(Self->Bitmap),
+         fl::Units(VUNIT::BOUNDING_BOX),
+         fl::SpreadMethod(VSPREAD::CLIP),
+         fl::AspectRatio(ARF::X_MIN|ARF::Y_MIN)))) return log.warning(ERR::CreateObject);
+
+   SubscribeAction(Self->Image, AC::Free, C_FUNCTION(notify_free_image));
+
+   auto def_name = std::format("sci{}", Self->UID);
+   if (auto error = Self->Scene->addDef(def_name, Self->Image); error != ERR::Okay) return log.warning(error);
+
+   if (!(Self->Canvas = objVectorRectangle::create::global(
+         fl::Name("sciCanvas"),
+         fl::Owner(Self->Page->UID),
+         fl::X(0), fl::Y(0),
+         fl::Width(Self->Bitmap->Width), fl::Height(Self->Bitmap->Height),
+         fl::Fill(std::format("url(#{})", def_name))))) return log.warning(ERR::CreateObject);
+
+   Self->View->subscribeFeedback(FM::PATH_CHANGED, C_FUNCTION(feedback_view));
+   return ERR::Okay;
 }
 
 //********************************************************************************************************************
@@ -2274,13 +2287,13 @@ static void calc_longest_line(extScintilla *Self)
          }
       }
 
+      Self->LongestLine  = cline;
+      Self->LongestWidth = cwidth;
+
       if (lines IS LINE_COUNT_LIMIT) {
          Self->LongestWidth += 1024; // Add lots of extra space in case there are much longer lines further on in the document
       }
       else Self->LongestWidth += 30;
-
-      Self->LongestLine  = cline;
-      Self->LongestWidth = cwidth;
    }
 
    log.trace("Longest line: %d", Self->LongestWidth);
@@ -2324,32 +2337,23 @@ extScintilla::~extScintilla() {
 
    if (TimerID) UpdateTimer(TimerID, 0);
 
-   if ((FocusID) and (FocusID != SurfaceID)) {
-      if (kt::ScopedObjectLock object(FocusID, 500); object.granted()) {
-         UnsubscribeAction(*object, AC::NIL);
-      }
+   if ((Focus) and (Focus != Viewport)) UnsubscribeAction(Focus, AC::NIL);
+   if (Viewport) UnsubscribeAction(Viewport, AC::NIL);
+
+   if (Image) { // Freeing the image also removes its definition from the scene
+      UnsubscribeAction(Image, AC::NIL);
+      FreeResource(Image);
    }
 
-   if (SurfaceID) {
-      if (kt::ScopedObjectLock<objSurface> object(SurfaceID, 500); object.granted()) {
-         object->removeCallback(C_FUNCTION(&draw_scintilla));
-         UnsubscribeAction(*object, AC::NIL);
-      }
-   }
-
-   /*if (PointerLocked) {
-      RestoreCursor(PTR_DEFAULT, UID);
-      PointerLocked = FALSE;
-   }*/
+   if (View) FreeResource(View); // The Page and Canvas are children of the View
 
    if (prvKeyEvent) UnsubscribeEvent(prvKeyEvent);
    if (FileStream)  FreeResource(FileStream);
+   if (Bitmap)      FreeResource(Bitmap);
    if (Font)        FreeResource(Font);
    if (BoldFont)    FreeResource(BoldFont);
    if (ItalicFont)  FreeResource(ItalicFont);
    if (BIFont)      FreeResource(BIFont);
-
-   gfx::UnsubscribeInput(InputHandle);
 }
 
 //********************************************************************************************************************
@@ -2360,10 +2364,11 @@ static const FieldArray clFields[] = {
    { "Font",           FDF_LOCAL|FDF_R, nullptr, nullptr, CLASSID::FONT },
    { "Path",           FDF_CPPSTRING|FDF_RW, nullptr, SET_Path },
    { "EventFlags",     FDF_INT|FDF_FLAGS|FDF_RW, nullptr, nullptr, &clScintillaEventFlags },
-   { "Surface",        FDF_OBJECTID|FDF_RI, nullptr, nullptr, CLASSID::SURFACE },
    { "Flags",          FDF_INTFLAGS|FDF_RI, nullptr, nullptr, &clScintillaFlags },
-   { "Focus",          FDF_OBJECTID|FDF_RI },
-   { "Visible",        FDF_INT|FDF_RI },
+   { "Viewport",       FDF_OBJECT|FDF_RI, nullptr, nullptr, CLASSID::VECTORVIEWPORT },
+   { "Focus",          FDF_OBJECT|FDF_RI, nullptr, nullptr, CLASSID::VECTORVIEWPORT },
+   { "View",           FDF_OBJECT|FDF_R, nullptr, nullptr, CLASSID::VECTORVIEWPORT },
+   { "Page",           FDF_OBJECT|FDF_R, nullptr, nullptr, CLASSID::VECTORVIEWPORT },
    { "LeftMargin",     FDF_INT|FDF_RW, nullptr, SET_LeftMargin },
    { "RightMargin",    FDF_INT|FDF_RW, nullptr, SET_RightMargin },
    { "LineHighlight",  FDF_STRUCT|FDF_RW, nullptr, SET_LineHighlight, "RGB8" },
@@ -2372,8 +2377,8 @@ static const FieldArray clFields[] = {
    { "BkgdColour",     FDF_STRUCT|FDF_RW, nullptr, SET_BkgdColour, "RGB8" },
    { "CursorColour",   FDF_STRUCT|FDF_RW, nullptr, SET_CursorColour, "RGB8" },
    { "TextColour",     FDF_STRUCT|FDF_RW, nullptr, SET_TextColour, "RGB8" },
-   { "CursorRow",      FDF_INT|FDF_RW },
-   { "CursorCol",      FDF_INT|FDF_RW },
+   { "CursorRow",      FDF_INT|FDF_R, GET_CursorRow },
+   { "CursorCol",      FDF_INT|FDF_R, GET_CursorCol },
    { "Lexer",          FDF_INT|FDF_LOOKUP|FDF_RI, nullptr, SET_Lexer, &clScintillaLexer },
    { "Modified",       FDF_INT|FDF_RW, nullptr, SET_Modified },
 
