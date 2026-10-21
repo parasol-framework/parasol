@@ -16,8 +16,8 @@ TI_ICON  <const> = 1
 TI_BREAK <const> = 2
 TI_GROUP <const> = 3
 
-gui.toolbar = function(Options)
-   local theme, tb_theme
+gui.toolbar = function(Options:table)
+   local theme:table, tb_theme:table
 
    self = entity { -- Public interface
       host           = nil,
@@ -349,8 +349,10 @@ gui.toolbar = function(Options)
             updateItemState(item)
 
             if item.sticker then
-               item.sticker.viewport.x = item.x + item.width - item.sticker.viewport.width - 1
-               item.sticker.viewport.y = item.y + 1
+               item.sticker.viewport.{
+                  x = item.x + item.width - item.sticker.viewport.width - 1,
+                  y = item.y + 1
+               }
                item.sticker.viewport.acMoveToFront()
             end
 
@@ -365,26 +367,21 @@ gui.toolbar = function(Options)
             if currentGroup then
                item.group = currentGroup
                if &_horizontal then
-                  currentGroup.width  = x - currentGroup.x
-                  currentGroup.height = &viewport.height - (groupOffset * 2)
+                  currentGroup.{ width = x - currentGroup.x, height = &viewport.height - (groupOffset * 2) }
                else
-                  currentGroup.width  = &viewport.width - (groupOffset * 2)
-                  currentGroup.height = y - currentGroup.y
+                  currentGroup.{ width = &viewport.width - (groupOffset * 2), height = y - currentGroup.y }
                end
 
                if currentGroup.bkgd then
-                  currentGroup.bkgd.width  = currentGroup.width
-                  currentGroup.bkgd.height = currentGroup.height
+                  currentGroup.bkgd.{ width = currentGroup.width, height = currentGroup.height }
                end
 
                if currentGroup.border then
-                  currentGroup.border.width  = currentGroup.width
-                  currentGroup.border.height = currentGroup.height
+                  currentGroup.border.{ width = currentGroup.width, height = currentGroup.height }
                end
 
                if currentGroup.clip then
-                  currentGroup.clip.width  = currentGroup.width
-                  currentGroup.clip.height = currentGroup.height
+                  currentGroup.clip.{ width = currentGroup.width, height = currentGroup.height }
                end
 
                if spanCount is currentGroup.span then
@@ -713,12 +710,15 @@ gui.toolbar = function(Options)
       assert(Options.target, 'A target viewport is required.')
 
       theme = gui.getTheme(Options.target)
-      tb_theme = table.merge(theme.toolbar, Options.theme, true, true)
+      if Options.theme then
+         theme = table.merge(theme, Options.theme, true, true)
+      end
+      tb_theme = theme.toolbar
 
       &_iconTheme     = tb_theme.icon
       &_iconHighlight = tb_theme.iconHighlight
-      &_hoverFill     = Options.hoverFill  ?? theme.button.highlight.fill
-      &_selectFill    = Options.selectFill ?? theme.palette.prime
+      &_hoverFill     = theme.button.highlight.fill
+      &_selectFill    = theme.palette.prime
 
       if Options.groupMargin then
          &_groupMargin = Options.groupMargin

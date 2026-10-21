@@ -1811,6 +1811,7 @@ gui.fileview = function(Options)
    end
 
    -- File-system subscriptions belong to the host viewport, which survives view-style recreation.
+
    released = false
    function releaseSubscriptions()
       if released then return end
