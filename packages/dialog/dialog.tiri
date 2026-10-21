@@ -31,6 +31,20 @@ ICONS <const> = {
 
    gui.dialog ?= { }
 
+-- Find a vector by class and name in the branch starting at Vector, searching depth first.
+
+function findVector(Vector:obj, ClassName:str!, Name:str!):obj
+   while Vector do
+      if (Vector.class.className is ClassName) and (Vector.name is Name) then return Vector end
+      if Vector.child then
+         found = findVector(Vector.child, ClassName, Name)
+         if found then return found end
+      end
+      Vector = Vector.next
+   end
+   return nil
+end
+
 function defaultIcon():str
    if &type and ICONS[&type] then
       return ICONS[&type]
@@ -282,12 +296,22 @@ gui.dialog.message = function(Options)
 
       lDoc.acDataFeed(nil, DATA_XML, buildDocument())
 
-      &input?.textinput?.mtSelectArea(0, 0, 20000, 20000)
-
       matchWindowToDocSize(lDoc)
 
       &window.moveToFront()
       &window.show(true)
+
+      -- Give the input box the focus, with its text selected so that typing replaces it.  The document isn't able to
+      -- focus the box itself because inputs aren't tab stops.  The box is a VectorText named after the input, created
+      -- during layout, and it edits while its clip viewport has the focus.
+
+      if Options.userInput then
+         &inputText = findVector(&viewport.child, 'VectorText', 'input')
+         if &inputText then
+            &inputText.parent.acFocus()
+            &inputText.mtSelectArea(0, 0, -1, -1)
+         end
+      end
 
       &document = lDoc
       return &&
