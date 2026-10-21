@@ -1,6 +1,5 @@
-/*********************************************************************************************************************
-** SurfacePan class
-*/
+//********************************************************************************************************************
+// SurfacePan class
 
 class SurfacePan : public Scintilla::Surface
 {
@@ -138,7 +137,7 @@ void SurfacePan::InitPixMap(int width, int height, Scintilla::Surface *surface_,
    cliprect.bottom = bitmap->Height;
 }
 
-/****************************************************************************/
+//********************************************************************************************************************
 
 inline uint32_t to_pan_col(objBitmap *bitmap, const Scintilla::ColourAllocated& colour)
 {
@@ -146,7 +145,7 @@ inline uint32_t to_pan_col(objBitmap *bitmap, const Scintilla::ColourAllocated& 
    return bitmap->packPixel(SCIRED(col32), SCIGREEN(col32), SCIBLUE(col32), 255);
 }
 
-/****************************************************************************/
+//********************************************************************************************************************
 
 inline void set_vector_colour(objVectorColour *Colour, const Scintilla::ColourAllocated &Value, int Alpha)
 {
@@ -157,10 +156,9 @@ inline void set_vector_colour(objVectorColour *Colour, const Scintilla::ColourAl
    Colour->Alpha = std::clamp(Alpha, 0, 255) / 255.0;
 }
 
-/*********************************************************************************************************************
-** Shapes are drawn with vec::DrawPath(), which provides anti-aliasing and alpha blending.  The Path is a generated
-** vector path that is always freed by this function.  Strokes are one pixel wide.
-*/
+//********************************************************************************************************************
+// Shapes are drawn with vec::DrawPath(), which provides anti-aliasing and alpha blending.  The Path is a generated
+// vector path that is always freed by this function.  Strokes are one pixel wide.
 
 void SurfacePan::draw_path(APTR Path, const Scintilla::ColourAllocated *Fill, int FillAlpha,
    const Scintilla::ColourAllocated *Stroke, int StrokeAlpha)
@@ -180,7 +178,7 @@ void SurfacePan::draw_path(APTR Path, const Scintilla::ColourAllocated *Fill, in
    FreeResource(Path);
 }
 
-/****************************************************************************/
+//********************************************************************************************************************
 
 void SurfacePan::BlendRectangle(Scintilla::PRectangle rc, Scintilla::ColourAllocated colour, int alpha)
 {
@@ -192,7 +190,7 @@ void SurfacePan::BlendRectangle(Scintilla::PRectangle rc, Scintilla::ColourAlloc
    }
 }
 
-/****************************************************************************/
+//********************************************************************************************************************
 
 void SurfacePan::PenColour(Scintilla::ColourAllocated fore)
 {
@@ -201,14 +199,14 @@ void SurfacePan::PenColour(Scintilla::ColourAllocated fore)
    }
 }
 
-/****************************************************************************/
+//********************************************************************************************************************
 
 int SurfacePan::LogPixelsY()
 {
    return 96; // Kotuku's vector units are fixed at 96 DPI
 }
 
-/****************************************************************************/
+//********************************************************************************************************************
 
 int SurfacePan::DeviceHeightFont(int pointsize)
 {
@@ -219,7 +217,7 @@ int SurfacePan::DeviceHeightFont(int pointsize)
    return (pointsize * dpi + (dpi / 2)) / 72;
 }
 
-/****************************************************************************/
+//********************************************************************************************************************
 
 void SurfacePan::MoveTo(int x, int y)
 {
@@ -227,11 +225,8 @@ void SurfacePan::MoveTo(int x, int y)
    peny = y;
 }
 
-/****************************************************************************/
-
-/*********************************************************************************************************************
-** Draws a one pixel line from the pen position.  The end point is excluded, as Scintilla expects.
-*/
+//********************************************************************************************************************
+// Draws a one pixel line from the pen position.  The end point is excluded, as Scintilla expects.
 
 void SurfacePan::LineTo(int x, int y)
 {
@@ -266,11 +261,8 @@ void SurfacePan::LineTo(int x, int y)
    peny = y;
 }
 
-/****************************************************************************/
-
-/*********************************************************************************************************************
-** Draws an image of RGBA bytes, centred within rc and alpha blended with the background.
-*/
+//********************************************************************************************************************
+// Draws an image of RGBA bytes, centred within rc and alpha blended with the background.
 
 void SurfacePan::DrawRGBAImage(Scintilla::PRectangle rc, int width, int height, const unsigned char *pixelsImage)
 {
@@ -293,12 +285,9 @@ void SurfacePan::DrawRGBAImage(Scintilla::PRectangle rc, int width, int height, 
    }
 }
 
-/****************************************************************************/
-
-/*********************************************************************************************************************
-** Fills a polygon with the back colour and outlines it with the fore colour.  Points are offset to pixel centres so
-** that the outline is sharp, as the GTK platform does.
-*/
+//********************************************************************************************************************
+// Fills a polygon with the back colour and outlines it with the fore colour.  Points are offset to pixel centres so
+// that the outline is sharp, as the GTK platform does.
 
 void SurfacePan::Polygon(Scintilla::Point *pts, int npts, Scintilla::ColourAllocated fore, Scintilla::ColourAllocated back)
 {
@@ -316,7 +305,7 @@ void SurfacePan::Polygon(Scintilla::Point *pts, int npts, Scintilla::ColourAlloc
    if (vec::GeneratePath(sequence, &path) IS ERR::Okay) draw_path(path, &back, 255, &fore, 255);
 }
 
-/****************************************************************************/
+//********************************************************************************************************************
 
 void SurfacePan::RectangleDraw(Scintilla::PRectangle rc, Scintilla::ColourAllocated fore, Scintilla::ColourAllocated back)
 {
@@ -333,7 +322,7 @@ void SurfacePan::RectangleDraw(Scintilla::PRectangle rc, Scintilla::ColourAlloca
    }
 }
 
-/****************************************************************************/
+//********************************************************************************************************************
 
 void SurfacePan::FillRectangle(Scintilla::PRectangle rc, Scintilla::ColourAllocated back)
 {
@@ -349,11 +338,8 @@ void SurfacePan::FillRectangle(Scintilla::PRectangle rc, Scintilla::ColourAlloca
    }
 }
 
-/****************************************************************************/
-
-/*********************************************************************************************************************
-** Tiles the bitmap of the pattern surface over rc, starting from the top-left corner of rc.
-*/
+//********************************************************************************************************************
+// Tiles the bitmap of the pattern surface over rc, starting from the top-left corner of rc.
 
 void SurfacePan::FillRectangle(Scintilla::PRectangle rc, Scintilla::Surface &surfacePattern)
 {
@@ -377,7 +363,7 @@ void SurfacePan::FillRectangle(Scintilla::PRectangle rc, Scintilla::Surface &sur
    }
 }
 
-/****************************************************************************/
+//********************************************************************************************************************
 
 void SurfacePan::RoundedRectangle(Scintilla::PRectangle rc, Scintilla::ColourAllocated fore, Scintilla::ColourAllocated back)
 {
@@ -400,11 +386,8 @@ void SurfacePan::RoundedRectangle(Scintilla::PRectangle rc, Scintilla::ColourAll
    else RectangleDraw(rc, fore, back);
 }
 
-/****************************************************************************/
-
-/*********************************************************************************************************************
-** Draws a circle that fits the smaller dimension of rc, filled with the back colour and outlined with the fore colour.
-*/
+//********************************************************************************************************************
+// Draws a circle that fits the smaller dimension of rc, filled with the back colour and outlined with the fore colour.
 
 void SurfacePan::Ellipse(Scintilla::PRectangle rc, Scintilla::ColourAllocated fore, Scintilla::ColourAllocated back)
 {
@@ -420,7 +403,7 @@ void SurfacePan::Ellipse(Scintilla::PRectangle rc, Scintilla::ColourAllocated fo
    }
 }
 
-/****************************************************************************/
+//********************************************************************************************************************
 
 void SurfacePan::Copy(Scintilla::PRectangle rc, Scintilla::Point from, Scintilla::Surface &surfaceSource)
 {
@@ -441,7 +424,7 @@ void SurfacePan::Copy(Scintilla::PRectangle rc, Scintilla::Point from, Scintilla
    else log.warning(ERR::Args);
 }
 
-/****************************************************************************/
+//********************************************************************************************************************
 
 void SurfacePan::DrawTextBase(Scintilla::PRectangle rc, Scintilla::Font &font_, int ybase, const char *String, int len, Scintilla::ColourAllocated fore)
 {
@@ -474,7 +457,7 @@ void SurfacePan::DrawTextBase(Scintilla::PRectangle rc, Scintilla::Font &font_, 
    }
 }
 
-/****************************************************************************/
+//********************************************************************************************************************
 
 void SurfacePan::DrawTextNoClip(Scintilla::PRectangle rc, Scintilla::Font &font_, int ybase, const char *s, int len,
                                  Scintilla::ColourAllocated fore, Scintilla::ColourAllocated back)
@@ -484,7 +467,7 @@ void SurfacePan::DrawTextNoClip(Scintilla::PRectangle rc, Scintilla::Font &font_
    DrawTextBase(rc, font_, ybase, s, len, fore);
 }
 
-/****************************************************************************/
+//********************************************************************************************************************
 // On GTK+, exactly same as DrawTextNoClip
 
 void SurfacePan::DrawTextClipped(Scintilla::PRectangle rc, Scintilla::Font &font_, int ybase, const char *s, int len,
@@ -495,9 +478,8 @@ void SurfacePan::DrawTextClipped(Scintilla::PRectangle rc, Scintilla::Font &font
    DrawTextBase(rc, font_, ybase, s, len, fore);
 }
 
-/*********************************************************************************************************************
-** Avoid drawing spaces in transparent mode; i.e. only draw if there is at least one non-space char.
-*/
+//********************************************************************************************************************
+// Avoid drawing spaces in transparent mode; i.e. only draw if there is at least one non-space char.
 
 void SurfacePan::DrawTextTransparent(Scintilla::PRectangle rc, Scintilla::Font &font_, int ybase,
    const char *s, int len, Scintilla::ColourAllocated fore)
@@ -512,7 +494,7 @@ void SurfacePan::DrawTextTransparent(Scintilla::PRectangle rc, Scintilla::Font &
    }
 }
 
-/****************************************************************************/
+//********************************************************************************************************************
 
 void SurfacePan::MeasureWidths(Scintilla::Font &font_, const char *string, int len, int *positions)
 {
@@ -566,7 +548,7 @@ void SurfacePan::MeasureWidths(Scintilla::Font &font_, const char *string, int l
    else for (int i = 0; i < len; ++i) positions[i] = i + 1;
 }
 
-/****************************************************************************/
+//********************************************************************************************************************
 
 int SurfacePan::WidthText(Scintilla::Font &font_, const char *s, int len)
 {
@@ -580,7 +562,7 @@ int SurfacePan::WidthText(Scintilla::Font &font_, const char *s, int len)
    return 5; // crashes if you return 0 here !!!
 }
 
-/****************************************************************************/
+//********************************************************************************************************************
 
 int SurfacePan::WidthChar(Scintilla::Font &font_, char ch)
 {
@@ -588,12 +570,9 @@ int SurfacePan::WidthChar(Scintilla::Font &font_, char ch)
    return fnt::CharWidth(font, ch);
 }
 
-/****************************************************************************/
-
-/*********************************************************************************************************************
-** The ascent includes the internal leading, and the descent is the remainder of the glyph cell below the baseline.
-** Scintilla's line height is the sum of the two, which matches the font's glyph cell.
-*/
+//********************************************************************************************************************
+// The ascent includes the internal leading, and the descent is the remainder of the glyph cell below the baseline.
+// Scintilla's line height is the sum of the two, which matches the font's glyph cell.
 
 int SurfacePan::Ascent(Scintilla::Font &font_)
 {
@@ -601,7 +580,7 @@ int SurfacePan::Ascent(Scintilla::Font &font_)
    else return 10;
 }
 
-/****************************************************************************/
+//********************************************************************************************************************
 
 int SurfacePan::Descent(Scintilla::Font &font_)
 {
@@ -609,7 +588,7 @@ int SurfacePan::Descent(Scintilla::Font &font_)
    else return 3;
 }
 
-/****************************************************************************/
+//********************************************************************************************************************
 
 int SurfacePan::InternalLeading(Scintilla::Font &font_)
 {
@@ -619,37 +598,36 @@ int SurfacePan::InternalLeading(Scintilla::Font &font_)
    else return 0;
 }
 
-/****************************************************************************/
+//********************************************************************************************************************
 
 int SurfacePan::ExternalLeading(Scintilla::Font &font_)
 {
    return 0; // Bitmap fonts include their line spacing in the glyph cell
 }
 
-/****************************************************************************/
+//********************************************************************************************************************
 
 int SurfacePan::Height(Scintilla::Font &font_)
 {
    return Ascent(font_) + Descent(font_);
 }
 
-/****************************************************************************/
+//********************************************************************************************************************
 
 int SurfacePan::AverageCharWidth(Scintilla::Font &font_)
 {
    return WidthChar(font_, 'x');
 }
 
-/*********************************************************************************************************************
-** Functionality not required.
-*/
+//********************************************************************************************************************
+// Functionality not required.
 
 int SurfacePan::SetPalette(Scintilla::Palette *, bool)
 {
    return 0;
 }
 
-/****************************************************************************/
+//********************************************************************************************************************
 
 void SurfacePan::SetClip(Scintilla::PRectangle rc)
 {
@@ -666,7 +644,7 @@ void SurfacePan::SetClip(Scintilla::PRectangle rc)
    }*/
 }
 
-/****************************************************************************/
+//********************************************************************************************************************
 
 void SurfacePan::FlushCachedState()
 {
@@ -674,7 +652,7 @@ void SurfacePan::FlushCachedState()
    log.trace("UNSUPPORTED");
 }
 
-/****************************************************************************/
+//********************************************************************************************************************
 
 void SurfacePan::SetUnicodeMode(bool unicodeMode_)
 {
@@ -682,7 +660,7 @@ void SurfacePan::SetUnicodeMode(bool unicodeMode_)
 //   log.trace("%d [UNSUPPORTED]", unicodeMode_);
 }
 
-/****************************************************************************/
+//********************************************************************************************************************
 
 void SurfacePan::SetDBCSMode(int codePage)
 {
@@ -690,10 +668,9 @@ void SurfacePan::SetDBCSMode(int codePage)
 //   log.trace("CodePage: %d [UNSUPPORTED]", codePage);
 }
 
-/*********************************************************************************************************************
-** Scintilla::Font only records the bold and italic state of a style (see pan_classes.cxx).  The font objects belong to
-** the Scintilla object that owns this surface, so each instance measures and draws with its own fonts.
-*/
+//********************************************************************************************************************
+// Scintilla::Font only records the bold and italic state of a style (see pan_classes.cxx).  The font objects belong to
+// the Scintilla object that owns this surface, so each instance measures and draws with its own fonts.
 
 OBJECTPTR SurfacePan::GetFont(Scintilla::Font& font_)
 {
@@ -710,7 +687,7 @@ OBJECTPTR SurfacePan::GetFont(Scintilla::Font& font_)
    return scintilla->Font;
 }
 
-/****************************************************************************/
+//********************************************************************************************************************
 
 void SurfacePan::AlphaRectangle(Scintilla::PRectangle rc, int cornerSize, Scintilla::ColourAllocated fill,
    int alphaFill, Scintilla::ColourAllocated outline, int alphaOutline, int flags)
@@ -739,7 +716,7 @@ void SurfacePan::AlphaRectangle(Scintilla::PRectangle rc, int cornerSize, Scinti
    if (vec::GeneratePath(outer, &path) IS ERR::Okay) draw_path(path, nullptr, 0, &outline, alphaOutline);
 }
 
-/****************************************************************************/
+//********************************************************************************************************************
 
 Scintilla::Surface * Scintilla::Surface::Allocate()
 {

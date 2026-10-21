@@ -53,6 +53,11 @@ FDEF maReplaceLine[] = { { "Line", FD_INT }, { "String", FDF_CPPSTRING }, { "Len
 FDEF maGotoLine[] = { { "Line", FD_INT }, { 0, 0 } };
 FDEF maGetPos[] = { { "Line", FD_INT }, { "Column", FD_INT }, { "Pos", FD_RESULT|FD_INT }, { 0, 0 } };
 FDEF maScrollToPoint[] = { { "X", FD_INT }, { "Y", FD_INT }, { 0, 0 } };
+FDEF maDefineMarker[] = { { "Marker", FD_INT }, { "Symbol", FD_INT }, { "RGB8:Fore", FD_PTR|FD_STRUCT }, { "RGB8:Bkgd", FD_PTR|FD_STRUCT }, { 0, 0 } };
+FDEF maAddMarker[] = { { "Line", FD_INT }, { "Marker", FD_INT }, { 0, 0 } };
+FDEF maRemoveMarker[] = { { "Line", FD_INT }, { "Marker", FD_INT }, { 0, 0 } };
+FDEF maGetMarkers[] = { { "Line", FD_INT }, { "Markers", FD_RESULT|FD_INT }, { 0, 0 } };
+FDEF maToggleFold[] = { { "Line", FD_INT }, { 0, 0 } };
 
 static const struct MethodEntry clScintillaMethods[] = {
    { AC(-1), (APTR)SCINTILLA_SetFont, "SetFont", maSetFont, sizeof(struct sci::SetFont) },
@@ -68,6 +73,11 @@ static const struct MethodEntry clScintillaMethods[] = {
    { AC(-11), (APTR)SCINTILLA_ReportEvent, "ReportEvent", 0, 0 },
    { AC(-12), (APTR)SCINTILLA_ScrollToPoint, "ScrollToPoint", maScrollToPoint, sizeof(struct sci::ScrollToPoint) },
    { AC(-13), (APTR)SCINTILLA_Repaint, "Repaint", 0, 0 },
+   { AC(-14), (APTR)SCINTILLA_DefineMarker, "DefineMarker", maDefineMarker, sizeof(struct sci::DefineMarker) },
+   { AC(-15), (APTR)SCINTILLA_AddMarker, "AddMarker", maAddMarker, sizeof(struct sci::AddMarker) },
+   { AC(-16), (APTR)SCINTILLA_RemoveMarker, "RemoveMarker", maRemoveMarker, sizeof(struct sci::RemoveMarker) },
+   { AC(-17), (APTR)SCINTILLA_GetMarkers, "GetMarkers", maGetMarkers, sizeof(struct sci::GetMarkers) },
+   { AC(-18), (APTR)SCINTILLA_ToggleFold, "ToggleFold", maToggleFold, sizeof(struct sci::ToggleFold) },
    { AC::NIL, 0, 0, 0, 0 }
 };
 

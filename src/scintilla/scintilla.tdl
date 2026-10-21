@@ -34,6 +34,42 @@ module({ name="Scintilla", copyright="Paul Manias © 2005-2026", version=1.0, ti
     REBOL      = "71: Rebol"
   })
 
+  constants("SCMK", { type="int", comment="Marker symbols for DefineMarker(), as defined by the Scintilla library." }, {
+    CIRCLE                 = "0: A filled circle.",
+    ROUND_RECT             = "1: A rectangle with rounded corners.",
+    ARROW                  = "2: An arrow that points right.",
+    SMALL_RECT             = "3: A small rectangle.",
+    SHORT_ARROW            = "4: A short arrow that points right.",
+    EMPTY                  = "5: Invisible.  Use this to reserve a marker number without drawing anything.",
+    ARROW_DOWN             = "6: An arrow that points down.",
+    MINUS                  = "7: A minus sign.",
+    PLUS                   = "8: A plus sign.",
+    VLINE                  = "9: A vertical line through the line height.",
+    LCORNER                = "10: A corner that joins a vertical line from above to the right.",
+    TCORNER                = "11: A vertical line with a branch to the right.",
+    BOX_PLUS               = "12: A plus sign in a box.",
+    BOX_PLUS_CONNECTED     = "13: A plus sign in a box, with a connecting vertical line.",
+    BOX_MINUS              = "14: A minus sign in a box.",
+    BOX_MINUS_CONNECTED    = "15: A minus sign in a box, with a connecting vertical line.",
+    LCORNER_CURVE          = "16: A curved corner that joins a vertical line from above to the right.",
+    TCORNER_CURVE          = "17: A vertical line with a curved branch to the right.",
+    CIRCLE_PLUS            = "18: A plus sign in a circle.",
+    CIRCLE_PLUS_CONNECTED  = "19: A plus sign in a circle, with a connecting vertical line.",
+    CIRCLE_MINUS           = "20: A minus sign in a circle.",
+    CIRCLE_MINUS_CONNECTED = "21: A minus sign in a circle, with a connecting vertical line.",
+    BACKGROUND             = "22: Fills the background of the line's text with the marker's background colour.",
+    DOTS                   = "23: Three dots.",
+    ARROWS                 = "24: Three arrows that point right.",
+    FULL_RECT              = "26: Fills the margin of the line with the marker's background colour.",
+    LEFT_RECT              = "27: Fills a narrow band at the left of the margin with the marker's background colour.",
+    UNDERLINE              = "29: Underlines the line's text with the marker's background colour."
+  })
+
+  enums("SCMG", { type="int", start=0, comment="Margin identifiers, as reported to the MarginClick callback." },
+    "LINE_NUMBERS: The line number margin.",
+    "SYMBOLS: The symbol margin, which shows the markers that are added with AddMarker().",
+    "FOLDING: The fold margin, which shows the fold markers.")
+
   flags("SCIF", { comment="Optional flags." },
      "DISABLED:     Read-only.  This flag is set if the Scintilla object has been deactivated with the Disable action.",
      "DETECT_LEXER: Automatic lexer detection will occur on initialisation and at any time that a source file is loaded.",
@@ -71,7 +107,12 @@ module({ name="Scintilla", copyright="Paul Manias © 2005-2026", version=1.0, ti
     { id=10, name="GetPos" },
     { id=11, name="ReportEvent" },
     { id=12, name="ScrollToPoint" },
-    { id=13, name="Repaint" }
+    { id=13, name="Repaint" },
+    { id=14, name="DefineMarker" },
+    { id=15, name="AddMarker" },
+    { id=16, name="RemoveMarker" },
+    { id=17, name="GetMarkers" },
+    { id=18, name="ToggleFold" }
   })
 
   klass("Scintilla", { src={ "class_scintilla.cxx" }, output="class_scintilla_def.cxx", extended=true }, [[
