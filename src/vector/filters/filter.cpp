@@ -387,26 +387,28 @@ objBitmap * get_source_graphic(extVectorFilter *Self)
       return nullptr;
    }
 
-   if (Self->Rendered) return Self->SourceGraphic; // Source bitmap already exists and drawn at the correct size.
+   if (Self->Rendered) return Self->SourceGraphic.Bitmap; // Source bitmap already drawn at the correct size.
 
    kt::SwitchContext ctx(Self);
 
-   if (!Self->SourceGraphic) {
-      // The BlendMode is set to SRGB for the sake of SVG compatibility.  Otherwise the use of filters
-      // like feColorMatrix can produce unexpected results.
+   // The bitmap spans the scene page, but its pixel data only covers the clip region.  A page-sized buffer would be
+   // retained for the lifetime of the filter, which is costly for large scenes that hold many filter definitions.
 
-      if (!(Self->SourceGraphic = objBitmap::create::local(fl::Name("source_graphic"),
-         fl::Width(Self->ClientViewport->Scene->PageWidth),
-         fl::Height(Self->ClientViewport->Scene->PageHeight),
-         fl::BitsPerPixel(32),
-         fl::Flags(BMF::ALPHA_CHANNEL),
-         fl::BlendMode(BLM::SRGB),
-         fl::ColourSpace(CS::SRGB)))) return nullptr;
-   }
-   else if ((Self->ClientViewport->Scene->PageWidth > Self->SourceGraphic->Width) or
-            (Self->ClientViewport->Scene->PageHeight > Self->SourceGraphic->Height)) {
-      Self->SourceGraphic->resize(Self->ClientViewport->Scene->PageWidth, Self->ClientViewport->Scene->PageHeight);
-   }
+   #ifdef DEBUG_FILTER_BITMAP
+      auto sg = Self->SourceGraphic.get_bitmap(Self->ClientViewport->Scene->PageWidth,
+         Self->ClientViewport->Scene->PageHeight, Self->VectorClip, true, 0, "source_graphic");
+   #else
+      auto sg = Self->SourceGraphic.get_bitmap(Self->ClientViewport->Scene->PageWidth,
+         Self->ClientViewport->Scene->PageHeight, Self->VectorClip, false, 0, "source_graphic");
+   #endif
+
+   if (!sg) return nullptr;
+
+   // The BlendMode is set to SRGB for the sake of SVG compatibility.  Otherwise the use of filters
+   // like feColorMatrix can produce unexpected results.
+
+   sg->BlendMode   = BLM::SRGB;
+   sg->ColourSpace = CS::SRGB;
 
    if (!Self->SourceScene) {
       if ((Self->SourceScene = extVectorScene::create::local(
@@ -418,36 +420,20 @@ objBitmap * get_source_graphic(extVectorFilter *Self)
       }
       else return nullptr;
    }
-   else if ((Self->ClientViewport->Scene->PageWidth > Self->SourceGraphic->Width) or
-            (Self->ClientViewport->Scene->PageHeight > Self->SourceGraphic->Height)) {
+   else if ((Self->ClientViewport->Scene->PageWidth > Self->SourceScene->PageWidth) or
+            (Self->ClientViewport->Scene->PageHeight > Self->SourceScene->PageHeight)) {
       acResize(Self->SourceScene, Self->ClientViewport->Scene->PageWidth, Self->ClientViewport->Scene->PageHeight, 0);
    }
 
    auto const save_child = Self->SourceScene->Viewport->Child;
    Self->SourceScene->Viewport->Child = Self->ClientVector;
-   Self->SourceGraphic->Clip = { Self->VectorClip.left, Self->VectorClip.top, Self->VectorClip.right, Self->VectorClip.bottom };
-
-   if (Self->SourceGraphic->Clip.Top < 0)  Self->SourceGraphic->Clip.Top = 0;
-   if (Self->SourceGraphic->Clip.Left < 0) Self->SourceGraphic->Clip.Left = 0;
-   if (Self->SourceGraphic->Clip.Bottom > Self->SourceGraphic->Height) Self->SourceGraphic->Clip.Bottom = Self->SourceGraphic->Height;
-   if (Self->SourceGraphic->Clip.Right  > Self->SourceGraphic->Width)  Self->SourceGraphic->Clip.Right  = Self->SourceGraphic->Width;
-
-   // These non-fatal clipping checks will trigger if vector bounds lie outside of the visible/drawable area.
-   if (Self->SourceGraphic->Clip.Top >= Self->SourceGraphic->Clip.Bottom) {
-      Self->SourceScene->Viewport->Child = save_child;
-      return nullptr;
-   }
-   if (Self->SourceGraphic->Clip.Left >= Self->SourceGraphic->Clip.Right) {
-      Self->SourceScene->Viewport->Child = save_child;
-      return nullptr;
-   }
 
    auto const save_vector = Self->ClientVector->Next; // Switch off the Next pointer to prevent processing of siblings.
    Self->ClientVector->Next = nullptr;
    Self->Disabled = true; // Turning off the filter is required to prevent infinite recursion.
 
-   gfx::DrawRectangle(Self->SourceGraphic, 0, 0, Self->SourceGraphic->Width, Self->SourceGraphic->Height, 0x00000000, BAF::FILL);
-   Self->SourceScene->Bitmap = Self->SourceGraphic;
+   gfx::DrawRectangle(sg, 0, 0, sg->Width, sg->Height, 0x00000000, BAF::FILL);
+   Self->SourceScene->Bitmap = sg;
    acDraw(Self->SourceScene);
 
    Self->Disabled = false;
@@ -455,7 +441,7 @@ objBitmap * get_source_graphic(extVectorFilter *Self)
    Self->SourceScene->Viewport->Child = save_child;
 
    Self->Rendered = true;
-   return Self->SourceGraphic;
+   return sg;
 }
 
 //********************************************************************************************************************
