@@ -221,93 +221,208 @@ void ScintillaKTK::ReconfigureScrollBars()
 {
 }
 
-/****************************************************************************
-** Copies the selected text section to the Pandora clipboard.
-*/
+//********************************************************************************************************************
+// The clipboard holds plain text, so it cannot mark a clip as a rectangular selection.  The text of the most recent
+// rectangular copy is retained instead, and pasting identical text from the clipboard is treated as a rectangular
+// paste.  The record is shared by all editors in the process, so a rectangular clip can be pasted from one editor into
+// another.  Copying the same text from another application is indistinguishable and also pastes as a rectangle.
+// Scintilla objects are only used from the main thread.
+
+static std::string glRectangularClip;
+
+//********************************************************************************************************************
+// Report a clipboard failure with a log message and SEF::FAIL_CLIPBOARD.  Scintilla's cut, copy and paste have no
+// return value, so the error is also recorded for panClipboard().
+
+ERR ScintillaKTK::clipboard_failed(ERR Error, CSTRING Message)
+{
+   kt::Log log(__FUNCTION__);
+   log.warning("%s: %s", Message, GetErrorMsg(Error));
+
+   scintilla->ReportEventFlags |= SEF::FAIL_CLIPBOARD;
+   QueueAction(sci::ReportEvent::id, scintilla->UID);
+   return Error;
+}
+
+//********************************************************************************************************************
+// Copy text to the clipboard.  The text is copied in the document's line ending mode.  Text.len includes the
+// terminating null.
+
+ERR ScintillaKTK::copy_to_clipboard(const Scintilla::SelectionText &Text)
+{
+   kt::Log log(__FUNCTION__);
+
+   if ((not Text.s) or (Text.len <= 1)) return ERR::Okay;
+
+   std::string_view text(Text.s, size_t(Text.len - 1));
+   log.traceBranch("%d bytes, rectangular: %c", int(text.size()), Text.rectangular ? 'Y' : 'N');
+
+   objClipboard::create clipboard = { };
+   if (not clipboard.ok()) return clipboard_failed(ERR::CreateObject, "Failed to create a Clipboard object");
+
+   if (auto error = clipboard->addText(text); error != ERR::Okay) {
+      return clipboard_failed(error, "Failed to copy text to the clipboard");
+   }
+
+   if (Text.rectangular) glRectangularClip.assign(text);
+   else glRectangularClip.clear();
+   return ERR::Okay;
+}
+
+//********************************************************************************************************************
+// Read the most recent text clip.  ERR::NoData is returned without a failure report if the clipboard holds no text.
+
+ERR ScintillaKTK::read_clipboard(std::string &Content)
+{
+   objClipboard::create clipboard = { };
+   if (not clipboard.ok()) return clipboard_failed(ERR::CreateObject, "Failed to create a Clipboard object");
+
+   kt::vector<std::string> files;
+   if (auto error = clipboard->getFiles(CLIPTYPE::TEXT, 0, nullptr, files, nullptr); error != ERR::Okay) {
+      if (error IS ERR::NoData) return ERR::NoData;
+      return clipboard_failed(error, "Failed to query the clipboard");
+   }
+
+   if (files.empty()) return ERR::NoData;
+
+   objFile::create file = { fl::Path(files[0]), fl::Flags(FL::READ) };
+   if (not file.ok()) return clipboard_failed(ERR::OpenFile, "Failed to open the clipboard file");
+
+   int64_t size;
+   if (auto error = file->getSize(size); error != ERR::Okay) {
+      return clipboard_failed(error, "Failed to read the clipboard file size");
+   }
+
+   if (size <= 0) return ERR::NoData;
+
+   Content.resize(size_t(size));
+   int len;
+   if (auto error = file->read(std::span<int8_t>((int8_t *)Content.data(), Content.size()), &len);
+       error != ERR::Okay) {
+      return clipboard_failed(error, "Failed to read the clipboard file");
+   }
+
+   Content.resize(size_t(len));
+
+   // Text clips are not null terminated.  If a null is present, the text ends there.
+
+   if (auto end = Content.find('\0'); end != std::string::npos) Content.resize(end);
+   if (Content.empty()) return ERR::NoData;
+   return ERR::Okay;
+}
+
+//********************************************************************************************************************
+// Paste the most recent text clip at the selection, replacing it.  Line endings are converted to the document's mode
+// unless SCI_SETPASTECONVERTENDINGS has disabled this.  A clip that came from a rectangular copy is pasted as a
+// rectangle.  The paste is a single undo action.
+
+ERR ScintillaKTK::paste_clipboard()
+{
+   kt::Log log(__FUNCTION__);
+
+   if (not CanPaste()) {
+      pdoc->CheckReadOnly(); // Reports SCN_MODIFYATTEMPTRO
+      return ERR::ReadOnly;
+   }
+
+   std::string content;
+   if (auto error = read_clipboard(content); error != ERR::Okay) return error;
+
+   const bool rectangular = (not glRectangularClip.empty()) and (content IS glRectangularClip);
+
+   log.traceBranch("%d bytes, rectangular: %c", int(content.size()), rectangular ? 'Y' : 'N');
+
+   {
+      Scintilla::UndoGroup ug(pdoc);
+      ClearSelection(multiPasteMode IS SC_MULTIPASTE_EACH);
+      auto start = sel.IsRectangular() ? sel.Rectangular().Start() : sel.Range(sel.Main()).Start();
+
+      if (rectangular) PasteRectangular(start, content.data(), int(content.size()));
+      else if (convertPastes) {
+         int len;
+         std::unique_ptr<char[]> text(Scintilla::Document::TransformLineEnds(&len, content.data(), content.size(),
+            pdoc->eolMode));
+         InsertPaste(start, text.get(), len);
+      }
+      else InsertPaste(start, content.data(), int(content.size()));
+   }
+
+   calc_longest_line(scintilla);
+   Redraw();
+   return ERR::Okay;
+}
+
+//********************************************************************************************************************
+// Called by Scintilla for copy operations that do not go through Copy(), e.g. SCI_COPYRANGE and SCI_COPYTEXT.
 
 void ScintillaKTK::CopyToClipboard(const Scintilla::SelectionText &selectedText)
 {
-   kt::Log log(__FUNCTION__);
-   log.traceBranch();
-
-   auto clipboard = objClipboard::create { };
-   if ((clipboard.ok()) and (selectedText.s) and (selectedText.len > 0)) {
-      if (!clipboard->addText(std::string_view(selectedText.s, size_t(selectedText.len - 1)))) {
-
-      }
-   }
+   clip_error = copy_to_clipboard(selectedText);
 }
 
 /*********************************************************************************************************************
-** Cut the selected text to the clipboard.
+** Cut the selected text to the clipboard.  As for Scintilla's own implementation, a read-only document refuses the
+** cut entirely.  The selection is retained if the clipboard does not accept the text.  Editor::Cut() is not virtual,
+** so WndProc() routes SCI_CUT and SCI_LINECUT here.
 */
 
-void ScintillaKTK::Cut()
+ERR ScintillaKTK::cut_clipboard()
 {
-   kt::Log log(__FUNCTION__);
-   log.traceBranch();
+   if (SelectionEmpty()) return ERR::Okay;
 
-   if (SendScintilla(SCI_GETSELECTIONSTART) != SendScintilla(SCI_GETSELECTIONEND)) {
-      Scintilla::SelectionText text;
-      CopySelectionRange(&text);
-      CopyToClipboard(text);
-      ClearSelection();
-   }
+   pdoc->CheckReadOnly(); // Reports SCN_MODIFYATTEMPTRO
+   if ((pdoc->IsReadOnly()) or (SelectionContainsProtected())) return ERR::ReadOnly;
+
+   Scintilla::SelectionText text;
+   CopySelectionRange(&text);
+   if (auto error = copy_to_clipboard(text); error != ERR::Okay) return error;
+
+   ClearSelection();
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
-** Copy the selected text to the clipboard.
+** Copy the selected text to the clipboard.  A rectangular selection is copied with a line ending after each row.
 */
 
 void ScintillaKTK::Copy()
 {
-   kt::Log log(__FUNCTION__);
-   log.traceBranch();
+   clip_error = ERR::Okay;
+   if (SelectionEmpty()) return;
 
-   if (SendScintilla(SCI_GETSELECTIONSTART) != SendScintilla(SCI_GETSELECTIONEND)) {
-      Scintilla::SelectionText text;
-      CopySelectionRange(&text);
-      CopyToClipboard(text);
-   }
+   Scintilla::SelectionText text;
+   CopySelectionRange(&text);
+   clip_error = copy_to_clipboard(text);
 }
 
 //********************************************************************************************************************
 
 void ScintillaKTK::Paste()
 {
-   kt::Log log(__FUNCTION__);
+   clip_error = paste_clipboard();
+}
 
-   log.traceBranch();
+/*********************************************************************************************************************
+** Run a clipboard operation for the Clipboard action.  The operation is sent as a Scintilla message, so it behaves as
+** the equivalent key press does.  If SCIF::EDIT is not set, cut and paste are refused and reported as SEF::FAIL_RO.
+*/
 
-   objClipboard::create clipboard = { };
-   if (clipboard.ok()) {
-      kt::vector<std::string> files;
-      if (!clipboard->getFiles(CLIPTYPE::TEXT, 0, nullptr, files, nullptr)) {
-         objFile::create file = { fl::Path(files[0]), fl::Flags(FL::READ) };
-         if (file.ok()) {
-            int64_t len, size;
-            if ((!file->getSize(size)) and (size > 0)) {
-               std::vector<char> buffer(size);
-               if (!file->read(std::span<int8_t>((int8_t *)buffer.data(), size_t(size)), &len)) {
-                  pdoc->BeginUndoAction();
+ERR ScintillaKTK::panClipboard(CLIPMODE Mode)
+{
+   unsigned int msg;
+   if (Mode IS CLIPMODE::CUT) msg = SCI_CUT;
+   else if (Mode IS CLIPMODE::COPY) msg = SCI_COPY;
+   else if (Mode IS CLIPMODE::PASTE) msg = SCI_PASTE;
+   else return ERR::Args;
 
-                     ClearSelection();
-                     pdoc->InsertString(CurrentPosition(), (char *)buffer.data(), len);
-                     SetEmptySelection(CurrentPosition() + len);
+   const bool read_only = (scintilla->Flags & SCIF::EDIT) IS SCIF::NIL;
+   if (read_only) SendScintilla(SCI_SETREADONLY, 1UL);
 
-                  pdoc->EndUndoAction();
+   clip_error = ERR::Okay;
+   SendScintilla(msg);
 
-                  NotifyChange();
-                  Redraw();
-
-                  calc_longest_line(scintilla);
-               }
-               else error_dialog("Paste Error", "Failed to read data from the clipboard file.", ERR::Okay);
-            }
-         }
-         else error_dialog("Paste Error", std::format("Failed to load clipboard file \"{}\"", files[0]), ERR::Okay);
-      }
-   }
+   if (read_only) SendScintilla(SCI_SETREADONLY, 0UL);
+   return clip_error;
 }
 
 //********************************************************************************************************************
@@ -699,6 +814,22 @@ sptr_t ScintillaKTK::WndProc(unsigned int iMessage, uptr_t wParam, sptr_t lParam
 
    case SCI_GETDIRECTPOINTER:
       return reinterpret_cast<sptr_t>(this);
+
+   case SCI_CUT: // Editor::Cut() is not virtual
+      if (recordingMacro) NotifyMacroRecord(iMessage, wParam, lParam);
+      clip_error = cut_clipboard();
+      SetLastXChosen();
+      return 0;
+
+   case SCI_LINECUT: { // Cut the lines that the selection touches, as Editor::KeyCommand() does
+      if (recordingMacro) NotifyMacroRecord(iMessage, wParam, lParam);
+      int start = pdoc->LineStart(pdoc->LineFromPosition(SelectionStart().Position()));
+      int end = pdoc->LineStart(pdoc->LineFromPosition(SelectionEnd().Position()) + 1);
+      SetSelection(start, end);
+      clip_error = cut_clipboard();
+      SetLastXChosen();
+      return 0;
+   }
 
    default:
       return ScintillaBase::WndProc(iMessage, wParam, lParam);

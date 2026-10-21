@@ -463,7 +463,8 @@ gui.dropdown = function(Options)
          &height = &items[&lineLimit].y + VMARGIN
          &width += SCROLL_WIDTH
          &scrollbar = gui.scrollbar({
-            target = &viewport, view = &frame, page = &page, direction = 'vertical', breadth = SCROLL_WIDTH
+            target = &viewport, view = &frame, page = &page, direction = 'vertical',
+            theme = { scrollbar = { thickness = SCROLL_WIDTH } }
          })
 
          -- Inset the bar so that it does not cover the menu border.

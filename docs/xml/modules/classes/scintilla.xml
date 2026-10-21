@@ -30,12 +30,26 @@
 
     <action>
       <name>Clipboard</name>
-      <comment>Full support for clipboard activity is provided through this action.</comment>
+      <comment>Cut, copy and paste text through the system clipboard.</comment>
       <prototype>ERR acClipboard(*Object, OBJECTID Clipboard, CLIPMODE Mode)</prototype>
       <tiriPrototype>err = Object.acClipboard(Clipboard:obj, Mode:CLIPMODE)</tiriPrototype>
       <input>
         <param type="CLIPMODE" name="Mode" lookup="CLIPMODE">The mode that will be used to shift data between the target object and clipboard system.</param>
       </input>
+      <description>
+<p>The Clipboard action provides the same cut, copy and paste operations as the editor's key bindings (Ctrl+X, Ctrl+C, Ctrl+V, Shift+Del, Ctrl+Ins and Shift+Ins).  Text is exchanged as UTF-8 through the <class name="Clipboard">Clipboard</class> class.  The editor also binds Ctrl+L to cut the lines that the selection touches, and Ctrl+Shift+T to copy the current line.</p>
+<p><code>CLIPMODE::COPY</code> copies the selection.  <code>CLIPMODE::CUT</code> copies the selection and deletes it, but only once the clipboard has accepted the text.  Nothing is copied if the selection is empty.  A rectangular selection is copied with a line ending after each row, and is pasted as a rectangle when it is pasted into a Scintilla editor in the same process.</p>
+<p><code>CLIPMODE::PASTE</code> replaces the selection with the most recent text on the clipboard, as a single undo action.  Line endings are converted to the document's line ending mode.</p>
+<p>If <fl>Flags</fl> does not include <code>SCIF::EDIT</code>, cut and paste are refused with <code>ERR::ReadOnly</code> and reported as <code>SEF::FAIL_RO</code>.  If the clipboard cannot be read or written, the error is logged and reported as <code>SEF::FAIL_CLIPBOARD</code>.</p>
+      </description>
+      <result>
+        <error code="Okay">The operation completed, or there was nothing to copy.</error>
+        <error code="Args">The Mode is not supported.</error>
+        <error code="NoData">The clipboard holds no text to paste.</error>
+        <error code="NotInitialised">The resource has not been initialised</error>
+        <error code="ReadOnly">The document is not editable.</error>
+        <error code="NullArgs">Function call missing argument value(s)</error>
+      </result>
     </action>
 
     <action>
@@ -611,6 +625,7 @@
 
     <constants lookup="SEF" comment="Flags for EventCallback and EventFlags">
       <const name="CURSOR_POS">The cursor position has changed.</const>
+      <const name="FAIL_CLIPBOARD">A cut, copy or paste failed because the clipboard could not be read or written.</const>
       <const name="FAIL_RO">User attempt to edit read-only content.</const>
       <const name="MODIFIED">The content has changed to a modified state, i.e. the user has made an edit.  The modified state will remain until the content is saved.</const>
       <const name="NEW_CHAR">At least one new character has been inserted.</const>

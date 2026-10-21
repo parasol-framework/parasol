@@ -100,7 +100,6 @@ public:
    virtual void SetHorizontalScrollPos();
    virtual bool ModifyScrollBars(int nMax, int nPage);
    virtual void ReconfigureScrollBars();
-   virtual void Cut();
    virtual void Copy();
    virtual void Paste();
    virtual void ClaimSelection();
@@ -140,6 +139,7 @@ public:
    virtual void panSetCursorPosition(int line, int index);
    virtual void panEnsureLineVisible(int line);
    virtual void panWordwrap(int);
+   ERR panClipboard(CLIPMODE Mode);
 
    // Brace match handling
    virtual void braceMatch();
@@ -179,9 +179,15 @@ private:
    void NotifyKey(int key, int modifiers);
    void UpdateTimers();
    bool TickRequired();
+   ERR clipboard_failed(ERR Error, CSTRING Message);
+   ERR copy_to_clipboard(const Scintilla::SelectionText &Text);
+   ERR read_clipboard(std::string &Content);
+   ERR cut_clipboard();
+   ERR paste_clipboard();
 
    int braceMode;
    int oldpos = -1;
+   ERR clip_error = ERR::Okay; // Result of the most recent cut, copy or paste
    uint8_t idle_on:1;
    uint8_t ticking_on:1;
    uint8_t captured_mouse:1;
