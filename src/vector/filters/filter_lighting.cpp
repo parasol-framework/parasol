@@ -132,6 +132,13 @@ constexpr double TWO_THIRDS  = 2.0 / 3.0;
 constexpr double ONE_HALF    = 0.5;
 constexpr double ONE_QUARTER = 0.25;
 
+// Symmetric matrix that maps bitmap gradients to surface normal components.  The cross-axis term preserves the
+// orientation of unequal kernel units when the client is rotated.  Heights are normalised to the 0 - 255 alpha range.
+
+struct map_height {
+   double x, y, xy;
+};
+
 //********************************************************************************************************************
 
 class extLightingFX : public extFilterEffect {
@@ -152,6 +159,7 @@ class extLightingFX : public extFilterEffect {
    FRGB   LinearColour = { 1.0, 1.0, 1.0, 1.0 }; // Colour of the light source in linear sRGB space.
    double X, Y, Z;          // Position of light source.
    LS     LightSource;      // Light source identifier, recorded for SVG output purposes only.
+   bool   UnitXProvided = false, UnitYProvided = false;
 
    // DISTANT LIGHT
    double Azimuth, Elevation;    // Distant light
@@ -190,38 +198,79 @@ class extLightingFX : public extFilterEffect {
       return (double(-a + b - 2 * c + 2 * d -e + f)) * MapHeight;
    }
 
-   inline point3 pointToNormal(double x, double y, double MapHeight) {
-      point3 vector(-x * MapHeight, -y * MapHeight, 1.0);
+   inline point3 pointToNormal(double X, double Y, const map_height &MapHeight) {
+      point3 vector(-X * MapHeight.x - Y * MapHeight.xy, -X * MapHeight.xy - Y * MapHeight.y, 1.0);
       vector.normalise();
       return vector;
    }
 
-   inline point3 leftNormal(const std::array<uint8_t, 9> &m, const double MapHeight) {
+   inline point3 leftNormal(const std::array<uint8_t, 9> &m, const map_height &MapHeight) {
       return pointToNormal(sobel(m[1], m[2], m[4], m[5], m[7], m[8], ONE_HALF),
                            sobel(0, 0, m[1], m[7], m[2], m[8], ONE_THIRD),
                            MapHeight);
    }
 
 
-   inline point3 interiorNormal(const std::array<uint8_t, 9> &m, const double MapHeight) {
+   inline point3 interiorNormal(const std::array<uint8_t, 9> &m, const map_height &MapHeight) {
       return pointToNormal(sobel(m[0], m[2], m[3], m[5], m[6], m[8], ONE_QUARTER),
                            sobel(m[0], m[6], m[1], m[7], m[2], m[8], ONE_QUARTER),
                            MapHeight);
    }
 
-   inline point3 rightNormal(const std::array<uint8_t, 9> &m, const double MapHeight) {
+   inline point3 rightNormal(const std::array<uint8_t, 9> &m, const map_height &MapHeight) {
        return pointToNormal(sobel(m[0], m[1], m[3], m[4], m[6], m[7], ONE_HALF),
                             sobel(m[0], m[6], m[1], m[7], 0, 0, ONE_THIRD),
                             MapHeight);
+   }
+
+   // Returns the kernel unit matrix in bitmap coordinates.  An undefined unit is one unit of the client's
+   // coordinate system, measured with the client's uniform Scale.  Bounding box units are relative to the filter's
+   // bounds on the same terms as BlurFX, so that a blurred bump map lit with the same unit is independent of the
+   // display resolution.
+
+   map_height kernel_unit_pixels(double Scale) const {
+      map_height result = { Scale, Scale, 0.0 };
+      if (not (UnitXProvided or UnitYProvided)) return result;
+
+      auto &t = Filter->ClientVector->Transform;
+      double scale_x = sqrt((t.sx * t.sx) + (t.shy * t.shy));
+      double scale_y = sqrt((t.shx * t.shx) + (t.sy * t.sy));
+      if (scale_x <= 0.0) scale_x = 1.0;
+      if (scale_y <= 0.0) scale_y = 1.0;
+
+      double bound_x = 1.0, bound_y = 1.0;
+      if (Filter->PrimitiveUnits IS VUNIT::BOUNDING_BOX) {
+         if (Filter->AspectRatio IS VFA::NONE) {
+            bound_x = bound_y = dist(0, 0, Filter->BoundWidth, Filter->BoundHeight) * INV_SQRT2;
+         }
+         else {
+            bound_x = Filter->BoundWidth;
+            bound_y = Filter->BoundHeight;
+         }
+      }
+
+      if (UnitXProvided) result.x = UnitX * bound_x * scale_x;
+      if (UnitYProvided) result.y = UnitY * bound_y * scale_y;
+
+      // Project the bitmap gradient onto each transformed kernel axis, apply its height, then map the normal back
+      // to bitmap coordinates.  Axis lengths alone lose the rotation and leave the kernel aligned to the bitmap.
+
+      const double xx = t.sx / scale_x, xy = t.shy / scale_x;
+      const double yx = t.shx / scale_y, yy = t.sy / scale_y;
+      return {
+         result.x * xx * xx + result.y * yx * yx,
+         result.x * xy * xy + result.y * yy * yy,
+         result.x * xx * xy + result.y * yx * yy
+      };
    }
 
    void draw();
    FRGB colour_spot_light(point3 &Point);
    inline void diffuse_light(const point3 &, const point3 &, const FRGB &, uint8_t *, uint8_t, uint8_t, uint8_t, uint8_t);
    inline void specular_light(const point3 &, const point3 &, const FRGB &, uint8_t *, uint8_t, uint8_t, uint8_t, uint8_t);
-   void render_distant(int, int, objBitmap *, const point3 &, double, int, int);
-   void render_spotlight(int, int, objBitmap *, const point3 &, double, int, int);
-   void render_point(int, int, objBitmap *, const point3 &, double, int, int);
+   void render_distant(int, int, objBitmap *, const point3 &, double, const map_height &, int, int);
+   void render_spotlight(int, int, objBitmap *, const point3 &, double, const map_height &, int, int);
+   void render_point(int, int, objBitmap *, const point3 &, double, const map_height &, int, int);
 };
 
 //********************************************************************************************************************
@@ -283,14 +332,14 @@ inline void extLightingFX::specular_light(const point3 &Normal, const point3 &ST
 
 //********************************************************************************************************************
 
-void extLightingFX::render_distant(int StartY, int EndY, objBitmap *Bitmap, const point3 &Light, double spot_height, int Width, int Height)
+void extLightingFX::render_distant(int StartY, int EndY, objBitmap *Bitmap, const point3 &Light, double spot_height,
+   const map_height &NormalHeight, int Width, int Height)
 {
    const uint8_t R = Target->ColourFormat->RedPos>>3;
    const uint8_t G = Target->ColourFormat->GreenPos>>3;
    const uint8_t B = Target->ColourFormat->BluePos>>3;
    const uint8_t A = Target->ColourFormat->AlphaPos>>3;
    const auto bpp = Bitmap->BytesPerPixel;
-   const auto map_height = spot_height * (1.0 / 255.0); // Normalise the map height to 0 - 1.0
 
    auto input_base = (uint8_t *)(Bitmap->Data + (Bitmap->Clip.Left * bpp) + (Bitmap->Clip.Top * Bitmap->LineWidth));
    auto dest_base = (uint8_t *)(Target->Data + (Target->Clip.Left * bpp) + (Target->Clip.Top * Target->LineWidth));
@@ -320,7 +369,7 @@ void extLightingFX::render_distant(int StartY, int EndY, objBitmap *Bitmap, cons
 
       if (Type IS LT::DIFFUSE) {
          // Process left edge pixel
-         diffuse_light(leftNormal(m, map_height), Direction, LinearColour, dptr, R, G, B, A);
+         diffuse_light(leftNormal(m, NormalHeight), Direction, LinearColour, dptr, R, G, B, A);
          dptr += bpp;
 
          for (int x=1; x < Width - 1; ++x) {
@@ -328,18 +377,18 @@ void extLightingFX::render_distant(int StartY, int EndY, objBitmap *Bitmap, cons
             m[2] = row0[A]; row0 += bpp;
             m[5] = row1[A]; row1 += bpp;
             m[8] = row2[A]; row2 += bpp;
-            diffuse_light(interiorNormal(m, map_height), Direction, LinearColour, dptr, R, G, B, A);
+            diffuse_light(interiorNormal(m, NormalHeight), Direction, LinearColour, dptr, R, G, B, A);
             dptr += bpp;
          }
 
          // Process right edge pixel
          if (Width > 1) {
             shiftMatrixLeft(m);
-            diffuse_light(rightNormal(m, map_height), Direction, LinearColour, dptr, R, G, B, A);
+            diffuse_light(rightNormal(m, NormalHeight), Direction, LinearColour, dptr, R, G, B, A);
          }
       }
       else { // SPECULAR
-         specular_light(leftNormal(m, map_height), Direction, LinearColour, dptr, R, G, B, A);
+         specular_light(leftNormal(m, NormalHeight), Direction, LinearColour, dptr, R, G, B, A);
          dptr += bpp;
 
          for (int x=1; x < Width - 1; ++x) {
@@ -347,13 +396,13 @@ void extLightingFX::render_distant(int StartY, int EndY, objBitmap *Bitmap, cons
             m[2] = row0[A]; row0 += bpp;
             m[5] = row1[A]; row1 += bpp;
             m[8] = row2[A]; row2 += bpp;
-            specular_light(interiorNormal(m, map_height), Direction, LinearColour, dptr, R, G, B, A);
+            specular_light(interiorNormal(m, NormalHeight), Direction, LinearColour, dptr, R, G, B, A);
             dptr += bpp;
          }
 
          if (Width > 1) {
             shiftMatrixLeft(m);
-            specular_light(rightNormal(m, map_height), Direction, LinearColour, dptr, R, G, B, A);
+            specular_light(rightNormal(m, NormalHeight), Direction, LinearColour, dptr, R, G, B, A);
          }
       }
    }
@@ -361,14 +410,14 @@ void extLightingFX::render_distant(int StartY, int EndY, objBitmap *Bitmap, cons
 
 //********************************************************************************************************************
 
-void extLightingFX::render_spotlight(int StartY, int EndY, objBitmap *Bitmap, const point3 &Light, double spot_height, int Width, int Height)
+void extLightingFX::render_spotlight(int StartY, int EndY, objBitmap *Bitmap, const point3 &Light, double spot_height,
+   const map_height &NormalHeight, int Width, int Height)
 {
    const uint8_t R = Target->ColourFormat->RedPos>>3;
    const uint8_t G = Target->ColourFormat->GreenPos>>3;
    const uint8_t B = Target->ColourFormat->BluePos>>3;
    const uint8_t A = Target->ColourFormat->AlphaPos>>3;
    const auto bpp = Bitmap->BytesPerPixel;
-   const auto map_height = spot_height * (1.0 / 255.0); // Normalise the map height to 0 - 1.0
 
    auto input_base = (uint8_t *)(Bitmap->Data + (Bitmap->Clip.Left * bpp) + (Bitmap->Clip.Top * Bitmap->LineWidth));
    auto dest_base = (uint8_t *)(Target->Data + (Target->Clip.Left * bpp) + (Target->Clip.Top * Target->LineWidth));
@@ -404,7 +453,7 @@ void extLightingFX::render_spotlight(int StartY, int EndY, objBitmap *Bitmap, co
 
       if (Type IS LT::DIFFUSE) {
          point3 stl = read_light_delta(0, y, m[4]);
-         diffuse_light(leftNormal(m, map_height), stl, colour_spot_light(stl), dptr, R, G, B, A);
+         diffuse_light(leftNormal(m, NormalHeight), stl, colour_spot_light(stl), dptr, R, G, B, A);
          dptr += bpp;
 
          for (int x=1; x < Width - 1; ++x) {
@@ -413,19 +462,19 @@ void extLightingFX::render_spotlight(int StartY, int EndY, objBitmap *Bitmap, co
             m[5] = row1[A]; row1 += bpp;
             m[8] = row2[A]; row2 += bpp;
             stl = read_light_delta(x, y, m[4]);
-            diffuse_light(interiorNormal(m, map_height), stl, colour_spot_light(stl), dptr, R, G, B, A);
+            diffuse_light(interiorNormal(m, NormalHeight), stl, colour_spot_light(stl), dptr, R, G, B, A);
             dptr += bpp;
          }
 
          if (Width > 1) {
             shiftMatrixLeft(m);
             stl = read_light_delta(Width-1, y, m[4]);
-            diffuse_light(rightNormal(m, map_height), stl, colour_spot_light(stl), dptr, R, G, B, A);
+            diffuse_light(rightNormal(m, NormalHeight), stl, colour_spot_light(stl), dptr, R, G, B, A);
          }
       }
       else { // SPECULAR
          point3 stl = read_light_delta(0, y, m[4]);
-         specular_light(leftNormal(m, map_height), stl, colour_spot_light(stl), dptr, R, G, B, A);
+         specular_light(leftNormal(m, NormalHeight), stl, colour_spot_light(stl), dptr, R, G, B, A);
          dptr += bpp;
 
          for (int x=1; x < Width - 1; ++x) {
@@ -434,14 +483,14 @@ void extLightingFX::render_spotlight(int StartY, int EndY, objBitmap *Bitmap, co
             m[5] = row1[A]; row1 += bpp;
             m[8] = row2[A]; row2 += bpp;
             stl = read_light_delta(x, y, m[4]);
-            specular_light(interiorNormal(m, map_height), stl, colour_spot_light(stl), dptr, R, G, B, A);
+            specular_light(interiorNormal(m, NormalHeight), stl, colour_spot_light(stl), dptr, R, G, B, A);
             dptr += bpp;
          }
 
          if (Width > 1) {
             shiftMatrixLeft(m);
             stl = read_light_delta(Width-1, y, m[4]);
-            specular_light(rightNormal(m, map_height), stl, colour_spot_light(stl), dptr, R, G, B, A);
+            specular_light(rightNormal(m, NormalHeight), stl, colour_spot_light(stl), dptr, R, G, B, A);
          }
       }
    }
@@ -449,14 +498,14 @@ void extLightingFX::render_spotlight(int StartY, int EndY, objBitmap *Bitmap, co
 
 //********************************************************************************************************************
 
-void extLightingFX::render_point(int StartY, int EndY, objBitmap *Bitmap, const point3 &Light, double spot_height, int Width, int height)
+void extLightingFX::render_point(int StartY, int EndY, objBitmap *Bitmap, const point3 &Light, double spot_height,
+   const map_height &NormalHeight, int Width, int height)
 {
    const uint8_t R = Target->ColourFormat->RedPos>>3;
    const uint8_t G = Target->ColourFormat->GreenPos>>3;
    const uint8_t B = Target->ColourFormat->BluePos>>3;
    const uint8_t A = Target->ColourFormat->AlphaPos>>3;
    const auto bpp = Bitmap->BytesPerPixel;
-   const auto map_height = spot_height * (1.0 / 255.0); // Normalise the map height to 0 - 1.0
 
    auto input_base = (uint8_t *)(Bitmap->Data + (Bitmap->Clip.Left * bpp) + (Bitmap->Clip.Top * Bitmap->LineWidth));
    auto dest_base = (uint8_t *)(Target->Data + (Target->Clip.Left * bpp) + (Target->Clip.Top * Target->LineWidth));
@@ -492,7 +541,7 @@ void extLightingFX::render_point(int StartY, int EndY, objBitmap *Bitmap, const 
 
       if (Type IS LT::DIFFUSE) {
          point3 stl = read_light_delta(0, y, m[4]);
-         diffuse_light(leftNormal(m, map_height), stl, LinearColour, dptr, R, G, B, A);
+         diffuse_light(leftNormal(m, NormalHeight), stl, LinearColour, dptr, R, G, B, A);
          if (Width <= 1) continue;
 
          dptr += bpp;
@@ -503,17 +552,17 @@ void extLightingFX::render_point(int StartY, int EndY, objBitmap *Bitmap, const 
             m[5] = row1[A]; row1 += bpp;
             m[8] = row2[A]; row2 += bpp;
             stl = read_light_delta(x, y, m[4]);
-            diffuse_light(interiorNormal(m, map_height), stl, LinearColour, dptr, R, G, B, A);
+            diffuse_light(interiorNormal(m, NormalHeight), stl, LinearColour, dptr, R, G, B, A);
             dptr += bpp;
          }
 
          shiftMatrixLeft(m);
          stl = read_light_delta(Width-1, y, m[4]);
-         diffuse_light(rightNormal(m, map_height), stl, LinearColour, dptr, R, G, B, A);
+         diffuse_light(rightNormal(m, NormalHeight), stl, LinearColour, dptr, R, G, B, A);
       }
       else { // SPECULAR
          point3 stl = read_light_delta(0, y, m[4]);
-         specular_light(leftNormal(m, map_height), stl, LinearColour, dptr, R, G, B, A);
+         specular_light(leftNormal(m, NormalHeight), stl, LinearColour, dptr, R, G, B, A);
          dptr += bpp;
 
          for (int x=1; x < Width - 1; ++x) {
@@ -522,14 +571,14 @@ void extLightingFX::render_point(int StartY, int EndY, objBitmap *Bitmap, const 
             m[5] = row1[A]; row1 += bpp;
             m[8] = row2[A]; row2 += bpp;
             stl = read_light_delta(x, y, m[4]);
-            specular_light(interiorNormal(m, map_height), stl, LinearColour, dptr, R, G, B, A);
+            specular_light(interiorNormal(m, NormalHeight), stl, LinearColour, dptr, R, G, B, A);
             dptr += bpp;
          }
 
          if (Width > 1) {
             shiftMatrixLeft(m);
             stl = read_light_delta(Width-1, y, m[4]);
-            specular_light(rightNormal(m, map_height), stl, LinearColour, dptr, R, G, B, A);
+            specular_light(rightNormal(m, NormalHeight), stl, LinearColour, dptr, R, G, B, A);
          }
       }
    }
@@ -617,7 +666,14 @@ void extLightingFX::draw()
    if (bmp->Clip.Bottom - bmp->Clip.Top < height) height = bmp->Clip.Bottom - bmp->Clip.Top;
    if ((width < 1) or (height < 1)) return;
 
+   // The surface height is in client units, converted to pixels for locating the surface relative to the light.  The
+   // Sobel gradients are measured per pixel, so the heights for the surface normal are expressed per kernel unit
+   // instead.  This approximates the resampling of the bump map to the kernel unit grid that SVG describes.
+
    const double spot_height = MapHeight * scale;
+   const auto unit = kernel_unit_pixels(scale);
+   const double normal_scale = MapHeight * (1.0 / 255.0);
+   const map_height normal_height = { unit.x * normal_scale, unit.y * normal_scale, unit.xy * normal_scale };
 
    int num_threads = std::min(int(std::thread::hardware_concurrency()), height);
    if (num_threads < 1) num_threads = 1;
@@ -633,13 +689,13 @@ void extLightingFX::draw()
 
       pool.detach_task([&, start_row = start_y, end_row = end_y]() {
          if (LightSource IS LS::DISTANT) {
-            render_distant(start_row, end_row, bmp, lt, spot_height, width, height);
+            render_distant(start_row, end_row, bmp, lt, spot_height, normal_height, width, height);
          }
          else if (LightSource IS LS::SPOT) {
-            render_spotlight(start_row, end_row, bmp, lt, spot_height, width, height);
+            render_spotlight(start_row, end_row, bmp, lt, spot_height, normal_height, width, height);
          }
          else if (LightSource IS LS::POINT) {
-            render_point(start_row, end_row, bmp, lt, spot_height, width, height);
+            render_point(start_row, end_row, bmp, lt, spot_height, normal_height, width, height);
          }
       });
    }
@@ -855,6 +911,9 @@ static ERR LIGHTINGFX_SET_Exponent(extLightingFX *Self, double Value)
 -FIELD-
 Scale: The maximum height of the input surface (bump map) when the alpha input is 1.0.
 
+The height is measured in kernel units when computing the surface normal, so the steepness of the lit surface is
+determined by Scale in combination with #UnitX and #UnitY.  Refer to #UnitX for details.
+
 -FIELD-
 Type: Defines the type of surface light scattering, which can be specular or diffuse.
 Lookup: LT
@@ -862,20 +921,29 @@ Lookup: LT
 -FIELD-
 UnitX: The intended distance in current filter units for dx in the surface normal calculation formulas.
 
-Indicates the intended distance in current filter units (i.e. as determined by the value of PrimitiveUnits)
-for dx in the surface normal calculation formulas.
+Indicates the intended distance in current filter units (i.e. as determined by the value of
+@VectorFilter.PrimitiveUnits) for dx in the surface normal calculation formulas.  This is equivalent to the first
+value of the SVG `kernelUnitLength` attribute.
 
-By specifying value(s) for #UnitX, the kernel becomes defined in a scalable, abstract coordinate system.  If #UnitX is
-not specified, the default value is one pixel in the offscreen bitmap, which is a pixel-based coordinate system, and
-thus potentially not scalable.  For some level of consistency across display media and user agents, it is necessary
-that a value be provided for at least one of ResX and #UnitX.
+If #UnitX is not specified, the kernel unit is one unit of the client vector's coordinate system, regardless of
+@VectorFilter.PrimitiveUnits.  The appearance of the lighting then depends on the size of the bump map in those
+units: the same graphic will look flatter when it is drawn larger in its own coordinate system, but not when it is
+magnified by a parent transform.
+
+By specifying #UnitX in bounding box units, the kernel becomes relative to the filter's bounds, which are measured on
+the same terms as @BlurFX.  A bump map that is blurred and lit in bounding box units will then have the same
+appearance at any size and display resolution.
+
+The value must be greater than zero.  Rather than resampling the bump map to the kernel grid, the surface gradient is
+measured per pixel and scaled to the kernel unit.
 
 *********************************************************************************************************************/
 
 static ERR LIGHTINGFX_SET_UnitX(extLightingFX *Self, double Value)
 {
-   if (Value < 0) return ERR::InvalidValue;
+   if (Value <= 0.0) return ERR::InvalidValue;
    Self->UnitX = Value;
+   Self->UnitXProvided = true;
    return ERR::Okay;
 }
 
@@ -884,20 +952,18 @@ static ERR LIGHTINGFX_SET_UnitX(extLightingFX *Self, double Value)
 -FIELD-
 UnitY: The intended distance in current filter units for dy in the surface normal calculation formulas.
 
-Indicates the intended distance in current filter units (i.e. as determined by the value of PrimitiveUnits)
-for dy in the surface normal calculation formulas.
-
-By specifying value(s) for #UnitY, the kernel becomes defined in a scalable, abstract coordinate system.  If #UnitY is
-not specified, the default value is one pixel in the offscreen bitmap, which is a pixel-based coordinate system, and
-thus potentially not scalable.  For some level of consistency across display media and user agents, it is necessary
-that a value be provided for at least one of ResY and #UnitY.
+Indicates the intended distance in current filter units (i.e. as determined by the value of
+@VectorFilter.PrimitiveUnits) for dy in the surface normal calculation formulas.  This is equivalent to the second
+value of the SVG `kernelUnitLength` attribute.  The value must be greater than zero.  Refer to #UnitX for further
+details.
 
 *********************************************************************************************************************/
 
 static ERR LIGHTINGFX_SET_UnitY(extLightingFX *Self, double Value)
 {
-   if (Value < 0) return ERR::InvalidValue;
+   if (Value <= 0.0) return ERR::InvalidValue;
    Self->UnitY = Value;
+   Self->UnitYProvided = true;
    return ERR::Okay;
 }
 

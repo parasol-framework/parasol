@@ -385,8 +385,7 @@ function displayFilters(self)
             self.view.scene.surface.mtScheduleRedraw()
          end)
 
-         item.txt.x = text_x
-         item.txt.y = text_y
+         item.txt.{ x = text_x, y = text_y }
          item.vp.height = item_height
 
          height += item_height
@@ -1583,19 +1582,10 @@ gui.fileview = function(Options)
       try
          lDir = nil
 
-         if self.path?? then
-            self.deviceInfo = obj.new('storagedevice', { volume = self.path })
-         else
-            self.deviceInfo = nil
-         end
-
+         self.deviceInfo = self.path ?? obj.new('storagedevice', { volume = self.path }) : nil
          self.inRefresh = true
-
          self.view.clearView()
-
-         if self.view.setColumns then
-            self.view.setColumns(self.view, defineViewColumns(self.path))
-         end
+         self.view.setColumns?(self.view, defineViewColumns(self.path))
 
          if self.showParent and self.path then
             if not (self.limitPath and (self.path is self.limitPath)) then

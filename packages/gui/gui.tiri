@@ -1436,8 +1436,9 @@ gui.effects = {
    },
 
    -- The alpha channel is blurred and lit as a bump map, clipped to the path and mixed with the fill using an
-   -- arithmetic composite (result = k1*light*fill + k2*light + k3*fill).  Light angles are in degrees.  The blur is
-   -- relative to the bounding box.
+   -- arithmetic composite (result = k1*light*fill + k2*light + k3*fill).  Light angles are in degrees.  The blur and
+   -- the lighting kernel are relative to the bounding box, so the relief is unaffected by the size and display scale
+   -- of the icon.  The kernel unit is 1/24th of the box, so scale is the bump height of a 24 pixel icon.
 
    emboss = {
       kind   = 'filter',
@@ -1468,7 +1469,7 @@ gui.effects = {
 
          light = filter.new('LightingFX', {
             type=(Args.light is 'specular') ? LT_SPECULAR : LT_DIFFUSE, constant=Args.constant, scale=Args.scale,
-            exponent=Args.exponent
+            exponent=Args.exponent, unitX=1/24, unitY=1/24
          })
          check light.mtSetDistantLight(Args.azimuth, Args.elevation)
 

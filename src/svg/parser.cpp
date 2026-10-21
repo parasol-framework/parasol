@@ -890,13 +890,12 @@ ERR svgState::parse_fe_lighting(objVectorFilter *Filter, XTag &Tag, LT Type) noe
             break;
          }
 
-         case SVF_kernelUnitLength: {
+         case SVF_kernelUnitLength: { // An invalid value is ignored, leaving the kernel unit undefined
             double kx = 1, ky = 1;
-            read_numseq(val, { &kx, &ky });
-            if (kx < 1) kx = 1;
-            if (ky < 1) ky = kx;
-            fx->setUnitX(kx);
-            fx->setUnitY(ky);
+            if (read_positive_number_pair(val, kx, ky)) {
+               fx->setUnitX(kx);
+               fx->setUnitY(ky);
+            }
             break;
          }
 
