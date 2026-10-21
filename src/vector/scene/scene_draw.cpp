@@ -1365,9 +1365,10 @@ void SimpleVector::DrawPath(objBitmap *Bitmap, double StrokeWidth, OBJECTPTR Str
       else if (StrokeStyle->classID() IS CLASSID::VECTORCOLOUR) {
          agg::renderer_scanline_aa_solid solid(mRenderer);
          agg::conv_stroke<agg::path_storage> stroke_path(mPath);
+         stroke_path.width(StrokeWidth);
          mRaster.reset();
          mRaster.add_path(stroke_path);
-         objVectorColour *colour = (objVectorColour *)FillStyle;
+         auto colour = (objVectorColour *)StrokeStyle;
          solid.color(agg::rgba(colour->Red, colour->Green, colour->Blue, colour->Alpha));
          agg::render_scanlines(mRaster, scanline, solid);
       }
