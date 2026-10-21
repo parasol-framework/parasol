@@ -679,6 +679,10 @@ TValue * lj_meta_contains(lua_State *L, cTValue *Candidate, cTValue *Target, int
    if (not tvisnil(method)) {
       if (tvisarray(target) and lj_arr_is_contains_handler(method)) {
          int32_t result = lj_arr_contains(L, arrayV(target), candidate);
+         if (result < 0) {
+            // lj_err_msgv() moves the stale VM-owned top above the live frame before it pushes the message.
+            lj_err_msgv(L, ErrMsg::BADCONTAINS, lj_arr_contains_expected(arrayV(target)), lj_typename(candidate));
+         }
          return (TValue *)(intptr_t)(bool(result) != bool(Inverted));
       }
       return mmcall(L, Inverted ? lj_cont_condf : lj_cont_condt, method, target, candidate,

@@ -31,6 +31,7 @@ ERRDEF(BADOPRT,  ERR::TypeMismatch,   "Attempt to %s %s " LUA_QS " (a %s value)"
 ERRDEF(BADOPRV,  ERR::TypeMismatch,   "Attempt to %s a %s value")
 ERRDEF(BADCMPT,  ERR::TypeMismatch,   "Attempt to compare %s with %s")
 ERRDEF(BADCMPV,  ERR::TypeMismatch,   "Attempt to compare two %s values")
+ERRDEF(BADCONTAINS, ERR::TypeMismatch, "Membership test expected %s, got %s")
 ERRDEF(GETLOOP,  ERR::Loop,           "Loop in gettable")
 ERRDEF(SETLOOP,  ERR::Loop,           "Loop in settable")
 ERRDEF(OPCALL,   ERR::TypeMismatch,   "call")

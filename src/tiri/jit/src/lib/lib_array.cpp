@@ -760,7 +760,11 @@ LJLIB_CF(array_concat)
 LJLIB_NOREG LJLIB_CF(array_contains)
 {
    GCarray *arr = lj_lib_checkarray(L, 1);
-   lua_pushboolean(L, lj_arr_contains(L, arr, L->base + 1));
+   auto contained = lj_arr_contains(L, arr, L->base + 1);
+   if (contained < 0) {
+      lj_err_argv(L, 2, ErrMsg::BADTYPE, lj_arr_contains_expected(arr), lj_typename(L->base + 1));
+   }
+   lua_pushboolean(L, contained);
    return 1;
 }
 
@@ -1688,7 +1692,11 @@ LJLIB_CF(array_indexOf)
 }
 
 //********************************************************************************************************************
-// Canonical array membership helper shared by the library adapter, interpreter and trace recorder.
+// Canonical array membership helper shared by the library adapter, interpreter, trace recorder and compiled traces.
+// Returns 1 or 0, or -1 if the candidate cannot be converted to the element type.  A rejected candidate is not raised
+// here because the callers run in different frames: the interpreter has no C frame for lj_err_argv() to describe and
+// a compiled trace must exit to the interpreter before an error can be raised.  An empty array returns 0 without
+// checking the candidate.
 
 extern "C" int32_t lj_arr_contains(lua_State *L, GCarray *Array, cTValue *Candidate)
 {
@@ -1700,10 +1708,7 @@ extern "C" int32_t lj_arr_contains(lua_State *L, GCarray *Array, cTValue *Candid
       else {
          TValue converted;
          auto candidate_uid = try_to_integer(Candidate, &converted);
-         if (not candidate_uid) {
-            lj_err_argv(L, 2, ErrMsg::BADTYPE, "object or uid", lj_typename(Candidate));
-            return 0;
-         }
+         if (not candidate_uid) return -1;
          search_uid = OBJECTID(*candidate_uid);
       }
       return lj_arr_find_object(Array, search_uid, 0, int32_t(Array->len - 1), 1) >= 0;
@@ -1717,25 +1722,29 @@ extern "C" int32_t lj_arr_contains(lua_State *L, GCarray *Array, cTValue *Candid
          copyTV(L, &converted, Candidate);
          candidate_string = lj_strfmt_number(L, &converted);
       }
-      else {
-         lj_err_argv(L, 2, ErrMsg::BADTYPE, "string", lj_typename(Candidate));
-         return 0;
-      }
+      else return -1;
       return lj_arr_find_str(Array, candidate_string, 0, int32_t(Array->len - 1), 1) >= 0;
    }
 
    if (glArrayConversion[size_t(Array->elemtype)].primitive) {
       TValue converted;
       auto candidate_number = try_to_number(Candidate, &converted);
-      if (not candidate_number) {
-         lj_err_argv(L, 2, ErrMsg::BADTYPE, "number", lj_typename(Candidate));
-         return 0;
-      }
+      if (not candidate_number) return -1;
       return lj_arr_find_num(Array, *candidate_number, 0, int32_t(Array->len - 1), 1) >= 0;
    }
 
    VMHelperGuard guard(L);
    return array_find_generic(L, Array, Candidate, 0, int32_t(Array->len - 1), 1) >= 0;
+}
+
+//********************************************************************************************************************
+// Names the candidate types that lj_arr_contains() accepts for Array, for use in a rejection message.
+
+extern "C" const char * lj_arr_contains_expected(GCarray *Array)
+{
+   if (Array->elemtype IS AET::OBJECT) return "object or uid";
+   if (Array->elemtype IS AET::STR_GC) return "string";
+   return "number";
 }
 
 //********************************************************************************************************************
