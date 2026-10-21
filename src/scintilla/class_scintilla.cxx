@@ -104,7 +104,7 @@ capabilities.
 #include <kotuku/modules/font.h>
 #include <kotuku/modules/display.h>
 #include <kotuku/modules/font.h>
-#include <kotuku/modules/tiri.h>
+#include <kotuku/modules/script.h>
 #include <kotuku/modules/filesystem.h>
 #include <kotuku/modules/module.h>
 #include <kotuku/modules/vector.h>
@@ -118,9 +118,6 @@ JUMPTABLE_CORE
 JUMPTABLE_DISPLAY
 JUMPTABLE_VECTOR
 JUMPTABLE_FONT
-JUMPTABLE_TIRI
-
-static OBJECTPTR modTiri = nullptr;
 
 static const double IDLE_INTERVAL = 0.01; // Seconds between calls to Idle() while Scintilla has background work
 
@@ -245,7 +242,6 @@ static ERR MODInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
    if (objModule::load("display", &modDisplay, &DisplayBase) != ERR::Okay) return ERR::InitModule;
    if (objModule::load("font", &modFont, &FontBase) != ERR::Okay) return ERR::InitModule;
    if (objModule::load("vector", &modVector, &VectorBase) != ERR::Okay) return ERR::InitModule;
-   if (objModule::load("tiri", &modTiri, &TiriBase) != ERR::Okay) return ERR::InitModule;
 
    if (!init_search()) {
       return create_scintilla();
@@ -259,7 +255,6 @@ static ERR MODExpunge(void)
 {
    if (modDisplay)  { FreeResource(modDisplay);  modDisplay = nullptr; }
    if (modFont)     { FreeResource(modFont);     modFont = nullptr; }
-   if (modTiri)     { FreeResource(modTiri);     modTiri = nullptr; }
    if (modVector)   { FreeResource(modVector);   modVector = nullptr; }
    if (clScintilla) { FreeResource(clScintilla); clScintilla = nullptr; }
    if (clScintillaSearch) { FreeResource(clScintillaSearch); clScintillaSearch = nullptr; }
@@ -664,7 +659,32 @@ static ERR SCINTILLA_Clear(extScintilla *Self)
 
 /*********************************************************************************************************************
 -ACTION-
-Clipboard: Full support for clipboard activity is provided through this action.
+Clipboard: Cut, copy and paste text through the system clipboard.
+
+The Clipboard action provides the same cut, copy and paste operations as the editor's key bindings (Ctrl+X, Ctrl+C,
+Ctrl+V, Shift+Del, Ctrl+Ins and Shift+Ins).  Text is exchanged as UTF-8 through the @Clipboard class.  The editor
+also binds Ctrl+L to cut the lines that the selection touches, and Ctrl+Shift+T to copy the current line.
+
+`CLIPMODE::COPY` copies the selection.  `CLIPMODE::CUT` copies the selection and deletes it, but only once the
+clipboard has accepted the text.  Nothing is copied if the selection is empty.  A rectangular selection is copied with
+a line ending after each row, and is pasted as a rectangle when it is pasted into a Scintilla editor in the same
+process.
+
+`CLIPMODE::PASTE` replaces the selection with the most recent text on the clipboard, as a single undo action.  Line
+endings are converted to the document's line ending mode.
+
+If #Flags does not include `SCIF::EDIT`, cut and paste are refused with `ERR::ReadOnly` and reported as
+`SEF::FAIL_RO`.  If the clipboard cannot be read or written, the error is logged and reported as
+`SEF::FAIL_CLIPBOARD`.
+
+-ERRORS-
+Okay: The operation completed, or there was nothing to copy.
+NullArgs
+Args: The Mode is not supported.
+NotInitialised
+ReadOnly: The document is not editable.
+NoData: The clipboard holds no text to paste.
+-END-
 
 *********************************************************************************************************************/
 
@@ -673,18 +693,12 @@ static ERR SCINTILLA_Clipboard(extScintilla *Self, struct acClipboard *Args)
    kt::Log log;
 
    if ((!Args) or (Args->Mode IS CLIPMODE::NIL)) return log.warning(ERR::NullArgs);
+   if (!Self->initialised()) return log.warning(ERR::NotInitialised);
 
-   if (Args->Mode IS CLIPMODE::CUT) {
-      Self->API->Cut();
-      return ERR::Okay;
-   }
-   else if (Args->Mode IS CLIPMODE::COPY) {
-      Self->API->Copy();
-      return ERR::Okay;
-   }
-   else if (Args->Mode IS CLIPMODE::PASTE) {
-      Self->API->Paste();
-      return ERR::Okay;
+   log.traceBranch("Mode: %d", int(Args->Mode));
+
+   if ((Args->Mode IS CLIPMODE::CUT) or (Args->Mode IS CLIPMODE::COPY) or (Args->Mode IS CLIPMODE::PASTE)) {
+      return Self->API->panClipboard(Args->Mode);
    }
    else return log.warning(ERR::Args);
 }
@@ -2338,55 +2352,6 @@ static ERR create_canvas(extScintilla *Self)
    Self->View->subscribeFeedback(FM::PATH_CHANGED, C_FUNCTION(feedback_view));
    Self->Page->subscribeFeedback(FM::PATH_CHANGED, C_FUNCTION(feedback_page));
    return ERR::Okay;
-}
-
-//********************************************************************************************************************
-
-static void error_dialog(std::string_view Title, std::string_view Message, ERR Error)
-{
-   kt::Log log;
-   static OBJECTID dialog_id = 0;
-
-   log.warning("%.*s", int(Message.size()), Message.data());
-
-   if (dialog_id) {
-      if (CheckResourceExists(dialog_id) IS ERR::True) return;
-   }
-
-   std::string dialog_path;
-   if (auto error = ti::ResolvePackage("gui/dialog", "", &dialog_path); error != ERR::Okay) {
-      log.warning("Unable to resolve gui/dialog: %s", GetErrorMsg(error));
-      return;
-   }
-
-   objTiri *dialog;
-   if (!NewObject(CLASSID::TIRI, &dialog)) {
-      dialog->setName("scDialog");
-      dialog->setOwner(CurrentTaskID());
-      dialog->setPath(dialog_path);
-
-      acSetKey(dialog, "modal", "1");
-      acSetKey(dialog, "title", Title);
-      acSetKey(dialog, "options", "okay");
-      acSetKey(dialog, "type", "error");
-
-      CSTRING errstr;
-      if ((Error != ERR::Okay) and (errstr = GetErrorMsg(Error))) {
-         std::ostringstream buffer;
-         if (not Message.empty()) buffer << Message << "\n\nDetails: " << errstr;
-         else buffer << "Error: " << errstr;
-
-         acSetKey(dialog, "message", buffer.str().c_str());
-      }
-      else acSetKey(dialog, "message", Message);
-
-      if ((!InitObject(dialog)) and (!acActivate(dialog))) {
-         std::span<std::string> results;
-         if ((!dialog->getResults(results)) and (not results.empty())) {
-            dialog_id = svtonum<int>(results[0]);
-         }
-      }
-   }
 }
 
 //********************************************************************************************************************

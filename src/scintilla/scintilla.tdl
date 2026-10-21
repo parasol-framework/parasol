@@ -47,7 +47,8 @@ module({ name="Scintilla", copyright="Paul Manias © 2005-2026", version=1.0, ti
      "MODIFIED:   The content has changed to a modified state, i.e. the user has made an edit.  The modified state will remain until the content is saved.",
      "CURSOR_POS: The cursor position has changed.",
      "FAIL_RO:    User attempt to edit read-only content.",
-     "NEW_CHAR:   At least one new character has been inserted.")
+     "NEW_CHAR:   At least one new character has been inserted.",
+     "FAIL_CLIPBOARD: A cut, copy or paste failed because the clipboard could not be read or written.")
 
   flags("STF", { comment="Scintilla search flags." },
     "CASE:           Case sensitive search.",

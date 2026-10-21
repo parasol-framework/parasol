@@ -5,6 +5,7 @@ static const struct FieldDef clScintillaEventFlags[] = {
    { "CursorPos", 0x00000002 },
    { "FailRo", 0x00000004 },
    { "NewChar", 0x00000008 },
+   { "FailClipboard", 0x00000010 },
    { nullptr, 0 }
 };
 
