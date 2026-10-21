@@ -3619,21 +3619,26 @@ static void rec_comp_equality(jit_State *J, RecordOps *ops)
 // Record membership metamethod dispatch.  The target is the receiver and the candidate is its single visible
 // argument for table handlers; native handlers retain their explicit receiver-first ABI.
 
-static IRCallID rec_contains_numeric_call(AET ElementType) noexcept
+struct ContainsNumericHelper {
+   IRCallID call;
+   int32_t (*function)(GCarray *, lua_Number) noexcept;
+};
+
+static ContainsNumericHelper rec_contains_numeric_helper(AET ElementType) noexcept
 {
    switch (ElementType) {
-      case AET::INT8:   return IRCALL_lj_arr_contains_i8;
+      case AET::INT8:   return { IRCALL_lj_arr_contains_i8, lj_arr_contains_i8 };
       case AET::BYTE:
-      case AET::UINT8:  return IRCALL_lj_arr_contains_u8;
-      case AET::INT16:  return IRCALL_lj_arr_contains_i16;
-      case AET::UINT16: return IRCALL_lj_arr_contains_u16;
-      case AET::INT32:  return IRCALL_lj_arr_contains_i32;
-      case AET::UINT32: return IRCALL_lj_arr_contains_u32;
-      case AET::INT64:  return IRCALL_lj_arr_contains_i64;
-      case AET::UINT64: return IRCALL_lj_arr_contains_u64;
-      case AET::FLOAT:  return IRCALL_lj_arr_contains_f32;
-      case AET::DOUBLE: return IRCALL_lj_arr_contains_f64;
-      default:          return IRCALL__MAX;
+      case AET::UINT8:  return { IRCALL_lj_arr_contains_u8, lj_arr_contains_u8 };
+      case AET::INT16:  return { IRCALL_lj_arr_contains_i16, lj_arr_contains_i16 };
+      case AET::UINT16: return { IRCALL_lj_arr_contains_u16, lj_arr_contains_u16 };
+      case AET::INT32:  return { IRCALL_lj_arr_contains_i32, lj_arr_contains_i32 };
+      case AET::UINT32: return { IRCALL_lj_arr_contains_u32, lj_arr_contains_u32 };
+      case AET::INT64:  return { IRCALL_lj_arr_contains_i64, lj_arr_contains_i64 };
+      case AET::UINT64: return { IRCALL_lj_arr_contains_u64, lj_arr_contains_u64 };
+      case AET::FLOAT:  return { IRCALL_lj_arr_contains_f32, lj_arr_contains_f32 };
+      case AET::DOUBLE: return { IRCALL_lj_arr_contains_f64, lj_arr_contains_f64 };
+      default:          return { IRCALL__MAX, nullptr };
    }
 }
 
@@ -3662,31 +3667,43 @@ static void rec_contains(jit_State *J, RecordOps *ops)
          TRef element_type_ref = ir.fload(ix->val, IRFL_ARRAY_ELEMTYPE, IRT_U8);
          ir.guard_eq_int(element_type_ref, ir.kint(int32_t(array->elemtype)));
 
-         // The helper result guard needs the comparison snapshot that rec_comp_fixup adjusts.
-         rec_comp_prep(J);
+         // The helper result guard needs the comparison snapshot that rec_comp_fixup adjusts.  The guard asserts the
+         // result that the helper gives for the recorded operands, because the trace follows that branch.
          TRef result_ref;
-         IRCallID numeric_call = rec_contains_numeric_call(array->elemtype);
+         int32_t contained;
+         ContainsNumericHelper numeric = rec_contains_numeric_helper(array->elemtype);
          if (array->elemtype IS AET::STR_GC and tref_isstr(ix->key)) {
+            rec_comp_prep(J);
             result_ref = lj_ir_call(J, IRCALL_lj_arr_contains_str, ix->val, ix->key);
+            contained = lj_arr_contains_str(array, strV(&ix->keyv));
          }
-         else if (numeric_call != IRCALL__MAX and tref_isnumber(ix->key)) {
+         else if (numeric.function and tref_isnumber(ix->key)) {
+            rec_comp_prep(J);
             TRef candidate_ref = ix->key;
             if (tref_isinteger(candidate_ref)) {
                candidate_ref = emitir(IRTN(IR_CONV), candidate_ref, IRCONV_NUM_INT);
             }
-            result_ref = lj_ir_call(J, numeric_call, ix->val, candidate_ref);
+            result_ref = lj_ir_call(J, numeric.call, ix->val, candidate_ref);
+            contained = numeric.function(array, numberVnum(&ix->keyv));
          }
          else if (array->elemtype IS AET::STR_GC or array->elemtype IS AET::OBJECT or
              glArrayConversion[size_t(array->elemtype)].primitive) {
+            // A rejected candidate raises in the interpreter, so it is not recorded.  The candidate guard only checks
+            // the type, so a later candidate of that type may still be rejected.  The trace then exits through the
+            // element-type snapshot, which re-executes membership in the interpreter to raise the error.
+            contained = lj_arr_contains(J->L, array, &ix->keyv);
+            if (contained < 0) lj_trace_err(J, LJ_TRERR_NYICALL);
             TRef candidate_ref = rec_tmpref(J, ix->key, IRTMPREF_IN1);
             result_ref = lj_ir_call(J, IRCALL_lj_arr_contains, ix->val, candidate_ref);
+            emitir(IRTGI(IR_GE), result_ref, lj_ir_kint(J, 0));
+            rec_comp_prep(J);
          }
          else {
             // Variant and reference equality may invoke __eq, which cannot re-enter the VM from a native trace call.
             lj_trace_err(J, LJ_TRERR_NYICALL);
          }
-         emitir(IRTG(IR_NE, IRT_INT), result_ref, lj_ir_kint(J, 0));
-         rec_comp_fixup(J, J->pc, int(ops->op) & 1);
+         emitir(IRTG(contained ? IR_NE : IR_EQ, IRT_INT), result_ref, lj_ir_kint(J, 0));
+         rec_comp_fixup(J, J->pc, (int(ops->op) & 1) ^ (contained ? 0 : 1));
          return;
       }
       rec_mm_callcomp(J, ix, int(ops->op));

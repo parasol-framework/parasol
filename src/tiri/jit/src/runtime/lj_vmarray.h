@@ -50,9 +50,11 @@ extern "C" GCarray * lj_arr_new_jit(lua_State *, uint32_t, uint32_t);
 
 extern "C" [[nodiscard]] int32_t lj_arr_is_contains_handler(cTValue *);
 
-// Search an array using the canonical membership rules. Returns exactly zero or one.
+// Search an array using the canonical membership rules.  Returns zero or one, or -1 for a candidate that cannot be
+// converted to the element type.  lj_arr_contains_expected() names the accepted candidate types for that error.
 
 extern "C" [[nodiscard]] int32_t lj_arr_contains(lua_State *, GCarray *, cTValue *);
+extern "C" [[nodiscard]] const char * lj_arr_contains_expected(GCarray *);
 extern "C" [[nodiscard]] int32_t lj_arr_contains_i8(GCarray *, lua_Number) noexcept;
 extern "C" [[nodiscard]] int32_t lj_arr_contains_u8(GCarray *, lua_Number) noexcept;
 extern "C" [[nodiscard]] int32_t lj_arr_contains_i16(GCarray *, lua_Number) noexcept;

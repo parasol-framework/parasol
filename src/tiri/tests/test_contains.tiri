@@ -390,3 +390,176 @@ end
 
    jit.opt.start()
 end
+
+-- Counts the candidates that are in Values, and separately those reported by the negated form.  Both must agree with
+-- indexOf() whichever result the trace was recorded with.
+
+function mixed_membership_workload(Values:array<any>, Candidates:array<any>):<num, num>
+   local hits, negated_hits = 0, 0
+   for _, candidate in Candidates do
+      if candidate in Values then hits++ end
+      if not (candidate in Values) then negated_hits++ end
+   end
+   return hits, negated_hits
+end
+
+function mixed_membership_check(Values:array<any>, Candidates:array<any>, Label:str)
+   jit.on()
+   jit.flush()
+   jit.opt.start('hotloop=2', 'hotexit=1', 'minstitch=0')
+   defer jit.opt.start() end
+
+   local expected = 0
+   for _, candidate in Candidates do
+      if Values.indexOf(candidate) != nil then expected++ end
+   end
+
+   local hits, negated_hits = mixed_membership_workload(Values, Candidates)
+   assert(hits is expected and negated_hits is #Candidates - expected,
+      f'{Label}: expected {expected} hits, got {hits} and {#Candidates - negated_hits} from the negated form')
+end
+
+@Test function TracesRecordedOnAMissAcceptLaterHits()
+   local strings = array<str> { 'specular', 'diffuse' }
+   local misses_first, hits_first = array<str>, array<str>
+   for i in {0 to 40} do misses_first.push('bright') end
+   for i in {0 to 40} do misses_first.push((i % 2 is 0) ? 'specular' : 'diffuse') end
+   for i in {0 to 40} do hits_first.push(misses_first[79 - i]) end
+   for i in {0 to 40} do hits_first.push('bright') end
+   mixed_membership_check(strings, misses_first, 'String misses then hits')
+   mixed_membership_check(strings, hits_first, 'String hits then misses')
+
+   local integers, numbers = array<int> { 2, 4, 6 }, array<double> { 2.5, 4.5 }
+   local int_candidates, double_candidates = array<int>, array<double>
+   for i in {0 to 40} do int_candidates.push(9) end
+   for i in {0 to 40} do int_candidates.push(4) end
+   for i in {0 to 40} do double_candidates.push(9.5) end
+   for i in {0 to 40} do double_candidates.push(4.5) end
+   mixed_membership_check(integers, int_candidates, 'Integer misses then hits')
+   mixed_membership_check(numbers, double_candidates, 'Double misses then hits')
+
+   local numeric_strings = array<str>
+   for i in {0 to 40} do numeric_strings.push('9') end
+   for i in {0 to 40} do numeric_strings.push('4') end
+   mixed_membership_check(integers, numeric_strings, 'Numeric strings in an integer array')
+
+   local string_numbers = array<int>
+   for i in {0 to 40} do string_numbers.push(9) end
+   for i in {0 to 40} do string_numbers.push(2) end
+   mixed_membership_check(array<str> { '2', '4' }, string_numbers, 'Numbers in a string array')
+end
+
+-- A rejected membership candidate used to be raised by lj_err_argv() at the stale VM-owned top, which overwrote the
+-- lowest slots of a top-level chunk.  exec() runs Source as a chunk so the locals occupy those slots.
+
+function rejected_chunk_membership(Values:str, Test:str):<any, any, any, any, any>
+   return exec('local values = ' .. Values .. '\n' .. [[
+      local a, b, c = 10, 20, 30
+      local message
+      try
+   ]] .. Test .. '\n' .. [[
+      except ex
+         message = ex.message
+      end
+      return type(values), a, b, c, message
+   ]])
+end
+
+function check_rejected_chunk_membership(Values:str, Test:str, Expected:str)
+   local values_type, a, b, c, message = rejected_chunk_membership(Values, Test)
+   assert(values_type is 'array' and a is 10 and b is 20 and c is 30,
+      f'{Test}: locals were overwritten: {values_type}, {a}, {b}, {c}')
+   assert(message is Expected, f'{Test}: unexpected message: {message}')
+end
+
+@Test function RejectedCandidatesPreserveTopLevelLocals()
+   check_rejected_chunk_membership('array<int> { 1, 2 }', "if 'abc' in values then end",
+      'Membership test expected number, got string')
+   check_rejected_chunk_membership('array<int> { 1, 2 }', "if not ('abc' in values) then end",
+      'Membership test expected number, got string')
+   check_rejected_chunk_membership('array<int> { 1, 2 }', "local found = 'abc' in values",
+      'Membership test expected number, got string')
+   check_rejected_chunk_membership("array<obj> { obj.new('config') }", "if not ('abc' in values) then end",
+      'Membership test expected object or uid, got string')
+   check_rejected_chunk_membership("array<str> { 'x' }", 'if {} in values then end',
+      'Membership test expected string, got table')
+end
+
+function interpreted_rejected_membership(Values:array<int>, Candidate:any):<str, bool>
+   local v00, v01, v02, v03, v04, v05, v06, v07 = 0, 1, 2, 3, 4, 5, 6, 7
+   local message
+   try
+      if Candidate in Values then end
+   except ex
+      message = ex.message
+   end
+   local intact = v00 is 0 and v01 is 1 and v02 is 2 and v03 is 3 and v07 is 7 and type(Values) is 'array'
+   return message, intact
+end
+
+@Test function RejectedCandidatesRaiseTypeMismatch()
+   jit.off()
+   defer jit.on() end
+
+   local message, intact = interpreted_rejected_membership(array<int> { 1, 2 }, 'abc')
+   assert(intact, 'A rejected membership candidate should preserve live frame slots')
+   assert(message is 'Membership test expected number, got string', f'Unexpected message: {message}')
+
+   local code
+   try
+      if 'abc' in array<double> { 1.5 } then end
+   except ex
+      code = ex.code
+   end
+   assert(code is ERR_TypeMismatch, f'A rejected membership candidate should raise ERR_TypeMismatch, got {code}')
+
+   assert(not ('abc' in array<int> {}), 'An empty array should not check the candidate')
+end
+
+-- The trace is recorded with numeric strings, so its candidate guard only checks for a string.  A later non-numeric
+-- string must leave the trace and raise from the interpreter, not take a branch or raise from native trace code.
+
+function string_candidate_workload(Values:array<int>, Candidates:array<str>):num
+   local hits = 0
+   for _, candidate in Candidates do
+      if candidate in Values then hits++ end
+   end
+   return hits
+end
+
+@Test function TracedMembershipRaisesRejectedCandidatesInTheInterpreter()
+   jit.on()
+   jit.flush()
+   jit.opt.start('hotloop=2', 'hotexit=1', 'minstitch=0')
+   defer jit.opt.start() end
+
+   local values = array<int> { 1, 2 }
+   local candidates = array<str>
+   for i in {0 to 60} do candidates.push((i % 2 is 0) ? '2' : '3') end
+   assert(string_candidate_workload(values, candidates) is 30, 'Numeric string candidates should match on trace')
+
+   jit.off()
+   local native_calls = 0
+   for trace_no in {1 into 40} do
+      local info = jit.util.traceInfo(trace_no)
+      if info is nil then continue end
+      for instruction in {1 into info.nins} do
+         local _, ir_ot, _, call_id = jit.util.traceIR(trace_no, instruction)
+         if ir_ot != nil and (ir_ot >> 8) is 98 and jit.util.irCallAddr(call_id) != nil then native_calls++ end
+      end
+   end
+   jit.on()
+   assert(native_calls > 0, 'String candidates should be recorded as a native membership call')
+
+   candidates.push('abc')
+   local a, b, c = 10, 20, 30
+   local message, hits
+   try
+      hits = string_candidate_workload(values, candidates)
+   except ex
+      message = ex.message
+   end
+   assert(hits is nil, f'A rejected candidate on trace should raise, got {hits} hits')
+   assert(message is 'Membership test expected number, got string', f'Unexpected message: {message}')
+   assert(a is 10 and b is 20 and c is 30, 'A rejected candidate on trace should preserve the caller locals')
+end
