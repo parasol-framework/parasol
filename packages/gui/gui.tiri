@@ -519,7 +519,7 @@ end
 
 function effectHash(Theme:table!):num
    key = ''
-   for field in values(array<str> { 'first', 'last', 'stroke' }) do
+   for field in values(array<str> { 'first', 'last' }) do
       c = Theme[field]
       if c is <table> then
          key ..= f'{field}={c.r},{c.g},{c.b},{c.a};'
@@ -561,15 +561,21 @@ function effectKey(Canonical:str!):str
    return key
 end
 
+-- Returns colour components in the range 0 - 1 in the canonical '#rrggbbaa' form.
+
+function hexColour(Red:num!, Green:num!, Blue:num!, Alpha:num!):str
+   return string.format('#%02x%02x%02x%02x', math.round(math.clamp(Red, 0, 1) * 255),
+      math.round(math.clamp(Green, 0, 1) * 255), math.round(math.clamp(Blue, 0, 1) * 255),
+      math.round(math.clamp(Alpha, 0, 1) * 255))
+end
+
 -- Returns a colour value in the canonical '#rrggbbaa' form, or nil if the value is not a colour.
 
 function effectColour(Value:str!):str
    if Value.startsWith('url') then return nil end
    if mVec.ReadPainter(nil, Value, glPainter) != ERR_Okay then return nil end
    c = glPainter.colour
-   return string.format('#%02x%02x%02x%02x', math.round(math.clamp(c.red, 0, 1) * 255),
-      math.round(math.clamp(c.green, 0, 1) * 255), math.round(math.clamp(c.blue, 0, 1) * 255),
-      math.round(math.clamp(c.alpha, 0, 1) * 255))
+   return hexColour(c.red, c.green, c.blue, c.alpha)
 end
 
 function isDigit(C:num):bool
@@ -948,7 +954,8 @@ gui.parseFill = function(Spec:any!):table
       if not (Spec.first and Spec.last) then raise 'Icon theme tables require first and last colours.' end
       key = f'theme_{effectHash(Spec)}'
       return {
-         canonical=key, key=key, fill={ key=key, config=Spec }, paints=array<table>, effects=array<table>
+         canonical=key, key=key, fill={ key=key, config=Spec }, paints=array<table>, vectors=array<table>,
+         effects=array<table>
       }
    elseif Spec is <str> then
       cached = glIconSpecs[Spec]
@@ -968,9 +975,9 @@ gui.parseFill = function(Spec:any!):table
       fill = effectPreset('default')
    end
 
-   canonical = fill.canonical
-   paints, effects = array<table>, array<table>
-   paint_text, effect_text = '', ''
+   paints, vectors, effects = array<table>, array<table>, array<table>
+   paint_text, vector_text, effect_text = '', '', ''
+   vector_names = { }
 
    for i in {first to #calls} do
       call = calls[i]
@@ -982,7 +989,6 @@ gui.parseFill = function(Spec:any!):table
       if not def then effectError(Spec, call.pos, f'unknown function "{call.name}"') end
 
       args, text = effectArgs(Spec, call, def.params)
-      canonical ..= ' ' .. text
 
       if def.kind is 'paint' then
          if #effects > 0 then
@@ -991,6 +997,13 @@ gui.parseFill = function(Spec:any!):table
          paints.push({ name=call.name, def=def, args=args, key=effectKey(text) })
          if paint_text != '' then paint_text ..= ' ' end
          paint_text ..= text
+      elseif def.kind is 'vector' then
+         -- A second call would overwrite the vectors changed by the first, so each vector effect is used once.
+         if vector_names[call.name] then effectError(Spec, call.pos, f'{call.name}() can only appear once') end
+         vector_names[call.name] = true
+         vectors.push({ name=call.name, def=def, args=args })
+         if vector_text != '' then vector_text ..= ' ' end
+         vector_text ..= text
       elseif def.kind is 'filter' then
          effects.push({ name=call.name, def=def, args=args })
          if effect_text != '' then effect_text ..= ' ' end
@@ -1000,13 +1013,26 @@ gui.parseFill = function(Spec:any!):table
       end
    end
 
+   -- The canonical form is written in segment order, so the position of a vector effect does not change the key.
+
+   canonical = fill.canonical
+   for text in values(array<str> { paint_text, vector_text, effect_text }) do
+      if text != '' then canonical ..= ' ' .. text end
+   end
+
    result = {
-      canonical=canonical, key=fill.key, fill={ key=fill.key, config=fill.config }, paints=paints, effects=effects
+      canonical=canonical, key=fill.key, fill={ key=fill.key, config=fill.config }, paints=paints, vectors=vectors,
+      effects=effects
    }
 
    if paint_text != '' then
       result.paintKey = effectKey(paint_text)
       result.key ..= '_' .. result.paintKey
+   end
+
+   if vector_text != '' then
+      result.vectorKey = effectKey(vector_text)
+      result.key ..= '_' .. result.vectorKey
    end
 
    if effect_text != '' then
@@ -1044,11 +1070,12 @@ function effectFilter(Scene:obj!, Theme:table!, Ctx:table!):str
 end
 
 ----------------------------------------------------------------------------------------------------------------------
--- Apply an fill effect to the vectors already loaded into Viewport.  FillEffect is a spec such as 'fill(pearl) emboss()', or
+-- Apply a fill effect once to the vectors already loaded into Viewport.  FillEffect is a spec such as 'fill(pearl) emboss()', or
 -- a custom fill table.  Definitions are registered once in the hosting scene and are shared universally.
--- The base fill is registered as ID.  Paint effects are layered over the fill.
--- Filter effects are applied to Viewport, and a filter left by a previous theme is cleared.  Siblings of Viewport are
--- not affected.
+-- The base fill is registered as ID.  Paint effects are layered over the fill.  Path strokes receive the base fill.
+-- Vector effects such as outline() modify each vector after the fill is assigned.  To change the style, load fresh
+-- vectors and apply the new effect.  Filter effects are applied to Viewport, and a previous filter is cleared.
+-- Siblings of Viewport are not affected.
 
 gui.applyFillEffect = function(FillEffect:any!, Viewport:obj!, ID:str)
    spec = gui.parseFill(FillEffect)
@@ -1072,7 +1099,7 @@ gui.applyFillEffect = function(FillEffect:any!, Viewport:obj!, ID:str)
    -- Overlays are registered before the fill is assigned, because the vector parser silently skips a layer that it
    -- cannot resolve.  Layers are listed bottom to top.
 
-   ctx = { scene=scene, viewport=Viewport, fill=spec.fill }
+   ctx = { scene=scene, viewport=Viewport, fill=spec.fill, base=base }
    fill = base
    for paint in values(spec.paints) do
       id = f'effect_paint_{paint.key}'
@@ -1102,9 +1129,10 @@ gui.applyFillEffect = function(FillEffect:any!, Viewport:obj!, ID:str)
 
       if Vector.stroke?? then -- A stroke takes one painter, so it only receives the base fill
          Vector.stroke = base
-      elseif config.stroke then
-         Vector.stroke = tostring(config.stroke)
-         Vector.strokeWidth = '1.5%'
+      end
+
+      for effect in values(spec.vectors) do
+         effect.def.apply(ctx, effect.args, Vector)
       end
    end)
 end
@@ -1355,12 +1383,12 @@ gui.fonts = scaledFonts({
    label    = { face='Noto Sans,Source Sans Pro', size='100%' } -- Text for labels and outside widgets
 })
 
--- Fill presets for effects, used as fill(<name>).  Each is a vertical gradient from first to last.  An optional
--- stroke is applied to icon paths that have no stroke of their own.
+-- Fill presets for effects, used as fill(<name>).  Each is a vertical gradient from first to last.  Use outline() to
+-- stroke icon paths.
 
 gui.fills = {
    carbon  = { first=gui.strToRGB('oklch(0.468 0.000 89.8)'),  last=gui.strToRGB('oklch(0.412 0.066 283.1)') },
-   yellow  = { first=gui.strToRGB('oklch(0.841 0.173 111.7)'), last=gui.strToRGB('oklch(0.690 0.148 68.1)'), stroke=gui.strToRGB('oklch(0.276 0.047 20.527)') },
+   yellow  = { first=gui.strToRGB('oklch(0.841 0.173 111.7)'), last=gui.strToRGB('oklch(0.690 0.148 68.1)') },
    orange  = { first=gui.strToRGB('oklch(0.857 0.164 87.6)'),  last=gui.strToRGB('oklch(0.698 0.174 43.8)') },
    blue    = { first=gui.strToRGB('oklch(0.543 0.124 264.7)'), last=gui.strToRGB('oklch(0.281 0.063 262.9)') },
    ocean   = { first=gui.strToRGB('oklch(0.813 0.093 268.1)'), last=gui.strToRGB('oklch(0.385 0.165 284)') },
@@ -1377,9 +1405,15 @@ gui.fills.default = gui.fills.carbon
 
 -- Universal effects.  A 'paint' effect registers a paint server as Ctx.id and returns its painter, which is
 -- layered over the base fill.  A 'filter' effect appends effects to Ctx.filter that read Ctx.input (nil for the source
--- graphic), and returns the effect that the next stage reads.  Parameter types are 'num', 'colour' and 'enum'.
+-- graphic), and returns the effect that the next stage reads.  Paint and filter definitions are built once per scene
+-- and then shared.
 --
--- Future candidates: wood() and metal() (paint), and halo(), shadow(), inset() and outline() (filter).
+-- A 'vector' effect has apply(Ctx, Args, Vector) in place of build(), and it modifies every vector after the fill is
+-- assigned.  Ctx.base is the painter of the base fill, without overlays.  Styling is applied once to freshly loaded
+-- vectors.  Changes to vectors are drawn before filters, so filters see them wherever the call is written.  Each vector
+-- effect can appear once.  Parameter types are 'num', 'colour' and 'enum'.
+--
+-- Future candidates: wood() and metal() (paint), and halo(), shadow() and inset() (filter).
 
 gui.effects = {
    -- A gloss highlight over the upper half of the fill.
@@ -1478,6 +1512,31 @@ gui.effects = {
          if source then over.input = source else over.sourceType = 'Graphic' end
          return filter.new('CompositeFX', over)
       end
+   },
+
+   -- Strokes the paths in colour.  The width is a fraction of the view box diagonal, so it scales with the target.  A
+   -- path with its own stroke takes the colour and keeps its width.  The stroke is centred on the path, so half of
+   -- its width covers the fill.
+
+   outline = {
+      kind   = 'vector',
+      params = array<table> {
+         { name='colour', type='colour', default='#000000' },
+         { name='width',  type='num', default=0.015 }
+      },
+      apply = function(Ctx:table!, Args:table!, Vector:obj!)
+         if Vector.class.className is 'VectorViewport' then return end
+         c = Args.colour
+         colour = hexColour(c.r, c.g, c.b, c.a)
+         if Vector.stroke?? then
+            Vector.stroke = colour
+            return
+         elseif Vector.fill is 'none' then -- Nothing is drawn, so there is nothing to outline
+            return
+         end
+         Vector.stroke = colour
+         Vector.strokeWidth = string.format('%g%%', Args.width * 100)
+      end
    }
 }
 
@@ -1548,7 +1607,8 @@ gui.palettes = {
       gui.theme        = 'light' -- Default
       gui.paletteTheme = 'light' -- 'light' or 'dark' only
       gui.palette      = gui.palettes.ocean
-      gui.defaultFill  = nil -- User has not defined a preferred fill effect
+      gui.defaultFill  = nil -- User can override the theme's fill effect
+      gui.defaultFX    = nil -- Post-effect
 
       if mSys.AnalysePath(glStyleConfig) is ERR_Okay then
          try
@@ -1557,8 +1617,10 @@ gui.palettes = {
             palette      = [_*]cfg.mtReadValue('Style', 'Palette')
             paletteTheme = [_*]cfg.mtReadValue('Style', 'PaletteTheme')
             defaultFill  = [_*]cfg.mtReadValue('Style', 'Fill')
+            defaultFX    = [_*]cfg.mtReadValue('Style', 'Effects')
 
             if defaultFill?? then gui.defaultFill = defaultFill end
+            if defaultFX?? then gui.defaultFX = defaultFX end
 
             gui.theme    = theme
             if gui.palettes[palette] then
@@ -1581,6 +1643,14 @@ function linkThemes(Themes:table!):table
    Themes.dark.menubar.menu = Themes.dark.menu
    Themes.light.menubar.menu = Themes.light.menu
    return Themes
+end
+
+function iconTheme(Fill:str!)
+   if gui.defaultFX then
+      return (gui.defaultFill or Fill) .. gui.defaultFX
+   else
+      return (gui.defaultFill or Fill)
+   end
 end
 
 -- The theme tables are deferred until first access because they read gui.fonts, which depends on the display density.
@@ -1652,8 +1722,8 @@ gui.themes = <table{ linkThemes({
          textHighlightBkgd = gui.palette.dark.contrast, -- Background fill for 'text' during user hover
          textSelect        = gui.palette.dark.altText,  -- Colour for 'text' when selected
          textSelectBkgd    = gui.palette.dark.prime,    -- Background fill for 'text' when selected
-         icon              = gui.defaultFill or 'fill(pearl)', -- Default icon theme for icons drawn over 'bkgd'
-         iconHighlight     = gui.defaultFill or 'fill(pearl)'  -- Recommended icon theme when highlighted or selected
+         icon              = iconTheme('fill(pearl)'), -- Default icon theme for icons drawn over 'bkgd'
+         iconHighlight     = iconTheme('fill(pearl)')  -- Recommended icon theme when highlighted or selected
       },
       widget = { -- Non-input widgets only (exc. checkbox, combobox, etc.)
          text        = { fill = gui.palette.dark.text, face = gui.fonts.widget.face, fontSize = string.format('%.2fpt', gui.fonts.widget.size), fontStyle = gui.fonts.widget.style },
@@ -1664,7 +1734,7 @@ gui.themes = <table{ linkThemes({
       },
       icon = {
          text = { fill = gui.palette.dark.text, face = gui.fonts.icon.face, fontSize = string.format('%.2fpt', gui.fonts.icon.size), fontStyle = gui.fonts.icon.style },
-         effect = gui.defaultFill or 'fill(pearl)'
+         effect = iconTheme('fill(pearl)')
       },
       input = { -- Used by checkbox, input, combobox
          bkgd  = { fill = gui.palette.dark.bkgd, stroke = gui.palette.dark.edge, strokeWidth = 2, roundX = 4, roundY = 4, opacity = 1 },
@@ -1676,7 +1746,7 @@ gui.themes = <table{ linkThemes({
          bkgd   = { fill = gui.palette.dark.neutral },
          text   = { fill = gui.palette.dark.text, face = gui.fonts.window.face, fontSize =  string.format('%.2fpt', gui.fonts.window.size), fontStyle = gui.fonts.window.style },
          stroke = { stroke = modifyAlpha(gui.palette.dark.text, 0.25), strokeWidth = 2 }, -- Stroking of lines/paths (not borders of widgets)
-         icon   = gui.defaultFill or 'fill(pearl)'
+         icon   = iconTheme('fill(pearl)')
       },
       button = {
          bkgd      = { fill = gui.palette.dark.neutral, stroke = gui.palette.dark.edge, strokeWidth = 2, roundX = 4, roundY = 4, opacity = 1 },
@@ -1696,7 +1766,7 @@ gui.themes = <table{ linkThemes({
          border    = { stroke = gui.palette.dark.inverse, opacity = 0.5 }, -- VectorRectangle
          highlight = { fill = gui.palette.dark.contrast }, -- VectorRectangle
          text      = { fill = gui.palette.dark.text, face = gui.fonts.menu.face, fontSize = string.format('%.2fpt', gui.fonts.menu.size), fontStyle = gui.fonts.menu.style }, -- VectorText
-         icon      = gui.defaultFill or 'fill(pearl)'
+         icon      = iconTheme('fill(pearl)')
       },
       dropdown = { -- Exclusive to combobox
          bkgd          = { fill = gui.palette.dark.bkgd },
@@ -1704,8 +1774,8 @@ gui.themes = <table{ linkThemes({
          highlight     = { fill = gui.palette.dark.contrast },
          text          = { fill = gui.palette.dark.text, face = gui.fonts.input.face, fontSize = string.format('%.2fpt', gui.fonts.input.size), fontStyle = gui.fonts.input.style },
          textHighlight = { fill = gui.palette.dark.altText, face = gui.fonts.input.face, fontSize = string.format('%.2fpt', gui.fonts.input.size), fontStyle = gui.fonts.input.style },
-         icon          = gui.defaultFill or 'fill(pearl)',
-         iconHighlight = gui.defaultFill or 'fill(pearl)'
+         icon          = iconTheme('fill(pearl)'),
+         iconHighlight = iconTheme('fill(pearl)')
       },
       slider = {
          bkgd          = { fill = gui.palette.dark.mid, stroke = 'none', roundX = 4, roundY = 4, strokeWidth = 2, opacity = 1 },
@@ -1732,8 +1802,8 @@ gui.themes = <table{ linkThemes({
          groupBorder   = { stroke = gui.palette.dark.edge, strokeWidth = gui.pixel('1.5pt') },
          highlight     = { fill = gui.palette.dark.contrast },
          iconSize      = gui.pixel('16pt'),
-         icon          = gui.defaultFill or 'fill(pearl)',
-         iconHighlight = gui.defaultFill or 'fill(pearl)'
+         icon          = iconTheme('fill(pearl)'),
+         iconHighlight = iconTheme('fill(pearl)')
       },
       tooltip = {
          bkgd = { fill = gui.palette.dark.bkgd, roundX = gui.pixel('4pt'), roundY = gui.pixel('4pt'), strokeWidth = 2, stroke = gui.palette.dark.edge },
@@ -1763,8 +1833,8 @@ gui.themes = <table{ linkThemes({
          textHighlightBkgd = gui.palette.light.contrast,
          textSelect        = gui.palette.light.altText,
          textSelectBkgd    = gui.palette.light.prime,
-         icon              = gui.defaultFill or 'fill(carbon)',
-         iconHighlight     = gui.defaultFill or 'fill(pearl)'
+         icon              = iconTheme('fill(carbon)'),
+         iconHighlight     = iconTheme('fill(pearl)')
       },
       widget = {
          text        = { fill = gui.palette.light.altText, face = gui.fonts.widget.face, fontSize = string.format('%.2fpt', gui.fonts.widget.size), fontStyle = gui.fonts.widget.style },
@@ -1775,7 +1845,7 @@ gui.themes = <table{ linkThemes({
       },
       icon = {
          text = { fill = gui.palette.light.altText, face = gui.fonts.icon.face, fontSize = string.format('%.2fpt', gui.fonts.icon.size), fontStyle = gui.fonts.icon.style },
-         effect = gui.defaultFill or 'fill(carbon)'
+         effect = iconTheme('fill(carbon)')
       },
       input = {
          bkgd  = { fill = gui.palette.light.bkgd, stroke = gui.palette.light.edge, strokeWidth = 2, roundX = 4, roundY = 4, opacity = 1 },
@@ -1787,7 +1857,7 @@ gui.themes = <table{ linkThemes({
          bkgd   = { fill = gui.palette.light.neutral },
          text   = { fill = gui.palette.light.text, face = gui.fonts.window.face, fontSize = string.format('%.2fpt', gui.fonts.window.size), fontStyle = gui.fonts.window.style },
          stroke = { stroke = modifyAlpha(gui.palette.light.inverse, 0.5), strokeWidth = 2 },
-         icon   = gui.defaultFill or 'fill(carbon)'
+         icon   = iconTheme('fill(carbon)')
       },
       button = {
          bkgd      = { fill = gui.palette.light.inverse, stroke = gui.palette.light.edge, strokeWidth = 2, roundX = 4, roundY = 4, opacity = 1 },
@@ -1807,7 +1877,7 @@ gui.themes = <table{ linkThemes({
          border    = { stroke  = gui.palette.light.neutral, opacity = 0.5 },
          highlight = { fill = gui.palette.light.contrast },
          text      = { fill = gui.palette.light.altText, face = gui.fonts.menu.face, fontSize = string.format('%.2fpt', gui.fonts.menu.size), fontStyle = gui.fonts.menu.style },
-         icon      = gui.defaultFill or 'fill(pearl)'
+         icon      = iconTheme('fill(pearl)')
       },
       dropdown = {
          bkgd          = { fill = gui.palette.light.bkgd },
@@ -1815,8 +1885,8 @@ gui.themes = <table{ linkThemes({
          highlight     = { fill = gui.palette.light.contrast },
          text          = { fill = gui.palette.light.text, face = gui.fonts.input.face, fontSize = string.format('%.2fpt', gui.fonts.input.size), fontStyle = gui.fonts.input.style },
          textHighlight = { fill = gui.palette.light.altText, face = gui.fonts.input.face, fontSize = string.format('%.2fpt', gui.fonts.input.size), fontStyle = gui.fonts.input.style },
-         icon          = gui.defaultFill or 'fill(carbon)',
-         iconHighlight = gui.defaultFill or 'fill(pearl)'
+         icon          = iconTheme('fill(carbon)'),
+         iconHighlight = iconTheme('fill(pearl)')
       },
       slider = {
          bkgd          = { fill = gui.palette.light.mid, stroke = 'none', roundX = 4, roundY = 4, strokeWidth = 2, opacity = 1 },
@@ -1837,8 +1907,8 @@ gui.themes = <table{ linkThemes({
          groupBorder   = { stroke = gui.palette.light.inverse, strokeWidth = gui.pixel('1.5pt') },
          highlight     = { fill = gui.palette.light.contrast },
          iconSize      = gui.pixel('16pt'),
-         icon          = gui.defaultFill or 'fill(carbon)',
-         iconHighlight = gui.defaultFill or 'fill(pearl)'
+         icon          = iconTheme('fill(carbon)'),
+         iconHighlight = iconTheme('fill(pearl)')
       },
       tooltip = {
          bkgd = { fill = gui.palette.light.bkgd, roundX = 4, roundY = 4, strokeWidth = 2, stroke = gui.palette.light.edge },
