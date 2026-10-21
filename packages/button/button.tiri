@@ -32,6 +32,7 @@ gui.button = function(Options)
    GAP       <const> = HEIGHT * 0.35
 
    calc_width = false -- True if the button width is computed from its content at initialisation
+   icon_margin = 0 -- Padding around the icon's pattern tile, see gui.createIcon()
 
    -- The hover tip is shown when the pointer rests on the button.  The tooltip removes itself when the pointer moves,
    -- and is retained in _tooltip because it is freed when the returned object is garbage collected.
@@ -75,7 +76,7 @@ gui.button = function(Options)
    function arrange(Resize:bool)
       label_offset = 0
       if self.iconRender then
-         self.iconRender.x = GAP
+         self.iconRender.x = GAP - icon_margin
          label_offset = (GAP * 0.5) + ICON_SIZE
       end
 
@@ -87,18 +88,19 @@ gui.button = function(Options)
          end
 
          if self.iconRender and not self.text then
-            self.iconRender.x = (self.viewport.width - ICON_SIZE) * 0.5
+            self.iconRender.x = ((self.viewport.width - ICON_SIZE) * 0.5) - icon_margin
          end
       end
    end
 
    function createIcon(Path:str!):obj
       icon = gui.createIcon(self.viewport.scene, Path, ICON_SIZE, gui.rgbToIconTheme(theme.text.fill))
+      icon_margin = icon.margin
       return self.viewport.new('VectorViewport', {
-         x      = GAP,
-         y      = (HEIGHT - icon.size) * 0.5,
-         width  = icon.size,
-         height = icon.size,
+         x      = GAP - icon.margin,
+         y      = ((HEIGHT - icon.size) * 0.5) - icon.margin,
+         width  = icon.size + (icon.margin * 2),
+         height = icon.size + (icon.margin * 2),
          fill   = icon.fill
       })
    end

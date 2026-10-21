@@ -421,8 +421,8 @@ gui.dropdown = function(Options)
                   end
 
                   mi.iconView = &page.new('VectorRectangle', {
-                     x = HMARGIN, y = y + math.floor((mi.height - ICON_SIZE) * 0.5), width = ICON_SIZE,
-                     height = ICON_SIZE, fill = info.fill
+                     x = HMARGIN - info.margin, y = y + math.floor((mi.height - ICON_SIZE) * 0.5) - info.margin,
+                     width = ICON_SIZE + (info.margin * 2), height = ICON_SIZE + (info.margin * 2), fill = info.fill
                   })
                end
             end

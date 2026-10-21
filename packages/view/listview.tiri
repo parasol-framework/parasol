@@ -97,9 +97,9 @@ gui.listView = function(Options:table!):table
 
       if Item.icon then
          try
-            if not View.icons[Item.icon] then
-               gui.createIcon(View.scene, Item.icon, m.iconSize, View.theme.page.icon, Item.icon)
-               View.icons[Item.icon] = true
+            if not View.icons[Item.icon] then -- Records the icon's margin, see gui.createIcon()
+               View.icons[Item.icon] = gui.createIcon(View.scene, Item.icon, m.iconSize, View.theme.page.icon,
+                  Item.icon).margin
             end
 
             if View.theme.page.iconHighlight and not View.hIcons[Item.icon] then
@@ -115,12 +115,13 @@ gui.listView = function(Options:table!):table
                Item._vectors.iconImage = vp.new('VectorRectangle', { width = m.iconSize, height = m.iconSize })
             end
 
+            margin = View.icons[Item.icon]
             image = Item._vectors.iconImage
             image.fill       = f'url(#{Item.icon})'
-            image.x          = math.round(m.lineHeight * 0.2)
-            image.y          = math.round((m.rowHeight - m.iconSize) * 0.5)
-            image.width      = m.iconSize
-            image.height     = m.iconSize
+            image.x          = math.round(m.lineHeight * 0.2) - margin
+            image.y          = math.round((m.rowHeight - m.iconSize) * 0.5) - margin
+            image.width      = m.iconSize + (margin * 2)
+            image.height     = m.iconSize + (margin * 2)
             image.visibility = VIS_VISIBLE
          end
       elseif Item._vectors.iconImage then

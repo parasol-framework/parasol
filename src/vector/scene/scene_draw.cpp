@@ -774,22 +774,24 @@ void SceneRenderer::copy_filter_bitmap(objBitmap *Bitmap, extVectorFilter *Filte
 {
    Bitmap->Opacity = (Filter->Opacity < 1.0) ? (255.0 * Filter->Opacity) : 255;
 
+   // Restrict only the final copy.  Filter inputs must retain pixels outside this clip for offsets and blur kernels.
+   const auto &clip = mRenderBase.clip_box();
+   const int src_x = std::max(Bitmap->Clip.Left, clip.x1);
+   const int src_y = std::max(Bitmap->Clip.Top, clip.y1);
+   const int width = std::min(Bitmap->Clip.Right, clip.x2 + 1) - src_x;
+   const int height = std::min(Bitmap->Clip.Bottom, clip.y2 + 1) - src_y;
+
+   if ((width <= 0) or (height <= 0)) return;
+
    if (mBitmapOriginX or mBitmapOriginY) {
-      const int src_x = Bitmap->Clip.Left;
-      const int src_y = Bitmap->Clip.Top;
-      const int width = Bitmap->Clip.Right - Bitmap->Clip.Left;
-      const int height = Bitmap->Clip.Bottom - Bitmap->Clip.Top;
+      auto save_data = mBitmap->offset(mBitmapOriginX, mBitmapOriginY);
 
-      if ((width > 0) and (height > 0)) {
-         auto save_data = mBitmap->offset(mBitmapOriginX, mBitmapOriginY);
+      gfx::CopyArea(Bitmap, mBitmap, BAF::BLEND|BAF::COPY, src_x, src_y, width, height,
+         src_x - mBitmapOriginX, src_y - mBitmapOriginY);
 
-         gfx::CopyArea(Bitmap, mBitmap, BAF::BLEND|BAF::COPY, src_x, src_y, width, height,
-            src_x - mBitmapOriginX, src_y - mBitmapOriginY);
-
-         mBitmap->Data = save_data;
-      }
+      mBitmap->Data = save_data;
    }
-   else gfx::CopyArea(Bitmap, mBitmap, BAF::BLEND|BAF::COPY, 0, 0, Bitmap->Width, Bitmap->Height, 0, 0);
+   else gfx::CopyArea(Bitmap, mBitmap, BAF::BLEND|BAF::COPY, src_x, src_y, width, height, src_x, src_y);
 }
 
 // This is the main routine for parsing the vector tree for drawing.

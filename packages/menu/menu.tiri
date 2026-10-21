@@ -259,8 +259,8 @@ gui.menu = function(Options:table!)
                      info = gui.createIcon(Options.hostScene ?? &viewport.scene, item.icon, ICON_SIZE, theme.icon)
 
                      item.iconView = &content.new('VectorRectangle', {
-                        x = icon_x, y = y + math.floor((ITEM_HEIGHT - ICON_SIZE) * 0.5),
-                        width = ICON_SIZE, height = ICON_SIZE, fill = info.fill
+                        x = icon_x - info.margin, y = y + math.floor((ITEM_HEIGHT - ICON_SIZE) * 0.5) - info.margin,
+                        width = ICON_SIZE + (info.margin * 2), height = ICON_SIZE + (info.margin * 2), fill = info.fill
                      })
                   end
                end

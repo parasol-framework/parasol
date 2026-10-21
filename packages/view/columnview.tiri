@@ -268,7 +268,7 @@ function arrangeColumns(View:table!)
 
    if View._sort then
       col = View._sort.col
-      View._sort.icon.x = col.align is 'right' ? MARGIN : col.px_width - MARGIN - glIconSize
+      View._sort.icon.x = (col.align is 'right' ? MARGIN : col.px_width - MARGIN - glIconSize) - View._sort.margin
    end
 
    if View.scrollbar then
@@ -291,38 +291,38 @@ function bannerZoneClick(View, Col, X, Y, Value)
    if View._sort and (View._sort.col is Col) and (View._sort.ascending is true) then
       View._sort = { col=Col, ascending=false }
       if not View.iconDescending then
-         if not View._sort_desc then
-            info = gui.createIcon(View.scene, 'layout/sort_alpha_desc', glIconSize, View.theme.window.icon, 'sort_desc')
-            View._sort_desc = info.fill
-         end
+         View._sort_desc ??= gui.createIcon(View.scene, 'layout/sort_alpha_desc', glIconSize,
+            View.theme.window.icon, 'sort_desc')
 
+         sort_icon = View._sort_desc
+         View._sort.margin = sort_icon.margin
          View._sort.icon = Col.bannerVP.new('VectorRectangle', {
             name   = 'banner_sort',
-            fill   = View._sort_desc,
-            y      = math.round( ((LINE_HEIGHT - glIconSize) * 0.5)),
-            width  = glIconSize,
-            height = glIconSize
+            fill   = sort_icon.fill,
+            y      = math.round((LINE_HEIGHT - glIconSize) * 0.5) - sort_icon.margin,
+            width  = glIconSize + (sort_icon.margin * 2),
+            height = glIconSize + (sort_icon.margin * 2)
          })
       end
    else
       View._sort = { col=Col, ascending=true }
       if not View.iconAscending then
-         if not View._sort_asc then
-            info = gui.createIcon(View.scene, 'layout/sort_alpha_asc', glIconSize, View.theme.window.icon, 'sort_asc')
-            View._sort_asc = info.fill
-         end
+         View._sort_asc ??= gui.createIcon(View.scene, 'layout/sort_alpha_asc', glIconSize,
+            View.theme.window.icon, 'sort_asc')
 
+         sort_icon = View._sort_asc
+         View._sort.margin = sort_icon.margin
          View._sort.icon = Col.bannerVP.new('VectorRectangle', {
             name   = 'banner_sort',
-            fill   = View._sort_asc,
-            y      = math.round((LINE_HEIGHT - glIconSize) * 0.5),
-            width  = glIconSize,
-            height = glIconSize
+            fill   = sort_icon.fill,
+            y      = math.round((LINE_HEIGHT - glIconSize) * 0.5) - sort_icon.margin,
+            width  = glIconSize + (sort_icon.margin * 2),
+            height = glIconSize + (sort_icon.margin * 2)
          })
       end
    end
 
-   View._sort.icon.x = Col.align is 'right' ? MARGIN : Col.px_width - MARGIN - glIconSize
+   View._sort.icon.x = (Col.align is 'right' ? MARGIN : Col.px_width - MARGIN - glIconSize) - View._sort.margin
 
    View.sortColumn(View, Col, View._sort.ascending)
    View.viewport.acDraw()
@@ -350,7 +350,9 @@ function rearrangeItems(View)
          item._vectors.viewport.y = y
       end
 
-      item._vectors.iconImage?.y = y + ICON_OFFSET
+      if item._vectors.iconImage then
+         item._vectors.iconImage.y = y + ICON_OFFSET - item._iconMargin
+      end
 
       for col in values(View.columns) do
          item._col?[col.attrib]?.text?.y = y + LINE_OFFSET
@@ -615,7 +617,8 @@ gui.columnView = function(Options):table
                   local theme = item.iconTheme ?? View.theme.page.icon
                   local uid   = f'{gui.parseFill(theme).key}+{item.icon}'
                   local info  = gui.createIcon(View.scene, item.icon, glIconSize, theme, uid)
-                  item._iconFill = info.fill
+                  item._iconFill   = info.fill
+                  item._iconMargin = info.margin
 
                   if View.theme.page.iconHighlight and View.theme.page.iconHighlight != theme then
                      theme = View.theme.page.iconHighlight
@@ -628,14 +631,14 @@ gui.columnView = function(Options):table
                      item._vectors.iconImage = col.vecViewport.new('VectorRectangle', {
                         name   = 'item_icon',
                         fill   = item._iconFill,
-                        x      = MARGIN * 2,
-                        y      = y + ICON_OFFSET,
-                        width  = glIconSize,
-                        height = glIconSize,
+                        x      = (MARGIN * 2) - item._iconMargin,
+                        y      = y + ICON_OFFSET - item._iconMargin,
+                        width  = glIconSize + (item._iconMargin * 2),
+                        height = glIconSize + (item._iconMargin * 2),
                         visibility = vis
                      })
                   else
-                     item._vectors.iconImage.{ y = y + ICON_OFFSET, visibility = vis }
+                     item._vectors.iconImage.{ y = y + ICON_OFFSET - item._iconMargin, visibility = vis }
                   end
                end
             end

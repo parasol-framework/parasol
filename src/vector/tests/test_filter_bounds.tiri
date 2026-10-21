@@ -97,6 +97,55 @@ end
    assertRegion(blueRegion(draw(scene)), 50, 5, 169, 184, 'Plain child')
 end
 
+-- A filter region may extend beyond the viewport that contains the filtered vector, as for drop shadows and glows.
+-- It is limited only by viewports that clip their content.  Content is (50,50) -> (150,150) on the page, and fills
+-- its container.
+
+function nestedFilter(Overflow:num):obj
+   local scene, root = newScene()
+   local container = root.new('VectorViewport', { x=50, y=50, width=100, height=100, overflow=Overflow })
+   local vp = container.new('VectorViewport', { x=0, y=0, width='100%', height='100%', filter='url(#blue)' })
+   vp.new('VectorRectangle', { x=0, y=0, width=100, height=100, fill='rgb(255,0,0)' })
+   return scene
+end
+
+@Test function RegionExtendsBeyondContainer()
+   assertRegion(blueRegion(draw(nestedFilter(VOF_VISIBLE))), 40, 40, 159, 159, 'Visible container')
+end
+
+@Test function HiddenContainerClipsRegion()
+   assertRegion(blueRegion(draw(nestedFilter(VOF_HIDDEN))), 50, 50, 149, 149, 'Hidden container')
+end
+
+@Test function PartialRedrawRetainsOffsetInputs()
+   local scene <close> = obj.new('VectorScene', { pageWidth=PAGE, pageHeight=PAGE })
+   local root = scene.new('VectorViewport', { width=PAGE, height=PAGE })
+   local filter = scene.new('VectorFilter', { x='-50%', y='-50%', width='200%', height='200%' })
+   filter.new('OffsetFX', { xOffset=20, yOffset=20 })
+   check scene.mtAddDef('offset', filter)
+   root.new('VectorRectangle', { x=60, y=60, width=80, height=80, fill='white', filter='url(#offset)' })
+
+   local full <close> = draw(scene)
+   local partial <close> = obj.new('bitmap', { width=PAGE, height=PAGE, bitsPerPixel=32, bkgd='0,0,0,255' })
+   partial.acClear()
+   check partial.mtSetClipRegion(100, 100, 150, 150)
+   scene.bitmap = partial
+   check scene.acDraw()
+
+   for y in {100 to 150} do
+      for x in {100 to 150} do
+         local expected = mGfx.ReadRGBPixel(full, x, y).red
+         local actual = mGfx.ReadRGBPixel(partial, x, y).red
+         assert(actual is expected, f'Partial redraw differs at {x},{y}: expected {expected}, got {actual}')
+      end
+   end
+
+   check partial.mtSetClipRegion(0, 0, PAGE, PAGE)
+   for probe in values(array<table> { {x=90,y=110}, {x=110,y=90}, {x=155,y=110}, {x=110,y=155} }) do
+      assert(mGfx.ReadRGBPixel(partial, probe.x, probe.y).red is 0, 'The final copy must respect the drawing clip')
+   end
+end
+
 @Test function ScaledClient()
    -- The client's own transform is applied after the region is computed.  Content is (60,30) -> (159,180).
    local scene, root = newScene()
