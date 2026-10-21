@@ -36,6 +36,7 @@ capabilities.
 #include <map>
 #include <format>
 #include <cmath>
+#include <memory>
 
 #include "Platform.h"
 
@@ -120,6 +121,8 @@ JUMPTABLE_FONT
 JUMPTABLE_TIRI
 
 static OBJECTPTR modTiri = nullptr;
+
+static const double IDLE_INTERVAL = 0.01; // Seconds between calls to Idle() while Scintilla has background work
 
 static OBJECTPTR clScintilla = nullptr;
 static OBJECTPTR modDisplay = nullptr, modFont = nullptr, modVector = nullptr;
@@ -214,11 +217,24 @@ static void create_styled_fonts(extScintilla *);
 static ERR create_scintilla(void);
 static ERR create_canvas(extScintilla *);
 static ERR feedback_view(objVectorViewport *, FM);
+static ERR feedback_page(objVectorViewport *, FM);
+static ERR feedback_focus(objVectorViewport *, FM);
+static void update_focus(extScintilla *);
+static ERR input_canvas(objVectorRectangle *, const InputEvent *);
+static void align_canvas(extScintilla *, double, double);
+static void sync_page(extScintilla *);
+static void clear_bitmap(extScintilla *);
+static void invalidate_area(extScintilla *, int, int, int, int);
+static void paint_dirty(extScintilla *);
+static void update_margin_width(extScintilla *);
 static ERR load_file(extScintilla *, std::string_view);
 static void calc_longest_line(extScintilla *);
-[[maybe_unused]] static void key_event(evKey *, int, extScintilla *);
+static ERR key_event(objVectorViewport *, KQ, KEY, int);
+static int command_key(KEY, bool);
+static int shortcut_key(KEY);
 static void report_event(extScintilla *, SEF Event);
-static ERR idle_timer(extScintilla *Self, int64_t Elapsed, int64_t CurrentTime);
+static ERR tick_timer(extScintilla *, int64_t, int64_t);
+static ERR idle_timer(extScintilla *, int64_t, int64_t);
 extern ERR init_search(void);
 
 //********************************************************************************************************************
@@ -279,21 +295,46 @@ static ERR MODExpunge(void)
 }
 
 //********************************************************************************************************************
+// The editor follows the enabled state of its host viewport.
 
-static void notify_focus(OBJECTPTR Object, ACTIONID ActionID, ERR Result, APTR Args)
+static void notify_disable_viewport(OBJECTPTR Object, ACTIONID ActionID, ERR Result, APTR Args)
 {
-   kt::Log log(__FUNCTION__);
+   if (Result IS ERR::Okay) acDisable(CurrentContext());
+}
+
+static void notify_enable_viewport(OBJECTPTR Object, ACTIONID ActionID, ERR Result, APTR Args)
+{
+   if (Result IS ERR::Okay) acEnable(CurrentContext());
+}
+
+//********************************************************************************************************************
+// Receiver for focus changes on the Focus viewport.  The editor has the focus while the Focus viewport or any of its
+// children has the focus, which matches the delivery of keyboard input.
+
+static ERR feedback_focus(objVectorViewport *Viewport, FM Event)
+{
    auto Self = (extScintilla *)CurrentContext();
+   Self->HasFocus = (Event & (FM::HAS_FOCUS|FM::CHILD_HAS_FOCUS)) != FM::NIL;
+   update_focus(Self);
+   return ERR::Okay;
+}
 
-   if (Result != ERR::Okay) return;
+//********************************************************************************************************************
+// Scintilla shows the caret only while it has the focus, which is withheld while the editor is disabled.  The tracked
+// modifier keys are reset on losing the focus because their release will not be reported to the editor.
 
-   // TODO Phase 4: Keyboard input will be received from Viewport->subscribeKeyboard() instead of the global event.
-   //if (!Self->prvKeyEvent) {
-   //   SubscribeEvent(EVID_IO_KEYBOARD_KEYPRESS, C_FUNCTION(key_event, Self), &Self->prvKeyEvent);
-   //}
+static void update_focus(extScintilla *Self)
+{
+   if (not Self->API) return;
 
-   if ((Self->Flags & SCIF::DISABLED) IS SCIF::NIL) Self->API->panGotFocus();
-   else log.msg("(Focus) Cannot receive focus while disabled.");
+   bool focus = (Self->HasFocus) and ((Self->Flags & SCIF::DISABLED) IS SCIF::NIL);
+   if (not focus) {
+      Self->KeyShift = false;
+      Self->KeyCtrl  = false;
+      Self->KeyAlt   = false;
+   }
+
+   Self->API->panSetFocus(focus);
 }
 
 //********************************************************************************************************************
@@ -310,6 +351,17 @@ static void notify_free_viewport(OBJECTPTR Object, ACTIONID ActionID, ERR Result
 }
 
 //********************************************************************************************************************
+// A Focus viewport that differs from the host Viewport is being freed.
+
+static void notify_free_focus(OBJECTPTR Object, ACTIONID ActionID, ERR Result, APTR Args)
+{
+   auto Self = (extScintilla *)CurrentContext();
+   Self->Focus    = nullptr;
+   Self->HasFocus = false;
+   update_focus(Self);
+}
+
+//********************************************************************************************************************
 // The image definition belongs to the scene and will be freed with it.
 
 static void notify_free_image(OBJECTPTR Object, ACTIONID ActionID, ERR Result, APTR Args)
@@ -318,18 +370,6 @@ static void notify_free_image(OBJECTPTR Object, ACTIONID ActionID, ERR Result, A
    Self->Image = nullptr;
 }
 
-//********************************************************************************************************************
-
-static void notify_lostfocus(OBJECTPTR Object, ACTIONID ActionID, ERR Result, APTR Args)
-{
-   kt::Log log(__FUNCTION__);
-   log.branch();
-
-   auto Self = (extScintilla *)CurrentContext();
-   if (Self->prvKeyEvent) { UnsubscribeEvent(Self->prvKeyEvent); Self->prvKeyEvent = nullptr; }
-
-   Self->API->panLostFocus();
-}
 
 //********************************************************************************************************************
 // Receiver for path changes on the View, which reflect a change to the size of Scintilla's client area.
@@ -344,15 +384,183 @@ static ERR feedback_view(objVectorViewport *View, FM Event)
    int width  = std::max(1, int(std::lround(double(w))));
    int height = std::max(1, int(std::lround(double(h))));
 
+   align_canvas(Self, double(w), double(h));
+
    if ((Self->ViewWidth IS width) and (Self->ViewHeight IS height)) return ERR::Okay;
 
    Self->ViewWidth  = width;
    Self->ViewHeight = height;
 
-   // TODO Phase 2: Resize the Bitmap and Canvas to match the View, then repaint.
+   // The Bitmap is one pixel wider and taller than the View to cover the sub-pixel alignment offset.
+
+   if ((Self->Bitmap) and (acResize(Self->Bitmap, width + 1, height + 1, 0) IS ERR::Okay)) {
+      clear_bitmap(Self);
+      if (Self->Canvas) {
+         Self->Canvas->setWidth(Self->Bitmap->Width);
+         Self->Canvas->setHeight(Self->Bitmap->Height);
+      }
+   }
 
    if (Self->API) Self->API->panResized();
+   invalidate_area(Self, 0, 0, Self->ViewWidth, Self->ViewHeight);
    return ERR::Okay;
+}
+
+//********************************************************************************************************************
+// Receiver for path changes on the Page.  If the Page has been moved by a third party, such as a scrollbar, the editor
+// scrolls to match.  Scintilla scrolls by whole lines, so the Page is snapped to the nearest line.
+
+static ERR feedback_page(objVectorViewport *Page, FM Event)
+{
+   auto Self = (extScintilla *)CurrentContext();
+
+   if ((Self->ScrollLocked) or (not Self->API)) return ERR::Okay;
+
+   Unit x, y;
+   Page->getX(x);
+   Page->getY(y);
+   if ((-double(x) IS Self->ScrollX) and (-double(y) IS Self->ScrollY)) return ERR::Okay;
+
+   Self->API->panScrollTo(-double(x), -double(y));
+   return ERR::Okay;
+}
+
+//********************************************************************************************************************
+// Wheel input is received by the Canvas because it is the top-most vector in the editor.  This also prevents the
+// event from reaching a scrollbar's subscription to the Page, which would otherwise scroll the Page a second time.
+// Each event scrolls by a fixed step because wheel values are not consistent between platforms.  Holding Ctrl scrolls
+// by a page.  Input events do not carry the modifier state, so the state that key_event() tracks is used.
+
+static ERR input_canvas(objVectorRectangle *Canvas, const InputEvent *Events)
+{
+   static const int WHEEL_LINES = 3;
+   static const int WHEEL_COLUMNS = 6;
+
+   auto Self = (extScintilla *)CurrentContext();
+
+   for (auto event=Events; event; event=event->Next) {
+      if ((Self->Flags & SCIF::DISABLED) != SCIF::NIL) continue;
+      if (event->Value IS 0) continue;
+
+      int direction = (event->Value > 0) ? 1 : -1;
+      if (event->Type IS JET::WHEEL) {
+         int lines = WHEEL_LINES;
+         if (Self->KeyCtrl) lines = std::max(1, int(SCICALL(SCI_LINESONSCREEN)) - 1);
+         Self->API->panScrollBy(0, direction * lines);
+      }
+      else if (event->Type IS JET::WHEEL_X) Self->API->panScrollBy(direction * WHEEL_COLUMNS, 0);
+   }
+
+   return ERR::Okay;
+}
+
+//********************************************************************************************************************
+// Image sampling blurs the text unless the Bitmap is mapped to whole device pixels.  If the View is neither scaled nor
+// rotated, the Canvas is offset by the fractional part of the View's device position.  Transformed hosts are left
+// unaligned because the Bitmap is resampled regardless.
+
+static void align_canvas(extScintilla *Self, double Width, double Height)
+{
+   if (not Self->Canvas) return;
+
+   double x = 0, y = 0, ax = 0, ay = 0, w, h;
+   if (Self->View->getBoundary(VBF::NIL, &x, &y, &w, &h) IS ERR::Okay) {
+      if ((std::abs(w - Width) < 0.01) and (std::abs(h - Height) < 0.01)) {
+         ax = std::floor(x + 0.001) - x;
+         ay = std::floor(y + 0.001) - y;
+         if (ax > -0.001) ax = 0;
+         if (ay > -0.001) ay = 0;
+      }
+   }
+
+   if ((ax != Self->CanvasX) or (ay != Self->CanvasY)) {
+      Self->CanvasX = ax;
+      Self->CanvasY = ay;
+      sync_page(Self);
+   }
+}
+
+//********************************************************************************************************************
+// The Page is positioned at the negated scroll position, and the Canvas is positioned at the scroll position within
+// the Page so that it always covers the View.
+
+static void sync_page(extScintilla *Self)
+{
+   if ((not Self->Page) or (not Self->Canvas)) return;
+
+   Unit x, y;
+   Self->Page->getX(x);
+   Self->Page->getY(y);
+   if (double(x) != -Self->ScrollX) Self->Page->setX(-Self->ScrollX);
+   if (double(y) != -Self->ScrollY) Self->Page->setY(-Self->ScrollY);
+
+   Self->Canvas->getX(x);
+   Self->Canvas->getY(y);
+   if (double(x) != Self->ScrollX + Self->CanvasX) Self->Canvas->setX(Self->ScrollX + Self->CanvasX);
+   if (double(y) != Self->ScrollY + Self->CanvasY) Self->Canvas->setY(Self->ScrollY + Self->CanvasY);
+}
+
+//********************************************************************************************************************
+
+static void clear_bitmap(extScintilla *Self)
+{
+   auto &bkgd = Self->BkgdColour;
+   gfx::DrawRectangle(Self->Bitmap, 0, 0, Self->Bitmap->Width, Self->Bitmap->Height,
+      Self->Bitmap->packPixel(bkgd.Red, bkgd.Green, bkgd.Blue, 255), BAF::FILL);
+}
+
+//********************************************************************************************************************
+// Add an area of Scintilla's client to the Dirty region and schedule a repaint.  Painting is deferred so that it
+// never occurs during scene rendering, and so that multiple invalidations are combined into one paint.
+
+static void invalidate_area(extScintilla *Self, int Left, int Top, int Right, int Bottom)
+{
+   Left   = std::max(Left, 0);
+   Top    = std::max(Top, 0);
+   Right  = std::min(Right, Self->ViewWidth);
+   Bottom = std::min(Bottom, Self->ViewHeight);
+   if ((Right <= Left) or (Bottom <= Top)) return;
+
+   auto &dirty = Self->Dirty;
+   if ((dirty.Right <= dirty.Left) or (dirty.Bottom <= dirty.Top)) dirty = { Left, Top, Right, Bottom };
+   else {
+      dirty.Left   = std::min(dirty.Left, Left);
+      dirty.Top    = std::min(dirty.Top, Top);
+      dirty.Right  = std::max(dirty.Right, Right);
+      dirty.Bottom = std::max(dirty.Bottom, Bottom);
+   }
+
+   if (not Self->RepaintQueued) {
+      Self->RepaintQueued = true;
+      QueueAction(sci::Repaint::id, Self->UID);
+   }
+}
+
+//********************************************************************************************************************
+// The line number margin is sized for the digits of the line count, with a minimum of two digits and one character of
+// padding.
+
+static void update_margin_width(extScintilla *Self)
+{
+   if (not Self->API) return;
+
+   int digits = 0;
+   if (Self->LineNumbers) {
+      digits = 2;
+      for (int n = SCICALL(SCI_GETLINECOUNT); n >= 100; n /= 10) digits++;
+   }
+
+   if (digits IS Self->MarginDigits) return;
+   Self->MarginDigits = digits;
+
+   int width = 0;
+   if (digits) {
+      std::string sample(digits + 1, '9');
+      sample[0] = '_';
+      width = SCICALL(SCI_TEXTWIDTH, STYLE_LINENUMBER, sample.c_str());
+   }
+
+   SCICALL(SCI_SETMARGINWIDTHN, 0, (long)width);
 }
 
 //********************************************************************************************************************
@@ -551,14 +759,20 @@ Disable: Disables user interaction with the editor.
 
 static ERR SCINTILLA_Disable(extScintilla *Self)
 {
-   Self->Flags |= SCIF::DISABLED;
-   acDraw(Self);
+   if ((Self->Flags & SCIF::DISABLED) IS SCIF::NIL) {
+      Self->Flags |= SCIF::DISABLED;
+      update_focus(Self);
+      acDraw(Self);
+   }
    return ERR::Okay;
 }
 
 /*********************************************************************************************************************
 -ACTION-
 Draw: Redraws the editor content.
+
+The entire content of the editor is marked for redrawing.  Painting is deferred until the next cycle of message
+processing, after which the scene is redrawn.
 
 *********************************************************************************************************************/
 
@@ -576,8 +790,11 @@ Enable: Enables user interaction with the editor.
 
 static ERR SCINTILLA_Enable(extScintilla *Self)
 {
-   Self->Flags &= ~SCIF::DISABLED;
-   acDraw(Self);
+   if ((Self->Flags & SCIF::DISABLED) != SCIF::NIL) {
+      Self->Flags &= ~SCIF::DISABLED;
+      update_focus(Self);
+      acDraw(Self);
+   }
    return ERR::Okay;
 }
 
@@ -722,15 +939,24 @@ static ERR SCINTILLA_Init(extScintilla *Self, APTR)
    if (auto error = create_canvas(Self); error != ERR::Okay) return error;
 
    if (Self->Scene->SurfaceID) { // Make UI subscriptions as long as we're not headless
-      SubscribeAction(Self->Focus, AC::Focus, C_FUNCTION(notify_focus));
-      SubscribeAction(Self->Focus, AC::LostFocus, C_FUNCTION(notify_lostfocus));
+      // Keyboard input is delivered while the Focus viewport or one of its children has the focus.
 
-      // TODO Phase 4: Self->Viewport->subscribeKeyboard(C_FUNCTION(key_event));
-      // TODO Phase 5: Self->View->subscribeInput(JTYPE::MOVEMENT|JTYPE::BUTTON, C_FUNCTION(consume_input_events));
+      Self->Focus->subscribeFeedback(FM::HAS_FOCUS|FM::CHILD_HAS_FOCUS|FM::LOST_FOCUS, C_FUNCTION(feedback_focus));
+      Self->Focus->subscribeKeyboard(C_FUNCTION(key_event));
+
+      Self->Canvas->subscribeInput(JTYPE::EXT_MOVEMENT, C_FUNCTION(input_canvas));
+
+      // TODO Phase 5: Subscribe the Canvas to JTYPE::MOVEMENT|JTYPE::BUTTON with consume_input_events().  The View
+      // is unsuitable because input is delivered to the top-most subscriber, and a scrollbar subscribes to the Page.
       // TODO Phase 7: Drag and drop support via notify_dragdrop()
    }
 
    SubscribeAction(Self->Viewport, AC::Free, C_FUNCTION(notify_free_viewport));
+   if (Self->Focus != Self->Viewport) SubscribeAction(Self->Focus, AC::Free, C_FUNCTION(notify_free_focus));
+   SubscribeAction(Self->Viewport, AC::Disable, C_FUNCTION(notify_disable_viewport));
+   SubscribeAction(Self->Viewport, AC::Enable, C_FUNCTION(notify_enable_viewport));
+
+   if ((Self->Viewport->Flags & VF::DISABLED) != VF::NIL) Self->Flags |= SCIF::DISABLED;
 
    // Create the Scintilla editor and link it to this object.
 
@@ -748,8 +974,6 @@ static ERR SCINTILLA_Init(extScintilla *Self, APTR)
       }
    }
    else calc_longest_line(Self);
-
-   SubscribeTimer(0.03, C_FUNCTION(idle_timer), &Self->TimerID);
 
    if (((Self->Flags & SCIF::DETECT_LEXER) IS SCIF::NIL) and (Self->Lexer != SCLEX::NIL)) {
       Self->API->SetLexer(int(Self->Lexer));
@@ -788,10 +1012,6 @@ static ERR SCINTILLA_Init(extScintilla *Self, APTR)
    SCICALL(SCI_SETCARETFORE, SCICOLOUR(Self->CursorColour.Red, Self->CursorColour.Green, Self->CursorColour.Blue));
    SCICALL(SCI_SETCARETWIDTH, 2);
 
-#ifdef _DEBUG
-   SCICALL(SCI_SETCARETPERIOD, 0UL);
-#endif
-
    // Show whitespace characters like tabs
 
    if (Self->ShowWhitespace) SCICALL(SCI_SETVIEWWS, (long unsigned int)SCWS_VISIBLEALWAYS);
@@ -820,8 +1040,8 @@ static ERR SCINTILLA_Init(extScintilla *Self, APTR)
 
    // Set all special margins to invisible (note that the values indicate the pixel width of the margin)
 
-   if (Self->LineNumbers) SCICALL(SCI_SETMARGINWIDTHN, 0, 50L);
-   else SCICALL(SCI_SETMARGINWIDTHN, 0, 0L);
+   SCICALL(SCI_SETMARGINWIDTHN, 0, 0L);
+   update_margin_width(Self);
 
    if (Self->Symbols) SCICALL(SCI_SETMARGINWIDTHN, 1, 20L);
    else SCICALL(SCI_SETMARGINWIDTHN, 1, 0L);
@@ -831,6 +1051,9 @@ static ERR SCINTILLA_Init(extScintilla *Self, APTR)
 
    if (Self->Wordwrap) SCICALL(SCI_SETWRAPMODE, 1UL);
    else SCICALL(SCI_SETWRAPMODE, 0UL);
+
+   Self->HasFocus = (Self->Focus->Flags & VF::HAS_FOCUS) != VF::NIL;
+   update_focus(Self);
 
    Self->API->panRedraw();
    return ERR::Okay;
@@ -1064,6 +1287,21 @@ static ERR SCINTILLA_ReportEvent(extScintilla *Self)
 }
 
 /*********************************************************************************************************************
+-METHOD-
+Repaint: Private.  For internal use only.
+
+Private
+
+*********************************************************************************************************************/
+
+static ERR SCINTILLA_Repaint(extScintilla *Self)
+{
+   Self->RepaintQueued = false;
+   paint_dirty(Self);
+   return ERR::Okay;
+}
+
+/*********************************************************************************************************************
 -ACTION-
 SaveToObject: Save content as a text stream to another object.
 
@@ -1121,6 +1359,8 @@ static ERR SCINTILLA_SetFont(extScintilla *Self, struct sci::SetFont *Args)
       if (Self->initialised()) {
          Self->API->panFontChanged();
          calc_longest_line(Self);
+         Self->MarginDigits = -1; // Force the line number margin to be resized
+         update_margin_width(Self);
       }
       return ERR::Okay;
    }
@@ -1130,16 +1370,21 @@ static ERR SCINTILLA_SetFont(extScintilla *Self, struct sci::SetFont *Args)
 /*********************************************************************************************************************
 
 -METHOD-
-ScrollToPoint: Scrolls text by moving the Page.
+ScrollToPoint: Scrolls the document to a pixel position.
 
-This method will scroll text in the Scintilla document by moving the page position.
+This method scrolls the document so that the point (`X`, `Y`), measured in pixels from the top-left corner of the
+document, appears at the top-left corner of the #View.  The #Page is moved to `(-X, -Y)` to reflect the change.
+
+The editor scrolls vertically by whole lines, so `Y` is rounded to the nearest line.  Both coordinates are clamped to
+the scrollable range of the document.
 
 -INPUT-
-int X: New horizontal position.
-int Y: New vertical position.
+int X: Horizontal scroll position in pixels.
+int Y: Vertical scroll position in pixels.
 
 -RESULT-
 Okay:
+NullArgs:
 
 *********************************************************************************************************************/
 
@@ -1147,14 +1392,11 @@ static ERR SCINTILLA_ScrollToPoint(extScintilla *Self, struct sci::ScrollToPoint
 {
    kt::Log log;
 
-   log.traceBranch("Sending Scroll requests to Scintilla: %dx%d.", Args->X, Args->Y);
+   if (!Args) return log.warning(ERR::NullArgs);
 
-   Self->ScrollLocked++;
+   log.traceBranch("%dx%d", Args->X, Args->Y);
 
-   Self->API->panScrollToX(Args->X);
-   Self->API->panScrollToY(Args->Y);
-
-   Self->ScrollLocked--;
+   Self->API->panScrollTo(Args->X, Args->Y);
    return ERR::Okay;
 }
 
@@ -1275,6 +1517,9 @@ static ERR SCINTILLA_Undo(extScintilla *Self, struct acUndo *Args)
 -FIELD-
 AllowTabs: If enabled, use of the tab key produces real tabs and not spaces.
 
+The Tab key is only received by the editor if the `IGNORE_TAB` flag is set on its @VectorScene.  Refer to #Focus for
+details.
+
 *********************************************************************************************************************/
 
 static ERR GET_AllowTabs(extScintilla *Self, int *Value)
@@ -1321,6 +1566,8 @@ static ERR SET_AutoIndent(extScintilla *Self, int Value)
 -FIELD-
 BkgdColour: Defines the background colour.  Alpha blending is not supported.
 
+The BkgdColour applies to the text area and to all lexer styles.  The margins use their own colours.
+
 *********************************************************************************************************************/
 
 static ERR SET_BkgdColour(extScintilla *Self, RGB8 *Value)
@@ -1328,7 +1575,8 @@ static ERR SET_BkgdColour(extScintilla *Self, RGB8 *Value)
    Self->BkgdColour = *Value;
 
    if (Self->initialised()) {
-      SCICALL(SCI_STYLESETBACK, STYLE_DEFAULT, (long int)SCICOLOUR(Self->BkgdColour.Red, Self->BkgdColour.Green, Self->BkgdColour.Blue));
+      clear_bitmap(Self); // The Bitmap extends beyond the client area that Scintilla paints
+      Self->API->SetStyleColours();
    }
 
    return ERR::Okay;
@@ -1423,9 +1671,13 @@ Flags: Optional flags.
 -FIELD-
 Focus: Defines the viewport that is monitored for user focus changes.
 
-By default, the user focus is managed by monitoring the #Viewport for changes (for instance, clicking on or away from
-the viewport will result in a focus state change).  If another viewport should be monitored for focus state changes,
-it can be defined here prior to initialisation.
+The editor has the user focus while the Focus viewport or any of its children has the focus.  Keyboard input is
+received from the Focus viewport during that time, and the caret is shown and blinks.  If not set prior to
+initialisation, the #Viewport is used.  Clicking within the editor gives the focus to one of its internal viewports,
+which are children of the #Viewport.
+
+Keyboard input requires a @VectorScene that is linked to a @Surface.  The scene uses the Tab key to move the focus
+between keyboard subscribers unless its `IGNORE_TAB` flag is set, in which case the Tab key reaches the editor.
 
 -FIELD-
 FoldingMarkers: Folding markers in the left margin will be visible when this value is TRUE.
@@ -1553,14 +1805,8 @@ static ERR GET_LineNumbers(extScintilla *Self, int *Value)
 
 static ERR SET_LineNumbers(extScintilla *Self, int Value)
 {
-   if (Value) {
-      Self->LineNumbers = TRUE;
-      if (Self->initialised()) SCICALL(SCI_SETMARGINWIDTHN, 0, 50L);
-   }
-   else {
-      Self->LineNumbers = FALSE;
-      if (Self->initialised()) SCICALL(SCI_SETMARGINWIDTHN, 0, 0L);
-   }
+   Self->LineNumbers = Value ? TRUE : FALSE;
+   update_margin_width(Self);
    return ERR::Okay;
 }
 
@@ -1587,6 +1833,10 @@ Page: An internally created viewport that represents the extent of the document.
 
 The Page is created on initialisation as a child of the #View.  It represents the virtual extent of the document, and
 scrolling is achieved by moving the Page within the View.  The Page can be referenced as the `page` of a scrollbar.
+
+The editor manages the size of the Page.  Its height allows the last line of the document to be scrolled to the
+bottom of the View, and its width allows the longest line to be scrolled into view.  If the Page is moved by a third
+party, the editor scrolls to match and then snaps the Page to the nearest whole line.
 
 -FIELD-
 Path: Identifies the location of a text file to load.
@@ -1810,6 +2060,7 @@ static ERR SET_String(extScintilla *Self, const std::string_view &Value)
    if (Self->initialised()) {
       if (not Value.empty()) SCICALL(SCI_SETTEXT, 0UL, (const char *)Value.data());
       else acClear(Self);
+      calc_longest_line(Self); // Sets the scroll width, which determines the width of the Page
    }
    else return ERR::NotInitialised;
 
@@ -1869,17 +2120,17 @@ static ERR SET_TabWidth(extScintilla *Self, int Value)
 /*********************************************************************************************************************
 
 -FIELD-
-TextColour: Defines the default colour of foreground text.  Supports alpha blending.
+TextColour: Defines the default colour of foreground text.  Alpha blending is not supported.
+
+The TextColour applies to plain text and to the default style of the active lexer.  Other lexer styles use their own
+colours.
 
 *********************************************************************************************************************/
 
 static ERR SET_TextColour(extScintilla *Self, RGB8 *Value)
 {
    Self->TextColour = *Value;
-
-   if (Self->initialised()) {
-      SCICALL(SCI_STYLESETFORE, STYLE_DEFAULT, (long int)SCICOLOUR(Self->TextColour.Red, Self->TextColour.Green, Self->TextColour.Blue));
-   }
+   if (Self->initialised()) Self->API->SetStyleColours();
 
    return ERR::Okay;
 }
@@ -1890,7 +2141,8 @@ static ERR SET_TextColour(extScintilla *Self, RGB8 *Value)
 View: An internally created viewport that clips the visible content of the editor.
 
 The View is created on initialisation as a child of the #Viewport, and covers its entire area.  It represents the
-visible window into the document and clips the #Page.  The View can be referenced as the `view` of a scrollbar.
+visible window into the document and clips the #Page.  The View can be referenced as the `view` of a scrollbar, which
+may reduce the size of the View by changing its `XOffset` and `YOffset` values.
 
 -FIELD-
 Viewport: The viewport that will host the editor.
@@ -1959,8 +2211,10 @@ static void create_styled_fonts(extScintilla *Self)
 
 //********************************************************************************************************************
 // Create the View and Page viewports within the host Viewport, and the Canvas rectangle that presents the Bitmap that
-// Scintilla paints into.  The Bitmap covers the visible area of the View (plus one line for sub-line scrolling) and
-// is wrapped by a VectorImage definition that serves as the Canvas fill.
+// Scintilla paints into.  The Bitmap covers the visible area of the View and is wrapped by a VectorImage definition
+// that serves as the Canvas fill.  The Page represents the extent of the document, and is sized by ModifyScrollBars().
+//
+// The View is sized with offsets so that a scrollbar can reserve space within the host by changing them.
 
 static ERR create_canvas(extScintilla *Self)
 {
@@ -1970,30 +2224,35 @@ static ERR create_canvas(extScintilla *Self)
          fl::Name("sciView"),
          fl::Owner(Self->Viewport->UID),
          fl::Overflow(VOF::HIDDEN),
-         fl::X(0), fl::Y(0),
-         fl::Width(SCALE(1.0)), fl::Height(SCALE(1.0))))) return log.warning(ERR::CreateObject);
-
-   if (!(Self->Page = objVectorViewport::create::global(
-         fl::Name("sciPage"),
-         fl::Owner(Self->View->UID),
-         fl::X(0), fl::Y(0),
-         fl::Width(SCALE(1.0)), fl::Height(SCALE(1.0))))) return log.warning(ERR::CreateObject);
+         fl::X(0), fl::Y(0), fl::XOffset(0), fl::YOffset(0)))) return log.warning(ERR::CreateObject);
 
    Unit w, h;
    Self->View->getWidth(w);
    Self->View->getHeight(h);
    Self->ViewWidth  = std::max(1, int(std::lround(double(w))));
    Self->ViewHeight = std::max(1, int(std::lround(double(h))));
+   Self->PageWidth  = Self->ViewWidth;
+   Self->PageHeight = Self->ViewHeight;
+
+   if (!(Self->Page = objVectorViewport::create::global(
+         fl::Name("sciPage"),
+         fl::Owner(Self->View->UID),
+         fl::X(0), fl::Y(0),
+         fl::Width(Self->PageWidth), fl::Height(Self->PageHeight)))) return log.warning(ERR::CreateObject);
+
+   // The Bitmap is one pixel wider and taller than the View to cover the sub-pixel alignment offset (see
+   // align_canvas()).
 
    if (!(Self->Bitmap = objBitmap::create::local(
-         fl::Width(Self->ViewWidth),
-         fl::Height(Self->ViewHeight + Self->Font->LineSpacing),
+         fl::Width(Self->ViewWidth + 1),
+         fl::Height(Self->ViewHeight + 1),
          fl::BitsPerPixel(32),
          fl::Flags(BMF::ALPHA_CHANNEL)))) return log.warning(ERR::CreateObject);
 
-   auto &bkgd = Self->BkgdColour;
-   gfx::DrawRectangle(Self->Bitmap, 0, 0, Self->Bitmap->Width, Self->Bitmap->Height,
-      Self->Bitmap->packPixel(bkgd.Red, bkgd.Green, bkgd.Blue, 255), BAF::FILL);
+   clear_bitmap(Self);
+
+   if (!(Self->FillColour = objVectorColour::create::local())) return log.warning(ERR::CreateObject);
+   if (!(Self->StrokeColour = objVectorColour::create::local())) return log.warning(ERR::CreateObject);
 
    // Scene definitions must belong to the scene.  The scene removes the definition automatically when the image is
    // freed.
@@ -2017,7 +2276,13 @@ static ERR create_canvas(extScintilla *Self)
          fl::Width(Self->Bitmap->Width), fl::Height(Self->Bitmap->Height),
          fl::Fill(std::format("url(#{})", def_name))))) return log.warning(ERR::CreateObject);
 
+   // The View's path has already been generated in order to read its size, so the first path change is not reported
+   // to feedback_view().
+
+   align_canvas(Self, double(w), double(h));
+
    Self->View->subscribeFeedback(FM::PATH_CHANGED, C_FUNCTION(feedback_view));
+   Self->Page->subscribeFeedback(FM::PATH_CHANGED, C_FUNCTION(feedback_page));
    return ERR::Okay;
 }
 
@@ -2133,76 +2398,94 @@ static ERR load_file(extScintilla *Self, std::string_view Path)
 }
 
 //********************************************************************************************************************
+// Receiver for keyboard input from the Focus viewport.  The modifier state is recorded for mouse input, which does not
+// report it.
 
-static void key_event(evKey *Event, int Size, extScintilla *Self)
+static ERR key_event(objVectorViewport *Viewport, KQ Qualifiers, KEY Code, int Unicode)
 {
-   kt::Log log;
+   auto Self = (extScintilla *)CurrentContext();
 
-   if ((Self->Flags & SCIF::DISABLED) != SCIF::NIL) return;
-   if ((Self->Flags & SCIF::EDIT) IS SCIF::NIL) return;
+   Self->KeyShift = (Qualifiers & KQ::SHIFT) != KQ::NIL;
+   Self->KeyCtrl  = (Qualifiers & KQ::CTRL) != KQ::NIL;
+   Self->KeyAlt   = (Qualifiers & KQ::ALT) != KQ::NIL;
 
-   if ((Event->Qualifiers & KQ::PRESSED) != KQ::NIL) {
-      if ((Event->Code IS KEY::L_SHIFT) or (Event->Code IS KEY::R_SHIFT)) Self->KeyShift = TRUE;
-      else if ((Event->Code IS KEY::L_ALT) or (Event->Code IS KEY::R_ALT)) Self->KeyAlt = TRUE;
-      else if ((Event->Code IS KEY::L_CONTROL) or (Event->Code IS KEY::R_CONTROL)) Self->KeyCtrl = TRUE;
+   if ((Qualifiers & KQ::PRESSED) IS KQ::NIL) return ERR::Okay;
+   if ((Self->Flags & SCIF::DISABLED) != SCIF::NIL) return ERR::Okay;
+   if (not Self->API) return ERR::Okay;
 
-      char string[8];
-      string[0] = 0;
+   kt::Log log(__FUNCTION__);
+   log.traceBranch("Code: %d, Qualifiers: $%.8x, Unicode: %d", int(Code), int(Qualifiers), Unicode);
 
-      if ((Event->Qualifiers & KQ::NOT_PRINTABLE) IS KQ::NIL) {
-         int16_t out = UTF8WriteValue(Event->Unicode,
-            std::span<int8_t>((int8_t *)string, sizeof(string) - 1));
-         if (out >= 0) string[out] = 0;
-      }
+   Self->API->panKeyDown(Code, Qualifiers, Unicode);
+   return ERR::Okay;
+}
 
-      strcopy(string, (STRING)Self->API->lastkeytrans, sizeof(Self->API->lastkeytrans));
+//********************************************************************************************************************
+// Translate the keys that always act as commands to Scintilla key codes.  Keypad keys that do not produce a
+// character, i.e. while Num Lock is off, are navigation keys.  Returns zero for all other keys.
 
-      int keyval;
-      switch (Event->Code) {
-         // Handle known non-printable character keys first
-         case KEY::TAB:       keyval = SCK_TAB; break;
-         case KEY::DOWN:      keyval = SCK_DOWN; break;
-         case KEY::UP:        keyval = SCK_UP; break;
-         case KEY::LEFT:      keyval = SCK_LEFT; break;
-         case KEY::RIGHT:     keyval = SCK_RIGHT; break;
-         case KEY::HOME:      keyval = SCK_HOME; break;
-         case KEY::END:       keyval = SCK_END; break;
-         case KEY::PAGE_UP:   keyval = SCK_PRIOR; break;
-         case KEY::PAGE_DOWN: keyval = SCK_NEXT; break;
-         case KEY::DELETE:    keyval = SCK_DELETE; break;
-         case KEY::INSERT:    keyval = SCK_INSERT; break;
-         case KEY::ENTER:
-         case KEY::NP_ENTER:  keyval = SCK_RETURN; break;
-         case KEY::ESCAPE:    keyval = SCK_ESCAPE; break;
-         case KEY::BACKSPACE: keyval = SCK_BACK; break;
-         default:
-            if ((Event->Qualifiers & KQ::NOT_PRINTABLE) != KQ::NIL) {
-               // Unhandled non-printable characters are ignored
-               keyval = 0;
-            }
-            else if ((int(Event->Code) >= int(KEY::A)) and (int(Event->Code) <= int(KEY::Z))) {
-               keyval = int(Event->Code) - int(KEY::A) + int('a');
-            }
-            else if ((int(Event->Code) >= int(KEY::ZERO)) and (int(Event->Code) <= int(KEY::NINE))) {
-               keyval = int(Event->Code) - int(KEY::ZERO) + int('0');
-            }
-            else {
-               // Call KeyDefault(), which will pull the key value from the lastkeytrans buffer
-               if (string[0]) Self->API->KeyDefault(0,0);
-               keyval = 0;
-            }
-            break;
-      }
-
-      if (keyval) {
-         log.traceBranch("Keypress: %d", int(keyval));
-         Self->API->panKeyDown(keyval, Event->Qualifiers);
-      }
+static int command_key(KEY Code, bool Printable)
+{
+   switch (Code) {
+      case KEY::TAB:       return SCK_TAB;
+      case KEY::DOWN:      return SCK_DOWN;
+      case KEY::UP:        return SCK_UP;
+      case KEY::LEFT:      return SCK_LEFT;
+      case KEY::RIGHT:     return SCK_RIGHT;
+      case KEY::HOME:      return SCK_HOME;
+      case KEY::END:       return SCK_END;
+      case KEY::PAGE_UP:   return SCK_PRIOR;
+      case KEY::PAGE_DOWN: return SCK_NEXT;
+      case KEY::DELETE:    return SCK_DELETE;
+      case KEY::INSERT:    return SCK_INSERT;
+      case KEY::ENTER:
+      case KEY::NP_ENTER:  return SCK_RETURN;
+      case KEY::ESCAPE:    return SCK_ESCAPE;
+      case KEY::BACKSPACE: return SCK_BACK;
+      default: break;
    }
-   else if ((Event->Qualifiers & KQ::RELEASED) != KQ::NIL) {
-      if ((Event->Code IS KEY::L_SHIFT) or (Event->Code IS KEY::R_SHIFT)) Self->KeyShift = FALSE;
-      else if ((Event->Code IS KEY::L_ALT) or (Event->Code IS KEY::R_ALT)) Self->KeyAlt = FALSE;
-      else if ((Event->Code IS KEY::L_CONTROL) or (Event->Code IS KEY::R_CONTROL)) Self->KeyCtrl = FALSE;
+
+   if (Printable) return 0;
+
+   switch (Code) {
+      case KEY::NP_0:   return SCK_INSERT;
+      case KEY::NP_1:   return SCK_END;
+      case KEY::NP_2:   return SCK_DOWN;
+      case KEY::NP_3:   return SCK_NEXT;
+      case KEY::NP_4:   return SCK_LEFT;
+      case KEY::NP_6:   return SCK_RIGHT;
+      case KEY::NP_7:   return SCK_HOME;
+      case KEY::NP_8:   return SCK_UP;
+      case KEY::NP_9:   return SCK_PRIOR;
+      case KEY::NP_DOT: return SCK_DELETE;
+      default: return 0;
+   }
+}
+
+//********************************************************************************************************************
+// Translate a character key to the unshifted character that Scintilla's key map uses for shortcuts.  Letters are
+// upper case, e.g. Ctrl+Z is mapped from 'Z'.  Returns zero for keys that have no shortcut representation.
+
+static int shortcut_key(KEY Code)
+{
+   if ((int(Code) >= int(KEY::A)) and (int(Code) <= int(KEY::Z))) return int(Code) - int(KEY::A) + 'A';
+   if ((int(Code) >= int(KEY::ONE)) and (int(Code) <= int(KEY::NINE))) return int(Code) - int(KEY::ONE) + '1';
+
+   switch (Code) {
+      case KEY::ZERO:          return '0';
+      case KEY::REVERSE_QUOTE: return '`';
+      case KEY::MINUS:         return '-';
+      case KEY::EQUALS:        return '=';
+      case KEY::L_SQUARE:      return '[';
+      case KEY::R_SQUARE:      return ']';
+      case KEY::SEMI_COLON:    return ';';
+      case KEY::APOSTROPHE:    return '\'';
+      case KEY::COMMA:         return ',';
+      case KEY::DOT:           return '.';
+      case KEY::SLASH:         return '/';
+      case KEY::BACK_SLASH:    return '\\';
+      case KEY::SPACE:         return ' ';
+      default: return 0;
    }
 }
 
@@ -2233,7 +2516,8 @@ static ERR consume_input_events(const InputEvent *Events, int TotalEvents)
 
 static void report_event(extScintilla *Self, SEF Event)
 {
-   if ((Event & Self->EventFlags) != SEF::NIL) {
+   Event &= Self->EventFlags; // Only the events that the client subscribed to are reported
+   if (Event != SEF::NIL) {
       if (Self->EventCallback.stale()) {
          Self->EventCallback.unpin();
          Self->EventCallback.clear();
@@ -2307,13 +2591,20 @@ static void calc_longest_line(extScintilla *Self)
 }
 
 //********************************************************************************************************************
+// The tick and idle timers end their own subscriptions when they are no longer required.  See UpdateTimers().
+
+static ERR tick_timer(extScintilla *Self, int64_t Elapsed, int64_t CurrentTime)
+{
+   if ((Self->API) and (Self->API->panTick())) return ERR::Okay;
+   Self->TickTimer = nullptr;
+   return ERR::Terminate;
+}
 
 static ERR idle_timer(extScintilla *Self, int64_t Elapsed, int64_t CurrentTime)
 {
-   AdjustLogLevel(3);
-   Self->API->panIdleEvent();
-   AdjustLogLevel(-3);
-   return ERR::Okay;
+   if ((Self->API) and (Self->API->panIdle())) return ERR::Okay;
+   Self->IdleTimer = nullptr;
+   return ERR::Terminate;
 }
 
 //********************************************************************************************************************
@@ -2326,6 +2617,40 @@ static ERR idle_timer(extScintilla *Self, int64_t Elapsed, int64_t CurrentTime)
 #include "pan_listbox.cxx"
 
 //********************************************************************************************************************
+// Paint the Dirty region of the client into the Bitmap, then ask the scene to redraw the Canvas.  This is called from
+// the Repaint method, which is queued by invalidate_area().
+
+static void paint_dirty(extScintilla *Self)
+{
+   if ((not Self->API) or (not Self->Bitmap)) return;
+
+   update_margin_width(Self); // A change to the margin width extends the Dirty region
+   Self->API->panSyncPage();  // The Canvas must be positioned for the topLine that is about to be painted
+
+   auto dirty = Self->Dirty;
+   Self->Dirty = { 0, 0, 0, 0 };
+   if ((dirty.Right <= dirty.Left) or (dirty.Bottom <= dirty.Top)) return;
+
+   // Scintilla paints whole lines, which can extend beyond the Dirty region.  A disabled editor is always painted in
+   // full so that the dimming overlay covers every repainted pixel exactly once.
+
+   bool disabled = (Self->Flags & SCIF::DISABLED) != SCIF::NIL;
+   if (disabled) dirty = { 0, 0, Self->ViewWidth, Self->ViewHeight };
+
+   Self->API->panPaint(Scintilla::PRectangle(dirty.Left, dirty.Top, dirty.Right, dirty.Bottom));
+
+   if (disabled) {
+      SurfacePan surface;
+      surface.Init(Self->Bitmap, Self);
+      auto &bkgd = Self->BkgdColour;
+      surface.BlendRectangle(Scintilla::PRectangle(0, 0, Self->Bitmap->Width, Self->Bitmap->Height),
+         Scintilla::ColourAllocated(SCICOLOUR(bkgd.Red, bkgd.Green, bkgd.Blue)), 160);
+   }
+
+   if ((Self->Canvas) and (Self->Scene) and (Self->Scene->SurfaceID)) acDraw(Self->Canvas);
+}
+
+//********************************************************************************************************************
 
 extScintilla::~extScintilla() {
    delete API;
@@ -2335,9 +2660,14 @@ extScintilla::~extScintilla() {
       EventCallback.clear();
    }
 
-   if (TimerID) UpdateTimer(TimerID, 0);
+   if (TickTimer) UpdateTimer(TickTimer, 0);
+   if (IdleTimer) UpdateTimer(IdleTimer, 0);
 
-   if ((Focus) and (Focus != Viewport)) UnsubscribeAction(Focus, AC::NIL);
+   if (Focus) {
+      kt::SwitchContext ctx(this);
+      Focus->subscribeFeedback(FM::NIL, C_FUNCTION(feedback_focus));
+      if (Focus != Viewport) UnsubscribeAction(Focus, AC::NIL);
+   }
    if (Viewport) UnsubscribeAction(Viewport, AC::NIL);
 
    if (Image) { // Freeing the image also removes its definition from the scene
@@ -2347,9 +2677,10 @@ extScintilla::~extScintilla() {
 
    if (View) FreeResource(View); // The Page and Canvas are children of the View
 
-   if (prvKeyEvent) UnsubscribeEvent(prvKeyEvent);
    if (FileStream)  FreeResource(FileStream);
    if (Bitmap)      FreeResource(Bitmap);
+   if (FillColour)  FreeResource(FillColour);
+   if (StrokeColour) FreeResource(StrokeColour);
    if (Font)        FreeResource(Font);
    if (BoldFont)    FreeResource(BoldFont);
    if (ItalicFont)  FreeResource(ItalicFont);

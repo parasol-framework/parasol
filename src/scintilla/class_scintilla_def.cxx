@@ -66,6 +66,7 @@ static const struct MethodEntry clScintillaMethods[] = {
    { AC(-10), (APTR)SCINTILLA_GetPos, "GetPos", maGetPos, sizeof(struct sci::GetPos) },
    { AC(-11), (APTR)SCINTILLA_ReportEvent, "ReportEvent", 0, 0 },
    { AC(-12), (APTR)SCINTILLA_ScrollToPoint, "ScrollToPoint", maScrollToPoint, sizeof(struct sci::ScrollToPoint) },
+   { AC(-13), (APTR)SCINTILLA_Repaint, "Repaint", 0, 0 },
    { AC::NIL, 0, 0, 0, 0 }
 };
 

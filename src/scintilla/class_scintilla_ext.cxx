@@ -78,8 +78,25 @@ void ScintillaKTK::SetStyles(const struct styledef *Def, int Total)
       if ((Def[i].FontStyle & FTF::ITALIC) != FTF::NIL) WndProc(SCI_STYLESETITALIC, index, 1);
    }
 
-   WndProc(SCI_STYLESETBACK, STYLE_DEFAULT, (long int)SCICOLOUR(scintilla->BkgdColour.Red, scintilla->BkgdColour.Green, scintilla->BkgdColour.Blue));
-   WndProc(SCI_STYLESETFORE, STYLE_DEFAULT, (long int)SCICOLOUR(scintilla->TextColour.Red, scintilla->TextColour.Green, scintilla->TextColour.Blue));
+   SetStyleColours();
+}
+
+/*********************************************************************************************************************
+** Apply the BkgdColour and TextColour of the Scintilla object.  Every lexer style shares the document background,
+** while the special styles that follow STYLE_DEFAULT (line numbers, braces etc) keep their own.  Style 0 is the
+** default style of every lexer and is also used for plain text, so it receives the TextColour.
+*/
+
+void ScintillaKTK::SetStyleColours()
+{
+   auto &bkgd = scintilla->BkgdColour, &text = scintilla->TextColour;
+   const long bkgd_colour = SCICOLOUR(bkgd.Red, bkgd.Green, bkgd.Blue);
+   const long text_colour = SCICOLOUR(text.Red, text.Green, text.Blue);
+
+   for (int style=0; style <= STYLE_DEFAULT; style++) WndProc(SCI_STYLESETBACK, style, bkgd_colour);
+
+   WndProc(SCI_STYLESETFORE, 0, text_colour);
+   WndProc(SCI_STYLESETFORE, STYLE_DEFAULT, text_colour);
 }
 
 /*********************************************************************************************************************
@@ -89,10 +106,9 @@ void ScintillaKTK::SetStyles(const struct styledef *Def, int Total)
 ScintillaKTK::ScintillaKTK(extScintilla *Scintilla)
 :  scintilla(Scintilla)
 {
-   lastkeytrans[0] = 0;
-   idle_timer_on   = false;
-   lastticktime    = 0;
-   captured_mouse  = false;
+   idle_on        = false;
+   ticking_on     = false;
+   captured_mouse = false;
 
    // The platform Window is identified by the Kotuku Scintilla object (see pan_window.cxx)
 
@@ -109,8 +125,6 @@ ScintillaKTK::ScintillaKTK(extScintilla *Scintilla)
    // We're always UTF-8
 
    SendScintilla(SCI_SETCODEPAGE, SC_CP_UTF8);
-
-   SetTicking(true);
 }
 
 ScintillaKTK::~ScintillaKTK()
@@ -124,7 +138,7 @@ void ScintillaKTK::Finalise()
 {
    kt::Log(__FUNCTION__).trace("");
 
-   SetTicking(true);
+   SetTicking(false);
    ScintillaBase::Finalise();
 }
 
@@ -150,116 +164,61 @@ void ScintillaKTK::AddToPopUp(const char *label, int cmD, bool enabled)
    }
 }
 
-//********************************************************************************************************************
+/*********************************************************************************************************************
+** Scintilla calls these when topLine or xOffset change.  Scrollbars are external to the editor (see gui.scrollbar), so
+** the scroll position is expressed by moving the Page within the View.
+*/
 
 void ScintillaKTK::SetVerticalScrollPos()
 {
-   kt::Log log(__FUNCTION__);
-
-   log.traceBranch("%d", topLine);
-
+   kt::Log(__FUNCTION__).trace("%d", topLine);
    DwellEnd(true); // Cancel any current mouse hover
-/*
-   if (!scintilla->ScrollLocked) {
-      scroll.ViewSize = -1;
-      scroll.PageSize = -1;
-      scroll.Position = topLine * vs.lineHeight;
-      scroll.Unit     = vs.lineHeight;
-      if (glBitmap) QueueAction(sc::UpdateScroll::id, scintilla->VScrollID, &scroll);
-      else ActionMsg(sc::UpdateScroll::id, scintilla->VScrollID, &scroll);
-   }
-*/
+   panSyncPage();
 }
-
-//********************************************************************************************************************
 
 void ScintillaKTK::SetHorizontalScrollPos()
 {
-   kt::Log log(__FUNCTION__);
-
-   log.traceBranch("%d", xOffset);
-
+   kt::Log(__FUNCTION__).trace("%d", xOffset);
    DwellEnd(true); // Cancel any current mouse hover
-/*
-   scroll.ViewSize = -1;
-   scroll.PageSize = -1;
-   scroll.Position = xOffset;
-   scroll.Unit     = vs.lineHeight;
-   if (glBitmap) QueueAction(sc::UpdateScroll::id, scintilla->HScrollID, &scroll);
-   else ActionMsg(sc::UpdateScroll::id, scintilla->HScrollID, &scroll);
-*/
+   panSyncPage();
 }
 
 /*********************************************************************************************************************
-** nMax: Total number of lines in document
-** nPage: Number of lines per view.
+** Scintilla calls this with nMax = MaxScrollPos() + nPage - 1, where nPage is the number of lines that fit in the
+** client area.  The Page is sized so that the furthest that it can be moved within the View corresponds to the
+** maximum scroll positions of Scintilla, i.e. MaxScrollPos() lines vertically and the scroll width minus the width of
+** the text area horizontally.  The result is true if the extent of the Page has changed.
 */
 
 bool ScintillaKTK::ModifyScrollBars(int nMax, int nPage)
 {
    kt::Log log(__FUNCTION__);
 
-   if (scintilla->ScrollLocked) return FALSE;
-#if 0
-   // Note: Sometimes Scintilla will attempt to change the scrollbars in the middle of surface redrawing.  This can
-   // cause problems, so message delays are used in those cases.
+   int height = (nMax - nPage + 1) * vs.lineHeight + scintilla->ViewHeight;
+   int width  = scintilla->ViewWidth;
+   if (wrapState IS eWrapNone) width = std::max(width, scrollWidth + vs.fixedColumnWidth + vs.rightMarginWidth);
 
-   // Horizontal scrollbar
+   if ((width IS scintilla->PageWidth) and (height IS scintilla->PageHeight)) return false;
 
-   scroll.ViewSize = -1;
-   scroll.PageSize = SendScintilla(SCI_GETSCROLLWIDTH);
-   scroll.Position = xOffset;
-   scroll.Unit     = vs.lineHeight;
+   log.traceBranch("Lines: %d/%d, Page: %dx%d", nMax, nPage, width, height);
 
-   log.traceBranch("Lines: %d, PageWidth: %d/%d, Delay: %c", nMax, scroll.PageSize, scroll.ViewSize, (glBitmap ? 'Y' : 'N'));
+   scintilla->PageWidth  = width;
+   scintilla->PageHeight = height;
 
-   if (glBitmap) QueueAction(sc::UpdateScroll::id, scintilla->HScrollID, &scroll);
-   else ActionMsg(sc::UpdateScroll::id, scintilla->HScrollID, &scroll);
-
-   // Vertical scrollbar
-
-   lines = SendScintilla(SCI_GETLINECOUNT);
-
-   if ((scintilla->Flags & SCIF::EXT_PAGE) != SCIF::NIL) {
-      // Scintilla's nMax variable caters for all the lines, plus the height of the viewing area.
-
-      scroll.ViewSize = nPage * vs.lineHeight;
-      scroll.PageSize = nMax * vs.lineHeight;
-   }
-   else {
-      scroll.ViewSize = -1;
-      scroll.PageSize = (nMax+1) * vs.lineHeight;
-      if ((scroll.PageSize > scintilla->Surface.Height) and (vs.lineHeight > 0)) {
-         scroll.PageSize -= (scintilla->Surface.Height / vs.lineHeight);
-      }
+   if (scintilla->Page) {
+      scintilla->Page->setWidth(width);
+      scintilla->Page->setHeight(height);
    }
 
-   scroll.Position = topLine * vs.lineHeight;
-   scroll.Unit     = vs.lineHeight;
-
-   log.trace("PageLength: %d/%d (lines: %d/%d), Pos: %d", scroll.PageSize, scroll.ViewSize, lines, nMax, scroll.Position);
-
-   if (glBitmap) QueueAction(sc::UpdateScroll::id, scintilla->VScrollID, &scroll);
-   else ActionMsg(sc::UpdateScroll::id, scintilla->VScrollID, &scroll);
-#endif
-   return TRUE;
+   return true;
 }
 
 //********************************************************************************************************************
-// Called after SCI_SETWRAPMODE and SCI_SETHSCROLLBAR.
+// Called after SCI_SETWRAPMODE and SCI_SETHSCROLLBAR.  Scrollbars are not managed by the editor, so there is nothing
+// to show or hide.
 
 void ScintillaKTK::ReconfigureScrollBars()
 {
-   kt::Log log(__FUNCTION__);
-   log.traceBranch();
-
-/*
-	 if (horizontalScrollBarVisible) acShowID(scintilla->HScroll);
-	 else acHideID(scintilla->HScroll);
-
-	 if (verticalScrollBarVisible) acShowID(scintilla->VScroll);
-	 else acHideID(scintilla->VScroll);
-*/
 }
 
 /****************************************************************************
@@ -445,7 +404,7 @@ void ScintillaKTK::NotifyParent(Scintilla::SCNotification scn)
          row = SendScintilla(SCI_LINEFROMPOSITION, pos);
          col = SendScintilla(SCI_GETCOLUMN, pos);
 
-         if (row > 1) {
+         if (row > 0) {
             indent = SendScintilla(SCI_GETLINEINDENTATION, row - 1); // indent = The indentation of the previous line
 
             if (indent <= col);
@@ -614,21 +573,88 @@ void ScintillaKTK::NotifyParent(Scintilla::SCNotification scn)
 
 void ScintillaKTK::ScrollText(int linesToMove)
 {
-   // TODO Phase 3: Start with a full repaint of the client area, then optimise by shifting the bitmap content.
+   // TODO Phase 3: Optimise by shifting the bitmap content and invalidating only the exposed band.
+   Redraw();
 }
 
-//********************************************************************************************************************
+/*********************************************************************************************************************
+** Scintilla calls SetTicking(true) whenever the caret is shown at a new position.  The caret blink is restarted so that
+** the caret remains visible for a full period after it moves.  See UpdateTimers() for the conditions under which the
+** tick timer runs.
+*/
 
 void ScintillaKTK::SetTicking(bool On)
 {
    kt::Log log(__FUNCTION__);
    log.traceBranch("State: %d", On);
 
-   if (!On) ticking_on = false;
-   else if (!ticking_on) {
-      ticking_on = true;
-      lastticktime = (PreciseTime() / 1000LL);
+   ticking_on = On;
+   if (On) {
+      timer.ticksToWait = caret.period;
+      UpdateTimers();
    }
+}
+
+/*********************************************************************************************************************
+** Scintilla requests idle processing when it has background work to do, such as wrapping lines.  Returning true
+** confirms that Idle() will be called until it reports that the work is complete.
+*/
+
+bool ScintillaKTK::SetIdle(bool On)
+{
+   idle_on = On;
+   if (On) UpdateTimers();
+   return true;
+}
+
+/*********************************************************************************************************************
+** Start the tick and idle timers if they are required.  Timers are not stopped here because a timer cannot be removed
+** while its own callback is running.  Instead, tick_timer() and idle_timer() end their subscriptions when panTick() or
+** panIdle() report that there is nothing left to do.  The timers are subscribed for the Scintilla object, so that
+** they are removed with it.
+*/
+
+void ScintillaKTK::UpdateTimers()
+{
+   kt::SwitchContext ctx(scintilla);
+
+   if ((TickRequired()) and (not scintilla->TickTimer)) {
+      // Tick() counts down the caret period and other delays in steps of tickSize milliseconds.
+      SubscribeTimer(double(timer.tickSize) / 1000.0, C_FUNCTION(tick_timer), &scintilla->TickTimer);
+   }
+
+   if ((idle_on) and (not scintilla->IdleTimer)) {
+      SubscribeTimer(IDLE_INTERVAL, C_FUNCTION(idle_timer), &scintilla->IdleTimer);
+   }
+}
+
+/*********************************************************************************************************************
+** Ticking is only necessary for blinking the caret while the editor has the focus, and for scrolling while the mouse
+** is captured.
+*/
+
+bool ScintillaKTK::TickRequired()
+{
+   return (ticking_on) and (((hasFocus) and (caret.period > 0)) or (HaveMouseCapture()));
+}
+
+//********************************************************************************************************************
+// Called by tick_timer().  Returns false if the timer is no longer required.
+
+bool ScintillaKTK::panTick()
+{
+   if (not TickRequired()) return false;
+   Tick(); // Goes to -> Editor::Tick()
+   return TickRequired();
+}
+
+//********************************************************************************************************************
+// Called by idle_timer().  Returns false if the timer is no longer required.
+
+bool ScintillaKTK::panIdle()
+{
+   if (idle_on) idle_on = Idle();
+   return idle_on;
 }
 
 //********************************************************************************************************************
@@ -640,6 +666,7 @@ void ScintillaKTK::SetMouseCapture(bool On)
    kt::Log log(__FUNCTION__);
    log.traceBranch("State: %d", On);
    captured_mouse = On;
+   if (On) UpdateTimers();
 }
 
 /*********************************************************************************************************************
@@ -687,42 +714,36 @@ sptr_t ScintillaKTK::DefWndProc(unsigned int iMessage, uptr_t wParam, sptr_t lPa
 }
 
 /*********************************************************************************************************************
-** Refer to the pan_surface.cxx file for the drawing routines that are used when panDraw() is active.
-**
-** TODO Phase 2: Nothing calls panDraw() until the deferred repaint of the Canvas bitmap is implemented.
+** Paint an Area of the client into the Scintilla object's Bitmap.  Refer to pan_surface.cxx for the drawing routines.
+** If Scintilla abandons the paint because a wider area needs to be redrawn (for instance, styling has spilled over a
+** line end) then the entire client is repainted immediately, as the GTK platform does.
 */
 
-void ScintillaKTK::panDraw(objBitmap *Bitmap)
+void ScintillaKTK::panPaint(Scintilla::PRectangle Area)
 {
    kt::Log log(__FUNCTION__);
-   Scintilla::PRectangle rcClient;
-   Scintilla::Surface *surface;
 
    if (this->paintState != notPainting) return; // Recursion prevention
+   if (not scintilla->Bitmap) return;
 
-   Scintilla::PRectangle paintrect(Bitmap->Clip.Left, Bitmap->Clip.Top, Bitmap->Clip.Right, Bitmap->Clip.Bottom);
+   auto rcClient = GetClientRectangle();
+
+   log.traceBranch("Area: %dx%d - %dx%d", Area.left, Area.top, Area.Width(), Area.Height());
+
+   std::unique_ptr<Scintilla::Surface> surface(Scintilla::Surface::Allocate());
+   if (not surface) return;
+   surface->Init(scintilla->Bitmap, wMain.GetID());
 
    this->paintState = painting;
-   this->rcPaint    = paintrect;
-   rcClient         = GetClientRectangle();
+   this->rcPaint    = Area;
    this->paintingAllText = rcPaint.Contains(rcClient);
-
-   log.traceBranch("Area: %dx%d - %dx%d", rcClient.left, rcClient.top, rcClient.Width(), rcClient.Height());
-
-   // Create a new surface object (SurfacePan)
-
-   if ((surface = Scintilla::Surface::Allocate())) {
-      surface->Init(Bitmap, wMain.GetID());
-      this->Paint(surface, paintrect);      // Get Scintilla to do the painting.  See Editor::paint()
-      surface->Release();
-      delete surface;
-   }
+   this->Paint(surface.get(), rcPaint);
 
    if (this->paintState IS paintAbandoned) {
-      // Painting area was insufficient to cover new styling or brace highlight positions, word wrapping etc.  This
-      // means that the clipping area needs to be extended.
-
-      // TODO Phase 2: Widen the repaint to the full client area and reschedule it.
+      this->paintState = painting;
+      this->rcPaint    = rcClient;
+      this->paintingAllText = true;
+      this->Paint(surface.get(), rcPaint);
    }
 
    this->paintState = notPainting;
@@ -779,49 +800,40 @@ void ScintillaKTK::panWordwrap(int Value)
    //SendScintilla(SCI_ENSUREVISIBLE, SendScintilla(SCI_LINEFROMPOSITION, SendScintilla(SCI_GETCURRENTPOS)));
 }
 
-//********************************************************************************************************************
+/*********************************************************************************************************************
+** Process a key press.  Command keys are translated to Scintilla key codes and passed through the key map, while
+** printable characters are inserted as text.  Letters are always passed to the key map in upper case, because that is
+** how its shortcuts are defined (e.g. Ctrl+Z).
+**
+** Ctrl and Alt combinations are treated as shortcuts, with the exception of AltGr.  AltGr is reported as R_ALT on X11
+** layouts that map it to Alt_R, and with an additional Ctrl on Windows.  A printable character that is produced with
+** AltGr is text.  On X11 layouts that map AltGr to ISO_Level3_Shift, no qualifier is reported for it.
+**
+** If SCIF::EDIT is not set, the document is read-only for the duration of the key press.  Navigation and selection
+** are unaffected, while edits are refused and reported as SEF::FAIL_RO.  The document is otherwise left writable so
+** that it can always be modified through the API.
+*/
 
-void ScintillaKTK::panIdleEvent()
+void ScintillaKTK::panKeyDown(KEY Code, KQ Qualifiers, int Unicode)
 {
-   if (idle_timer_on) {
-      bool keepidling = Idle();
+   const bool shift = (Qualifiers & KQ::SHIFT) != KQ::NIL;
+   const bool ctrl  = (Qualifiers & KQ::CTRL) != KQ::NIL;
+   const bool alt   = (Qualifiers & KQ::ALT) != KQ::NIL;
+   const bool altgr = ((Qualifiers & KQ::R_ALT) != KQ::NIL) and ((Qualifiers & KQ::L_ALT) IS KQ::NIL);
+   const bool printable = ((Qualifiers & KQ::NOT_PRINTABLE) IS KQ::NIL) and (Unicode >= 0x20) and (Unicode != 0x7f);
 
-      if (!keepidling) {
-         //SetIdle(false);
-         idle_timer_on = FALSE;
-      }
+   const bool read_only = (scintilla->Flags & SCIF::EDIT) IS SCIF::NIL;
+   if (read_only) SendScintilla(SCI_SETREADONLY, 1UL);
+
+   if (int key = command_key(Code, printable)) KeyDown(key, shift, ctrl, alt);
+   else if ((printable) and ((altgr) or ((not ctrl) and (not alt)))) {
+      char utf8[8];
+      int len = UTF8WriteValue(Unicode, std::span<int8_t>((int8_t *)utf8, sizeof(utf8)));
+      if (len > 0) AddCharUTF(utf8, len);
    }
+   else if (int key = shortcut_key(Code)) KeyDown(key, shift, ctrl, alt);
 
-   if (ticking_on) {
-#ifdef _DEBUG
-      if ((int)((PreciseTime()/1000LL) - lastticktime) >= caret.period) {
-#else
-      if ((int)((PreciseTime()/1000LL) - lastticktime) >= caret.period / 5) {
-#endif
-    	 Tick();  // Goes to -> Editor::Tick()
-         lastticktime = (PreciseTime()/1000LL);
-      }
-   }
-}
-
-//********************************************************************************************************************
-
-void ScintillaKTK::panKeyDown(int Key, KQ Flags)
-{
-   bool consumed;
-
-   // After we call KeyDown(), Scintilla will call KeyDefault()
-
-   KeyDown(Key, (Flags & KQ::SHIFT) != KQ::NIL, (Flags & KQ::CTRL) != KQ::NIL, (Flags & KQ::ALT) != KQ::NIL, &consumed);
-}
-
-//********************************************************************************************************************
-
-int ScintillaKTK::KeyDefault(int key, int modifiers)
-{
-   //log.msg("%d, $%.8x", key, modifiers);
-   AddCharUTF(lastkeytrans, strlen(lastkeytrans), false);
-   return 1;
+   if (read_only) SendScintilla(SCI_SETREADONLY, 0UL);
 }
 
 //********************************************************************************************************************
@@ -878,36 +890,54 @@ void ScintillaKTK::panResized()
    ChangeSize();
 }
 
-//********************************************************************************************************************
+/*********************************************************************************************************************
+** Scroll to a point in the document, expressed in pixels from the top-left corner.  Scintilla scrolls vertically by
+** whole lines, so Y is rounded to the nearest line.  Both axes are clamped to the extent of the Page.  The Page is
+** then snapped to the resulting position, which also corrects a Page that was moved to an unreachable position.
+*/
 
-void ScintillaKTK::panScrollToX(double x)
+void ScintillaKTK::panScrollTo(double X, double Y)
 {
    kt::Log log(__FUNCTION__);
-   log.traceBranch("%.2f", x);
-   HorizontalScrollTo((int)(x));
+   log.traceBranch("%.2f, %.2f", X, Y);
+
+   if (vs.lineHeight > 0) {
+      int max_x = std::max(0, scintilla->PageWidth - scintilla->ViewWidth);
+
+      scintilla->ScrollLocked++;
+      ScrollTo(int(std::lround(Y / vs.lineHeight)));
+      HorizontalScrollTo(std::clamp(int(std::lround(X)), 0, max_x));
+      scintilla->ScrollLocked--;
+   }
+
+   panSyncPage();
 }
 
 //********************************************************************************************************************
+// Scroll relative to the current position by a number of columns (measured in space widths) and lines.
 
-void ScintillaKTK::panScrollToY(double y)
+void ScintillaKTK::panScrollBy(int Columns, int Lines)
 {
-   kt::Log log(__FUNCTION__);
-   log.traceBranch("%.2f", y);
-   ScrollTo((int)(y / vs.lineHeight));
+   panScrollTo(xOffset + (Columns * vs.spaceWidth), (topLine + Lines) * vs.lineHeight);
 }
 
 //********************************************************************************************************************
+// Move the Page and Canvas to reflect Scintilla's current scroll position.
 
-void ScintillaKTK::panGotFocus()
+void ScintillaKTK::panSyncPage()
 {
-   SetFocusState(TRUE);
+   scintilla->ScrollX = xOffset;
+   scintilla->ScrollY = topLine * vs.lineHeight;
+   sync_page(scintilla);
 }
 
 //********************************************************************************************************************
+// Showing the caret on receipt of the focus starts the tick timer.  On losing the focus, the timer ends itself on its
+// next call.
 
-void ScintillaKTK::panLostFocus()
+void ScintillaKTK::panSetFocus(bool Focus)
 {
-   SetFocusState(FALSE);
+   if (Focus != hasFocus) SetFocusState(Focus);
 }
 
 /*********************************************************************************************************************

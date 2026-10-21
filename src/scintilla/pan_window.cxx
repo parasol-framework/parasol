@@ -25,12 +25,12 @@ void Scintilla::Window::Destroy()
 }
 
 //********************************************************************************************************************
+// The focus state is initialised from the Focus viewport and kept current by feedback_focus().
 
 bool Scintilla::Window::HasFocus()
 {
    auto scintilla = get_scintilla(this);
-   if ((!scintilla) or (!scintilla->Focus)) return false;
-   return (scintilla->Focus->Flags & VF::HAS_FOCUS) != VF::NIL;
+   return (scintilla) and (scintilla->HasFocus);
 }
 
 //********************************************************************************************************************
@@ -100,14 +100,16 @@ void Scintilla::Window::Show(bool show)
 
 void Scintilla::Window::InvalidateAll()
 {
-   // TODO Phase 2: Mark the full client area as dirty and schedule a deferred repaint of the Canvas bitmap.
+   if (auto scintilla = get_scintilla(this)) {
+      invalidate_area(scintilla, 0, 0, scintilla->ViewWidth, scintilla->ViewHeight);
+   }
 }
 
 //********************************************************************************************************************
 
 void Scintilla::Window::InvalidateRectangle(Scintilla::PRectangle rc)
 {
-   // TODO Phase 2: Union rc with the dirty region and schedule a deferred repaint of the Canvas bitmap.
+   if (auto scintilla = get_scintilla(this)) invalidate_area(scintilla, rc.left, rc.top, rc.right, rc.bottom);
 }
 
 //********************************************************************************************************************

@@ -100,6 +100,7 @@ struct TrimWhitespace { static const AC id = AC(-9); ERR call(OBJECTPTR Object) 
 struct GetPos { int Line; int Column; int Pos; static const AC id = AC(-10); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
 struct ReportEvent { static const AC id = AC(-11); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
 struct ScrollToPoint { int X; int Y; static const AC id = AC(-12); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct Repaint { static const AC id = AC(-13); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
 
 } // namespace
 
@@ -126,7 +127,7 @@ class objScintilla : public Object {
    struct RGB8 SelectBkgd;          // Defines the background colour of selected text.  Supports alpha blending.
    struct RGB8 BkgdColour;          // Defines the background colour.  Alpha blending is not supported.
    struct RGB8 CursorColour;        // Defines the colour of the text cursor.  Alpha blending is not supported.
-   struct RGB8 TextColour;          // Defines the default colour of foreground text.  Supports alpha blending.
+   struct RGB8 TextColour;          // Defines the default colour of foreground text.  Alpha blending is not supported.
    int       CursorRow;             // The current row of the text cursor.
    int       CursorCol;             // The current column of the text cursor.
    SCLEX     Lexer;                 // The lexer for document styling is defined here.
@@ -213,6 +214,9 @@ class objScintilla : public Object {
    inline ERR scrollToPoint(int X, int Y) noexcept {
       struct sci::ScrollToPoint args = { X, Y };
       return Action(AC(-12), this, &args);
+   }
+   inline ERR repaint() noexcept {
+      return Action(AC(-13), this, nullptr);
    }
 
    // Customised field getting
