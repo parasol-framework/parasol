@@ -720,7 +720,7 @@ class extVectorFilter : public objVectorFilter {
    extVectorViewport *ClientViewport;  // The nearest viewport containing the vector.
    extVectorScene *SourceScene;        // Internal scene for rendering SourceGraphic
    extVectorScene *Scene;              // Scene that the filter belongs to.
-   objBitmap *SourceGraphic;           // An internal rendering of the vector client, used for SourceGraphic and SourceAlpha.
+   filter_bitmap SourceGraphic;        // Rendering of the vector client for SourceGraphic and SourceAlpha.  Clip-sized.
    objBitmap *BkgdBitmap;              // Target bitmap supplied by Scene.acDraw()
    extFilterEffect *ActiveEffect;      // Current effect being processed by the pipeline.
    extFilterEffect *Effects;           // Pointer to the first effect in the chain.
@@ -951,7 +951,6 @@ class extVectorScene : public objVectorScene {
 inline extVectorFilter::~extVectorFilter()
 {
    acClear(this);
-   if (SourceGraphic) FreeResource(SourceGraphic);
    if (SourceScene) FreeResource(SourceScene);
 }
 
