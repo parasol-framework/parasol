@@ -80,7 +80,7 @@ gui.icon = function(Options:table!)
          end
 
          if activation then
-            &events?.activate({ name=activation })
+            &events.activate?({ name=activation })
          end
 
          if &disabled then return end
@@ -248,7 +248,7 @@ gui.icon = function(Options:table!)
       &viewport.acDisable()
       &viewport.opacity = 0.5
       &viewport.acDraw()
-      &events?.disable()
+      &events.disable?()
    end
 
    self.enable = function()
@@ -257,7 +257,7 @@ gui.icon = function(Options:table!)
       &viewport.acEnable()
       &viewport.opacity = 1
       &viewport.acDraw()
-      &events?.enable()
+      &events.enable?()
    end
 
    -- Main entry point
@@ -309,7 +309,7 @@ gui.icon = function(Options:table!)
       arrangeText()
       if Options.disabled then &disable() end
 
-      &events?.show()
+      &events.show?()
       &viewport?.acDraw()
 
       return &&
