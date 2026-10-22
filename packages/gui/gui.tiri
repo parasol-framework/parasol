@@ -93,7 +93,15 @@ gui.mtHSV = { -- HSV metatable
 
 gui.mtHSV.__index = gui.mtHSV
 
-gui.hsv = function(H:num, S:num, V:num, A:num):table -- HSV values
+@Doc(text=[[
+@desc Returns an HSV colour table that uses the gui.mtHSV metatable.
+@input Hue in degrees, defaults to 0.
+@input Saturation in the range [0,1], defaults to 0.
+@input Value (brightness) in the range [0,1], defaults to 0.
+@input Alpha in the range [0,1], defaults to 1.
+@result HSV colour table with h, s, v and a fields.
+]])
+gui.hsv = function(H:num, S:num, V:num, A:num):table
    H ?= 0
    S ?= 0
    V ?= 0
@@ -164,7 +172,16 @@ gui.mtRGB = { -- sRGB metatable
 
 gui.mtRGB.__index = gui.mtRGB
 
-gui.srgb = function(R:num, G:num, B:num, A:num, KV:table):table -- sRGB values
+@Doc(text=[[
+@desc Returns an RGB colour table from 8-bit sRGB channel values.
+@input Red channel in the range [0,255], defaults to 0.
+@input Green channel in the range [0,255], defaults to 0.
+@input Blue channel in the range [0,255], defaults to 0.
+@input Alpha channel in the range [0,255], defaults to 255.
+@input Optional table of extra key-values to copy into the result.
+@result RGB colour table (gui.mtRGB) with r, g, b and a fields normalised to [0,1].
+]])
+gui.srgb = function(R:num, G:num, B:num, A:num, KV:table):table
    R ?= 0
    G ?= 0
    B ?= 0
@@ -178,7 +195,16 @@ gui.srgb = function(R:num, G:num, B:num, A:num, KV:table):table -- sRGB values
    return setmetatable(result, gui.mtRGB)
 end
 
-gui.nrgb = function(R:num!, G:num!, B:num!, A:num, KV:table):table -- Normalised RGB values
+@Doc(text=[[
+@desc Returns an RGB colour table from normalised channel values.
+@input Red channel in the range [0,1].
+@input Green channel in the range [0,1].
+@input Blue channel in the range [0,1].
+@input Alpha channel in the range [0,1], defaults to 1.
+@input Optional table of extra key-values to copy into the result.
+@result RGB colour table (gui.mtRGB) with r, g, b and a fields.
+]])
+gui.nrgb = function(R:num!, G:num!, B:num!, A:num, KV:table):table
    result = entity { r = R, g = G, b = B, a = A ? A : 1 }
    if KV then
       for k, v in KV do
@@ -198,7 +224,11 @@ function gui.mtRGB.interpolate(New:table!, Ratio:num):table
    }, gui.mtRGB)
 end
 
-function gui.mtRGB.toHSV():table -- Normalised HSV
+@Doc(text=[[
+@desc Converts the colour to an HSV colour table (gui.mtHSV).
+@result HSV table with h in degrees [0,360) and s, v in the range [0,1].
+]])
+function gui.mtRGB.toHSV():table
    max = &brightness()
    hsv = entity { v = max }
    if max > 0 then
@@ -228,8 +258,10 @@ function gui.mtRGB.toHSV():table -- Normalised HSV
    return setmetatable(hsv, gui.mtHSV)
 end
 
--- Return the light value of an RGB colour (i.e. the V in HSV)
-
+@Doc(text=[[
+@desc Returns the light value of the colour, i.e. the V in HSV.
+@result Brightness in the range [0,1].
+]])
 function gui.mtRGB.brightness():num
    max:num = &b
    if &g > max then max = &g end
@@ -249,9 +281,10 @@ function gui.mtRGB.linearise():table
    return { r = lineariseRGB(&r), g = lineariseRGB(&g), b = lineariseRGB(&b), a = &a }
 end
 
--- Convert RGB table { r, g, b, a } (0-1) to HSL table { h, s, l }
--- h is hue in degrees [0,360), s and l are in [0,1].
-
+@Doc(text=[[
+@desc Converts the colour to an HSL table { h, s, l }.
+@result HSL table with h in degrees [0,360) and s, l in the range [0,1].
+]])
 function gui.mtRGB.toHSL():table
    r:num = &r
    g:num = &g
@@ -287,17 +320,19 @@ function gui.mtRGB.toHSL():table
    return { h = h, s = s, l = l }
 end
 
--- Return the relative luminance of the colour per WCAG 2.x (BT.709 coefficients).
--- Result is in [0,1] where 0 is black and 1 is white.
-
+@Doc(text=[[
+@desc Returns the relative luminance of the colour per WCAG 2.x (BT.709 coefficients).
+@result Luminance in the range [0,1], where 0 is black and 1 is white.
+]])
 function gui.mtRGB.luminance():num
    linear = &linearise()
    return (0.2126 * linear.r) + (0.7152 * linear.g) + (0.0722 * linear.b)
 end
 
--- Convert RGB table { r, g, b, a } (0-255) to Display P3 table { r, g, b }
--- Values are in [0,1].  Out-of-gamut sRGB colours may produce values outside [0,1].
-
+@Doc(text=[[
+@desc Converts the colour to a Display P3 table { r, g, b }.
+@result Display P3 channels in [0,1].  Out-of-gamut sRGB colours may produce values outside [0,1].
+]])
 function gui.mtRGB.toDisplayP3():table
    linear = &linearise()
 
@@ -317,9 +352,10 @@ function gui.mtRGB.toDisplayP3():table
    return { r = gamma(pr), g = gamma(pg), b = gamma(pb) }
 end
 
--- Convert RGB table { r, g, b, a } (0-255) to OKLab table { okl, oka, okb, a }
--- okl is lightness in [0,1], oka is green-red axis, okb is blue-yellow axis (both typically -0.5 to 0.5).
-
+@Doc(text=[[
+@desc Converts the colour to an OKLab table { okl, oka, okb, a }.
+@result OKLab table: okl is lightness in [0,1], oka (green-red) and okb (blue-yellow) are typically -0.5 to 0.5.
+]])
 function gui.mtRGB.toOKLab():table
    linear = &linearise()
 
@@ -342,9 +378,10 @@ function gui.mtRGB.toOKLab():table
    }
 end
 
--- Convert RGB table { r, g, b, a } (0-255) to OKLCH table { okl, okc, okh, a }
--- okl is lightness in [0,1], okc is chroma (unbounded, typically 0-0.4), okh is hue in degrees [0,360).
-
+@Doc(text=[[
+@desc Converts the colour to an OKLCH table { okl, okc, okh, a }, which tostring() formats as an oklch() string.
+@result OKLCH table: okl is lightness in [0,1], okc is chroma (typically 0 - 0.4), okh is hue in degrees [0,360).
+]])
 function gui.mtRGB.toOKLCH():table
    lab = &toOKLab()
    c = math.sqrt(lab.oka * lab.oka + lab.okb * lab.okb)
@@ -360,9 +397,20 @@ end
 
 ----------------------------------------------------------------------------------------------------------------------
 
--- Returns the line spacing, height and ascent (cap height) of a font in pixels.  Text is centred vertically in a box by
--- placing its baseline at (BoxHeight + Ascent) / 2.
+@Doc(text=[[
+Returns the line spacing, height and ascent (cap height) of a font in pixels.
 
+Text is centred vertically in a box by placing its baseline at (BoxHeight + Ascent) / 2.
+
+-INPUT-
+Font: Font table with face, fontSize (or size) and fontStyle (or style) fields.
+Cache: If true (the default), metrics are stored in Font as spacing, height and ascent and reused by later calls.
+
+-RESULTS-
+num: Line spacing in pixels.
+num: Font height in pixels.
+num: Ascent (cap height) in pixels.
+]])
 gui.getFontHeight = function(Font:table, Cache:bool):<num,num,num>
    try <trace>
       if Cache is nil then Cache = true end
@@ -390,8 +438,13 @@ gui.getFontHeight = function(Font:table, Cache:bool):<num,num,num>
 end
 
 ----------------------------------------------------------------------------------------------------------------------
--- Read a style value and return it in pixel units.  Supports px, in, mm, pt, dp
 
+@Doc(text=[[
+@desc Converts a style value such as '12pt' to pixels.  Supported units are px, in, mm, pt and dp.
+@input Value with an optional unit suffix.  A value without a unit is treated as pixels.
+@input Display density in DPI, defaults to gui.interface.dpi.
+@result Pixel value rounded to the nearest integer, or 0 if Val is empty.
+]])
 gui.pixel = function(Val:str, Density:num):num
    Val ?! return 0
    num, alpha = rxPixel.extract(Val)
@@ -409,8 +462,12 @@ gui.pixel = function(Val:str, Density:num):num
 end
 
 ----------------------------------------------------------------------------------------------------------------------
--- Convert a colour string to an RGB table.
 
+@Doc(text=[[
+@desc Converts a colour string to an RGB table.  An exception is raised if the colour cannot be parsed.
+@input Colour value in SVG format, e.g. '#ff8000' or 'rgb(255 128 0)'.
+@result RGB colour table (gui.mtRGB) with r, g, b and a fields normalised to [0,1].
+]])
 gui.strToRGB = function(Value:str!):table
    assert(Value, 'Empty value passed to strToRGB()')
 
@@ -439,8 +496,12 @@ gui.rgbToIconTheme = function(Value:any!):str
 end
 
 ----------------------------------------------------------------------------------------------------------------------
--- Call a client function for each vector in the tree
 
+@Doc(text=[[
+@desc Calls Function for each vector in the tree, starting at Vector and including its subsequent siblings.
+@input The first vector to visit.
+@input Function to call, which receives each vector as its only argument.
+]])
 gui.forVector = function(Vector:obj!, Function)
    while Vector do
       Function(Vector)
@@ -465,9 +526,30 @@ gui.applyFill = function(Vector:obj!, Fill)
 end
 
 ----------------------------------------------------------------------------------------------------------------------
--- Generate a simple gradient fill for vectors.  Colours is a list of colours, a { first, last } table, or a
--- { colourMap } table that names a colourmap such as 'cmap:magma'.
 
+@Doc(text=[[
+Generates a simple linear gradient fill for vectors and registers it as a definition of Scene.
+
+Colours is a list of RGB colour tables, a { first, last } table, or a { colourMap } table that names a colourmap such
+as 'cmap:magma'.  Colours in a list may define an offset; otherwise their stops are spaced evenly.
+
+-INPUT-
+Scene: The scene that hosts the gradient definition.
+Name: Definition name, for use in fills as url(#Name).
+Colours: The gradient colours.
+X1: Start of the gradient vector on the X axis.
+Y1: Start of the gradient vector on the Y axis.
+X2: End of the gradient vector on the X axis.
+Y2: End of the gradient vector on the Y axis.
+Units: Coordinate units of the gradient vector, defaults to 'boundingbox'.
+IgnoreClashes: If true, a Name that is already registered is not treated as an error.
+
+-RESULTS-
+obj: The registered GradientLinear object, or nil if Name was already registered and IgnoreClashes is true.
+
+-ERRORS-
+ResourceExists: Name is already registered and IgnoreClashes is not set.
+]])
 gui.simpleGradient = function(Scene:obj!, Name:str!, Colours:any!, X1:num!, Y1:num!, X2:num!, Y2:num!, Units:str,
    IgnoreClashes:bool)
 
@@ -947,9 +1029,19 @@ function effectFill(Spec:str!, Call:table!):table
 end
 
 ----------------------------------------------------------------------------------------------------------------------
--- Parse an effect theme spec, such as 'fill(orange) emboss(elevation=20)'.  Results for strings are memoised by the
--- raw string, so callers must not modify them.  A table is a custom fill, equivalent to fill(<table>) with no effects.
 
+@Doc(text=[[
+Parses an effect theme spec, such as 'fill(orange) emboss(elevation=20)'.
+
+Results for strings are memoised by the raw string, so callers must not modify them.  A table is a custom fill,
+equivalent to fill(<table>) with no effects.
+
+-INPUT-
+Spec: An effect spec string, or a custom fill table that defines first and last colours.
+
+-RESULTS-
+table: The parsed spec, with canonical, key, fill, paints, vectors, effects and extent fields.
+]])
 gui.parseFill = function(Spec:any!):table
    if Spec is <table> then
       if not (Spec.first and Spec.last) then raise 'Icon theme tables require first and last colours.' end
@@ -1105,18 +1197,28 @@ function fillEffectHandle(Scene:obj!, Defs:array<table>!):table
 end
 
 ----------------------------------------------------------------------------------------------------------------------
--- Apply a fill effect once to the vectors already loaded into Viewport.  FillEffect is a spec such as 'fill(pearl) emboss()', or
--- a custom fill table.  Definitions are registered once in the hosting scene and are shared universally.
--- The base fill is registered as ID.  Paint effects are layered over the fill.  Path strokes receive the base fill.
--- Vector effects such as outline() modify each vector after the fill is assigned.  To change the style, load fresh
--- vectors and apply the new effect.  Filter effects are applied to Viewport, and a previous filter is cleared.
--- Siblings of Viewport are not affected.
---
--- Definitions are never removed automatically.  The returned handle lists the definitions that this call registered,
--- and its free() method removes them, which is useful for privately controlled effects that change often.  A
--- definition that already existed is reused and not listed, so it belongs to the call that registered it.  Vectors
--- that use a freed definition must be given a new fill effect, or be freed, before the next draw.
 
+@Doc(text=[[
+Applies a fill effect once to the vectors already loaded into Viewport.
+
+Definitions are registered once in the hosting scene and are shared universally.  Paint effects are layered over the
+fill.  Path strokes receive the base fill.  Vector effects such as outline() modify each vector after the fill is
+assigned.  To change the style, load fresh vectors and apply the new effect.  Filter effects are applied to Viewport,
+and a previous filter is cleared.  Siblings of Viewport are not affected.
+
+Definitions are never removed automatically.  The returned handle lists the definitions that this call registered,
+and its free() method removes them, which is useful for privately controlled effects that change often.  A
+definition that already existed is reused and not listed, so it belongs to the call that registered it.  Vectors
+that use a freed definition must be given a new fill effect, or be freed, before the next draw.
+
+-INPUT-
+FillEffect: An effect spec such as 'fill(pearl) emboss()', or a custom fill table.
+Viewport: The viewport that contains the vectors to style.
+ID: Definition name for the base fill.  Defaults to a name derived from the fill.
+
+-RESULTS-
+table: Handle with a defs list of the definitions registered by this call, and a free() method that removes them.
+]])
 gui.applyFillEffect = function(FillEffect:any!, Viewport:obj!, ID:str):table
    spec = gui.parseFill(FillEffect)
    config = spec.fill.config
@@ -1199,15 +1301,28 @@ gui.applyFillEffect = function(FillEffect:any!, Viewport:obj!, ID:str):table
 end
 
 ----------------------------------------------------------------------------------------------------------------------
--- Build an icon styled with the current effect theme and register it as a pattern.  The pattern can then be used as a fill,
--- i.e. "url(#Path)".  Using it in a VectorRectangle is akin to a cached bitmap (fast), or apply to a VectorViewport
--- for live rendering (higher quality transforms).
---
--- A pattern cannot paint outside of the vector that consumes it, so the icon is drawn inside a padded tile to give
--- filter effects such as glow() room to extend beyond the artwork.  Consumers must paint the fill at
--- (X - margin, Y - margin) with a size of Size + (margin * 2), where margin is returned in the result table.  The
--- icon box (X, Y, Size) remains the area for layout and hit testing.
 
+@Doc(text=[[
+Builds an icon styled with an effect theme and registers it as a pattern.
+
+The pattern can then be used as a fill, i.e. "url(#Name)".  Using it in a VectorRectangle is akin to a cached bitmap
+(fast), or apply to a VectorViewport for live rendering (higher quality transforms).
+
+A pattern cannot paint outside of the vector that consumes it, so the icon is drawn inside a padded tile to give
+filter effects such as glow() room to extend beyond the artwork.  Consumers must paint the fill at
+(X - margin, Y - margin) with a size of Size + (margin * 2), where margin is returned in the result table.  The
+icon box (X, Y, Size) remains the area for layout and hit testing.
+
+-INPUT-
+Scene: The scene to host the pattern.  Definitions are registered in the outermost host scene.
+Path: Icon path, e.g. 'items/folder', or a complete 'icons:' path to an SVG file.
+Size: Icon size in pixels, defaults to 16.
+FillEffect: An effect spec such as 'fill(pearl) emboss()', or a custom fill table.
+Name: Pattern name.  Defaults to a name derived from the fill effect and Path.
+
+-RESULTS-
+table: Icon details with name, theme, size, path, fill and margin fields.
+]])
 gui.createIcon = function(Scene:obj!, Path:str!, Size:num, FillEffect:any!, Name:str):table
    Size ??= 16
    key = gui.parseFill(FillEffect).key
@@ -1270,10 +1385,23 @@ gui.createIcon = function(Scene:obj!, Path:str!, Size:num, FillEffect:any!, Name
 end
 
 ----------------------------------------------------------------------------------------------------------------------
--- For rendering a separating line between widgets or delineating the end of a widget area.
--- Pos & MarginX can be numbers or proportional values, e.g. 100%
--- Negative positions, including -0.0, are interpreted as offsets from the end
 
+@Doc(text=[[
+Renders a separating line between widgets, or delineates the end of a widget area.
+
+Pos and the margins can be numbers or proportional values, e.g. '100%'.  Negative positions, including -0.0, are
+interpreted as offsets from the end.
+
+-INPUT-
+Viewport: The viewport that receives the separator.
+Orientation: 'horizontal' or 'vertical'.  Only the first character is checked.
+Pos: Position of the line on the axis perpendicular to its orientation.
+MarginA: Margin at the start of the line, defaults to 0.
+MarginB: Margin at the end of the line, defaults to 0.
+
+-RESULTS-
+num: The thickness of the line, as defined by the window stroke of the theme.
+]])
 gui.separator = function(Viewport:obj!, Orientation:str!, Pos:any!, MarginA:any, MarginB:any):num
    o = Orientation.sub(0, 1)
    stroke = gui.getTheme(Viewport).window.stroke
@@ -1305,10 +1433,20 @@ gui.separator = function(Viewport:obj!, Orientation:str!, Pos:any!, MarginA:any,
 end
 
 ----------------------------------------------------------------------------------------------------------------------
--- Return the name of the theme assigned to a given Viewport or vector Scene (effectively the theme assigned to the
--- display Window).  NB: If a viewport is provided then the nearest parent scene is queried.  Pop-up surfaces use
--- this to adopt the theme of the window that opened them.
 
+@Doc(text=[[
+Returns the name of the theme assigned to a given Viewport or vector Scene.
+
+This is effectively the theme assigned to the display Window.  If a viewport is provided then the nearest parent scene
+is queried.  Pop-up surfaces use this to adopt the theme of the window that opened them.  A scene without a theme
+adopts the default theme.
+
+-INPUT-
+Object: A VectorViewport or VectorScene.  If nil, the default theme name is returned.
+
+-RESULTS-
+str: The theme name.
+]])
 gui.getThemeName = function(Object:obj):str
    Object ?! return gui.theme
 
@@ -1332,18 +1470,35 @@ gui.getThemeName = function(Object:obj):str
 end
 
 ----------------------------------------------------------------------------------------------------------------------
--- Return the localised theme table for a given Viewport or vector Scene.
 
+@Doc(text=[[
+@desc Returns the localised theme table for a given Viewport or vector Scene.
+@input A VectorViewport or VectorScene.  If nil, the default theme is returned.
+@result The theme table.
+]])
 gui.getTheme = function(Object:obj):table
    return gui.themes[gui.getThemeName(Object)]
 end
 
 ----------------------------------------------------------------------------------------------------------------------
--- The base themes are 'light' and 'dark'.  Choosing an alternative theme will use one of the aforementioned as the
--- base and then override values with its own settings.  Themes work in conjunction with palettes, which allow the
--- user to direct the colours of the chosen theme.  Although the light and dark themes rely on palette colours
--- heavily, specialised themes may ignore them entirely.
 
+@Doc(text=[[
+Sets the theme for a given Viewport or vector Scene, or the default theme if no object is provided.
+
+The base themes are 'light' and 'dark'.  Choosing an alternative theme will use one of the aforementioned as the
+base and then override values with its own settings.  Themes work in conjunction with palettes, which allow the
+user to direct the colours of the chosen theme.  Although the light and dark themes rely on palette colours
+heavily, specialised themes may ignore them entirely.
+
+A custom theme is loaded from 'config:themes/<Theme>.tiri'.  If it is unavailable, the 'light' theme is used.
+
+-INPUT-
+Object: A VectorViewport or VectorScene.  If nil, the default theme is changed.
+Theme: Name of the theme.
+
+-RESULTS-
+table: The theme table.
+]])
 gui.setTheme = function(Object:obj, Theme:str!):table
    msg(f'gui.setTheme({Object}, {Theme})')
 
@@ -1385,8 +1540,12 @@ gui.setTheme = function(Object:obj, Theme:str!):table
 end
 
 ----------------------------------------------------------------------------------------------------------------------
--- Internal function for widget libraries
 
+@Doc(text=[[
+@desc Copies each key-value of Set to Vector.  Internal function for widget libraries.
+@input The vector, or table, that receives the style values.
+@input Table of style values.  Nothing is applied if nil.
+]])
 gui.applyStyle = function(Vector:any!, Set:table)
    if not Set then return end
 
