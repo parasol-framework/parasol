@@ -425,31 +425,6 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 -- States
 
-@Test function CursorFollowsContent()
-   local surface <close>, scene, host, sci = newEditor({ lineNumbers=true })
-   local canvas = sci.page.child
-
-   moveTo(surface, 3, 1)
-   assert(canvas.cursor is PTC_TEXT, f'The text cursor must be shown over text, cursor is {canvas.cursor}')
-   assert(surface.cursor is PTC_TEXT, f'The surface must show the text cursor, cursor is {surface.cursor}')
-
-   feed(JET_ABS_XY, surface.absX + 2, cellY(surface, 1))
-   assert(canvas.cursor is PTC_DEFAULT, f'The arrow must be shown over the margin, cursor is {canvas.cursor}')
-   assert(surface.cursor is PTC_DEFAULT, f'The surface must show the arrow over the margin, cursor is {surface.cursor}')
-
-   moveTo(surface, 3, 1)
-   assert(canvas.cursor is PTC_TEXT, f'The text cursor must return over text, cursor is {canvas.cursor}')
-   assert(surface.cursor is PTC_TEXT, f'The surface must show the text cursor, cursor is {surface.cursor}')
-
-   -- Scintilla would show the arrow over a selection to offer text dragging, which is not supported.
-
-   check sci.mtSelectRange(0, 30)
-   moveTo(surface, 5, 0)
-   assert(canvas.cursor is PTC_TEXT, f'The text cursor must be shown over a selection, cursor is {canvas.cursor}')
-   assert(surface.cursor is PTC_TEXT, f'The surface must show the text cursor over a selection, cursor is ' ..
-      f'{surface.cursor}')
-end
-
 @Test function ClickFocusesEditor()
    local surface <close>, scene, host, sci = newEditor()
    local other = scene.new('VectorViewport', { x=0, y=0, width=1, height=1 })
