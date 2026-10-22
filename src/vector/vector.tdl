@@ -303,6 +303,11 @@ module({ name='Vector', copyright='Paul Manias © 2010-2026', version=1.0, times
     "LANCZOS: This well known algorithm may serve as a point of comparison for evaluating the results of other methods.  It shares characteristics with `SINC` and `BLACKMAN`.",
     "BLACKMAN: Five times slower than `BILINEAR`, the final result will be less sharp than SINC.")
 
+  enums("VSC", { type="int", start=0, comments="Standards compliance options for the VectorScene Compliance field." },
+    "NONE: Kotuku's default behaviour, which extends standards where they produce poor results.",
+    "SVG1: Follow the SVG 1.1 standard where it differs from the default behaviour.",
+    "SVG2: Follow the SVG 2 standard where it differs from the default behaviour.")
+
   enums("RQ", { type="int", start=0, comments="Options for determining the quality of a rendered path." },
     "AUTO: The default option is chosen by the system.",
     "FAST: Use the fastest renderer available and allow accuracy to be compromised in favour of speed.  Recommended for normalised paths that are known to be rectangular.",
@@ -518,6 +523,7 @@ module({ name='Vector', copyright='Paul Manias © 2010-2026', version=1.0, times
    int      PageWidth            # Fixed page width - vector viewport width will be sized to fit this if resizing is enabled.
    int      PageHeight           # Fixed page height - vector viewport height will be sized to fit this if resizing is enabled.
    int(VSM) SampleMethod         # Method to use for resampling images and patterns.
+   int(VSC) Compliance           # Standards that the scene complies with where they differ from the defaults.
   ]])
 
   klass('VectorImage', { src='painters/image.cpp', extended=true, output='painters/image_def.cpp' }, [[

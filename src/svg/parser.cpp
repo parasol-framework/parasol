@@ -586,8 +586,8 @@ ERR svgState::parse_fe_offset(objVectorFilter *Filter, XTag &Tag) noexcept
       if (val.empty()) continue;
 
       switch(strhash(Tag.Attribs[a].Name)) {
-         case SVF_dx: fx->setXOffset(svtonum<int>(val)); break;
-         case SVF_dy: fx->setYOffset(svtonum<int>(val)); break;
+         case SVF_dx: fx->setXOffset(svtonum<double>(val)); break;
+         case SVF_dy: fx->setYOffset(svtonum<double>(val)); break;
          case SVF_in: parse_input_source(Self, fx, val); break;
          case SVF_result: result_name = val; break;
       }

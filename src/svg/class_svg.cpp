@@ -131,9 +131,10 @@ The initialisation process establishes the scene graph structure and processes a
 a #Path has been configured, the referenced SVG file will be loaded and parsed immediately.  Alternatively, if
 #Statement contains SVG data, that content will be processed instead.
 
-The default behaviour creates a local @VectorScene object to contain the generated scene graph.  This can be
+The default behaviour creates a local @VectorScene object to contain the generated scene graph.  Its
+@VectorScene.Compliance is set to `SVG2` so that the document is rendered to the SVG standard.  This can be
 overridden by setting the #Target field to redirect content into an existing scene graph structure, enabling
-integration with existing UI components.
+integration with existing UI components.  The @VectorScene.Compliance of a target's scene is not modified.
 
 The initialisation sequence includes:
 
@@ -155,6 +156,7 @@ static ERR SVG_Init(extSVG *Self)
    if (!Self->Target) {
       if ((Self->Target = objVectorScene::create::local())) {
          Self->Scene = (objVectorScene *)Self->Target;
+         Self->Scene->setCompliance(VSC::SVG2);
       }
       else return ERR::NewObject;
    }
@@ -596,6 +598,9 @@ to contain the generated content.  This viewport and its children remain under d
 <b>Target requirements:</b> The target object must be part of an existing scene graph owned by a @VectorScene object.
 While any vector object can serve as a target, @VectorViewport objects are recommended for optimal compatibility and
 performance.
+
+<b>Standards compliance:</b> The @VectorScene.Compliance of the target's scene is not modified, because it applies to
+all content in that scene.  Set it to `SVG2` before parsing if the document must be rendered to the SVG standard.
 
 <b>Ownership implications:</b> Specifying a target makes the generated scene graph independent of the SVG object
 lifecycle.  The SVG object can be terminated without affecting the created vector elements, enabling flexible

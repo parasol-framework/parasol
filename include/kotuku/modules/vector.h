@@ -521,6 +521,13 @@ enum class VSM : int {
    BLACKMAN = 12,
 };
 
+enum class VSC : int {
+   NIL = 0,
+   NONE = 0,
+   SVG1 = 1,
+   SVG2 = 2,
+};
+
 enum class RQ : int {
    NIL = 0,
    AUTO = 0,
@@ -849,6 +856,7 @@ class objVectorScene : public Object {
    int      PageWidth;            // The width of the page that contains the vector.
    int      PageHeight;           // The height of the page that contains the vector.
    VSM      SampleMethod;         // The sampling method to use when interpolating images and patterns.
+   VSC      Compliance;           // Selects the standard that the scene complies with, where it differs from the default behaviour.
 
    // Action stubs
 
@@ -891,7 +899,7 @@ class objVectorScene : public Object {
    // Customised field getting
 
    inline ERR getRenderTime(int64_t &Value) noexcept {
-      auto field = &this->Class->Dictionary[2];
+      auto field = &this->Class->Dictionary[3];
       return field->GetValue(this, &Value);
    }
 
@@ -935,8 +943,13 @@ class objVectorScene : public Object {
       return ERR::Okay;
    }
 
+   inline ERR getCompliance(VSC &Value) noexcept {
+      Value = this->Compliance;
+      return ERR::Okay;
+   }
+
    inline ERR getRootScene(OBJECTPTR &Value) noexcept {
-      auto field = &this->Class->Dictionary[4];
+      auto field = &this->Class->Dictionary[5];
       SetObjectContext(this, field, AC::NIL);
       auto error = field->GetValue(this, &Value);
       RestoreObjectContext();
@@ -953,7 +966,7 @@ class objVectorScene : public Object {
    }
 
    inline ERR setBitmap(objBitmap * Value) noexcept {
-      auto field = &this->Class->Dictionary[16];
+      auto field = &this->Class->Dictionary[17];
       return field->WriteValue(this, field, 0x08000301, Value);
    }
 
@@ -969,18 +982,23 @@ class objVectorScene : public Object {
    }
 
    inline ERR setPageWidth(const int Value) noexcept {
-      auto field = &this->Class->Dictionary[11];
+      auto field = &this->Class->Dictionary[12];
       return field->WriteValue(this, field, FD_INT, &Value);
    }
 
    inline ERR setPageHeight(const int Value) noexcept {
-      auto field = &this->Class->Dictionary[13];
+      auto field = &this->Class->Dictionary[14];
       return field->WriteValue(this, field, FD_INT, &Value);
    }
 
    inline ERR setSampleMethod(const VSM Value) noexcept {
-      auto field = &this->Class->Dictionary[7];
+      auto field = &this->Class->Dictionary[8];
       return field->WriteValue(this, field, FD_INT, &Value);
+   }
+
+   inline ERR setCompliance(const VSC Value) noexcept {
+      this->Compliance = Value;
+      return ERR::Okay;
    }
 
 };
@@ -3215,13 +3233,13 @@ class objOffsetFX : public objFilterEffect {
 
    // Customised field getting
 
-   inline ERR getXOffset(int &Value) noexcept {
-      Value = *((int *)(((int8_t *)this) + CLASS_OFFSET_FILTEREFFECT + 0));
+   inline ERR getXOffset(double &Value) noexcept {
+      Value = *((double *)(((int8_t *)this) + CLASS_OFFSET_FILTEREFFECT + 0));
       return ERR::Okay;
    }
 
-   inline ERR getYOffset(int &Value) noexcept {
-      Value = *((int *)(((int8_t *)this) + CLASS_OFFSET_FILTEREFFECT + 4));
+   inline ERR getYOffset(double &Value) noexcept {
+      Value = *((double *)(((int8_t *)this) + CLASS_OFFSET_FILTEREFFECT + 8));
       return ERR::Okay;
    }
 
@@ -3235,14 +3253,14 @@ class objOffsetFX : public objFilterEffect {
 
    // Customised field setting
 
-   inline ERR setXOffset(const int Value) noexcept {
+   inline ERR setXOffset(const double Value) noexcept {
       auto field = &this->Class->Dictionary[17];
-      return field->WriteValue(this, field, FD_INT, &Value);
+      return field->WriteValue(this, field, FD_DOUBLE, &Value);
    }
 
-   inline ERR setYOffset(const int Value) noexcept {
+   inline ERR setYOffset(const double Value) noexcept {
       auto field = &this->Class->Dictionary[18];
-      return field->WriteValue(this, field, FD_INT, &Value);
+      return field->WriteValue(this, field, FD_DOUBLE, &Value);
    }
 
 };
