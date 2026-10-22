@@ -1253,6 +1253,12 @@ static ERR FILE_ReadLine(extFile *Self, struct fl::ReadLine *Args)
 /*********************************************************************************************************************
 -ACTION-
 Rename: Changes the name of a file.
+
+The file, folder or volume is renamed in place.  Only the leaf of the new `Name` is used, so any leading path and
+trailing separators are ignored.  A file cannot be moved to a different folder with this action; use ~Core.MoveFile() for
+that purpose.
+
+The `Path` of the file object is updated to reflect the new name if the operation is successful.
 -END-
 *********************************************************************************************************************/
 
@@ -1265,46 +1271,51 @@ static ERR FILE_Rename(extFile *Self, struct acRename *Args)
 
    log.branch("%s to %.*s", Self->Path.c_str(), int(Args->Name.size()), Args->Name.data());
 
-   auto name = Args->Name;
+   bool is_folder = (Self->isFolder) or ((Self->Flags & FL::FOLDER) != FL::NIL);
 
-   if ((Self->isFolder) or ((Self->Flags & FL::FOLDER) != FL::NIL)) {
-      if (Self->Path.ends_with(':')) { // Renaming a volume
-         std::string n(name, 0, name.find_first_of(":/\\"));
-         if (!RenameVolume(Self->Path.c_str(), n.c_str())) {
-            Self->Path = n + ":";
-            return ERR::Okay;
-         }
-         else return log.warning(ERR::SystemCall);
-      }
-      else { // We are renaming a folder
-         std::string n(Self->Path, 0, Self->Path.find_last_of(":/\\"));
-         n.append(name, 0, name.find_last_of("/\\:"));
-
-         if (!fs_copy(Self->Path, n, nullptr, true)) {
-            if (not n.ends_with('/')) Self->Path = n + "/";
-            else Self->Path = n;
-            return ERR::Okay;
-         }
-         else return log.warning(ERR::SystemCall);
-      }
-   }
-   else { // We are renaming a file
-      std::string n(Self->Path, 0, Self->Path.find_last_of(":/\\"));
-
-      auto i = name.find_last_of("/\\:");
-      if (i IS std::string::npos) n.append(name);
-      else n.append(name, 0, i + 1);
-
-      #ifdef _WIN32
-         if (Self->Handle != -1) { close(Self->Handle); Self->Handle = -1; }
-      #endif
-
-      if (!fs_copy(Self->Path, n, nullptr, true)) {
-         Self->Path = n;
+   if ((is_folder) and (Self->Path.ends_with(':'))) { // Renaming a volume
+      std::string n(Args->Name, 0, Args->Name.find_first_of(":/\\"));
+      if (!RenameVolume(Self->Path.c_str(), n.c_str())) {
+         Self->Path = n + ":";
+         ResolvePath(Self->Path, RSF::NO_FILE_CHECK, &Self->prvResolvedPath);
          return ERR::Okay;
       }
       else return log.warning(ERR::SystemCall);
    }
+
+   // Reduce the new name to its leaf
+
+   auto name = Args->Name;
+   while ((not name.empty()) and ((name.back() IS '/') or (name.back() IS '\\') or (name.back() IS ':'))) {
+      name.remove_suffix(1);
+   }
+   if (auto i = name.find_last_of("/\\:"); i != std::string_view::npos) name.remove_prefix(i + 1);
+   if (name.empty() or (name IS ".") or (name IS "..")) return log.warning(ERR::Args);
+
+   // The new path is the parent folder of the existing path (including its trailing separator) with the new name.
+   // A trailing separator is excluded from the search so that folder paths resolve to their parent.
+
+   std::string_view path(Self->Path);
+   if ((path.ends_with('/')) or (path.ends_with('\\'))) path.remove_suffix(1);
+   auto sep = path.find_last_of(":/\\");
+   std::string n((sep IS std::string_view::npos) ? std::string_view() : path.substr(0, sep + 1));
+   n.append(name);
+
+   if (is_folder) {
+      if (fs_copy(Self->Path, n, nullptr, true) != ERR::Okay) return log.warning(ERR::SystemCall);
+      Self->Path = n + "/";
+   }
+   else {
+      #ifdef _WIN32
+         if (Self->Handle != -1) { close(Self->Handle); Self->Handle = -1; }
+      #endif
+
+      if (fs_copy(Self->Path, n, nullptr, true) != ERR::Okay) return log.warning(ERR::SystemCall);
+      Self->Path = n;
+   }
+
+   ResolvePath(Self->Path, RSF::NO_FILE_CHECK, &Self->prvResolvedPath);
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************

@@ -122,6 +122,10 @@
       <input>
         <param type="STRVIEW" name="Name">The new name for the object.</param>
       </input>
+      <description>
+<p>The file, folder or volume is renamed in place.  Only the leaf of the new <code>Name</code> is used, so any leading path and trailing separators are ignored.  A file cannot be moved to a different folder with this action; use <function module="Core">MoveFile</function> for that purpose.</p>
+<p>The <code>Path</code> of the file object is updated to reflect the new name if the operation is successful.</p>
+      </description>
     </action>
 
     <action>

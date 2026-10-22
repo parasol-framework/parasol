@@ -580,6 +580,83 @@ end
 end
 
 ----------------------------------------------------------------------------------------------------------------------
+-- acRename() must keep the file in its folder.  A regression dropped the folder separator, moving 'dir/a' to 'dirb'.
+
+@Test function RenameFile()
+   folder = glTempRoot .. 'rename_file/'
+   mSys.DeleteFile(folder)
+   ensureFolder(folder)
+   writeFile(folder .. 'before.txt', 'Renamed content')
+
+   file = obj.new('file', { path=folder .. 'before.txt' })
+   err = file.acRename('after.txt')
+   assert(err is ERR_Okay, 'acRename() failed: ' .. mSys.GetErrorMsg(err))
+   assert(file.path is folder .. 'after.txt', 'Path not updated after rename, got: ' .. file.path)
+   file.free()
+
+   assert(mSys.AnalysePath(folder .. 'before.txt') != ERR_Okay, 'The original file must no longer exist.')
+   assert(mSys.AnalysePath(glTempRoot .. 'rename_fileafter.txt') != ERR_Okay, 'Renamed file escaped its folder.')
+   assert(readFile(folder .. 'after.txt') is 'Renamed content', 'Renamed file is missing or its content changed.')
+
+   -- Any path in the new name is ignored; only the leaf is used.
+
+   file = obj.new('file', { path=folder .. 'after.txt' })
+   err = file.acRename('elsewhere/leaf.txt')
+   assert(err is ERR_Okay, 'acRename() with a path in the name failed: ' .. mSys.GetErrorMsg(err))
+   file.free()
+   assert(readFile(folder .. 'leaf.txt') is 'Renamed content', 'Leaf of the new name was not used.')
+
+   mSys.DeleteFile(folder)
+end
+
+----------------------------------------------------------------------------------------------------------------------
+
+@Test function RenameFolder()
+   root = glTempRoot .. 'rename_folder/'
+   mSys.DeleteFile(root)
+   ensureFolder(root .. 'before/')
+   writeFile(root .. 'before/child.txt', 'Child content')
+
+   folder = obj.new('file', { path=root .. 'before/' })
+   err = folder.acRename('after/')
+   assert(err is ERR_Okay, 'acRename() failed for a folder: ' .. mSys.GetErrorMsg(err))
+   assert(folder.path is root .. 'after/', 'Folder path not updated after rename, got: ' .. folder.path)
+   folder.free()
+
+   local err, type = mSys.AnalysePath(root .. 'after/')
+   assert(err is ERR_Okay and type is LOC_FOLDER, 'Renamed folder does not exist in its parent.')
+   assert(mSys.AnalysePath(root .. 'before/') != ERR_Okay, 'The original folder must no longer exist.')
+   assert(readFile(root .. 'after/child.txt') is 'Child content', 'Folder content was not preserved.')
+
+   mSys.DeleteFile(root)
+end
+
+----------------------------------------------------------------------------------------------------------------------
+
+@Test function RenameRejectsAncestorNames()
+   root = glTempRoot .. 'rename_ancestor/'
+   source = root .. 'parent/before/'
+   mSys.DeleteFile(root)
+   ensureFolder(source)
+   writeFile(source .. 'child.txt', 'Source content')
+   writeFile(root .. 'parent/child.txt', 'Parent content')
+   writeFile(root .. 'child.txt', 'Grandparent content')
+
+   folder = obj.new('file', { path=source })
+   for name in values(array<str> { '.', '..', 'elsewhere/./', 'elsewhere/../' }) do
+      err = folder.acRename(name)
+      assert(err is ERR_Args, 'acRename() must reject ancestor name: ' .. name)
+      assert(folder.path is source, 'Rejected rename changed the folder path.')
+      assert(readFile(source .. 'child.txt') is 'Source content', 'Rejected rename changed the source content.')
+      assert(readFile(root .. 'parent/child.txt') is 'Parent content', 'Rejected rename overwrote parent content.')
+      assert(readFile(root .. 'child.txt') is 'Grandparent content', 'Rejected rename overwrote grandparent content.')
+   end
+   folder.free()
+
+   mSys.DeleteFile(root)
+end
+
+----------------------------------------------------------------------------------------------------------------------
 
 @Test; @Requires(windows_platform=true)
 function MoveFileReplacesOpenDestination()
