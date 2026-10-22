@@ -784,15 +784,23 @@ void SceneRenderer::copy_filter_bitmap(objBitmap *Bitmap, extVectorFilter *Filte
    if ((width <= 0) or (height <= 0)) return;
 
    // Masks inherited from container viewports, e.g. a VectorClip or a non-rectangular viewport path, must apply to the
-   // filter output.  The mask is addressed in render coordinates, so the output is rasterised through mRenderBase.
+   // filter output.  The mask is addressed in render coordinates, so the output is rasterised through the render
+   // target.  The blend is forced to sRGB to match the CopyArea() path below; the target's default gamma-correct
+   // blend would visibly weaken translucent output such as drop shadows while a mask is active.
 
    if (not mClipStack.empty()) {
       agg::rasterizer_scanline_aa<> raster;
       basic_path(raster, src_x, src_y, src_x + width, src_y + height);
 
+      agg::pixfmt_psl format(*mBitmap, BLM::SRGB);
+      agg::renderer_base<agg::pixfmt_psl> render_base(format);
+      const auto &rb_clip = mRenderBase.clip_box();
+      // Buffered targets retain scene coordinates beyond their local bitmap dimensions.
+      render_base.clip_box_naked(rb_clip);
+
       agg::alpha_mask_gray8 alpha_mask(mClipStack.top().m_renderer);
       agg::scanline_u8_am<agg::alpha_mask_gray8> masked_scanline(alpha_mask);
-      drawBitmap(masked_scanline, VSM::NEIGHBOUR, mRenderBase, raster, Bitmap, VSPREAD::CLIP,
+      drawBitmap(masked_scanline, VSM::NEIGHBOUR, render_base, raster, Bitmap, VSPREAD::CLIP,
          std::min(Filter->Opacity, 1.0));
       return;
    }
