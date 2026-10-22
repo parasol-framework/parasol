@@ -39,6 +39,16 @@
     </action>
 
     <action>
+      <name>Deactivate</name>
+      <comment>Cancels the active drag and drop operation.</comment>
+      <prototype>ERR acDeactivate(*Object)</prototype>
+      <tiriPrototype>err = Object.acDeactivate()</tiriPrototype>
+      <description>
+<p>If a drag and drop operation was started with <function module="Display">StartCursorDrag</function>, it is cancelled without delivering a drop. The drag preview surface, if any, is hidden but not freed.  This action has no effect if no drag and drop operation is active.</p>
+      </description>
+    </action>
+
+    <action>
       <name>Hide</name>
       <comment>Hides the pointer cursor.</comment>
       <prototype>ERR acHide(*Object)</prototype>

@@ -4,8 +4,10 @@
 // Return the front-most viewport at (X,Y) by recursively scanning the scene graph from front to back.
 // Clipping paths are taken into account for non-rectangular viewports.
 
-extVectorViewport * get_viewport_at_xy(extVectorScene *Scene, double X, double Y)
+static extVectorViewport * find_viewport_at_xy(extVectorScene *Scene, double X, double Y)
 {
+   if (not Scene->Viewport) return nullptr;
+
    //kt::Log log(__FUNCTION__);
    //log.branch("Scene: %d", Scene->UID);
 
@@ -16,7 +18,6 @@ extVectorViewport * get_viewport_at_xy(extVectorScene *Scene, double X, double Y
       // Always scan backwards since the last vector in the branch is top-most in its stack.
       extVector *last = Vector;
       while (last->Next) last = (extVector *)last->Next;
-      extVectorViewport *hit_vp = nullptr;
 
       for (auto node=last; node; node=(extVector *)node->Prev) {
          if (node->Visibility IS VIS::HIDDEN) continue; // Checking for HIDDEN ensures that INHERIT is handled correctly
@@ -35,11 +36,11 @@ extVectorViewport * get_viewport_at_xy(extVectorScene *Scene, double X, double Y
             }
 
             if (hit) {
-               hit_vp = vp;
                if (node->Child) {
                   auto child_hit = Self(Self, (extVector *)node->Child, X, Y);
-                  return child_hit ? child_hit : hit_vp;
+                  if (child_hit) return child_hit;
                }
+               return vp;
             }
          }
          else if (node->Child) { // For VectorGroup and similar class types
@@ -48,14 +49,43 @@ extVectorViewport * get_viewport_at_xy(extVectorScene *Scene, double X, double Y
          }
       }
 
-      return hit_vp;
+      return nullptr;
    };
 
    // Recursively inspect the scene graph
 
-   auto hit_vp = inspect_xy(inspect_xy, (extVector *)Scene->Viewport, X, Y);
+   return inspect_xy(inspect_xy, (extVector *)Scene->Viewport, X, Y);
+}
+
+//********************************************************************************************************************
+// Ordinary input falls back to the first viewport when the point is outside the scene's viewport paths.
+
+extVectorViewport * get_viewport_at_xy(extVectorScene *Scene, double X, double Y)
+{
+   auto hit_vp = find_viewport_at_xy(Scene, X, Y);
 
    return hit_vp ? hit_vp : (extVectorViewport *)Scene->Viewport;
+}
+
+//********************************************************************************************************************
+// Return the registered drop target at (X,Y), or nullptr if there is none.  The front-most viewport at the point is
+// resolved to its nearest registered ancestor, so decorative content and unregistered viewports route the drop to their
+// container.  This is independent of input subscriptions and the button lock.
+
+extVectorViewport * get_drop_target_at_xy(extVectorScene *Scene, double X, double Y)
+{
+   auto vp = find_viewport_at_xy(Scene, X, Y);
+
+   for (extVector *node = vp; node; ) {
+      if ((node->classID() IS CLASSID::VECTORVIEWPORT) and (((extVectorViewport *)node)->vpDropTarget)) {
+         return (extVectorViewport *)node;
+      }
+
+      if ((node->Parent) and (node->Parent->Class->BaseClassID IS CLASSID::VECTOR)) node = (extVector *)node->Parent;
+      else break;
+   }
+
+   return nullptr;
 }
 
 //********************************************************************************************************************

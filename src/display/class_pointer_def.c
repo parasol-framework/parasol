@@ -77,6 +77,7 @@ static ERR POINTER_Free(extPointer *Self) {
 
 static const struct ActionArray clPointerActions[] = {
    { AC::DataFeed, POINTER_DataFeed },
+   { AC::Deactivate, POINTER_Deactivate },
    { AC::Free, POINTER_Free },
    { AC::Hide, POINTER_Hide },
    { AC::Init, POINTER_Init },

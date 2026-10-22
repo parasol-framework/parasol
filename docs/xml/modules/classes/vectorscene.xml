@@ -213,6 +213,37 @@
     </field>
 
     <field>
+      <name>DropTarget</name>
+      <comment>The registered viewport that will receive a drop at the pointer's position.</comment>
+      <access read="G">Get</access>
+      <type>OBJECTPTR</type>
+      <description>
+<p>When the <code>DROP_TARGETS</code> flag is set and a drag and drop operation is active over the scene's surface, DropTarget refers to the <class name="VectorViewport">VectorViewport</class> that would receive the drop if it were released at the pointer's current position.  The result is computed on demand and reflects registration, visibility and layout changes immediately.  It is <code>NULL</code> if no drag is active, the pointer is not over the surface or no registered viewport is under the pointer.</p>
+<p>While a DragDrop action is being delivered to a viewport, DropTarget refers to that viewport and does not change if the pointer moves during the delivery.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>DropX</name>
+      <comment>The horizontal drop position, relative to the <fl>DropTarget</fl>.</comment>
+      <access read="G">Get</access>
+      <type>DOUBLE</type>
+      <description>
+<p>DropX is the horizontal coordinate of the drop, expressed in the coordinate system of the <fl>DropTarget</fl> so that transforms applied to the target and its ancestors are taken into account.  During the delivery of a DragDrop action the value is a snapshot taken at the moment of the drop.  At other times it reflects the pointer's current position, or zero if there is no <fl>DropTarget</fl>.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>DropY</name>
+      <comment>The vertical drop position, relative to the <fl>DropTarget</fl>.</comment>
+      <access read="G">Get</access>
+      <type>DOUBLE</type>
+      <description>
+<p>DropY is the vertical coordinate of the drop, expressed in the coordinate system of the <fl>DropTarget</fl>.  Refer to <fl>DropX</fl> for further information.</p>
+      </description>
+    </field>
+
+    <field>
       <name>Flags</name>
       <comment>Optional flags.</comment>
       <access read="R" write="W">Read/Write</access>
@@ -311,6 +342,7 @@
   <types>
     <constants lookup="VPF" comment="Optional flags for the VectorScene object.">
       <const name="BITMAP_SIZED">Automatically adjust the <class name="VectorScene" field="PageWidth">VectorScene.PageWidth</class> and <class name="VectorScene" field="PageHeight">VectorScene.PageHeight</class> to match the target <class name="Bitmap" field="Width">Bitmap.Width</class> and <class name="Bitmap" field="Height">Bitmap.Height</class>.</const>
+      <const name="DROP_TARGETS">Route drag and drop operations from the <class name="VectorScene" field="Surface">VectorScene.Surface</class> to the registered <class name="VectorViewport">VectorViewport</class> under the pointer.  Must be set prior to initialisation, and only one scene per surface can use this option.</const>
       <const name="IGNORE_TAB">Ignore the Tab key for cycling through keyboard subscribers.</const>
       <const name="MANUAL_RENDER">Clear and draw a locked bitmap without callbacks. Call Flush and expose manually.</const>
       <const name="OUTLINE_VIEWPORTS">Draw a green outline around all viewport paths.  Extremely useful for debugging layout issues.</const>

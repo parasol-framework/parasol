@@ -308,26 +308,70 @@ static void process_ptr_button(extPointer *Self, struct dcDeviceInput *Input)
       SubscribeTimer(0.02, C_FUNCTION(repeat_timer), &glRepeatTimer); // Use a timer subscription so that repeat button clicks can be supported (the interval indicates the rate of the repeat)
    }
 
-   if ((Self->DragSourceID) and (!Self->ButtonClicks[bi].LastClicked)) {
-      // Drag and drop has been released.  Inform the destination surface of the item's release.
+   if ((Self->DragSourceID) and (bi IS 0) and (userinput.Value <= 0) and (not Self->DragDelivering)) {
+      // Drag and drop has been released with the primary button.  The session is copied so that it remains intact if
+      // the destination cancels it, frees the source or attempts to start a new drag during delivery.
+
+      const auto source_id = Self->DragSourceID;
+      const auto item      = Self->DragItem;
+      const auto datatypes = Self->DragData;
+      const auto size      = Self->DragDataSize;
 
       if (Self->DragSurface) {
          kt::ScopedObjectLock surface(Self->DragSurface);
          if (surface.granted()) acHide(*surface);
-         Self->DragSurface = 0;
       }
 
+      Self->DragDelivering = true;
+
       if (!modal_id) {
-         kt::ScopedObjectLock src(Self->DragSourceID);
+         kt::ScopedObjectLock src(source_id);
          if (src.granted()) {
             kt::ScopedObjectLock surface(Self->OverObjectID);
-            if (surface.granted()) acDragDrop(*surface, *src, Self->DragItem, Self->DragData);
+            if (surface.granted()) acDragDrop(*surface, *src, item, std::string_view(datatypes.data(), size));
          }
       }
 
-      Self->DragItem = 0;
-      Self->DragSourceID = 0;
+      if (Self->DragSourceID IS source_id) end_cursor_drag(Self);
+      Self->DragDelivering = false;
    }
+}
+
+//********************************************************************************************************************
+// Terminates the current drag and drop session.  The preview surface is hidden but not freed, as it belongs to the
+// client.  Unsubscribe is false if the source is already being freed.
+
+void end_cursor_drag(extPointer *Self, bool Unsubscribe)
+{
+   if (Self->DragSurface) {
+      kt::ScopedObjectLock surface(Self->DragSurface);
+      if (surface.granted()) acHide(*surface);
+   }
+
+   if ((Unsubscribe) and (Self->DragSourceID)) {
+      kt::ScopedObjectLock src(Self->DragSourceID);
+      if (src.granted()) {
+         kt::SwitchContext ctx(Self);
+         auto callback = C_FUNCTION(notify_drag_source_free);
+         UnsubscribeAction(*src, AC::Free, &callback);
+      }
+   }
+
+   Self->DragSourceID = 0;
+   Self->DragItem     = 0;
+   Self->DragSurface  = 0;
+   Self->DragParent   = 0;
+   Self->DragDataSize = 0;
+   Self->DragData.fill(0);
+}
+
+//********************************************************************************************************************
+// Cancels the drag and drop session if its source is freed before the drop is delivered.
+
+void notify_drag_source_free(OBJECTPTR Object, ACTIONID ActionID, ERR Result, APTR Args)
+{
+   auto Self = (extPointer *)CurrentContext();
+   if (Self->DragSourceID IS Object->UID) end_cursor_drag(Self, false);
 }
 
 //********************************************************************************************************************
@@ -522,6 +566,22 @@ extPointer::~extPointer()
       ReleaseObject(object);
    }
 */
+}
+
+/*********************************************************************************************************************
+-ACTION-
+Deactivate: Cancels the active drag and drop operation.
+
+If a drag and drop operation was started with ~Display.StartCursorDrag(), it is cancelled without delivering a drop.
+The drag preview surface, if any, is hidden but not freed.  This action has no effect if no drag and drop operation is
+active.
+-END-
+*********************************************************************************************************************/
+
+static ERR POINTER_Deactivate(extPointer *Self)
+{
+   if (Self->DragSourceID) end_cursor_drag(Self);
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************

@@ -21,14 +21,17 @@ endif ()
 
 #add_definitions ("-DDBG_DRAW=1")
 
-target_sources (${MOD} PRIVATE
+set (vector_sources
    "${CMAKE_CURRENT_SOURCE_DIR}/vector.cpp"
    "${CMAKE_CURRENT_SOURCE_DIR}/vector_functions.cpp"
    "${CMAKE_CURRENT_SOURCE_DIR}/filters/filter.cpp"
    "${CMAKE_CURRENT_SOURCE_DIR}/scene/scene.cpp"
    "${CMAKE_CURRENT_SOURCE_DIR}/painters/painters.cpp"
    "${CMAKE_CURRENT_SOURCE_DIR}/transformers/transformers.cpp"
-   "${CMAKE_CURRENT_SOURCE_DIR}/colourmaps.cpp"
+   "${CMAKE_CURRENT_SOURCE_DIR}/colourmaps.cpp")
+
+target_sources (${MOD} PRIVATE
+   ${vector_sources}
    #"${CMAKE_CURRENT_SOURCE_DIR}/agg/src/agg_arrowhead.cpp"
    "${CMAKE_CURRENT_SOURCE_DIR}/agg/src/agg_bezier_arc.cpp"
    "${CMAKE_CURRENT_SOURCE_DIR}/agg/src/agg_curves.cpp"
@@ -51,7 +54,9 @@ target_include_directories (${MOD} PRIVATE
 target_precompile_headers(${MOD} PRIVATE
    "vector.h" "font.h")
 
-# Enable unity builds to speed up compilation of the many AGG source files
+# Keep the main sources separate so an edit does not rebuild unrelated module implementations.
+# Only the small AGG source files benefit from unity batching.
+set_source_files_properties(${vector_sources} PROPERTIES SKIP_UNITY_BUILD_INCLUSION ON)
 set_target_properties(${MOD} PROPERTIES UNITY_BUILD ON)
 set_target_properties(${MOD} PROPERTIES UNITY_BUILD_BATCH_SIZE 8)
 
@@ -98,3 +103,5 @@ flute_test(vector_text_path_length "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_text_
 flute_test(vector_text_font_size "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_text_font_size.tiri")
 flute_test(vector_spiral "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_spiral.tiri")
 flute_test(vector_supershape "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_supershape.tiri")
+
+flute_test(vector_drag_drop "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_drag_drop.tiri")
