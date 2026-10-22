@@ -1161,12 +1161,17 @@ gui.applyFillEffect = function(FillEffect:any!, Viewport:obj!, ID:str):table
    Viewport.child ?! return handle
 
    gui.forVector(Viewport.child, function(Vector)
-      if Vector.fill != 'none' then
-         Vector.fill = fill
-      end
+      -- A viewport draws a pattern fill as its background, so nested viewports, such as those of loaded SVG files,
+      -- must not receive the fill.
 
-      if Vector.stroke?? then -- A stroke takes one painter, so it only receives the base fill
-         Vector.stroke = base
+      if Vector.class.className != 'VectorViewport' then
+         if Vector.fill != 'none' then
+            Vector.fill = fill
+         end
+
+         if Vector.stroke?? then -- A stroke takes one painter, so it only receives the base fill
+            Vector.stroke = base
+         end
       end
 
       for effect in values(spec.vectors) do
@@ -1475,6 +1480,100 @@ gui.fills = {
 
 gui.fills.default = gui.fills.carbon
 
+-- Returns a deterministic random number generator for textures, so that a paint effect always draws the same texture
+-- for the same seed.  Each call yields a value in the range [0, 1).  This is the Park-Miller generator, whose products
+-- remain exact in a double.  The first values from small seeds are correlated, so they are discarded.
+
+function effectRandom(Seed:num!):func
+   state = (math.floor(math.abs(Seed) * 7919) % 2147483646) + 1
+   function next():num
+      state = (state * 16807) % 2147483647
+      return (state - 1) / 2147483646
+   end
+   for {0 to 4} do next() end
+   return next
+end
+
+-- Returns Colour mixed toward white (Amount > 0) or shaded toward black (Amount < 0), with its alpha multiplied by
+-- Alpha.  Amount is clamped to the range -1 to 1.  Shading scales each channel and also raises it to a power, which
+-- deepens the hue as it darkens, so that gold shades to brown rather than olive.
+
+function shadeRGB(Colour:table!, Amount:num!, Alpha:num!):table
+   amount = math.clamp(Amount, -1, 1)
+   r, g, b = Colour.r, Colour.g, Colour.b
+   if amount <= -1 then
+      r, g, b = 0, 0, 0
+   elseif amount < 0 then
+      k = 1 + (amount * 0.5)
+      e = 1 / k
+      r, g, b = (r ** e) * k, (g ** e) * k, (b ** e) * k
+   else
+      r, g, b = r + ((1 - r) * amount), g + ((1 - g) * amount), b + ((1 - b) * amount)
+   end
+   return { r=r, g=g, b=b, a=math.clamp(Alpha, 0, 1) * Colour.a }
+end
+
+function shadeColour(Colour:table!, Amount:num!, Alpha:num!):str
+   c = shadeRGB(Colour, Amount, Alpha)
+   return hexColour(c.r, c.g, c.b, c.a)
+end
+
+-- Builds a paint effect as a pattern that stretches a 100x100 view box over the bounding box of each vector that it
+-- fills, so that the texture is unaffected by the size and display scale of the target.  AspectRatio decides how the
+-- view box is fitted to a box that is not square.  Draw(Pattern, Viewport) adds the content, and the pattern is
+-- registered as Ctx.id.
+
+function paintPattern(Ctx:table!, AspectRatio:num!, Draw:func!):str
+   pattern = Ctx.scene.new('VectorPattern', {
+      units=VUNIT_BOUNDING_BOX, width='100%', height='100%', aspectRatio=AspectRatio
+   })
+
+   try
+      pattern.viewport.{ viewX=0, viewY=0, viewWidth=100, viewHeight=100 }
+      Draw(pattern, pattern.viewport)
+      check Ctx.scene.mtAddDef(Ctx.id, pattern)
+   except ex
+      pattern.free()
+      raise
+   end
+
+   return f'url(#{Ctx.id})'
+end
+
+-- Texture shapes are batched into one path per colour, so that a texture of hundreds of shapes costs a few vectors.  A
+-- layer is { shade, alpha } and its shapes are added with addShape().  A path accepts a limited number of commands, so
+-- a large layer is split over several paths.
+
+function textureLayer(Shade:num!, Alpha:num!):table
+   return { shade=Shade, alpha=Alpha, shapes=array<str>, counts=array<int> }
+end
+
+function addShape(Layer:table!, Shape:str!, Commands:num!)
+   Layer.shapes.push(Shape)
+   Layer.counts.push(Commands)
+end
+
+function addTextureLayers(Viewport:obj!, Colour:table!, Layers:array<table>!)
+   function addPath(Shapes:array<str>, Fill:str)
+      Viewport.new('VectorPath', { sequence=Shapes.concat(' '), fill=Fill })
+   end
+
+   for layer in values(Layers) do
+      if #layer.shapes > 0 and layer.alpha > 0 then
+         fill = shadeColour(Colour, layer.shade, layer.alpha)
+         start, commands = 0, 0
+         for i, count in layer.counts do
+            if commands + count > 6000 then
+               addPath(layer.shapes.slice({start to i}), fill)
+               start, commands = i, 0
+            end
+            commands += count
+         end
+         addPath(layer.shapes.slice({start to #layer.shapes}), fill)
+      end
+   end
+end
+
 -- Universal effects.  A 'paint' effect registers a paint server as Ctx.id and returns its painter, which is
 -- layered over the base fill.  A 'filter' effect appends effects to Ctx.filter that read Ctx.input (nil for the source
 -- graphic), and returns the effect that the next stage reads.  Paint and filter definitions are built once per scene
@@ -1485,7 +1584,7 @@ gui.fills.default = gui.fills.carbon
 -- vectors.  Changes to vectors are drawn before filters, so filters see them wherever the call is written.  Each vector
 -- effect can appear once.  Parameter types are 'num', 'colour' and 'enum'.
 --
--- Future candidates: wood() and metal() (paint), and halo(), shadow(), contour() and inset() (filter).
+-- Future candidates: halo(), shadow(), contour() and inset() (filter).
 
 gui.effects = {
    -- A gloss highlight over the upper half of the fill.
@@ -1504,6 +1603,262 @@ gui.effects = {
          }
          gui.simpleGradient(Ctx.scene, Ctx.id, stops, 0, 0, 0, 1, 'boundingbox')
          return f'url(#{Ctx.id})'
+      end
+   },
+
+   -- Wood grain derived from colour, which defaults to oak.  The grain is a set of tapering fibres that share a flow
+   -- field, so that neighbouring fibres bend together.  Fibres are darker than the colour, apart from a few
+   -- highlights.  The grain multiplies the density of the fibres within the range 0.25 to 4, and contrast scales their
+   -- shading.  Knots is the number of knots (up to 6), which the fibres part around.  The angle rotates the grain
+   -- clockwise in degrees, so that 0 is vertical and 90 is horizontal.  The seed selects a different plank, and knots
+   -- are drawn from their own sequence so that adding one does not change the rest of the plank.  The colour is
+   -- opaque, so it hides the base fill unless it is translucent.
+
+   wood = {
+      kind   = 'paint',
+      params = array<table> {
+         { name='colour',   type='colour', default='#c39b6a' },
+         { name='grain',    type='num', default=1 },
+         { name='contrast', type='num', default=1 },
+         { name='knots',    type='num', default=0 },
+         { name='angle',    type='num', default=0 },
+         { name='seed',     type='num', default=1 }
+      },
+      build = function(Ctx:table!, Args:table!):str
+         rnd      = effectRandom(Args.seed)
+         colour   = Args.colour
+         density  = math.clamp(Args.grain, 0.25, 4)
+         contrast = math.max(Args.contrast, 0)
+         angle    = Args.angle % 360
+         tau      = math.pi * 2
+
+         -- The grain is generated in its own frame and rotated about the centre of the view box, so it must extend
+         -- far enough to cover the view box at any angle.
+
+         theta = angle * math.pi / 180
+         extent = 50 * (math.abs(math.cos(theta)) + math.abs(math.sin(theta)))
+         low, high = 50 - extent, 50 + extent
+
+         bands = textureLayer(-0.10, 0.35) -- Broad early and late wood bands
+         fine  = textureLayer(-0.18, 0.55)
+         light = textureLayer(0.22, 0.40)
+         mid   = textureLayer(-0.32, 0.70)
+         bold  = textureLayer(-0.50, 0.85)
+
+         -- Each knot is drawn as concentric ellipses, from the halo to the pith.
+
+         halo  = textureLayer(-0.22, 0.45)
+         ring  = textureLayer(-0.40, 0.60)
+         inner = textureLayer(-0.10, 0.70)
+         core  = textureLayer(-0.55, 0.85)
+         pith  = textureLayer(-0.70, 0.90)
+
+         layers = array<table> { bands, fine, light, mid, bold, halo, ring, inner, core, pith }
+         for layer in values(layers) do layer.shade *= contrast end
+
+         -- Knots are placed within 35 units of the centre, which is visible at any angle.  A knot that cannot be
+         -- placed clear of the others is dropped.
+
+         knots = array<table>
+         krnd = effectRandom((Args.seed * 31) + 17)
+         for {0 to math.clamp(math.floor(Args.knots), 0, 6)} do
+            for {0 to 20} do
+               dir, dist = krnd() * tau, math.sqrt(krnd()) * 35
+               rx = 2 + (krnd() * 2.5)
+               knot = {
+                  x=50 + (math.cos(dir) * dist), y=50 + (math.sin(dir) * dist), rx=rx, ry=rx * (1.4 + (krnd() * 0.8)),
+                  tilt=(krnd() - 0.5) * 24
+               }
+               knot.clear, knot.reach = knot.rx * 1.35, knot.ry * 2.2
+               clear = knots.all(Other => ((((knot.x - Other.x) / ((knot.clear + Other.clear) * 1.5)) ** 2) +
+                  (((knot.y - Other.y) / (knot.reach + Other.reach)) ** 2)) > 1)
+               if clear then
+                  knots.push(knot)
+                  break
+               end
+            end
+         end
+
+         waves = array<table>
+         for {0 to 3} do
+            waves.push({
+               amp=0.25 + (rnd() * 0.75), freq=(0.3 + (rnd() * 0.9)) * tau / 100, phase=rnd() * tau,
+               drift=(rnd() - 0.5) * 0.08
+            })
+         end
+
+         function flow(X:num, Y:num):num
+            dx = 0
+            for w in values(waves) do dx += w.amp * math.sin((Y * w.freq) + w.phase + (X * w.drift)) end
+            return dx
+         end
+
+         -- Fibres are pushed aside by a lens around each knot that is widest at the knot's centre and fades to nothing
+         -- at its reach.  The displacement falls away with distance, so that nearby fibres bunch around the knot and
+         -- distant ones bend gently.
+
+         function deflect(X:num, Y:num):num
+            for k in values(knots) do
+               t = (Y - k.y) / k.reach
+               if t > -1 and t < 1 then
+                  w = k.clear * (1 - (t * t))
+                  d = X - k.x
+                  X = k.x + (((d < 0) ? -1 : 1) * math.sqrt((d * d) + (w * w)))
+               end
+            end
+            return X
+         end
+
+         -- A fibre is a polygon around a wandering centre line.  Its width pulses along its length by the Pulse
+         -- fraction, so that a fibre nearly breaks at its narrowest points.  Short fibres taper to points at both ends.
+
+         function fibre(Layer:table, X:num, Width:num, Top:num, Bottom:num, Taper:bool, Pulse:num)
+            wobble, wobble_freq, wobble_phase = rnd() * 0.5, (1 + (rnd() * 3)) * tau / 100, rnd() * tau
+            pulse_freq, pulse_phase = (1 + (rnd() * 4)) * tau / 100, rnd() * tau
+            kink = 0
+            left, right = array<str>, array<str>
+            steps = math.max(2, math.ceil((Bottom - Top) / 2))
+            for s in {0 into steps} do
+               t = s / steps
+               y = Top + ((Bottom - Top) * t)
+               if rnd() < 0.05 then kink += (rnd() - 0.5) * 1.2 end
+               cx = deflect(X + flow(X, y) + (wobble * math.sin((y * wobble_freq) + wobble_phase)) + kink, y)
+               w = Width * (1 - Pulse + (Pulse * math.sin((y * pulse_freq) + pulse_phase)))
+               if Taper then w *= math.sin(math.pi * t) ** 0.5 end
+               left.push(string.format('%.2f,%.2f', cx - (w * 0.5), y))
+               right.push(string.format('%.2f,%.2f', cx + (w * 0.5), y))
+            end
+            right.reverse()
+            addShape(Layer, f'M{left.concat(' L')} L{right.concat(' L')} Z', (#left * 2) + 1)
+         end
+
+         function ellipse(Layer:table, X:num, Y:num, RX:num, RY:num, Tilt:num)
+            c, s = math.cos(Tilt * math.pi / 180), math.sin(Tilt * math.pi / 180)
+            addShape(Layer, string.format('M%.2f,%.2f a%.2f,%.2f %.1f 1,0 %.2f,%.2f a%.2f,%.2f %.1f 1,0 %.2f,%.2f Z',
+               X - (RX * c), Y - (RX * s), RX, RY, Tilt, RX * c * 2, RX * s * 2, RX, RY, Tilt, -RX * c * 2,
+               -RX * s * 2), 4)
+         end
+
+         x = low - 10
+         while x < high + 10 do
+            fibre(bands, x, 3 + (rnd() * 6), low - 5, high + 5, false, 0.15)
+            x += 8 + (rnd() * 12)
+         end
+
+         x = low - 4
+         while x < high + 4 do
+            r = rnd()
+            layer, width = fine, 0.15 + (rnd() * 0.3)
+            if r < 0.12 then
+               layer, width = bold, 0.6 + (rnd() * 1.0)
+            elseif r < 0.40 then
+               layer, width = mid, 0.3 + (rnd() * 0.5)
+            elseif r < 0.50 then
+               layer, width = light, 0.2 + (rnd() * 0.5)
+            end
+
+            if rnd() < 0.25 then
+               top = low - 10 + (rnd() * ((extent * 2) - 10))
+               fibre(layer, x, width / density, top, top + 15 + (rnd() * 60), true, 0.45)
+            else
+               fibre(layer, x, width / density, low - 5, high + 5, false, 0.45)
+            end
+            x += (0.5 + (rnd() * 1.6)) / density
+         end
+
+         for k in values(knots) do
+            ellipse(halo, k.x, k.y, k.rx * 1.25, k.ry * 1.2, k.tilt)
+            ellipse(ring, k.x, k.y, k.rx * 0.95, k.ry * 0.9, k.tilt)
+            ellipse(inner, k.x, k.y, k.rx * 0.7, k.ry * 0.65, k.tilt)
+            ellipse(core, k.x, k.y, k.rx * 0.45, k.ry * 0.4, k.tilt)
+            ellipse(pith, k.x, k.y, k.rx * 0.15, k.ry * 0.13, k.tilt)
+         end
+
+         -- The view box is scaled uniformly to cover the box, so that the grain keeps its shape on wide targets.
+
+         return paintPattern(Ctx, ARF_X_MID|ARF_Y_MID|ARF_SLICE, function(Pattern:obj, Viewport:obj)
+            Viewport.new('VectorRectangle', { width=100, height=100, fill=shadeColour(colour, 0, 1) })
+            grain = Viewport
+            if angle != 0 then
+               grain = Viewport.new('VectorGroup')
+               _, matrix = check grain.mtNewMatrix(false)
+               check mVec.Rotate(matrix, angle, 50, 50)
+            end
+            addTextureLayers(grain, colour, layers)
+         end)
+      end
+   },
+
+   -- Horizontally brushed metal, tinted by colour.  Steel is the default, and colours such as gold (#d4af37) or copper
+   -- (#b87333) simulate other metals.  Each feature has a strength, where 0 removes it and 1 is the default: sheen is
+   -- the bands of reflected light across the surface, brush is the streaks left by brushing, and specks are pits and
+   -- flecks of polish.  The seed selects a different arrangement of streaks and specks.
+
+   metal = {
+      kind   = 'paint',
+      params = array<table> {
+         { name='colour', type='colour', default='#b8bcc2' },
+         { name='brush',  type='num', default=1 },
+         { name='specks', type='num', default=1 },
+         { name='sheen',  type='num', default=1 },
+         { name='seed',   type='num', default=1 }
+      },
+      build = function(Ctx:table!, Args:table!):str
+         rnd    = effectRandom(Args.seed)
+         colour = Args.colour
+         brush  = math.max(Args.brush, 0)
+         specks = math.max(Args.specks, 0)
+         sheen  = math.max(Args.sheen, 0)
+
+         stops = array<table>
+         for band in values(array<table> {
+            { 0, 0.30 }, { 0.18, 0.05 }, { 0.42, -0.22 }, { 0.58, -0.12 }, { 0.78, 0.25 }, { 1, 0 }
+         }) do
+            stop = shadeRGB(colour, band[1] * sheen, 1)
+            stop.offset = band[0]
+            stops.push(stop)
+         end
+
+         dark   = textureLayer(-0.25, 0.25 * brush)
+         darker = textureLayer(-0.45, 0.18 * brush)
+         bright = textureLayer(0.35, 0.30 * brush)
+         glint  = textureLayer(0.60, 0.20 * brush)
+         pits   = textureLayer(-0.50, 0.55 * specks)
+         flecks = textureLayer(0.70, 0.60 * specks)
+         streaks = array<table> { dark, darker, bright, glint }
+
+         -- Streaks are thin horizontal spindles.  Most cross the surface; the rest start and stop within it.
+
+         for {0 to 260} do
+            layer = streaks[math.floor(rnd() * 4)]
+            y = rnd() * 100
+            h = (0.12 + ((rnd() ** 2) * 0.5)) * 0.5
+            x1, x2 = -2, 102
+            if rnd() < 0.4 then
+               x1 = (rnd() * 100) - 20
+               x2 = x1 + 10 + (rnd() * 60)
+            end
+            taper = math.min((x2 - x1) * 0.3, 8)
+            addShape(layer, string.format('M%.2f,%.2f L%.2f,%.2f L%.2f,%.2f L%.2f,%.2f L%.2f,%.2f L%.2f,%.2f Z',
+               x1, y, x1 + taper, y - h, x2 - taper, y - h, x2, y, x2 - taper, y + h, x1 + taper, y + h), 7)
+         end
+
+         for {0 to 90} do
+            layer = (rnd() < 0.6) ? pits : flecks
+            x, y = rnd() * 100, rnd() * 100
+            ry = 0.12 + ((rnd() ** 3) * 0.35)
+            rx = ry * 1.6
+            addShape(layer, string.format('M%.2f,%.2f a%.2f,%.2f 0 1,0 %.2f,0 a%.2f,%.2f 0 1,0 %.2f,0 Z',
+               x - rx, y, rx, ry, rx * 2, rx, ry, -rx * 2), 4)
+         end
+
+         -- The view box is stretched to the box, so that every target receives the full set of reflections.
+
+         return paintPattern(Ctx, ARF_NONE, function(Pattern:obj, Viewport:obj)
+            gui.simpleGradient(Pattern.scene, 'sheen', stops, 0, 0, 0.25, 1, 'boundingbox')
+            Viewport.new('VectorRectangle', { width=100, height=100, fill='url(#sheen)' })
+            addTextureLayers(Viewport, colour, array<table> { dark, darker, bright, glint, pits, flecks })
+         end)
       end
    },
 

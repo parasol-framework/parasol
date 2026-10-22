@@ -3,11 +3,7 @@
 Image Filter Demonstration
 --]]
 
-   import 'gui'
-   import 'gui/window'
-   import 'gui/combobox'
-   import 'gui/slider'
-   import 'gui/button'
+   import 'gui', 'gui/window', 'gui/combobox', 'gui/slider', 'gui/button'
 
    module vector as mVec
 
@@ -127,8 +123,7 @@ function addGradient()
       aspectRatio = ARF_NONE -- Stretch the 1x1 viewbox to fill each tile
    })
 
-   pattern.viewport.viewWidth  = 1
-   pattern.viewport.viewHeight = 1
+   pattern.viewport.{ viewWidth = 1, viewHeight = 1 }
 
    gui.simpleGradient(pattern.viewport.scene, 'red_blue', { { r=1,g=0, b=0 }, { r=0, g=0, b=1 } }, 0, 0, 0, 1)
 
