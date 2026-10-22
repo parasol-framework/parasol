@@ -402,14 +402,31 @@ static ERR stack_args(lua_State *Lua, OBJECTID ObjectID, const FunctionField *ar
       // action notifications.
 
       if (args[i].Type & FD_STR) {
-         if (sizeof(APTR) IS 8) of = ALIGN64(of);
-         if (ObjectID > 0) lua_pushstring(Lua, ((STRING *)(Buffer + of))[0]);
-         else lua_pushnil(Lua);
-         of += sizeof(STRING);
+         of = ALIGN64(of);
+         if ((args[i].Type & FD_CPP) and (not (args[i].Type & FD_MUTABLE))) {
+            const auto &value = *((const std::string_view *)(Buffer + of));
+            if (ObjectID > 0) lua_pushlstring(Lua, value.data(), value.size());
+            else lua_pushnil(Lua);
+            of += sizeof(std::string_view);
+         }
+         else {
+            if (ObjectID <= 0) lua_pushnil(Lua);
+            else if (args[i].Type & FD_CPP) {
+               auto value = *((const std::string **)(Buffer + of));
+               if (value) lua_pushlstring(Lua, value->data(), value->size());
+               else lua_pushnil(Lua);
+            }
+            else lua_pushstring(Lua, *((CSTRING *)(Buffer + of)));
+            of += sizeof(APTR);
+         }
       }
       else if (args[i].Type & FD_PTR) {
-         if (sizeof(APTR) IS 8) of = ALIGN64(of);
-         if (ObjectID > 0) lua_pushlightuserdata(Lua, ((APTR *)(Buffer + of))[0]);
+         of = ALIGN64(of);
+         auto value = *((APTR *)(Buffer + of));
+         if ((ObjectID > 0) and (value)) {
+            if (args[i].Type & FD_OBJECT) push_object(Lua, (OBJECTPTR)value);
+            else lua_pushlightuserdata(Lua, value);
+         }
          else lua_pushnil(Lua);
          of += sizeof(APTR);
       }
