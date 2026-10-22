@@ -1616,45 +1616,9 @@ thunk scaledFonts(Fonts:table!):table
    return Fonts
 end
 
-gui.fonts = scaledFonts({
-   -- Percentages are converted to numeric pt sizes, relative to gui.interface.fontSize
-   -- Numeric sizes are points (1/72 in); scaled by dpi/96 to offset VectorText's fixed 96 DPI pt conversion
-   -- All sizes are scaled to gui.interface.dpi on first access
-   default  = { face='Noto Sans,Source Sans Pro', size='100%' },
-   window   = { face='Noto Sans,Source Sans Pro', size='100%' }, -- For non-widget text
-   button   = { face='Noto Sans,Source Sans Pro', size=12 }, -- Text inside buttons
-   filesys  = { face='Inconsolata', size=12 }, -- Text for files, folders
-   icon     = { face='Noto Sans,Source Sans Pro', size='100%' }, -- Labeling for icons
-   menu     = { face='Noto Sans,Source Sans Pro', size=12 }, -- Menu & dropdown item text
-   page     = { face='Noto Sans,Source Sans Pro', size=12 }, -- Multiple lines of text
-   titlebar = { face='Noto Sans', size='100%' }, -- Window titlebar text
-   small    = { face='Noto Sans,Source Sans Pro', size=9 }, -- Recommended text for small sizes
-   xsmall   = { face='Micro', size=6 }, -- The smallest available, still legible size
-   large    = { face='Noto Sans,Source Sans Pro', size='130%' }, -- Recommended text for headers
-   input    = { face='Noto Sans,Source Sans Pro', size=12 }, -- Text inside input widgets (e.g. combobox)
-   widget   = { face='Noto Sans,Source Sans Pro', size=12 }, -- Text inside non-input widgets (e.g. button)
-   label    = { face='Noto Sans,Source Sans Pro', size='100%' } -- Text for labels and outside widgets
-})
-
--- Fill presets for effects, used as fill(<name>).  Each is a vertical gradient from first to last.  Use outline() to
--- stroke icon paths.
-
-gui.fills = {
-   carbon  = { first=gui.strToRGB('oklch(0.468 0.000 89.8)'),  last=gui.strToRGB('oklch(0.412 0.066 283.1)') },
-   yellow  = { first=gui.strToRGB('oklch(0.841 0.173 111.7)'), last=gui.strToRGB('oklch(0.690 0.148 68.1)') },
-   orange  = { first=gui.strToRGB('oklch(0.857 0.164 87.6)'),  last=gui.strToRGB('oklch(0.698 0.174 43.8)') },
-   blue    = { first=gui.strToRGB('oklch(0.543 0.124 264.7)'), last=gui.strToRGB('oklch(0.281 0.063 262.9)') },
-   ocean   = { first=gui.strToRGB('oklch(0.813 0.093 268.1)'), last=gui.strToRGB('oklch(0.385 0.165 284)') },
-   green   = { first=gui.strToRGB('oklch(0.649 0.154 122.8)'), last=gui.strToRGB('oklch(0.444 0.116 152.4)') },
-   red     = { first=gui.strToRGB('oklch(0.615 0.835 40.4)'),  last=gui.strToRGB('oklch(0.615 0.235 30.4)') },
-   indigo  = { first=gui.strToRGB('oklch(0.570 0.134 345.2)'), last=gui.strToRGB('oklch(0.284 0.117 311.0)') },
-   rose    = { first=gui.strToRGB('oklch(0.863 0.083 51.5)'),  last=gui.strToRGB('oklch(0.834 0.095 7.8)') },
-   pink    = { first=gui.strToRGB('oklch(0.927 0.038 9.8)'),   last=gui.strToRGB('oklch(0.777 0.099 10.8)') },
-   grey    = { first=gui.strToRGB('oklch(0.503 0.000 89.8)'),  last=gui.strToRGB('oklch(0.394 0.000 89.8)') },
-   pearl   = { first=gui.strToRGB('oklch(0.983 0.002 67.8)'),  last=gui.strToRGB('oklch(0.804 0.002 247.8)') }
-}
-
-gui.fills.default = gui.fills.carbon
+   import './palettes_data'
+   import './fills_data'
+   import './fonts_data'
 
 -- Returns a deterministic random number generator for textures, so that a paint effect always draws the same texture
 -- for the same seed.  Each call yields a value in the range [0, 1).  This is the Park-Miller generator, whose products
@@ -2187,68 +2151,6 @@ gui.effects = {
          Vector.stroke = colour
          Vector.strokeWidth = string.format('%g%%', Args.width * 100)
       end
-   }
-}
-
-gui.palettes = {
-   -- bkgd is the standard background colour for large amounts of text (documents & code).  In a light theme it should be near-white.
-   -- inverse is the inverse light value of bkgd (or must contrast significantly). Useful for heavy contrast against bkgd, e.g. stroking menu borders.
-   -- prime (primary) should have a strong chroma and is used for drawing attention, like for highlighting and selection.
-   -- contrast is a suitable complement to prime and should be of a strongly contrasting hue
-   -- neutral is a default background colour for undefined areas (e.g. window background), usually a light grey tone
-   -- mid is used for separating an area from bkgd without drawing attention.  E.g. scrollbar and slider tracks
-   -- edge is the stroke colour for widgets
-   -- text is the default colour for text drawn over 'bkgd'; often used for labels and sometimes stroked decorations
-   -- altText is the default colour for text drawn over 'prime' when highlighted or selected.  Can be same as 'text'
-   ocean = {
-      light = { type = 'light', bkgd = 'oklch(0.952 0.004 214.329)', inverse = 'oklch(0.356 0.039 248.975)',
-                prime = 'oklch(0.653 0.135 242.687)', contrast = 'oklch(0.631 0.194 29.442)',
-                neutral = 'oklch(0.894 0 89.876)', mid='oklch(0.804 0 89.876)', edge = 'rgb(0 0 0 / .35)',
-                text='black', altText='white' },
-      dark =  { type = 'dark', bkgd = 'oklch(0.406 0.026 246.349)', inverse = 'oklch(0.9135 0.0087 247.92)',
-                prime = 'oklch(0.653 0.135 242.687)', contrast = 'oklch(0.631 0.194 29.442)',
-                neutral = 'oklch(0.356 0.039 248.975)', mid='oklch(0.506 0.026 276.349)', edge = 'rgb(255 255 255 / .25)',
-                text='white', altText='white' },
-   },
-   orangeApples = {
-      light = { type = 'light', bkgd = 'white', inverse = 'oklch(0.289 0.030 185.119)',
-                prime = 'oklch(0.652 0.166 127.067)', contrast = 'oklch(0.732 0.157 67.580)',
-                neutral = 'oklch(0.894 0 89.876)', mid='none', edge = 'rgb(0 0 0 / .35)',
-                text='black', altText='white' },
-      dark =  { type = 'dark', bkgd = 'oklch(0.289 0.030 185.119)', inverse = 'white',
-                prime = 'oklch(0.652 0.166 127.067)', contrast = 'oklch(0.732 0.157 67.580)',
-                neutral = 'oklch(0.277 0 89.876)', mid='none', edge = 'rgb(255 255 255 / .25)',
-                text='white', altText='white' }
-   },
-   greenland = {
-      light = { type = 'light', bkgd = 'oklch(0.994 0.008 157.097)', inverse = 'oklch(0.309 0.093 136.720)',
-                prime = 'oklch(0.584 0.162 46.883)', contrast = 'oklch(0.532 0.138 127.325)',
-                neutral = 'oklch(0.932 0.012 106.630)', mid='none', edge = 'rgb(0 0 0 / .35)',
-                text='black', altText='white' },
-      dark  = { type = 'dark', bkgd = 'oklch(0.309 0.093 136.720)', inverse = 'white',
-                prime = 'oklch(0.584 0.162 46.883)', contrast = 'oklch(0.532 0.138 127.325)',
-                neutral = 'oklch(0.402 0.015 107.041)', mid='none', edge = 'rgb(255 255 255 / .25)',
-                text='white', altText='white' }
-   },
-   sunrise = {
-      light = { type = 'light', bkgd = 'oklch(0.995 0.007 164.946)', inverse = 'oklch(0.560 0.019 196.622)',
-                prime = 'oklch(0.634 0.185 40.533)', contrast = 'oklch(0.740 0.161 69.169)',
-                neutral = 'oklch(0.894 0 89.876)', mid='none', edge = 'rgb(0 0 0 / .35)',
-                text='black', altText='white' },
-      dark =  { type = 'dark', bkgd = 'black', inverse = 'oklch(0.560 0.019 196.622)',
-                prime = 'oklch(0.634 0.185 40.533)', contrast = 'oklch(0.740 0.161 69.169)',
-                neutral = 'oklch(0.277 0 89.876)', mid='none', edge = 'rgb(255 255 255 / .25)',
-                text='white', altText='white' }
-   },
-   candyfloss = {
-      light = { type = 'light', bkgd = 'oklch(0.988 0.007 53.450)', inverse = 'oklch(0.443 0.041 204.992)',
-                prime = 'oklch(0.768 0.105 167.447)', contrast = 'oklch(0.690 0.130 15.681)',
-                neutral = 'oklch(0.894 0 89.876)',  mid='none', edge = 'rgb(0 0 0 / .35)',
-                text='black', altText='white' },
-      dark  = { type = 'dark', bkgd = 'oklch(0.443 0.041 204.992)', inverse = 'white',
-                prime = 'oklch(0.768 0.105 167.447)', contrast = 'oklch(0.690 0.130 15.681)',
-                neutral = 'oklch(0.277 0 89.876)', mid='none', edge = 'rgb(255 255 255 / .25)',
-                text='white', altText='white' }
    }
 }
 
