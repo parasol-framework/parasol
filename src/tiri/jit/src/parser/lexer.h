@@ -193,6 +193,8 @@ public:
    uint8_t    current_file_index = 0;  // File index for FileSource tracking (0 = main file)
    uint8_t    current_source_descriptor = 0; // Dense identity in this compilation unit.
    std::vector<CompilationSourceRecord> compilation_sources;
+   // Root-owned module observations survive SEH until load() explicitly deletes this lexer.
+   std::optional<tiri::cache::Manifest> module_cache_capture;
    std::optional<tiri::PackageIdentity> package_identity;
    std::optional<tiri::DependencyRequirements> dependency_requirements;
    std::vector<std::string> compilation_struct_roots;
