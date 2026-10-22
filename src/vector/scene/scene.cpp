@@ -83,8 +83,15 @@ static void fill_pattern(VectorState &, const TClipRectangle<double> &, agg::pat
 static ERR VECTORSCENE_Reset(extVectorScene *);
 
 void apply_focus(extVectorScene *, extVector *);
+extVectorViewport * get_drop_target_at_xy(extVectorScene *, double, double);
 static void scene_key_event(evKey *, int, extVectorScene *);
 static bool process_resize_msgs(extVectorScene *);
+
+// Surfaces that have a drop router, mapped to the routing VectorScene.  Only one scene per surface can route drops,
+// which ensures that each drop is delivered exactly once.
+
+static ankerl::unordered_dense::map<OBJECTID, OBJECTID> glDropRouters;
+static std::mutex glDropRoutersLock;
 
 //********************************************************************************************************************
 
@@ -262,6 +269,83 @@ static void notify_free(OBJECTPTR Object, ACTIONID ActionID, ERR Result, APTR Ar
 {
    auto Self = (extVectorScene *)CurrentContext();
    if (Self->SurfaceID IS Object->UID) Self->SurfaceID = 0;
+}
+
+//********************************************************************************************************************
+// Read the pointer position relative to the scene's surface.  If Dragging is true, the position is only reported when
+// a drag and drop operation is active and the pointer is over the surface.
+
+static bool get_pointer_position(extVectorScene *Self, bool Dragging, double &X, double &Y)
+{
+   if (not Self->SurfaceID) return false;
+
+   bool found = false;
+   if (auto pointer = gfx::AccessPointer()) {
+      if (pointer->OverObjectID IS Self->SurfaceID) {
+         if ((not Dragging) or (pointer->DragSourceID)) {
+            X = pointer->OverX;
+            Y = pointer->OverY;
+            found = true;
+         }
+      }
+      else if (not Dragging) {
+         int abs_x, abs_y;
+         if (gfx::GetSurfaceCoords(Self->SurfaceID, nullptr, nullptr, &abs_x, &abs_y, nullptr, nullptr) IS ERR::Okay) {
+            X = pointer->X - abs_x;
+            Y = pointer->Y - abs_y;
+            found = true;
+         }
+      }
+      ReleaseObject(pointer);
+   }
+   return found;
+}
+
+//********************************************************************************************************************
+// Return the registered viewport under an active drag, with the position translated to the viewport's coordinate
+// system.  Pointer capture is deliberately ignored so that a drag source holding the button lock does not obscure the
+// destination.
+
+static extVectorViewport * get_drag_target(extVectorScene *Self, double &X, double &Y)
+{
+   if (not Self->DropRouting) return nullptr;
+   if (not get_pointer_position(Self, true, X, Y)) return nullptr;
+
+   if (auto target = get_drop_target_at_xy(Self, X, Y)) {
+      auto invert = ~target->Transform;
+      invert.transform(&X, &Y);
+      return target;
+   }
+   else return nullptr;
+}
+
+//********************************************************************************************************************
+// Forward a drop on the scene's surface to exactly one registered viewport.  The destination and its local
+// coordinates are captured before delivery so that pointer movement during the notification cannot alter them.  The
+// delivery is synchronous so that the receiver can retrieve data from the source within the drop's lifetime.
+
+static void notify_dragdrop(OBJECTPTR Object, ACTIONID ActionID, ERR Result, struct acDragDrop *Args)
+{
+   auto Self = (extVectorScene *)CurrentContext();
+   if ((not Args) or (Self->DropTargetID)) return; // Nested drops are ignored while a delivery is in progress
+
+   double x, y;
+   if (not get_pointer_position(Self, false, x, y)) return;
+
+   auto target = get_drop_target_at_xy(Self, x, y);
+   if (not target) return;
+
+   auto invert = ~target->Transform;
+   invert.transform(&x, &y);
+
+   const auto scene_id = Self->UID;
+   Self->DropTargetID = target->UID;
+   Self->DropX = x;
+   Self->DropY = y;
+
+   acDragDrop(target, Args->Source, Args->Item, Args->Datatype);
+
+   if (CheckResourceExists(scene_id) IS ERR::True) Self->DropTargetID = 0;
 }
 
 //********************************************************************************************************************
@@ -623,6 +707,11 @@ extVectorScene::~extVectorScene()
    if (Buffer)   delete Buffer;
    if (InputHandle) gfx::UnsubscribeInput(InputHandle);
 
+   if (DropRouting) {
+      const std::lock_guard lock(glDropRoutersLock);
+      std::erase_if(glDropRouters, [this](const auto &Entry) { return Entry.second IS UID; });
+   }
+
    if (SurfaceID) {
       OBJECTPTR surface;
       if (!AccessObject(SurfaceID, 5000, &surface)) {
@@ -644,6 +733,20 @@ static ERR VECTORSCENE_Init(extVectorScene *Self)
    // As long as PageWidth and PageHeight aren't set prior to initialisation, the scene will
    // match the width and height of the surface at all times when in this mode.
 
+   if ((Self->Flags & VPF::DROP_TARGETS) != VPF::NIL) {
+      kt::Log log;
+      if (not Self->SurfaceID) return log.warning(ERR::FieldNotSet);
+
+      const std::lock_guard lock(glDropRoutersLock);
+      if (glDropRouters.contains(Self->SurfaceID)) {
+         log.warning("Scene #%d already routes drops for surface #%d.", glDropRouters[Self->SurfaceID],
+            Self->SurfaceID);
+         return ERR::InUse;
+      }
+      glDropRouters[Self->SurfaceID] = Self->UID;
+      Self->DropRouting = true;
+   }
+
    if (Self->SurfaceID) {
       kt::ScopedObjectLock<objSurface> surface(Self->SurfaceID, 5000);
       if (surface.granted()) {
@@ -662,6 +765,7 @@ static ERR VECTORSCENE_Init(extVectorScene *Self)
          SubscribeAction(*surface, AC::Free, C_FUNCTION(notify_free));
          SubscribeAction(*surface, AC::Focus, C_FUNCTION(notify_focus));
          SubscribeAction(*surface, AC::LostFocus, C_FUNCTION(notify_lostfocus));
+         if (Self->DropRouting) SubscribeAction(*surface, AC::DragDrop, C_FUNCTION(notify_dragdrop));
 
          if (surface->hasFocus()) {
             SubscribeEvent(EVID_IO_KEYBOARD_KEYPRESS, C_FUNCTION(scene_key_event, Self), &Self->KeyHandle);
@@ -834,6 +938,73 @@ Direct access is provided for internal use only and not for the benefit of clien
 static ERR GET_Defs(extVectorScene *Self, ankerl::unordered_dense::map<std::string, OBJECTPTR> **Value)
 {
    *Value = &Self->Defs;
+   return ERR::Okay;
+}
+
+/*********************************************************************************************************************
+
+-FIELD-
+DropTarget: The registered viewport that will receive a drop at the pointer's position.
+
+When the `DROP_TARGETS` flag is set and a drag and drop operation is active over the scene's surface, DropTarget
+refers to the @VectorViewport that would receive the drop if it were released at the pointer's current position.  The
+result is computed on demand and reflects registration, visibility and layout changes immediately.  It is
+`NULL` if no drag is active, the pointer is not over the surface or no registered viewport is under the pointer.
+
+While a DragDrop action is being delivered to a viewport, DropTarget refers to that viewport and does not change if the
+pointer moves during the delivery.
+
+*********************************************************************************************************************/
+
+static ERR GET_DropTarget(extVectorScene *Self, OBJECTPTR &Value)
+{
+   if (Self->DropTargetID) Value = GetObjectPtr(Self->DropTargetID);
+   else {
+      double x, y;
+      Value = get_drag_target(Self, x, y);
+   }
+   return ERR::Okay;
+}
+
+/*********************************************************************************************************************
+
+-FIELD-
+DropX: The horizontal drop position, relative to the #DropTarget.
+
+DropX is the horizontal coordinate of the drop, expressed in the coordinate system of the #DropTarget so that
+transforms applied to the target and its ancestors are taken into account.  During the delivery of a DragDrop action
+the value is a snapshot taken at the moment of the drop.  At other times it reflects the pointer's current position,
+or zero if there is no #DropTarget.
+
+*********************************************************************************************************************/
+
+static ERR GET_DropX(extVectorScene *Self, double &Value)
+{
+   if (Self->DropTargetID) Value = Self->DropX;
+   else {
+      double x, y;
+      Value = get_drag_target(Self, x, y) ? x : 0;
+   }
+   return ERR::Okay;
+}
+
+/*********************************************************************************************************************
+
+-FIELD-
+DropY: The vertical drop position, relative to the #DropTarget.
+
+DropY is the vertical coordinate of the drop, expressed in the coordinate system of the #DropTarget.  Refer to #DropX
+for further information.
+
+*********************************************************************************************************************/
+
+static ERR GET_DropY(extVectorScene *Self, double &Value)
+{
+   if (Self->DropTargetID) Value = Self->DropY;
+   else {
+      double x, y;
+      Value = get_drag_target(Self, x, y) ? y : 0;
+   }
    return ERR::Okay;
 }
 
@@ -1224,6 +1395,9 @@ static const FieldArray clSceneFields[] = {
    { "RootScene",    FDF_OBJECT|FDF_R,    GET_RootScene, nullptr, CLASSID::VECTORSCENE },
    // Virtual fields
    { "Defs",         FDF_PTR|FDF_SYSTEM|FDF_R|FDF_PURE, GET_Defs, nullptr },
+   { "DropTarget",   FDF_OBJECT|FDF_R|FDF_PURE, GET_DropTarget, nullptr, CLASSID::VECTORVIEWPORT },
+   { "DropX",        FDF_DOUBLE|FDF_R|FDF_PURE, GET_DropX },
+   { "DropY",        FDF_DOUBLE|FDF_R|FDF_PURE, GET_DropY },
    END_FIELD
 };
 

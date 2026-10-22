@@ -571,32 +571,42 @@ data on completion of the drag and drop operation. An `Item` number, which is op
 from the `Source` object.
 
 The type of data represented by the source item and all other supportable data types are specified in the `Datatypes`
-parameter as a character array.  The array is arranged in order of preference, starting with the item's native
-data type.  Acceptable data type values are listed in the documentation for the DataFeed action.
+parameter as a sequence of numeric `DATA` bytes, e.g. `DATA::FILE`.  The sequence is arranged in order of preference,
+starting with the item's native data type.  A maximum of eight bytes are retained and the length of the sequence is
+preserved exactly, so it does not require a terminator.
 
-The `Surface` parameter allows for a composite surface to be dragged by the mouse cursor as a graphical representation of
-the source `Item`.  It is recommended that the graphic be 32x32 pixels in size and no bigger than 64x64 pixels.  The
-`Surface` will be hidden on completion of the drag and drop operation.
+The `Surface` parameter is optional and allows for a composite surface to be dragged by the mouse cursor as a
+graphical representation of the source `Item`.  It is recommended that the graphic be 32x32 pixels in size and no
+bigger than 64x64 pixels.  The `Surface` will be hidden on completion or cancellation of the drag and drop operation,
+but it remains the property of the client.  Set `Surface` to zero if no preview is required.
 
-If the call to StartCursorDrag() is successful, the mouse cursor will operate in drag and drop mode.  The UserMovement
-and UserClickRelease actions normally reported from the SystemPointer will now include the `JD_DRAGITEM` flag in the
-`ButtonFlags` parameter.  When the user releases the primary mouse button, the drag and drop operation will stop and the
-DragDrop action will be passed to the surface immediately underneath the mouse cursor.  Objects that are monitoring for
-the DragDrop action on that surface can then contact the Source object with a DataFeed DragDropRequest.  The
-resulting data is then passed to the requesting object with a DragDropResult on the DataFeed.
+If the call to StartCursorDrag() is successful, the mouse cursor will operate in drag and drop mode.  Movement and
+button events reported by the SystemPointer will now include the `JTYPE::DRAG_ITEM` flag in their `InputEvent`
+records.  When the user releases the primary mouse button, the drag and drop operation will stop and the DragDrop
+action will be passed to the surface immediately underneath the mouse cursor.  Releasing any other button has no
+effect on the operation.  Objects that are monitoring for the DragDrop action on that surface can then contact the
+Source object with a DataFeed `DATA::REQUEST`, and the resulting data is returned to the requesting object with a
+DataFeed `DATA::RECEIPT`.  A @VectorScene that has the `DROP_TARGETS` flag set will monitor the DragDrop action of its
+surface and forward it to the registered @VectorViewport under the pointer.
+
+The DragDrop action is dispatched synchronously, so the Source must be able to answer data requests during the
+dispatch.  A new drag and drop operation cannot be started until the dispatch has returned.
+
+The operation is cancelled without a drop if the Source object is freed, or if the SystemPointer receives a
+Deactivate action.
 
 -INPUT-
 oid Source:  Refers to an object that is managing the source data.
 int Item:    A custom number that represents the item being dragged from the source.
-strview Datatypes: A character array that lists the datatypes supported by the source item, in order of conversion preference.
-oid Surface: A 32-bit composite surface that represents the item being dragged.
+strview Datatypes: A sequence of numeric `DATA` bytes supported by the source item, in order of conversion preference.
+oid Surface: Optional.  A 32-bit composite surface that represents the item being dragged.
 
 -ERRORS-
 Okay:
 NullArgs:
-AccessObject:
+AccessObject: The pointer or the `Source` object could not be accessed.
 InvalidState: The left mouse button is not held by the user.
-InUse: A drag and drop operation has already been started.
+InUse: A drag and drop operation has already been started, or the previous drop is still being delivered.
 
 -TAGS-
 copies-input, mutates-object, blocking, callback-inlines
@@ -612,27 +622,41 @@ ERR StartCursorDrag(OBJECTID Source, int Item, const std::string_view &Datatypes
    if (!Source) return log.warning(ERR::NullArgs);
 
    if (auto pointer = (extPointer *)gfx::AccessPointer()) {
+      if ((pointer->DragSourceID) or (pointer->DragDelivering)) {
+         ReleaseObject(pointer);
+         return ERR::InUse;
+      }
+
       if (!pointer->ButtonClicks[0].LastClicked) {
          ReleaseObject(pointer);
          return log.warning(ERR::InvalidState);
       }
 
-      if (pointer->DragSourceID) {
+      // The session is cancelled if the source is freed before the drop is delivered.
+
+      if (kt::ScopedObjectLock src(Source); src.granted()) {
+         kt::SwitchContext ctx(pointer);
+         SubscribeAction(*src, AC::Free, C_FUNCTION(notify_drag_source_free));
+      }
+      else {
          ReleaseObject(pointer);
-         return ERR::InUse;
+         return log.warning(ERR::AccessObject);
       }
 
       pointer->DragSurface  = Surface;
+      pointer->DragParent   = 0;
       pointer->DragItem     = Item;
       pointer->DragSourceID = Source;
-      copymem(Datatypes.data(), pointer->DragData, std::min(sizeof(pointer->DragData), Datatypes.size()));
-
-      SURFACEINFO *info;
-      if (!gfx::GetSurfaceInfo(Surface, &info)) {
-         pointer->DragParent = info->ParentID;
-      }
+      pointer->DragData.fill(0);
+      pointer->DragDataSize = uint8_t(std::min(pointer->DragData.size(), Datatypes.size()));
+      copymem(Datatypes.data(), pointer->DragData.data(), pointer->DragDataSize);
 
       if (Surface) {
+         SURFACEINFO *info;
+         if (!gfx::GetSurfaceInfo(Surface, &info)) {
+            pointer->DragParent = info->ParentID;
+         }
+
          log.trace("Moving draggable surface %d to %dx%d", Surface, pointer->X, pointer->Y);
 
          kt::ScopedObjectLock surface(Surface);

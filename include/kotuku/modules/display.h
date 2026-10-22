@@ -1679,6 +1679,7 @@ class objPointer : public Object {
       struct acDataFeed args = { Object, Datatype, Buffer };
       return Action(AC::DataFeed, this, &args);
    }
+   inline ERR deactivate() noexcept { return Action(AC::Deactivate, this, nullptr); }
    inline ERR hide() noexcept { return Action(AC::Hide, this, nullptr); }
    inline ERR init() noexcept { return InitObject(this); }
    inline ERR move(double X, double Y, double Z) noexcept {

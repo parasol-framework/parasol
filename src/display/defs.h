@@ -282,7 +282,9 @@ class extPointer : public objPointer {
    CRF      BufferFlags;
    OBJECTID BufferOwner;
    OBJECTID BufferObject;
-   char     DragData[8];          // Data preferences for current drag & drop item
+   std::array<char, 8> DragData = {}; // Data preferences for current drag & drop item, as numeric DATA bytes
+   uint8_t  DragDataSize = 0;     // Number of valid bytes in DragData
+   bool     DragDelivering = false; // True while the drop is being dispatched to its destination
    char     Device[32];
    std::string ButtonOrder;       // The order of the first 11 buttons can be changed here
    int16_t     ButtonOrderFlags[12]; // Button order represented as JD flags
@@ -470,6 +472,8 @@ extern void input_event_loop(HOSTHANDLE, APTR);
 extern ERR  lock_surface(extBitmap *, int16_t);
 extern ERR  unlock_surface(extBitmap *);
 extern ERR  pointer_window(OBJECTID, HOSTWINDOW &);
+extern void end_cursor_drag(extPointer *, bool = true);
+extern void notify_drag_source_free(OBJECTPTR, ACTIONID, ERR, APTR);
 extern ERR  get_display_info(OBJECTID, DisplayInfo *);
 extern void resize_feedback(FUNCTION *, OBJECTID, int X, int Y, int Width, int Height);
 

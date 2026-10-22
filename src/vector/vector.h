@@ -913,6 +913,8 @@ class extVectorScene : public objVectorScene {
    OBJECTID ButtonLock; // The vector currently holding a button lock
    OBJECTID ActiveVector; // The most recent vector to have received an input movement event.
    OBJECTID LastFocusID; // The foreground vector that held the focus when the surface last lost it.
+   OBJECTID DropTargetID; // The viewport receiving the drop that is currently being delivered.
+   double DropX, DropY; // Drop coordinates relative to DropTargetID, captured before delivery.
    int InputHandle;
    PTC Cursor; // Current cursor image
    uint64_t ShareVersion; // Incremented whenever a shareable object has been modified.
@@ -920,6 +922,7 @@ class extVectorScene : public objVectorScene {
    bool SubtreeDirty; // True if any vector in this scene's tree has been marked dirty since the last completed draw.
    bool ProcessingMessages;
    bool BorderlessSurface;
+   bool DropRouting; // True if the scene is the drop router for its surface.
    uint8_t BufferCount; // Active tally of viewports that are buffered.
 
    extVectorScene(objMetaClass *ClassPtr, OBJECTID ObjectID) :
@@ -994,6 +997,7 @@ class extVectorViewport : public extVector {
    bool  vpClip; // Viewport requires non-rectangular clipping, e.g. because it is rotated or sheared.
    uint8_t vpClipConfiguring:1;
    uint8_t vpDragging:1;
+   uint8_t vpDropTarget:1; // True if the viewport is registered to receive drag and drop operations.
    uint8_t vpBuffered:1; // True if the client requested that the viewport is buffered.
    uint8_t vpRefreshBuffer:1;
    // Render-time content scale (target units per content unit) derived by a VectorPattern when its client has not

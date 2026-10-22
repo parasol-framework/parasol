@@ -282,7 +282,8 @@ module({ name='Vector', copyright='Paul Manias © 2010-2026', version=1.0, times
     "OUTLINE_VIEWPORTS: Draw a green outline around all viewport paths.  Extremely useful for debugging layout issues.",
     "STABLE_RENDER: Use rendering algorithms that are stable across all platforms.",
     "IGNORE_TAB: Ignore the Tab key for cycling through keyboard subscribers.",
-    "MANUAL_RENDER: Clear and draw a locked bitmap without callbacks. Call Flush and expose manually.")
+    "MANUAL_RENDER: Clear and draw a locked bitmap without callbacks. Call Flush and expose manually.",
+    "DROP_TARGETS: Route drag and drop operations from the @VectorScene.Surface to the registered @VectorViewport under the pointer.")
 
   enums("TB", { type="int", start=0, "Function identifier for TurbulenceFX." },
     "TURBULENCE: Use the standard turbulence function.",

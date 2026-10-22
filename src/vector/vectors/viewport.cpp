@@ -414,6 +414,36 @@ static ERR VIEW_SET_DragCallback(extVectorViewport *Self, FUNCTION *Value)
 }
 
 /*********************************************************************************************************************
+
+-FIELD-
+DropTarget: Set to true if the viewport accepts drag and drop operations.
+
+Setting DropTarget to `true` registers the viewport as a destination for drag and drop operations that are released
+over it.  The parent @VectorScene must have the `DROP_TARGETS` flag set for drops to be routed, and the viewport will
+receive the drop as a DragDrop action that can be monitored with a subscription.  The @VectorScene.DropX and
+@VectorScene.DropY fields indicate the drop position relative to the viewport for the duration of the DragDrop
+notification.
+
+Exactly one viewport receives each drop.  The front-most visible viewport under the pointer is chosen, taking
+transforms and clipping into account, and if it is not registered then the drop is passed to its nearest registered
+ancestor.  Shapes and unregistered viewports therefore never obscure their registered container.  Registration takes
+effect immediately and does not depend on the viewport having an input subscription.
+
+*********************************************************************************************************************/
+
+static ERR VIEW_GET_DropTarget(extVectorViewport *Self, int &Value)
+{
+   Value = Self->vpDropTarget;
+   return ERR::Okay;
+}
+
+static ERR VIEW_SET_DropTarget(extVectorViewport *Self, int Value)
+{
+   Self->vpDropTarget = Value ? true : false;
+   return ERR::Okay;
+}
+
+/*********************************************************************************************************************
 -FIELD-
 Height: The height of the viewport's target area.
 
@@ -821,6 +851,7 @@ static const FieldArray clViewFields[] = {
    { "AbsY",         FDF_VIRTUAL|FDF_INT|FDF_R, VIEW_GET_AbsY },
    { "Buffered",     FDF_VIRTUAL|FDF_INT|FDF_RI|FDF_PURE, VIEW_GET_Buffered, VIEW_SET_Buffered },
    { "DragCallback", FDF_VIRTUAL|FDF_FUNCTION|FDF_RW|FDF_PURE, VIEW_GET_DragCallback, VIEW_SET_DragCallback },
+   { "DropTarget",   FDF_VIRTUAL|FDF_INT|FDF_RW|FDF_PURE, VIEW_GET_DropTarget, VIEW_SET_DropTarget },
    { "Overflow",     FDF_VIRTUAL|FDF_INT|FDF_LOOKUP|FDF_RW|FDF_PURE, VIEW_GET_Overflow, VIEW_SET_Overflow, &clVectorViewportVOF },
    { "X",            FDF_VIRTUAL|FDF_UNIT|FDF_RW, VIEW_GET_X,       VIEW_SET_X },
    { "Y",            FDF_VIRTUAL|FDF_UNIT|FDF_RW, VIEW_GET_Y,       VIEW_SET_Y },
