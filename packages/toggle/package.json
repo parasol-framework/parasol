@@ -29,8 +29,8 @@
   "files": [
     {
       "path": "toggle.tiri",
-      "size": 4974,
-      "sha256": "1866c6ec76ad949f86de25d436bb11adef8d5525f294351d75b3649c0e39f274",
+      "size": 5161,
+      "sha256": "45adaf4a5deaa29154c531de50eef36d1836f6b1c6edf0cbafef59a402e32362",
       "mediaType": "application/vnd.kotuku.tiri"
     }
   ]

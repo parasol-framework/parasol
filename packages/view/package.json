@@ -29,8 +29,8 @@
   "files": [
     {
       "path": "columnview.tiri",
-      "size": 31813,
-      "sha256": "60cfa817f5ad47414f005a68eb03605192746a26700a64d42e35165ad9237e40",
+      "size": 32251,
+      "sha256": "e8debdcb8f9668a72fe4fc1e4504dae161b29a57aa638d4beaa9a4ccc895e6ab",
       "mediaType": "application/vnd.kotuku.tiri"
     },
     {
@@ -41,8 +41,8 @@
     },
     {
       "path": "listview.tiri",
-      "size": 18842,
-      "sha256": "b57dc92a7aae9c512bee4b95852976d244ec26cacb92682384428a29d183ab0a",
+      "size": 18989,
+      "sha256": "7618a874276e532628932cfd382bc125750979f3cb9c96ee8ccaf6cf498bf8a8",
       "mediaType": "application/vnd.kotuku.tiri"
     },
     {
