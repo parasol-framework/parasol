@@ -7,10 +7,10 @@ This filter offsets the input image relative to its current position in the imag
 of `(XOffset,YOffset)`.
 
 If the @VectorFilter.PrimitiveUnits of the filter is `BOUNDING_BOX`, the offsets are fractions of the bounding box.
-By default both offsets are scaled by the normalised diagonal of the bounding box, which is the same formula used by
-a scaled stroke width.  The direction of the offset is then the same for any shape, which suits drop shadows.  If the
-@VectorScene.Compliance of the filter's scene is `SVG1` or `SVG2`, the X offset is scaled by the bounding box width
-and the Y offset by its height, as per the SVG standard.
+By default the X offset is scaled by the bounding box width and the Y offset by its height, as per the SVG standard.
+If the @VectorFilter.AspectRatio is `NONE`, both offsets are scaled by the normalised diagonal of the bounding box,
+which is the same formula used by a scaled stroke width.  The direction of the offset is then the same for any shape,
+which suits drop shadows.
 
 -END-
 
@@ -34,8 +34,7 @@ static ERR OFFSETFX_Draw(extOffsetFX *Self, struct acDraw *Args)
    auto filter = Self->Filter;
    double dx = Self->XOffset, dy = Self->YOffset;
    if (filter->PrimitiveUnits IS VUNIT::BOUNDING_BOX) {
-      auto scene = filter->Scene ? filter->Scene : filter->ClientViewport->Scene;
-      if (scene->Compliance IS VSC::NONE) {
+      if (filter->AspectRatio IS VFA::NONE) {
          double diag = dist(0, 0, filter->BoundWidth, filter->BoundHeight) * INV_SQRT2;
          dx *= diag;
          dy *= diag;

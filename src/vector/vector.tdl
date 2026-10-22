@@ -31,8 +31,8 @@ module({ name='Vector', copyright='Paul Manias © 2010-2026', version=1.0, times
     "BICUBIC: Use bicubic interpolation for the patch colours.")
 
   enums("VFA", { type="int", comment="Define the aspect ratio for VectorFilter unit scaling." },
-     "MEET: Scale X/Y values independently and in relation to the width/height of the parent viewport.",
-     "NONE: Scale X/Y values on a `1:1` basis, in relation to the diagonal of the parent viewport.")
+     "MEET: Scale X/Y values independently and in relation to the width/height of the bounding box.",
+     "NONE: Scale X/Y values on a `1:1` basis, in relation to the normalised diagonal of the bounding box.")
 
   enums("LS", { type="int", comment="Light source identifiers." },
     "DISTANT: Distant light source.",

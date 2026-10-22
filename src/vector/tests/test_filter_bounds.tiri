@@ -193,14 +193,17 @@ end
    assert((outside > 20) and (outside < 128), f'Expected a partial blur outside the edge, got {outside}')
 end
 
--- OffsetFX offsets in bounding box units are scaled by the normalised diagonal of the bounds by default, so that a
--- shadow keeps its direction on wide shapes.  SVG compliance scales them by the width and height instead.  The
--- content is a 120x40 rectangle at (20,80), whose normalised diagonal is sqrt(120^2 + 40^2) / sqrt(2) = 89.4.
+-- OffsetFX offsets in bounding box units are scaled by the width and height of the bounds by default, as per SVG.
+-- With an AspectRatio of NONE they are scaled by the normalised diagonal, so that a shadow keeps its direction on wide
+-- shapes.  The content is a 120x40 rectangle at (20,80), whose normalised diagonal is sqrt(120^2 + 40^2) / sqrt(2) =
+-- 89.4.
 
-function offsetScene(Compliance:num, Units:num, XOffset:num, YOffset:num):obj
-   local scene = obj.new('VectorScene', { pageWidth=PAGE, pageHeight=PAGE, compliance=Compliance })
+function offsetScene(AspectRatio:num, Units:num, XOffset:num, YOffset:num):obj
+   local scene = obj.new('VectorScene', { pageWidth=PAGE, pageHeight=PAGE })
    local root = scene.new('VectorViewport', { x=0, y=0, width='100%', height='100%' })
-   local filter = scene.new('VectorFilter', { x='-50%', y='-50%', width='200%', height='200%', primitiveUnits=Units })
+   local filter = scene.new('VectorFilter', {
+      x='-50%', y='-50%', width='200%', height='200%', primitiveUnits=Units, aspectRatio=AspectRatio
+   })
    filter.new('OffsetFX', { xOffset=XOffset, yOffset=YOffset })
    check scene.mtAddDef('offset', filter)
    root.new('VectorRectangle', { x=20, y=80, width=120, height=40, fill='white', filter='url(#offset)' })
@@ -230,30 +233,74 @@ function assertExact(Region:table, Left:num, Top:num, Right:num, Bottom:num, Lab
       f'{Region.left},{Region.top} -> {Region.right},{Region.bottom}')
 end
 
+@Test function OffsetBoundingBoxPerAxis()
+   local scene <close> = offsetScene(VFA_MEET, VUNIT_BOUNDING_BOX, 0.1, 0.1)
+   local bmp <close> = draw(scene)
+   assertExact(whiteRegion(bmp), 32, 84, 151, 123, 'Offset of 12 by width and 4 by height')
+end
+
 @Test function OffsetBoundingBoxDiagonal()
-   local scene <close> = offsetScene(VSC_NONE, VUNIT_BOUNDING_BOX, 0.1, 0.1)
-   assert(scene.compliance is VSC_NONE, 'Compliance must default to NONE')
+   local scene <close> = offsetScene(VFA_NONE, VUNIT_BOUNDING_BOX, 0.1, 0.1)
    local bmp <close> = draw(scene)
    assertExact(whiteRegion(bmp), 29, 89, 148, 128, 'Diagonal offset of 8.94 on both axes')
 end
 
-@Test function OffsetBoundingBoxSVG1()
-   local scene <close> = offsetScene(VSC_SVG1, VUNIT_BOUNDING_BOX, 0.1, 0.1)
-   local bmp <close> = draw(scene)
-   assertExact(whiteRegion(bmp), 32, 84, 151, 123, 'SVG1 offset of 12 by width and 4 by height')
-end
-
-@Test function OffsetBoundingBoxSVG2()
-   local scene <close> = offsetScene(VSC_SVG2, VUNIT_BOUNDING_BOX, 0.1, 0.1)
-   local bmp <close> = draw(scene)
-   assertExact(whiteRegion(bmp), 32, 84, 151, 123, 'SVG2 offset of 12 by width and 4 by height')
-end
-
 @Test function OffsetUserSpaceFraction()
-   -- User space offsets are unaffected by compliance, and fractions are rounded rather than truncated.
-   for compliance in values(array<int> { VSC_NONE, VSC_SVG1 }) do
-      local scene <close> = offsetScene(compliance, VUNIT_USERSPACE, 10.6, -4.6)
+   -- User space offsets are unaffected by the aspect ratio, and fractions are rounded rather than truncated.
+   for aspect in values(array<int> { VFA_MEET, VFA_NONE }) do
+      local scene <close> = offsetScene(aspect, VUNIT_USERSPACE, 10.6, -4.6)
       local bmp <close> = draw(scene)
-      assertExact(whiteRegion(bmp), 31, 75, 150, 114, f'User space offset with compliance {compliance}')
+      assertExact(whiteRegion(bmp), 31, 75, 150, 114, f'User space offset with aspect ratio {aspect}')
    end
+end
+
+-- With an AspectRatio of NONE, a bounding box region extends from the bounds by fractions of the normalised diagonal,
+-- so the margin is equal on every side.  The content is a 120x40 rectangle at (40,80) with a normalised diagonal of
+-- 89.4.
+
+function regionScene(Region:table):obj
+   local scene = obj.new('VectorScene', { pageWidth=PAGE, pageHeight=PAGE })
+   local root = scene.new('VectorViewport', { x=0, y=0, width='100%', height='100%' })
+   local filter = scene.new('VectorFilter', Region)
+   filter.new('FloodFX', { colour=struct<FRGB> { red=0, green=0, blue=1, alpha=1 } })
+   check scene.mtAddDef('blue', filter)
+   root.new('VectorRectangle', { x=40, y=80, width=120, height=40, fill='rgb(255,0,0)', filter='url(#blue)' })
+   return scene
+end
+
+@Test function RegionPerAxis()
+   -- The default 10% margin is 12 horizontally and 4 vertically.
+   local scene <close> = regionScene({ aspectRatio=VFA_MEET })
+   local bmp <close> = draw(scene)
+   assertRegion(blueRegion(bmp), 28, 76, 171, 123, 'Per-axis default region')
+end
+
+@Test function RegionDiagonal()
+   -- The default 10% margin is 8.94 on every side.
+   local scene <close> = regionScene({ aspectRatio=VFA_NONE })
+   local bmp <close> = draw(scene)
+   assertRegion(blueRegion(bmp), 31, 71, 168, 128, 'Diagonal default region')
+end
+
+@Test function RegionDiagonalCustom()
+   -- A 25% margin is 22.36 on every side.
+   local scene <close> = regionScene({ aspectRatio=VFA_NONE, x='-25%', y='-25%', width='150%', height='150%' })
+   local bmp <close> = draw(scene)
+   assertRegion(blueRegion(bmp), 18, 58, 182, 142, 'Diagonal custom region')
+end
+
+@Test function RegionDiagonalNonUniformScale()
+   -- The local 25% margin is 10 units.  Scaling by (3,1) must turn it into 30 horizontal and 10 vertical pixels.
+   local scene <close> = obj.new('VectorScene', { pageWidth=PAGE, pageHeight=PAGE })
+   local root = scene.new('VectorViewport', { width=PAGE, height=PAGE })
+   local filter = scene.new('VectorFilter', {
+      aspectRatio=VFA_NONE, x='-25%', y='-25%', width='150%', height='150%'
+   })
+   filter.new('FloodFX', { colour=struct<FRGB> { red=0, green=0, blue=1, alpha=1 } })
+   check scene.mtAddDef('blue', filter)
+   local rect = root.new('VectorRectangle', { x=10, y=80, width=40, height=40, fill='red', filter='url(#blue)' })
+   local _, matrix = check rect.mtNewMatrix()
+   check mVec.Scale(matrix, 3, 1)
+   local bmp <close> = draw(scene)
+   assertRegion(blueRegion(bmp), 0, 70, 179, 129, 'Non-uniformly scaled diagonal region')
 end

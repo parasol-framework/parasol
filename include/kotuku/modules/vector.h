@@ -3640,7 +3640,7 @@ class objVectorFilter : public Object {
    VUNIT  Units;                 // Defines the coordinate system for X, Y, Width and Height.
    VUNIT  PrimitiveUnits;        // Alters the behaviour of some effects that support alternative position calculations.
    VCS    ColourSpace;           // The colour space of the filter graphics (SRGB or linear RGB).
-   VFA    AspectRatio;           // Aspect ratio to use when scaling X/Y values
+   VFA    AspectRatio;           // Selects per-axis or diagonal scaling for bounding box units.
 
    // Action stubs
 

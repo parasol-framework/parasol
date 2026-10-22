@@ -155,6 +155,24 @@ template <class T> void render_to_filter(T *Self, objBitmap *Bitmap, ARF AspectR
 #include "filter_wavefunction.cpp"
 
 //********************************************************************************************************************
+// Compute a bounding box region when the AspectRatio is NONE.  The region extends from the bounds by distances
+// measured against the normalised diagonal, so that the margin around the content is the same on every side for any
+// shape.  The default region of (-10%, -10%, 120%, 120%) adds 10% of the diagonal to each side.
+
+static TClipRectangle<double> diagonal_region(extVectorFilter *Self, double Left, double Top, double Width,
+   double Height)
+{
+   double diag = dist(0, 0, Width, Height) * INV_SQRT2;
+   double x = Self->X.defined() ? double(Self->X) : 0.0;
+   double y = Self->Y.defined() ? double(Self->Y) : 0.0;
+   double width  = std::max(0.0, Width + (((Self->Width.defined() ? double(Self->Width) : 1.0) - 1.0) * diag));
+   double height = std::max(0.0, Height + (((Self->Height.defined() ? double(Self->Height) : 1.0) - 1.0) * diag));
+   double left = Left + (x * diag);
+   double top  = Top + (y * diag);
+   return { left, top, left + width, top + height };
+}
+
+//********************************************************************************************************************
 // Compute the Target* and Bound* values, which are used by filter effect algorithms to determine placement.  They
 // reflect positions *without* transforms.  The caller is expected to apply ClientVector->Transform after making
 // normalised coordinate calculations.
@@ -176,7 +194,14 @@ static void compute_target_area(extVectorFilter *Self)
    Self->BoundWidth  = std::round(bounds.width());
    Self->BoundHeight = std::round(bounds.height());
 
-   if (Self->Units IS VUNIT::BOUNDING_BOX) {
+   if ((Self->Units IS VUNIT::BOUNDING_BOX) and (Self->AspectRatio IS VFA::NONE)) {
+      auto region = diagonal_region(Self, boundX, boundY, Self->BoundWidth, Self->BoundHeight);
+      Self->TargetX      = std::round(region.left);
+      Self->TargetY      = std::round(region.top);
+      Self->TargetWidth  = std::round(region.width());
+      Self->TargetHeight = std::round(region.height());
+   }
+   else if (Self->Units IS VUNIT::BOUNDING_BOX) {
       if (Self->X.defined()) Self->TargetX = std::round(boundX + (Self->X * Self->BoundWidth));
       else Self->TargetX = boundX;
 
@@ -462,30 +487,60 @@ static ERR set_clip_region(extVectorFilter *Self, extVectorViewport *Viewport, e
    }
 
    if (Self->Units IS VUNIT::BOUNDING_BOX) {
-      // All coordinates are relative to the client vector, or vectors if we are applied to a group.
-      // The bounds are oriented to the client vector's transforms.
+      // Diagonal margins are measured in the client's coordinate system before applying its transform.
 
       TClipRectangle<double> bounds = { std::numeric_limits<double>::max(), std::numeric_limits<double>::max(), 0, 0 };
-      calc_full_boundary(Vector, bounds, false /* siblings */, true /* transforms */);
+      bool transform_region = Self->AspectRatio IS VFA::NONE;
+      if (transform_region) calc_local_boundary(Vector, bounds);
+      else calc_full_boundary(Vector, bounds, false /* siblings */, true /* transforms */);
 
       if ((bounds.right <= bounds.left) or (bounds.bottom <= bounds.top)) {
          // No child vector defines a path for a SourceGraphic.  Default back to the viewport.
          bounds = Viewport->vpBounds;
+         transform_region = false;
       }
       auto const bound_width  = bounds.width();
       auto const bound_height = bounds.height();
 
-      if (Self->X.defined()) Self->VectorClip.left = std::round(bounds.left + (Self->X * bound_width));
-      else Self->VectorClip.left = std::round(bounds.left);
+      if (Self->AspectRatio IS VFA::NONE) {
+         // Match the rounded target region used by effects, then map all four corners to the scene.
+         auto region = diagonal_region(Self, std::round(bounds.left), std::round(bounds.top),
+            std::round(bound_width), std::round(bound_height));
+         Self->VectorClip.left   = std::round(region.left);
+         Self->VectorClip.top    = std::round(region.top);
+         Self->VectorClip.right  = Self->VectorClip.left + std::round(region.width());
+         Self->VectorClip.bottom = Self->VectorClip.top + std::round(region.height());
+         if (transform_region) {
+            agg::path_storage rect;
+            rect.move_to(Self->VectorClip.left, Self->VectorClip.top);
+            rect.line_to(Self->VectorClip.right, Self->VectorClip.top);
+            rect.line_to(Self->VectorClip.right, Self->VectorClip.bottom);
+            rect.line_to(Self->VectorClip.left, Self->VectorClip.bottom);
+            rect.close_polygon();
 
-      if (Self->Y.defined()) Self->VectorClip.top = std::round(bounds.top + (Self->Y * bound_height));
-      else Self->VectorClip.top = std::round(bounds.top);
+            agg::conv_transform<agg::path_storage, agg::trans_affine> path(rect, Vector->Transform);
+            auto clip = get_bounds(path);
+            Self->VectorClip = { int(std::floor(clip.left)), int(std::floor(clip.top)),
+               int(std::ceil(clip.right)), int(std::ceil(clip.bottom)) };
+         }
+      }
+      else {
+         if (Self->X.defined()) Self->VectorClip.left = std::round(bounds.left + (Self->X * bound_width));
+         else Self->VectorClip.left = std::round(bounds.left);
 
-      if (Self->Width.defined()) Self->VectorClip.right = Self->VectorClip.left + std::round(Self->Width * bound_width);
-      else Self->VectorClip.right = Self->VectorClip.left + std::round(bound_width);
+         if (Self->Y.defined()) Self->VectorClip.top = std::round(bounds.top + (Self->Y * bound_height));
+         else Self->VectorClip.top = std::round(bounds.top);
 
-      if (Self->Height.defined()) Self->VectorClip.bottom = Self->VectorClip.top + std::round(Self->Height * bound_height);
-      else Self->VectorClip.bottom = Self->VectorClip.top + std::round(bound_height);
+         if (Self->Width.defined()) {
+            Self->VectorClip.right = Self->VectorClip.left + std::round(Self->Width * bound_width);
+         }
+         else Self->VectorClip.right = Self->VectorClip.left + std::round(bound_width);
+
+         if (Self->Height.defined()) {
+            Self->VectorClip.bottom = Self->VectorClip.top + std::round(Self->Height * bound_height);
+         }
+         else Self->VectorClip.bottom = Self->VectorClip.top + std::round(bound_height);
+      }
    }
    else { // USERSPACE
       double x, y, w, h;
@@ -684,6 +739,21 @@ static ERR VECTORFILTER_NewOwner(extVectorFilter *Self, struct acNewOwner *Args)
 /*********************************************************************************************************************
 
 -FIELD-
+AspectRatio: Selects per-axis or diagonal scaling for bounding box units.
+
+AspectRatio affects the filter region when #Units is `BOUNDING_BOX`, and the effects that support it when
+#PrimitiveUnits is `BOUNDING_BOX`.  The default is `MEET`, which scales horizontal values by the width of the bounding
+box and vertical values by its height, as per the SVG standard.
+
+The `NONE` option is a Kōtuku extension that scales all values by the normalised diagonal of the bounding box, i.e.
+`sqrt(width^2 + height^2) / sqrt(2)`.  This is the same formula used by a scaled stroke width.  A blur radius or
+offset then covers the same distance on both axes for any shape, which is preferable for effects such as glows and
+drop shadows.  For the filter region, the #X, #Y, #Width and #Height values are measured from the edges of the
+bounding box, so the default region adds a margin of 10% of the normalised diagonal to every side.
+
+The following effects support `NONE`: @BlurFX, @LightingFX and @OffsetFX.
+
+-FIELD-
 ColourSpace: The colour space of the filter graphics (SRGB or linear RGB).
 
 By default, colour filters are processed in SRGB format.  This is the same colour space as used by the rest of the
@@ -724,7 +794,8 @@ Height: The height of the filter area.  Can be expressed as a fixed or scaled co
 The height of the filter area is expressed here as a fixed or scaled coordinate.  The #Width and Height effectively
 restrain the working space for the effect processing, making them an important consideration for efficiency.
 
-The coordinate system for the width and height depends on the value for #Units.
+The coordinate system for the width and height depends on the value for #Units.  In bounding-box mode, the
+#AspectRatio determines whether the value is relative to the bounding box or its normalised diagonal.
 
 The default values for #Width and Height is `120%`, as per the SVG standard.  This provides a buffer space for the
 filter algorithms to work with, and is usually a sufficient default.
@@ -808,7 +879,8 @@ Width: The width of the filter area.  Can be expressed as a fixed or scaled coor
 The width of the filter area is expressed here as a fixed or scaled coordinate.  The Width and #Height effectively
 restrain the working space for the effect processing, making them an important consideration for efficiency.
 
-The coordinate system for the width and height depends on the value for #Units.
+The coordinate system for the width and height depends on the value for #Units.  In bounding-box mode, the
+#AspectRatio determines whether the value is relative to the bounding box or its normalised diagonal.
 
 The default values for #Width and Height is `120%`, as per the SVG standard.  This provides a buffer space for the
 filter algorithms to work with, and is usually a sufficient default.
@@ -830,7 +902,8 @@ X: X coordinate for the filter.
 
 The meaning of the (X, #Y) field values depend on the value for #Units.  In userspace mode, the filter position will be
 relative to the client vector's parent viewport.  In bounding-box mode, the filter position is relative to the
-vector's position.  It is important to note that coordinates are measured before any transforms are applied.
+vector's position, and the #AspectRatio determines whether the value is relative to the bounding box or its
+normalised diagonal.  It is important to note that coordinates are measured before any transforms are applied.
 
 The default values for X and #Y is `10%`, as per the SVG standard.  This provides a buffer space for the filter
 algorithms to work with, and is usually a sufficient default.
@@ -840,7 +913,8 @@ Y: Y coordinate for the filter.
 
 The meaning of the (#X, Y) field values depend on the value for #Units.  In userspace mode, the filter position will be
 relative to the client vector's parent viewport.  In bounding-box mode, the filter position is relative to the
-vector's position.  It is important to note that coordinates are measured before any transforms are applied.
+vector's position, and the #AspectRatio determines whether the value is relative to the bounding box or its
+normalised diagonal.  It is important to note that coordinates are measured before any transforms are applied.
 
 The default values for #X and Y is `10%`, as per the SVG standard.  This provides a buffer space for the filter
 algorithms to work with, and is usually a sufficient default.

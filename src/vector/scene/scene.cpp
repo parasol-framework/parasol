@@ -810,19 +810,12 @@ static ERR SET_Bitmap(extVectorScene *Self, objBitmap *Value)
 -FIELD-
 Compliance: Selects the standard that the scene complies with, where it differs from the default behaviour.
 
-Kōtuku extends some features of the SVG standard where the standard produces results that are unsuitable for user
-interfaces.  Setting Compliance to `SVG1` or `SVG2` restores the standard behaviour for the scene.  The default is
-`NONE`.
+Compliance declares the standard that the content of the scene was written for.  The default is `NONE`, which
+permits Kōtuku's extensions where they differ from the standards.  The @SVG class sets `SVG2` on the scenes that it
+creates.
 
-The following features are affected:
-
-<list type="bullet">
-<li>@OffsetFX: When the filter's @VectorFilter.PrimitiveUnits is `BOUNDING_BOX`, the default is to scale both offsets
-by the normalised diagonal of the bounding box, so that the direction of the offset is the same for any shape.  The
-SVG standards scale the X offset by the bounding box width and the Y offset by its height.</li>
-</list>
-
-The setting is read from the scene that a @VectorFilter belongs to.
+No features currently change their behaviour in response to this setting.  Features that extend a standard by
+default will consult it so that the standard behaviour can be restored for the scene.
 -END-
 *********************************************************************************************************************/
 

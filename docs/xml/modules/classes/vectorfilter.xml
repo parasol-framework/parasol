@@ -37,10 +37,13 @@
   <fields>
     <field>
       <name>AspectRatio</name>
-      <comment>Aspect ratio to use when scaling X/Y values</comment>
+      <comment>Selects per-axis or diagonal scaling for bounding box units.</comment>
       <access read="R" write="W">Read/Write</access>
       <type lookup="VFA">VFA</type>
       <description>
+<p>AspectRatio affects the filter region when <fl>Units</fl> is <code>BOUNDING_BOX</code>, and the effects that support it when <fl>PrimitiveUnits</fl> is <code>BOUNDING_BOX</code>.  The default is <code>MEET</code>, which scales horizontal values by the width of the bounding box and vertical values by its height, as per the SVG standard.</p>
+<p>The <code>NONE</code> option is a Kōtuku extension that scales all values by the normalised diagonal of the bounding box, i.e. <code>sqrt(width^2 + height^2) / sqrt(2)</code>.  This is the same formula used by a scaled stroke width.  A blur radius or offset then covers the same distance on both axes for any shape, which is preferable for effects such as glows and drop shadows.  For the filter region, the <fl>X</fl>, <fl>Y</fl>, <fl>Width</fl> and <fl>Height</fl> values are measured from the edges of the bounding box, so the default region adds a margin of 10% of the normalised diagonal to every side.</p>
+<p>The following effects support <code>NONE</code>: <class name="BlurFX">BlurFX</class>, <class name="LightingFX">LightingFX</class> and <class name="OffsetFX">OffsetFX</class>.</p>
 <types lookup="VFA"/>
       </description>
     </field>
@@ -75,7 +78,7 @@
       <type>UNIT</type>
       <description>
 <p>The height of the filter area is expressed here as a fixed or scaled coordinate.  The <fl>Width</fl> and Height effectively restrain the working space for the effect processing, making them an important consideration for efficiency.</p>
-<p>The coordinate system for the width and height depends on the value for <fl>Units</fl>.</p>
+<p>The coordinate system for the width and height depends on the value for <fl>Units</fl>.  In bounding-box mode, the <fl>AspectRatio</fl> determines whether the value is relative to the bounding box or its normalised diagonal.</p>
 <p>The default values for <fl>Width</fl> and Height is <code>120%</code>, as per the SVG standard.  This provides a buffer space for the filter algorithms to work with, and is usually a sufficient default.</p>
       </description>
     </field>
@@ -149,7 +152,7 @@
       <type>UNIT</type>
       <description>
 <p>The width of the filter area is expressed here as a fixed or scaled coordinate.  The Width and <fl>Height</fl> effectively restrain the working space for the effect processing, making them an important consideration for efficiency.</p>
-<p>The coordinate system for the width and height depends on the value for <fl>Units</fl>.</p>
+<p>The coordinate system for the width and height depends on the value for <fl>Units</fl>.  In bounding-box mode, the <fl>AspectRatio</fl> determines whether the value is relative to the bounding box or its normalised diagonal.</p>
 <p>The default values for <fl>Width</fl> and Height is <code>120%</code>, as per the SVG standard.  This provides a buffer space for the filter algorithms to work with, and is usually a sufficient default.</p>
       </description>
     </field>
@@ -160,7 +163,7 @@
       <access read="R" write="W">Read/Write</access>
       <type>UNIT</type>
       <description>
-<p>The meaning of the (X, <fl>Y</fl>) field values depend on the value for <fl>Units</fl>.  In userspace mode, the filter position will be relative to the client vector's parent viewport.  In bounding-box mode, the filter position is relative to the vector's position.  It is important to note that coordinates are measured before any transforms are applied.</p>
+<p>The meaning of the (X, <fl>Y</fl>) field values depend on the value for <fl>Units</fl>.  In userspace mode, the filter position will be relative to the client vector's parent viewport.  In bounding-box mode, the filter position is relative to the vector's position, and the <fl>AspectRatio</fl> determines whether the value is relative to the bounding box or its normalised diagonal.  It is important to note that coordinates are measured before any transforms are applied.</p>
 <p>The default values for X and <fl>Y</fl> is <code>10%</code>, as per the SVG standard.  This provides a buffer space for the filter algorithms to work with, and is usually a sufficient default.</p>
       </description>
     </field>
@@ -171,7 +174,7 @@
       <access read="R" write="W">Read/Write</access>
       <type>UNIT</type>
       <description>
-<p>The meaning of the (<fl>X</fl>, Y) field values depend on the value for <fl>Units</fl>.  In userspace mode, the filter position will be relative to the client vector's parent viewport.  In bounding-box mode, the filter position is relative to the vector's position.  It is important to note that coordinates are measured before any transforms are applied.</p>
+<p>The meaning of the (<fl>X</fl>, Y) field values depend on the value for <fl>Units</fl>.  In userspace mode, the filter position will be relative to the client vector's parent viewport.  In bounding-box mode, the filter position is relative to the vector's position, and the <fl>AspectRatio</fl> determines whether the value is relative to the bounding box or its normalised diagonal.  It is important to note that coordinates are measured before any transforms are applied.</p>
 <p>The default values for <fl>X</fl> and Y is <code>10%</code>, as per the SVG standard.  This provides a buffer space for the filter algorithms to work with, and is usually a sufficient default.</p>
       </description>
     </field>
@@ -185,8 +188,8 @@
     </constants>
 
     <constants lookup="VFA" comment="Define the aspect ratio for VectorFilter unit scaling.">
-      <const name="MEET">Scale X/Y values independently and in relation to the width/height of the parent viewport.</const>
-      <const name="NONE">Scale X/Y values on a <code>1:1</code> basis, in relation to the diagonal of the parent viewport.</const>
+      <const name="MEET">Scale X/Y values independently and in relation to the width/height of the bounding box.</const>
+      <const name="NONE">Scale X/Y values on a <code>1:1</code> basis, in relation to the normalised diagonal of the bounding box.</const>
     </constants>
 
     <constants lookup="VUNIT">
