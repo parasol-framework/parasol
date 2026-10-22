@@ -28,6 +28,13 @@ static const struct FieldDef clVectorSceneSampleMethod[] = {
    { nullptr, 0 }
 };
 
+static const struct FieldDef clVectorSceneCompliance[] = {
+   { "None", 0x00000000 },
+   { "Svg1", 0x00000001 },
+   { "Svg2", 0x00000002 },
+   { nullptr, 0 }
+};
+
 FDEF maAddDef[] = { { "Name", FDF_CPPSTRING }, { "Def", FD_OBJECTPTR }, { 0, 0 } };
 FDEF maFindDef[] = { { "Name", FDF_CPPSTRING }, { "Def", FD_RESULT|FD_OBJECTPTR }, { 0, 0 } };
 

@@ -808,6 +808,27 @@ static ERR SET_Bitmap(extVectorScene *Self, objBitmap *Value)
 /*********************************************************************************************************************
 
 -FIELD-
+Compliance: Selects the standard that the scene complies with, where it differs from the default behaviour.
+
+Kōtuku extends some features of the SVG standard where the standard produces results that are unsuitable for user
+interfaces.  Setting Compliance to `SVG1` or `SVG2` restores the standard behaviour for the scene.  The default is
+`NONE`.
+
+The following features are affected:
+
+<list type="bullet">
+<li>@OffsetFX: When the filter's @VectorFilter.PrimitiveUnits is `BOUNDING_BOX`, the default is to scale both offsets
+by the normalised diagonal of the bounding box, so that the direction of the offset is the same for any shape.  The
+SVG standards scale the X offset by the bounding box width and the Y offset by its height.</li>
+</list>
+
+The setting is read from the scene that a @VectorFilter belongs to.
+-END-
+*********************************************************************************************************************/
+
+/*********************************************************************************************************************
+
+-FIELD-
 Defs: Obtain direct access to the SVG definition table.
 
 Reading the Defs field returns direct access to the SVG definition table, which maps definition names to vector
@@ -1206,6 +1227,7 @@ static const FieldArray clSceneFields[] = {
    { "PageWidth",    FDF_INT|FDF_RW,      nullptr, SET_PageWidth },
    { "PageHeight",   FDF_INT|FDF_RW,      nullptr, SET_PageHeight },
    { "SampleMethod", FDF_INT|FDF_LOOKUP|FDF_RW, nullptr, SET_SampleMethod, &clVectorSceneSampleMethod },
+   { "Compliance",   FDF_INT|FDF_LOOKUP|FDF_RW, nullptr, nullptr, &clVectorSceneCompliance },
    { "RootScene",    FDF_OBJECT|FDF_R,    GET_RootScene, nullptr, CLASSID::VECTORSCENE },
    // Virtual fields
    { "Defs",         FDF_PTR|FDF_SYSTEM|FDF_R|FDF_PURE, GET_Defs, nullptr },
