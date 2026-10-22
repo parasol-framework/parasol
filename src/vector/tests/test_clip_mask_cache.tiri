@@ -235,3 +235,54 @@ end
          f'(nested={nested})')
    end
 end
+
+-- Translucent filter output beneath an ancestor mask must blend exactly as it does without a mask.  The masked path
+-- previously used the target's gamma-correct blend instead of the sRGB blend of the unmasked copy, which visibly
+-- weakened drop shadows while a viewport mask was active (e.g. during vfx.wipe()).
+
+function translucentFilterPixel(Masked:bool, Opacity:num, Buffered:bool, X:num, Y:num):table
+   local scene <close> = obj.new('VectorScene', { pageWidth=300, pageHeight=180 })
+   local root = scene.new('VectorViewport', { width='100%', height='100%' })
+   root.new('VectorRectangle', { width='100%', height='100%', fill='rgb(255,255,255)' })
+   local page = root.new('VectorViewport', { x=X, y=Y, width=120, height=80, buffered=Buffered })
+   page.new('VectorRectangle', { width='100%', height='100%', fill='white' })
+   local filter = scene.new('VectorFilter')
+   filter.new('FloodFX', { colour=struct<FRGB> { red=1, green=0, blue=0, alpha=1 }, opacity=Opacity })
+   check scene.mtAddDef('translucent_flood', filter)
+
+   local target = page.new('VectorViewport', { width='100%', height='100%' })
+   if Masked then
+      local clip = scene.new('VectorClip', { flags=VCLF_APPLY_FILLS, units=VUNIT_USERSPACE })
+      clip.viewport.new('VectorRectangle', { width=120, height=80, fill='white' })
+      target.mask = clip
+   end
+   target.new('VectorRectangle', { x=10, y=10, width=100, height=60, fill='white', filter='url(#translucent_flood)' })
+
+   local bmp <close> = newBitmap(300, 180)
+   drawScene(scene, bmp)
+   return struct.toTable(mGfx.ReadRGBPixel(bmp, X + 60, Y + 40))
+end
+
+@Test function TranslucentFilterOutputBlendIsMaskIndependent()
+   for _, opacity in { 0.25, 0.5, 0.75 } do
+      local plain  = translucentFilterPixel(false, opacity, false, 0, 0)
+      local masked = translucentFilterPixel(true, opacity, false, 0, 0)
+      assert((math.abs(plain.green - masked.green) <= 1) and (plain.red is masked.red),
+         f'Masked filter output must blend like unmasked output at opacity {opacity}, got ' ..
+         f'{masked.red},{masked.green},{masked.blue} vs {plain.red},{plain.green},{plain.blue}')
+   end
+end
+
+-- A buffered target uses scene coordinates even when its origin lies beyond its local bitmap dimensions.
+
+@Test function BufferedMaskedFilterPreservesSceneClip()
+   for _, position in array<table> { { x=20, y=10 }, { x=150, y=10 }, { x=20, y=90 }, { x=150, y=90 } } do
+      local plain = translucentFilterPixel(true, 0.5, false, position.x, position.y)
+      local buffered = translucentFilterPixel(true, 0.5, true, position.x, position.y)
+      assert((plain.green > 100) and (plain.green < 150), 'Reference filter must produce translucent red')
+      assert((plain.red is buffered.red) and (math.abs(plain.green - buffered.green) <= 1) and
+         (math.abs(plain.blue - buffered.blue) <= 1),
+         f'Buffered masked filter at {position.x},{position.y} must match the unbuffered output, got ' ..
+         f'{buffered.red},{buffered.green},{buffered.blue} vs {plain.red},{plain.green},{plain.blue}')
+   end
+end
