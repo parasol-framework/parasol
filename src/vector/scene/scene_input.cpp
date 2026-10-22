@@ -237,6 +237,8 @@ ERR scene_input_events(const InputEvent *Events, int Handle)
          }
       }
       else if (input->Type IS JET::CROSSED_OUT) {
+         cursor = PTC::DEFAULT;
+
          // The active vector is cleared so that the cursor's return to the surface is treated as a new entry, even
          // if it returns to the same position.
 
@@ -298,6 +300,8 @@ ERR scene_input_events(const InputEvent *Events, int Handle)
 
                   if (Self->ActiveVector != bounds.vector_id) {
                      send_enter_event(vector, input, bounds.x, bounds.y);
+                     // The enter callback can change the cursor, so re-read it to apply the change immediately.
+                     if ((not Self->ButtonLock) and (vector->Cursor != PTC::NIL)) cursor = vector->Cursor;
                   }
 
                   if (not processed) {
@@ -398,6 +402,11 @@ ERR scene_input_events(const InputEvent *Events, int Handle)
                   event.Y      = ty;
                   send_input_events(vector, &event);
 
+                  // Subscribers can change their cursor in response to movement, so re-read it to apply the change
+                  // with this event rather than the next.
+
+                  if ((not Self->ButtonLock) and (vector->Cursor != PTC::NIL)) cursor = vector->Cursor;
+
                   if ((Self->ActiveVector) and (Self->ActiveVector != vector->UID)) {
                      kt::ScopedObjectLock<extVector> lock(Self->ActiveVector);
                      if (lock.granted()) send_left_event(lock.obj, input, Self->ActiveVectorX, Self->ActiveVectorY);
@@ -427,9 +436,8 @@ ERR scene_input_events(const InputEvent *Events, int Handle)
       else log.warning("Unrecognised movement type %d", int(input->Type));
    }
 
-   if (not Self->ButtonLock) {
-      if (cursor IS PTC::NIL) cursor = PTC::DEFAULT; // Revert the cursor to the default if nothing is defined
-
+   // Events that do not select a cursor, such as wheel input, preserve the current cursor.
+   if ((not Self->ButtonLock) and (cursor != PTC::NIL)) {
       if (Self->Cursor != cursor) {
          Self->Cursor = cursor;
          kt::ScopedObjectLock<objSurface> surface(Self->SurfaceID);
