@@ -1167,7 +1167,7 @@ struct ImportEntryPayload {
    bool module_initialiser = false;            // Execute body through a child prototype for non-local imports
    bool module_already_imported = false;       // Publish aliases without repeating an earlier module activation
    bool state_satisfied = false;               // Active state supplies the module; emit no executable reference
-   bool reuses_namespace_binding = false;      // A sibling import already published this registry namespace locally
+   bool reuses_namespace_binding = false;      // A declaration or import already bound this registry namespace locally
 
    ~ImportEntryPayload();
 };

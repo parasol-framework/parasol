@@ -22,8 +22,8 @@ struct AssignmentBinding {
    GCstr *name = nullptr;
    StaticBindingID binding_id{};
    uint16_t function_depth = 0;
-   bool is_import_namespace = false;
-   std::string import_registry_namespace;
+   bool is_namespace = false;
+   std::string registry_namespace;
 };
 
 struct AssignmentScope {
@@ -540,9 +540,9 @@ private:
                }
                if (entry.namespace_name) {
                   const AssignmentBinding *existing = this->find_binding(entry.namespace_name->symbol);
-                  if (existing and existing->is_import_namespace and
+                  if (existing and existing->is_namespace and
                       existing->function_depth IS this->function_depth_ and
-                      existing->import_registry_namespace IS entry.default_namespace) {
+                      existing->registry_namespace IS entry.default_namespace) {
                      entry.namespace_name->binding_id = existing->binding_id;
                      entry.reuses_namespace_binding = true;
                   }
@@ -551,8 +551,8 @@ private:
                         this->report_namespace_conflict(*entry.namespace_name);
                      }
                      AssignmentBinding binding = this->prepare_declaration(*entry.namespace_name);
-                     binding.is_import_namespace = true;
-                     binding.import_registry_namespace = entry.default_namespace;
+                     binding.is_namespace = true;
+                     binding.registry_namespace = entry.default_namespace;
                      this->publish_declaration(std::move(binding));
                   }
                }
@@ -562,9 +562,9 @@ private:
             auto &payload = std::get<NamespaceStmtPayload>(Statement.data);
             const AssignmentBinding *existing = this->find_binding(payload.name.symbol);
             std::string_view namespace_name(strdata(payload.name.symbol), payload.name.symbol->len);
-            if (payload.mode IS NamespaceDeclarationMode::Join and existing and existing->is_import_namespace and
+            if (payload.mode IS NamespaceDeclarationMode::Join and existing and existing->is_namespace and
                 existing->function_depth IS this->function_depth_ and
-                existing->import_registry_namespace.compare(namespace_name) IS 0) {
+                existing->registry_namespace.compare(namespace_name) IS 0) {
                payload.name.binding_id = existing->binding_id;
                payload.reuses_import_binding = true;
             }
@@ -572,7 +572,14 @@ private:
                this->report_namespace_conflict(payload.name);
                payload.reuses_import_binding = true;  // Suppress invalid downstream redeclaration after the error.
             }
-            else this->declare(payload.name);
+            else {
+               // Imports of components that join this namespace reuse its owning local, including cache hits
+               // whose bodies are represented only by a portable interface.
+               AssignmentBinding binding = this->prepare_declaration(payload.name);
+               binding.is_namespace = true;
+               binding.registry_namespace = namespace_name;
+               this->publish_declaration(std::move(binding));
+            }
 
             if (payload.initialiser) this->resolve_expression(*payload.initialiser);
             break;

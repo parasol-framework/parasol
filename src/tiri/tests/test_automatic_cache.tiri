@@ -217,6 +217,48 @@ end
 end
 
 ----------------------------------------------------------------------------------------------------------------------
+-- A cached component that joins its owning package's namespace must reuse the namespace declaration's local.
+
+@Test function SplitPackageComponentsReuseOwningNamespace()
+   local packages = glRoot .. 'split-packages/'
+   local root <close> = obj.new('file', { path=packages, flags=FL_NEW|FL_FOLDER })
+   local folder <close> = obj.new('file', { path=packages .. 'cache-split/', flags=FL_NEW|FL_FOLDER })
+   write_file(packages .. 'index.cfg', '[cache-split]\n1 = cache-split/main.tiri\n' ..
+      '[cache-split/component]\n1 = cache-split/component.tiri\n')
+   write_file(packages .. 'cache-split/main.tiri', [[
+      @Package(name="cache-split", version="1")
+      namespace cache_split { value = 17 }
+      import 'cache-split/component'
+      assert(cache_split is _LIB.cache_split)
+      assert(cache_split.value is 17 and cache_split.component is 25)
+   ]])
+   write_file(packages .. 'cache-split/component.tiri', [[
+      @Package(name="cache-split/component", version="1")
+      namespace cache_split
+      cache_split.component = 25
+   ]])
+
+   -- Prime only the component so that the owning package must compile around a cached namespace join.
+   local code, output = package_import(packages,
+      "namespace cache_split { }; import 'cache-split/component'; assert(cache_split.component is 25)")
+   assert(code is 0, output)
+
+   for pass in {0 to 2} do
+      code, output = package_import(packages,
+         "import 'cache-split'; print('SPLIT_CACHE_VALUE:' .. (cache_split.value + cache_split.component))")
+      assert(code is 0 and output.find('SPLIT_CACHE_VALUE:42') != nil, output)
+      assert_valid_cache_graph(output)
+      if pass is 0 then
+         assert(output.find('Imported-module validation: hits=1 misses=1') != nil,
+            'The owning source package must reuse its cached component: ' .. output)
+      else
+         assert(output.find('source-compilations=0 publications=0') != nil,
+            'The warm split package must load entirely from cache: ' .. output)
+      end
+   end
+end
+
+----------------------------------------------------------------------------------------------------------------------
 -- Package declarations discovered during parsing must not change the cache location used by subsequent imports.
 
 @Test function DeclaredPackageImportsReusePublishedCache()
