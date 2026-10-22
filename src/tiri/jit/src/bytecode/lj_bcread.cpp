@@ -1371,6 +1371,15 @@ static int bcread_header(LexState *State)
    if ((flags & BCDUMP_F_FR2) != LJ_FR2 * BCDUMP_F_FR2) return 0;
    if ((flags & BCDUMP_F_FFI)) return 0;
 
+   // Fragments omit their dependencies' executable code, so only the imported-module cache linker may load them.
+   const bool fragment = (flags & BCDUMP_F_FRAGMENT) != 0;
+   const bool fragment_expected = State->bytecode_payload_kind IS BytecodePayloadKind::ModuleFragment;
+   if (fragment and not fragment_expected) {
+      luaL_error(State->L, ERR::InvalidData,
+         "Cannot load an imported-module cache fragment as standalone bytecode.");
+   }
+   if (fragment != fragment_expected) return 0;
+
    if ((flags & BCDUMP_F_STRIP)) {
       State->chunk_name = lj_str_newz(State->L, State->chunk_arg);
    }
@@ -1530,16 +1539,28 @@ static int bcread_header(LexState *State)
    bcread_account(State, module_block_size);
    bcread_reserve_allocation(State, module_block_size);
    std::string_view module_bytes(State->p, module_block_size);
-   std::vector<tiri::import_cache::RootModuleRecord> modules;
-   if (tiri::import_cache::decode_root_module_bundle(module_bytes, modules) !=
-       tiri::cache::FormatError::OKAY) return 0;
-   for (const auto &module : modules) {
-      if (module.SourceIndex >= State->compilation_sources.size() and
-          module.SourceIndex != FILESOURCE_OVERFLOW_INDEX) return 0;
+   if (fragment) {
+      std::vector<tiri::import_cache::FragmentReference> references;
+      if (tiri::import_cache::decode_fragment_references(module_bytes, references) !=
+          tiri::cache::FormatError::OKAY) return 0;
+      for (const auto &reference : references) {
+         if (reference.ParentSource >= State->compilation_sources.size() or reference.ImportLine >
+             uint32_t(State->compilation_sources[reference.ParentSource].total_lines.lineNumber())) return 0;
+      }
+      State->bytecode_fragment_references = std::move(references);
    }
-   State->bytecode_import_module_bundle.assign(
-      (const uint8_t *)State->p, (const uint8_t *)State->p + module_block_size);
-   State->bytecode_import_module_records = std::move(modules);
+   else {
+      std::vector<tiri::import_cache::RootModuleRecord> modules;
+      if (tiri::import_cache::decode_root_module_bundle(module_bytes, modules) !=
+          tiri::cache::FormatError::OKAY) return 0;
+      for (const auto &module : modules) {
+         if (module.SourceIndex >= State->compilation_sources.size() and
+             module.SourceIndex != FILESOURCE_OVERFLOW_INDEX) return 0;
+      }
+      State->bytecode_import_module_bundle.assign(
+         (const uint8_t *)State->p, (const uint8_t *)State->p + module_block_size);
+      State->bytecode_import_module_records = std::move(modules);
+   }
    State->p += module_block_size;
 
    const MSize struct_block_size = bcread_uleb128(State);
@@ -1572,6 +1593,7 @@ GCproto *lj_bcread(LexState *State)
    State->bytecode_compatibility_manifest.clear();
    State->bytecode_import_module_bundle.clear();
    State->bytecode_import_module_records.clear();
+   State->bytecode_fragment_references.clear();
    State->loaded_structs.clear();
    State->loaded_structs_committed = false;
    State->bytecode_load_operations = {};
@@ -1630,10 +1652,18 @@ GCproto *lj_bcread(LexState *State)
    bcread_account(State, size_t(layout.entry_count) + layout.dependency_count);
    if (layout.entry_count) bcread_reserve_allocation(State, layout.byte_size);
 
+   const bool fragment = State->bytecode_payload_kind IS BytecodePayloadKind::ModuleFragment;
    std::vector<tiri::import_cache::RootModuleRecordLocation> locations;
    const std::string_view module_bytes((const char *)State->bytecode_import_module_bundle.data(),
       State->bytecode_import_module_bundle.size());
-   if (tiri::import_cache::index_root_module_bundle(module_bytes, locations) !=
+   if (fragment) {
+      // Every activation must name its reference's identity, and every reference must be activated.
+      if (module_count or root->sizeuv != 0 or
+          not validate_import_module_fragment_activations(root, State->bytecode_fragment_references)) {
+         bcread_error(State, ErrMsg::BCBAD);
+      }
+   }
+   else if (tiri::import_cache::index_root_module_bundle(module_bytes, locations) !=
        tiri::cache::FormatError::OKAY or locations.size() != State->bytecode_import_module_records.size()) {
       bcread_error(State, ErrMsg::BCBAD);
    }
@@ -1669,10 +1699,13 @@ GCproto *lj_bcread(LexState *State)
    memcpy(manifest, State->bytecode_struct_manifest.data(), State->bytecode_struct_manifest.size());
    setmref(root->struct_manifest, manifest);
    root->struct_manifest_size = uint32_t(State->bytecode_struct_manifest.size());
-   auto module_bundle = (uint8_t *)lj_mem_new(L, MSize(State->bytecode_import_module_bundle.size()));
-   memcpy(module_bundle, State->bytecode_import_module_bundle.data(), State->bytecode_import_module_bundle.size());
-   setmref(root->import_module_bundle, module_bundle);
-   root->import_module_bundle_size = uint32_t(State->bytecode_import_module_bundle.size());
+   if (not fragment) {
+      auto module_bundle = (uint8_t *)lj_mem_new(L, MSize(State->bytecode_import_module_bundle.size()));
+      memcpy(module_bundle, State->bytecode_import_module_bundle.data(),
+         State->bytecode_import_module_bundle.size());
+      setmref(root->import_module_bundle, module_bundle);
+      root->import_module_bundle_size = uint32_t(State->bytecode_import_module_bundle.size());
+   }
    if (module_count) {
       if (not install_import_module_directory(
           L, root, State->bytecode_import_module_records, module_roots, layout)) bcread_error(State, ErrMsg::BCBAD);

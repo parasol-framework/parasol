@@ -12,6 +12,8 @@
 
 /*
 ** dump   = header sources package compatibility modules structs proto+ 0U
+** A module-cache fragment sets BCDUMP_F_FRAGMENT, stores a fragment reference table in 'modules' and contains exactly
+** one top-level proto: the module initialiser.  Its dependencies are cached separately and linked by the compiler.
 ** header = ESC 'L' 'J' versionB flagsU [namelenU nameB*]
 ** sources = lengthU sourceB*
 ** package = lengthU schemaversionB flagsB [namelenU nameB* versionlenU versionB*]
@@ -85,7 +87,9 @@ constexpr uint8_t BCDUMP_F_BE = 0x01;
 constexpr uint8_t BCDUMP_F_STRIP = 0x02;
 constexpr uint8_t BCDUMP_F_FFI = 0x04;
 constexpr uint8_t BCDUMP_F_FR2 = 0x08;
-constexpr uint8_t BCDUMP_F_KNOWN = (BCDUMP_F_FR2*2-1);
+constexpr uint8_t BCDUMP_F_FRAGMENT = 0x10; // Internal imported-module cache fragment; never loadable on its own.
+constexpr uint8_t BCDUMP_F_KNOWN = (BCDUMP_F_FRAGMENT*2-1);
+static_assert(BCDUMP_F_FRAGMENT IS tiri::import_cache::FRAGMENT_PAYLOAD_FLAG);
 
 // Type codes for the GC constants of a prototype. Plus length for strings.
 enum {
@@ -106,5 +110,9 @@ class ImportModuleRelocationPlan;
 LJ_FUNC int lj_bcwrite(lua_State* L, GCproto* pt, lua_Writer writer, void* data, int strip);
 LJ_FUNC int lj_bcwrite_relocated(lua_State *L, GCproto *Pt, lua_Writer Writer, void *Data, int Strip,
    const ImportModuleRelocationPlan *Relocation);
+// Writes one module initialiser as an imported-module cache fragment.  References is an encoded fragment reference
+// table and Relocation must map every activation operand in the initialiser to its position in that table.
+LJ_FUNC int lj_bcwrite_fragment(lua_State *L, GCproto *Pt, lua_Writer Writer, void *Data,
+   const ImportModuleRelocationPlan &Relocation, std::string_view References);
 LJ_FUNC GCproto* lj_bcread_proto(LexState* ls);
 LJ_FUNC GCproto* lj_bcread(LexState* ls);

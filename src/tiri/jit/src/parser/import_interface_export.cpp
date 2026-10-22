@@ -454,6 +454,27 @@ void merge_interface(InterfaceAssembly &Target, const tiri::import_cache::Interf
 }
 
 //********************************************************************************************************************
+// Collects the non-local module imports activated by one import statement of a module body.  Relative imports are
+// inlined into the importing module, so the modules they import are activated by its initialiser and belong to its
+// identity and interface exactly as direct imports do.
+
+void collect_module_imports(const ImportStmtPayload &Import, std::vector<const ImportEntryPayload *> &Output)
+{
+   for (const auto &entry : Import.entries) {
+      if (entry.module_unit) {
+         Output.push_back(&entry);
+         continue;
+      }
+      if (not entry.inlined_body) continue;
+      for (const auto &statement : entry.inlined_body->statements) {
+         if (statement and statement->kind IS AstNodeKind::ImportStmt) {
+            collect_module_imports(std::get<ImportStmtPayload>(statement->data), Output);
+         }
+      }
+   }
+}
+
+//********************************************************************************************************************
 // Builds and installs portable interfaces for imported modules contained in this block and its descendants.
 
 bool prepare_block(ParserContext &Context, BlockStmt &Block, std::string &Diagnostic)
@@ -520,8 +541,11 @@ bool prepare_block(ParserContext &Context, BlockStmt &Block, std::string &Diagno
          for (auto &child_statement : body->statements) {
             if (not child_statement) continue;
             switch (child_statement->kind) {
-               case AstNodeKind::ImportStmt:
-                  for (const auto &nested : std::get<ImportStmtPayload>(child_statement->data).entries) {
+               case AstNodeKind::ImportStmt: {
+                  std::vector<const ImportEntryPayload *> nested_imports;
+                  collect_module_imports(std::get<ImportStmtPayload>(child_statement->data), nested_imports);
+                  for (const ImportEntryPayload *nested_entry : nested_imports) {
+                     const ImportEntryPayload &nested = *nested_entry;
                      if (nested.module_unit and nested.module_unit->installed_interface) {
                         const auto &nested_artifact = nested.module_unit->installed_interface->artifact();
                         const auto &nested_interface = nested_artifact.descriptors();
@@ -545,6 +569,7 @@ bool prepare_block(ParserContext &Context, BlockStmt &Block, std::string &Diagno
                      }
                   }
                   break;
+               }
                case AstNodeKind::NamespaceStmt: {
                   const auto &item = std::get<NamespaceStmtPayload>(child_statement->data);
                   std::string name = symbol_name(item.name.symbol);

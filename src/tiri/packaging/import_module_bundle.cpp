@@ -361,4 +361,75 @@ cache::FormatError decode_root_module_bundle(std::string_view Input, std::vector
    return cache::FormatError::OKAY;
 }
 
+//********************************************************************************************************************
+// Validates fields shared by the fragment reference encoder and decoder, including canonical identity order.
+
+static bool valid_fragment_references(const std::vector<FragmentReference> &References)
+{
+   if (References.size() > MAX_ROOT_MODULES) return false;
+   for (size_t i = 0; i < References.size(); ++i) {
+      const FragmentReference &reference = References[i];
+      if (reference.CompiledIdentity.empty() or reference.CompiledIdentity.size() > cache::MAX_STRING_SIZE or
+          reference.ImportLine IS 0) return false;
+      if (i and References[i - 1].CompiledIdentity >= reference.CompiledIdentity) return false;
+   }
+   return true;
+}
+
+//********************************************************************************************************************
+// Serialises a canonical fragment reference table.
+
+cache::FormatError encode_fragment_references(const std::vector<FragmentReference> &References, std::string &Output)
+{
+   if (not valid_fragment_references(References)) return cache::FormatError::INVALID_METADATA;
+   std::string result;
+   result.push_back(char(FRAGMENT_REFERENCE_VERSION));
+   if (not append_uleb(result, uint32_t(References.size()))) return cache::FormatError::SIZE_LIMIT;
+   for (const FragmentReference &reference : References) {
+      if (not append_uleb(result, uint32_t(reference.CompiledIdentity.size())) or
+          not append_bytes(result, reference.CompiledIdentity) or result.size() >= MAX_ROOT_BUNDLE_SIZE) {
+         return cache::FormatError::SIZE_LIMIT;
+      }
+      result.push_back(char(reference.ParentSource));
+      if (not append_uleb(result, reference.ImportLine)) return cache::FormatError::SIZE_LIMIT;
+   }
+   Output = std::move(result);
+   return cache::FormatError::OKAY;
+}
+
+//********************************************************************************************************************
+// Decodes a bounded fragment reference table and rejects trailing, duplicate or non-canonical records.
+
+cache::FormatError decode_fragment_references(std::string_view Input, std::vector<FragmentReference> &Output)
+{
+   Output.clear();
+   if (Input.empty() or Input.size() > MAX_ROOT_BUNDLE_SIZE or uint8_t(Input[0]) != FRAGMENT_REFERENCE_VERSION) {
+      return cache::FormatError::UNSUPPORTED_VERSION;
+   }
+   size_t position = 1;
+   uint32_t count = 0;
+   if (not read_uleb(Input, position, count) or count > MAX_ROOT_MODULES) return cache::FormatError::COUNT_LIMIT;
+
+   std::vector<FragmentReference> result;
+   result.reserve(count);
+   for (uint32_t i = 0; i < count; ++i) {
+      uint32_t identity_size = 0;
+      if (not read_uleb(Input, position, identity_size) or identity_size > cache::MAX_STRING_SIZE or
+          identity_size > Input.size() - position) return cache::FormatError::INVALID_METADATA;
+      FragmentReference reference;
+      reference.CompiledIdentity.assign(Input.substr(position, identity_size));
+      position += identity_size;
+      if (position >= Input.size()) return cache::FormatError::INVALID_METADATA;
+      reference.ParentSource = uint8_t(Input[position++]);
+      if (not read_uleb(Input, position, reference.ImportLine)) return cache::FormatError::INVALID_METADATA;
+      result.push_back(std::move(reference));
+   }
+
+   if (position != Input.size() or not valid_fragment_references(result)) {
+      return cache::FormatError::INVALID_METADATA;
+   }
+   Output = std::move(result);
+   return cache::FormatError::OKAY;
+}
+
 } // namespace tiri::import_cache

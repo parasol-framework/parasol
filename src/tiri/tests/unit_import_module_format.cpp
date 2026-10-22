@@ -141,7 +141,7 @@ bool round_trip_and_determinism(kt::Log &Log)
 {
    auto identity = sample_identity();
    auto interface_value = sample_interface();
-   const std::string payload("\x1bLJ\x02module-bytecode", 18);
+   const std::string payload("\x1bLJ\x02\x10module-bytecode", 19);
    std::string encoded;
    if (encode_fixture_envelope(identity, interface_value, payload, encoded) != tiri::cache::FormatError::OKAY or
        not is_envelope(encoded)) {
@@ -517,7 +517,7 @@ bool malformed_and_bounds(kt::Log &Log)
    auto identity = sample_identity();
    auto interface_value = sample_interface();
    std::string encoded;
-   if (encode_fixture_envelope(identity, interface_value, std::string("\x1bLJ", 3), encoded) !=
+   if (encode_fixture_envelope(identity, interface_value, std::string("\x1bLJ\xb0\x10", 5), encoded) !=
        tiri::cache::FormatError::OKAY) return false;
 
    EnvelopeView output;
@@ -560,7 +560,7 @@ bool malformed_and_bounds(kt::Log &Log)
 
    auto duplicate = sample_interface();
    duplicate.Exports.push_back(duplicate.Exports[0]);
-   if (encode_fixture_envelope(identity, duplicate, std::string("\x1bLJ", 3), encoded) !=
+   if (encode_fixture_envelope(identity, duplicate, std::string("\x1bLJ\xb0\x10", 5), encoded) !=
        tiri::cache::FormatError::INVALID_METADATA) {
       Log.error("A duplicate exported binding was accepted");
       return false;
@@ -570,7 +570,7 @@ bool malformed_and_bounds(kt::Log &Log)
    auto conflicting_export = mixed_kind_conflict.Exports[0];
    conflicting_export.Kind = ExportKind::EXTERN;
    mixed_kind_conflict.Exports.push_back(std::move(conflicting_export));
-   if (encode_fixture_envelope(identity, mixed_kind_conflict, std::string("\x1bLJ", 3), encoded) !=
+   if (encode_fixture_envelope(identity, mixed_kind_conflict, std::string("\x1bLJ\xb0\x10", 5), encoded) !=
        tiri::cache::FormatError::INVALID_METADATA) {
       Log.error("Conflicting export kinds for the same binding were accepted");
       return false;
@@ -578,7 +578,7 @@ bool malformed_and_bounds(kt::Log &Log)
 
    auto conflicting_namespace = sample_interface();
    conflicting_namespace.Namespaces.push_back({ "geometry", NamespaceMode::DECLARE });
-   if (encode_fixture_envelope(identity, conflicting_namespace, std::string("\x1bLJ", 3), encoded) !=
+   if (encode_fixture_envelope(identity, conflicting_namespace, std::string("\x1bLJ\xb0\x10", 5), encoded) !=
        tiri::cache::FormatError::INVALID_METADATA) {
       Log.error("A conflicting namespace declaration was accepted");
       return false;
@@ -586,7 +586,7 @@ bool malformed_and_bounds(kt::Log &Log)
 
    auto too_many = sample_interface();
    too_many.Sources.resize(MAX_INTERFACE_RECORDS + 1);
-   if (encode_fixture_envelope(identity, too_many, std::string("\x1bLJ", 3), encoded) !=
+   if (encode_fixture_envelope(identity, too_many, std::string("\x1bLJ\xb0\x10", 5), encoded) !=
        tiri::cache::FormatError::COUNT_LIMIT) {
       Log.error("The interface record count bound was not enforced");
       return false;
@@ -594,7 +594,7 @@ bool malformed_and_bounds(kt::Log &Log)
 
    auto unknown_kind = sample_interface();
    unknown_kind.Exports[0].Kind = ExportKind(255);
-   if (encode_fixture_envelope(identity, unknown_kind, std::string("\x1bLJ", 3), encoded) !=
+   if (encode_fixture_envelope(identity, unknown_kind, std::string("\x1bLJ\xb0\x10", 5), encoded) !=
        tiri::cache::FormatError::INVALID_ENUM) {
       Log.error("An unknown interface record kind was accepted");
       return false;
@@ -604,13 +604,99 @@ bool malformed_and_bounds(kt::Log &Log)
 
 
 
+//********************************************************************************************************************
+// Fragment reference tables must round-trip canonically and reject truncation, trailing bytes, unsupported versions,
+// duplicate or unordered identities and invalid import lines before any linking is attempted.  Envelopes accept only
+// fragment payloads, so a complete dump can never be published or read back as a module-cache entry.
+
+bool fragment_references_and_payload_kind(kt::Log &Log)
+{
+   const std::vector<FragmentReference> references {
+      { "compiled-a", 0, 3 }, { "compiled-b", 2, 200 }
+   };
+   std::string encoded;
+   std::vector<FragmentReference> decoded;
+   if (encode_fragment_references(references, encoded) != tiri::cache::FormatError::OKAY or
+       decode_fragment_references(encoded, decoded) != tiri::cache::FormatError::OKAY or decoded != references) {
+      Log.error("Fragment references did not round-trip");
+      return false;
+   }
+
+   std::string empty;
+   if (encode_fragment_references({}, empty) != tiri::cache::FormatError::OKAY or
+       decode_fragment_references(empty, decoded) != tiri::cache::FormatError::OKAY or not decoded.empty()) {
+      Log.error("An empty fragment reference table was rejected");
+      return false;
+   }
+
+   for (size_t length = 0; length < encoded.size(); ++length) {
+      if (decode_fragment_references(std::string_view(encoded).substr(0, length), decoded) IS
+          tiri::cache::FormatError::OKAY) {
+         Log.error("A truncated fragment reference table was accepted at %zu bytes", length);
+         return false;
+      }
+   }
+
+   std::string trailing = encoded + '\0';
+   std::string version = encoded;
+   version[0] = char(FRAGMENT_REFERENCE_VERSION + 1);
+   std::string count_limit;
+   count_limit.push_back(char(FRAGMENT_REFERENCE_VERSION));
+   count_limit += "\x81\x20";
+   if (decode_fragment_references(trailing, decoded) IS tiri::cache::FormatError::OKAY or
+       decode_fragment_references(version, decoded) IS tiri::cache::FormatError::OKAY or
+       decode_fragment_references(count_limit, decoded) IS tiri::cache::FormatError::OKAY) {
+      Log.error("A malformed fragment reference table was accepted");
+      return false;
+   }
+
+   const std::vector<std::vector<FragmentReference>> invalid {
+      { { "compiled-a", 0, 1 }, { "compiled-a", 0, 1 } },
+      { { "compiled-b", 0, 1 }, { "compiled-a", 0, 1 } },
+      { { "", 0, 1 } },
+      { { "compiled-a", 0, 0 } }
+   };
+   for (const auto &table : invalid) {
+      std::string bytes;
+      if (encode_fragment_references(table, bytes) IS tiri::cache::FormatError::OKAY) {
+         Log.error("An invalid fragment reference table was encoded");
+         return false;
+      }
+
+      // Bypass the encoder to prove that the decoder enforces the same rules.
+      bytes.assign(1, char(FRAGMENT_REFERENCE_VERSION));
+      bytes.push_back(char(table.size()));
+      for (const auto &reference : table) {
+         bytes.push_back(char(reference.CompiledIdentity.size()));
+         bytes += reference.CompiledIdentity;
+         bytes.push_back(char(reference.ParentSource));
+         bytes.push_back(char(reference.ImportLine));
+      }
+      if (decode_fragment_references(bytes, decoded) IS tiri::cache::FormatError::OKAY) {
+         Log.error("An invalid fragment reference table was decoded");
+         return false;
+      }
+   }
+
+   auto identity = sample_identity();
+   auto interface_value = sample_interface();
+   std::string envelope;
+   const std::string complete("\x1bLJ\xb0\x08" "complete-dump", 18);
+   if (encode_fixture_envelope(identity, interface_value, complete, envelope) !=
+       tiri::cache::FormatError::INVALID_PAYLOAD) {
+      Log.error("A complete bytecode dump was accepted as a module-cache payload");
+      return false;
+   }
+   return true;
+}
+
 } // namespace
 
 void import_module_format_unit_tests(int &Passed, int &Total)
 {
    kt::Log log("ImportModuleFormatTests");
    for (auto test : { package_identity_validation, round_trip_and_determinism, compiled_identity_and_graph_assembly,
-      root_module_graph_validation, malformed_and_bounds }) {
+      root_module_graph_validation, malformed_and_bounds, fragment_references_and_payload_kind }) {
       Total++;
       if (test(log)) Passed++;
    }

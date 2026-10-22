@@ -204,6 +204,7 @@ public:
    std::vector<uint8_t> bytecode_compatibility_manifest;
    std::vector<uint8_t> bytecode_import_module_bundle;
    std::vector<tiri::import_cache::RootModuleRecord> bytecode_import_module_records;
+   std::vector<tiri::import_cache::FragmentReference> bytecode_fragment_references;
    std::vector<ImportModuleCompilationRecord> import_module_records;
    std::vector<ImportModuleCompilationFrame> import_module_stack;
    std::vector<int> import_module_anchors;
@@ -214,6 +215,7 @@ public:
    bool dynamic_struct_reference = false;
    bool loaded_structs_committed = false;
    BytecodeLoadPolicy bytecode_load_policy = BytecodeLoadPolicy::Install;
+   BytecodePayloadKind bytecode_payload_kind = BytecodePayloadKind::Complete;
    BytecodeLoadOperationCounters bytecode_load_operations;
 
    GCstr *    chunk_name;     // Current chunk name (interned string).

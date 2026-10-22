@@ -14,6 +14,7 @@
 #include <span>
 #include <string>
 #include <unordered_map>
+#include <unordered_set>
 #include <utility>
 #include <vector>
 
@@ -173,6 +174,7 @@ private:
 
    uint8_t record_import_source(
       const std::string &, const std::string &, std::string_view, BCLine, uint8_t, BCLine, uint8_t);
+   void register_cached_module_sources(const tiri::import_cache::CachedModuleArtifact &, uint8_t, uint8_t);
    void record_source_namespace(std::string_view);
    [[nodiscard]] tiri::cache::Manifest *cache_manifest();
    [[nodiscard]] std::string cache_context_path();

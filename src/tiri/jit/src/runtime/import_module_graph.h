@@ -105,3 +105,8 @@ void install_proto_compatibility_manifest(lua_State *State, GCproto *Prototype, 
 void apply_import_module_relocations(const ImportModuleRelocationPlan &Plan) noexcept;
 
 [[nodiscard]] bool validate_import_module_relocation_plan(const ImportModuleRelocationPlan &Plan) noexcept;
+
+// Confirms that every activation operand in a module fragment indexes References, that each activation's identity
+// constant names the referenced module, and that every reference is activated at least once.
+[[nodiscard]] bool validate_import_module_fragment_activations(
+   GCproto *Root, std::span<const tiri::import_cache::FragmentReference> References);

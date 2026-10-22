@@ -422,3 +422,360 @@ end
    assert(code is 0 and output.find('Cache hit') != nil, output)
    assert_run(output, 43)
 end
+
+----------------------------------------------------------------------------------------------------------------------
+-- Module-cache fragments.  Each cache entry stores only its own initialiser and references separately cached
+-- dependencies, so these helpers locate entries by the package paths recorded in their uncompressed identities.
+
+function read_bytes(Path:str):str
+   local file <close> = io.open(Path, 'r')
+   return file.read('*a')
+end
+
+function fragment_entries(Packages:array<str>):table
+   local entries = {}
+   local folder <close> = obj.new('file', { path=glCacheFolder, flags=FL_FOLDER|FL_READ })
+   local err, file = folder.mtNext()
+   while err is ERR_Okay do
+      local name = file.path
+      if name.find('import-') != nil and name.endsWith('.tbc') then
+         local content = read_bytes(name)
+         -- Importers record their dependencies' paths, so the owning module is the last matching package in
+         -- dependency-first order.
+         local owner
+         for package in values(Packages) do
+            if content.find('/' .. package .. '/') != nil then owner = package end
+         end
+         if owner then entries[owner] = { path=name, size=file.size } end
+      end
+      err, file = folder.mtNext()
+   end
+   return entries
+end
+
+function clear_fragment_entries(Packages:array<str>)
+   local entries = fragment_entries(Packages)
+   while table.size(entries) > 0 do
+      for _, entry in entries do check mSys.DeleteFile(entry.path) end
+      entries = fragment_entries(Packages)
+   end
+end
+
+function write_package(Packages:str, Name:str, Source:str)
+   local folder <close> = obj.new('file', { path=Packages .. Name .. '/', flags=FL_NEW|FL_FOLDER })
+   local version <close> = obj.new('file', { path=Packages .. Name .. '/1/', flags=FL_NEW|FL_FOLDER })
+   write_file(Packages .. Name .. '/1/main.tiri', Source)
+end
+
+-- The shared leaf owns a large private body behind a small interface, so its code size can grow without changing
+-- what its importers compile against.
+
+function fragment_leaf_source(Value:num, Helpers:num):str
+   local source = '@Package(name="frag-leaf", version="1")\nnamespace frag_leaf { }\nglFragmentLeafRuns++\n'
+   for index in {0 to Helpers} do
+      source ..= f'local function helper_{index}(Value:num):num\n'
+      source ..= f'   local text = "fragment leaf helper {index} " .. tostring(Value)\n'
+      source ..= f'   return #text + Value * {index} - {index} * Value\nend\n'
+   end
+   source ..= f'local total = 0\n'
+   for index in {0 to Helpers} do source ..= f'total += helper_{index}(1)\n' end
+   source ..= f'frag_leaf.value = {Value}\nfrag_leaf.total = total\n'
+   return source
+end
+
+function write_fragment_graph(Packages:str, LeafValue:num, Helpers:num)
+   write_file(Packages .. 'index.cfg', '[frag-leaf]\n1 = frag-leaf/1/main.tiri\n' ..
+      '[frag-left]\n1 = frag-left/1/main.tiri\n[frag-right]\n1 = frag-right/1/main.tiri\n' ..
+      '[frag-top]\n1 = frag-top/1/main.tiri\n')
+   write_package(Packages, 'frag-leaf', fragment_leaf_source(LeafValue, Helpers))
+   write_package(Packages, 'frag-left', [[
+      @Package(name="frag-left", version="1")
+      import 'frag-leaf'
+      namespace frag_left { }
+      frag_left.value = frag_leaf.value + 1
+   ]])
+   write_package(Packages, 'frag-right', [[
+      @Package(name="frag-right", version="1")
+      import 'frag-leaf'
+      namespace frag_right { }
+      frag_right.value = frag_leaf.value + 2
+   ]])
+   write_package(Packages, 'frag-top', [[
+      @Package(name="frag-top", version="1")
+      import 'frag-left', 'frag-right'
+      namespace frag_top { }
+      frag_top.value = frag_left.value + frag_right.value
+   ]])
+end
+
+function run_fragment_graph(Packages:str, Expected:num):str
+   local code, output = package_import(Packages, "global glFragmentLeafRuns = 0; import 'frag-top'; " ..
+      "print('FRAGMENT_VALUE:' .. frag_top.value .. ':' .. glFragmentLeafRuns)")
+   assert(code is 0 and output.find('FRAGMENT_VALUE:' .. tostring(Expected) .. ':1') != nil,
+      'The diamond graph must produce its value and initialise the shared leaf once: ' .. output)
+   assert_valid_cache_graph(output)
+   return output
+end
+
+----------------------------------------------------------------------------------------------------------------------
+-- A diamond with a large shared leaf persists the leaf's code once.  Warm, partially populated and corrupt caches
+-- link the same graph, initialise the leaf once and decode each module exactly once.
+
+@Test function FragmentCacheStoresSharedLeafOnce()
+   local packages = glRoot .. 'fragment-packages/'
+   local root <close> = obj.new('file', { path=packages, flags=FL_NEW|FL_FOLDER })
+   local names = array<str> { 'frag-leaf', 'frag-left', 'frag-right', 'frag-top' }
+   write_fragment_graph(packages, 10, 20)
+
+   local output = run_fragment_graph(packages, 23)
+   assert(output.find('hits=0 misses=4') != nil and output.find('source-compilations=4 publications=4') != nil,
+      'A cold graph must compile and publish each module once: ' .. output)
+
+   output = run_fragment_graph(packages, 23)
+   assert(output.find('hits=4 misses=0') != nil and output.find('source-compilations=0 publications=0') != nil and
+      output.find('destination-loads=4 ') != nil,
+      'A warm graph must link every module from its own cache entry exactly once: ' .. output)
+
+   local small = fragment_entries(names)
+   for name in values(names) do assert(small[name], 'Missing cache entry for ' .. name) end
+
+   -- Remove one parent: the remaining entries are reused and only the missing branch and its importer rebuild.
+   check mSys.DeleteFile(small['frag-left'].path)
+   output = run_fragment_graph(packages, 23)
+   assert(output.find('hits=2 misses=2') != nil and output.find('source-compilations=2 publications=2') != nil,
+      'A partially populated cache must reuse valid dependencies: ' .. output)
+
+   -- Corrupt the shared leaf: every importer must reject its fragment rather than link stale or missing code.
+   write_file(fragment_entries(names)['frag-leaf'].path, 'TIRIMOD1-corrupt')
+   output = run_fragment_graph(packages, 23)
+   assert(output.find('hits=0 misses=4') != nil,
+      'A corrupt dependency entry must invalidate every importer: ' .. output)
+
+   -- Change only the leaf implementation.  The interface is unchanged, but the new compiled identity must still
+   -- invalidate the importers.
+   write_package(packages, 'frag-leaf', fragment_leaf_source(11, 20))
+   output = run_fragment_graph(packages, 25)
+   assert(output.find('hits=0 misses=4') != nil,
+      'A changed dependency implementation must invalidate its importers: ' .. output)
+
+   -- Grow the leaf's code eightfold.  Parent entries reference the leaf and must not grow with it.  Superseded
+   -- entries remain under their old lookup keys, so measure each generation from an otherwise empty cache.
+   local function measure(Helpers:num):table
+      clear_fragment_entries(names)
+      write_package(packages, 'frag-leaf', fragment_leaf_source(11, Helpers))
+      run_fragment_graph(packages, 25)
+      local warm = run_fragment_graph(packages, 25)
+      assert(warm.find('hits=4 misses=0') != nil, 'The rebuilt graph must be warm: ' .. warm)
+      return fragment_entries(names)
+   end
+   small = measure(20)
+   local large = measure(160)
+   assert(large['frag-leaf'].size > small['frag-leaf'].size + 4096,
+      f"The leaf entry must grow with its code: {small['frag-leaf'].size} -> {large['frag-leaf'].size}")
+   for name in values(array<str> { 'frag-left', 'frag-right', 'frag-top' }) do
+      assert(math.abs(large[name].size - small[name].size) < 256,
+         f'{name} must not embed the leaf body: {small[name].size} -> {large[name].size}')
+      assert(large[name].size * 2 < large['frag-leaf'].size,
+         f"{name} must be smaller than the shared leaf: {large[name].size} vs {large['frag-leaf'].size}")
+   end
+end
+
+----------------------------------------------------------------------------------------------------------------------
+-- A module imported through a relative helper is activated by the helper's owner, so it is part of the owner's
+-- identity.  Changing that module must rebuild the owner rather than reuse stale code.
+
+@Test function RelativeHelperModuleDependencyInvalidatesOwner()
+   local packages = glRoot .. 'helper-packages/'
+   local root <close> = obj.new('file', { path=packages, flags=FL_NEW|FL_FOLDER })
+   write_file(packages .. 'index.cfg', '[helper-leaf]\n1 = helper-leaf/1/main.tiri\n' ..
+      '[helper-owner]\n1 = helper-owner/1/main.tiri\n')
+   write_package(packages, 'helper-leaf',
+      '@Package(name="helper-leaf", version="1")\nnamespace helper_leaf { }\nhelper_leaf.value = 1\n')
+   write_package(packages, 'helper-owner', [[
+      @Package(name="helper-owner", version="1")
+      import './helper'
+      namespace helper_owner { }
+      helper_owner.value = helper_value()
+   ]])
+   write_file(packages .. 'helper-owner/1/helper.tiri', [[
+      import 'helper-leaf'
+      global function helper_value():num return helper_leaf.value end
+   ]])
+
+   local statement = "import 'helper-owner'; print('HELPER_VALUE:' .. helper_owner.value)"
+   for pass in {0 to 2} do
+      local code, output = package_import(packages, statement)
+      assert(code is 0 and output.find('HELPER_VALUE:1') != nil, output)
+      if pass is 1 then
+         assert(output.find('hits=2 misses=0') != nil, 'The helper dependency must be validated: ' .. output)
+      end
+   end
+
+   write_package(packages, 'helper-leaf',
+      '@Package(name="helper-leaf", version="1")\nnamespace helper_leaf { }\nhelper_leaf.value = 2\n')
+   local code, output = package_import(packages, statement)
+   assert(code is 0 and output.find('HELPER_VALUE:2') != nil and output.find('hits=0 misses=2') != nil,
+      'A changed module imported through a relative helper must rebuild its owner: ' .. output)
+end
+
+----------------------------------------------------------------------------------------------------------------------
+-- Saved bytecode is self-contained whether its imports were compiled cold or linked from fragments.  It must run and
+-- re-save after the module cache entries are removed.
+
+@Test function ExportedBytecodeIsIndependentOfFragments()
+   local packages = glRoot .. 'export-packages/'
+   local root <close> = obj.new('file', { path=packages, flags=FL_NEW|FL_FOLDER })
+   write_fragment_graph(packages, 30, 10)
+   local source = glRoot .. 'export_main.tiri'
+   write_file(source, "global glFragmentLeafRuns = 0\nimport 'frag-top'\n" ..
+      "print('EXPORT_VALUE:' .. frag_top.value .. ':' .. glFragmentLeafRuns)\n")
+   local saver = glRoot .. 'export_saver.tiri'
+   write_file(saver, [[
+      local script <close> = obj.new('tiri', { path=arg('source') })
+      local file <close> = obj.new('file', { path=arg('output'), flags=FL_NEW|FL_WRITE })
+      check script.acSaveToObject(file)
+   ]])
+
+   local function save(Output:str, Source:str):str
+      local code, output = child(array<str> { saver, 'source=' .. Source, 'output=' .. Output, '--log-trace',
+         '--gfx-driver=headless', '--set-volume', 'packages=' .. packages, '--set-volume', 'temp=' .. glRoot })
+      assert(code is 0, output)
+      return output
+   end
+
+   local function execute(Path:str)
+      local code, output = child(array<str> { Path, '--log-warning', '--gfx-driver=headless',
+         '--set-volume', 'packages=' .. packages, '--set-volume', 'temp=' .. glRoot })
+      assert(code is 0 and output.find('EXPORT_VALUE:63:1') != nil, 'Exported bytecode failed: ' .. output)
+   end
+
+   local names = array<str> { 'frag-leaf', 'frag-left', 'frag-right', 'frag-top' }
+   local cold = glRoot .. 'export_cold.tbc'
+   local warm = glRoot .. 'export_warm.tbc'
+   save(cold, source)
+   local output = save(warm, source)
+   assert(output.find('source-compilations=0') != nil, 'The second export must link cached fragments: ' .. output)
+
+   clear_fragment_entries(names)
+   execute(cold)
+   execute(warm)
+
+   local resaved = glRoot .. 'export_resaved.tbc'
+   save(resaved, warm)
+   execute(resaved)
+end
+
+----------------------------------------------------------------------------------------------------------------------
+-- A warm-linked dependency keeps its structure declarations and its own source lines in runtime diagnostics.
+
+@Test function LinkedDependencyPreservesStructuresAndDiagnostics()
+   local packages = glRoot .. 'diagnostic-packages/'
+   local root <close> = obj.new('file', { path=packages, flags=FL_NEW|FL_FOLDER })
+   write_file(packages .. 'index.cfg', '[diag-leaf]\n1 = diag-leaf/1/leaf.tiri\n[diag-mid]\n1 = diag-mid/1/mid.tiri\n')
+   for name in values(array<str> { 'diag-leaf', 'diag-mid' }) do
+      local folder <close> = obj.new('file', { path=packages .. name .. '/', flags=FL_NEW|FL_FOLDER })
+      local version <close> = obj.new('file', { path=packages .. name .. '/1/', flags=FL_NEW|FL_FOLDER })
+   end
+   write_file(packages .. 'diag-leaf/1/leaf.tiri', [[@Package(name="diag-leaf", version="1")
+namespace diag_leaf { }
+struct DiagPoint
+   X: double
+   Y: double
+end
+function diag_leaf.fail(Value:num)
+   raise 'DIAG_LEAF_FAILURE ' .. tostring(Value)
+end
+]])
+   write_file(packages .. 'diag-mid/1/mid.tiri', [[@Package(name="diag-mid", version="1")
+import 'diag-leaf'
+namespace diag_mid { }
+function diag_mid.point():struct
+   return struct<DiagPoint> { X=3, Y=4 }
+end
+function diag_mid.call()
+   diag_leaf.fail(7)
+end
+]])
+   local script = path('_diagnostics.tiri')
+   write_file(script, [[
+      import 'diag-mid'
+      local point = diag_mid.point()
+      print('DIAG_POINT:' .. (point.X + point.Y))
+      try<trace>
+         diag_mid.call()
+      except e
+         print('DIAG_ERROR:' .. e.message .. ' @ ' .. tostring(e.line))
+         print('DIAG_TRACE:' .. tostring(e.stackTrace ?? e.trace))
+      end
+   ]])
+
+   for pass in {0 to 2} do
+      local code, output = child(array<str> { script, '--log-trace', '--gfx-driver=headless',
+         '--set-volume', 'packages=' .. packages, '--set-volume', 'temp=' .. glRoot })
+      assert(code is 0 and output.find('DIAG_POINT:7') != nil and
+         output.find('DIAG_ERROR:DIAG_LEAF_FAILURE 7 @ 8') != nil and output.find('leaf.tiri:8') != nil and
+         output.find('mid.tiri:8') != nil, 'Dependency structures and diagnostics must be preserved: ' .. output)
+      assert(output.find(pass is 0 ? 'hits=0 misses=2' : 'hits=2 misses=0') != nil, output)
+   end
+end
+
+----------------------------------------------------------------------------------------------------------------------
+-- Entries are published independently, so a reader can observe a parent from one generation beside a dependency
+-- from another.  A relative helper changes the dependency's compiled identity without changing its lookup key; the
+-- stale side of either mixture must be rejected rather than linked.
+
+@Test function MixedGenerationEntriesAreNotLinked()
+   local packages = glRoot .. 'generation-packages/'
+   local root <close> = obj.new('file', { path=packages, flags=FL_NEW|FL_FOLDER })
+   local names = array<str> { 'gen-leaf', 'gen-top' }
+   write_file(packages .. 'index.cfg', '[gen-leaf]\n1 = gen-leaf/1/main.tiri\n[gen-top]\n1 = gen-top/1/main.tiri\n')
+   write_package(packages, 'gen-leaf', [[
+      @Package(name="gen-leaf", version="1")
+      import './helper'
+      namespace gen_leaf { }
+      gen_leaf.value = gen_helper_value()
+   ]])
+   write_package(packages, 'gen-top', [[
+      @Package(name="gen-top", version="1")
+      import 'gen-leaf'
+      namespace gen_top { }
+      gen_top.value = gen_leaf.value * 10
+   ]])
+
+   -- A file root is required: path-less roots such as --statement do not capture relative-import observations.
+   local script = path('_generation.tiri')
+   write_file(script, "import 'gen-top'\nprint('GEN_VALUE:' .. gen_top.value)\n")
+   local function run_root():<num, str>
+      return child(array<str> { script, '--log-trace', '--gfx-driver=headless',
+         '--set-volume', 'packages=' .. packages, '--set-volume', 'temp=' .. glRoot })
+   end
+
+   local function generation(Value:num):table
+      write_file(packages .. 'gen-leaf/1/helper.tiri', f'global function gen_helper_value():num return {Value} end')
+      local code, output = run_root()
+      assert(code is 0 and output.find('GEN_VALUE:' .. tostring(Value * 10)) != nil, output)
+      local entries = fragment_entries(names)
+      return { leaf=read_bytes(entries['gen-leaf'].path), top=read_bytes(entries['gen-top'].path),
+         leaf_path=entries['gen-leaf'].path, top_path=entries['gen-top'].path }
+   end
+
+   local first = generation(1)
+   local second = generation(2)
+   assert(first.leaf_path is second.leaf_path and first.top_path is second.top_path and
+      first.leaf != second.leaf and first.top != second.top,
+      'Both generations must publish different content under the same lookup keys')
+
+   write_file(second.top_path, first.top)
+   local code, output = run_root()
+   assert(code is 0 and output.find('GEN_VALUE:20') != nil and output.find('hits=1 misses=1') != nil,
+      'A stale parent must not link a newer dependency: ' .. output)
+
+   write_file(second.leaf_path, first.leaf)
+   code, output = run_root()
+   assert(code is 0 and output.find('GEN_VALUE:20') != nil and output.find('hits=0 misses=2') != nil,
+      'A stale dependency must invalidate its importer: ' .. output)
+
+   code, output = run_root()
+   assert(code is 0 and output.find('GEN_VALUE:20') != nil and output.find('hits=2 misses=0') != nil,
+      'The republished generation must be warm: ' .. output)
+end

@@ -230,6 +230,7 @@ private:
    ParserResult<IrEmitUnit> emit_raise_payload(const RaisePayload &Payload, const SourceSpan &Span);
    ParserResult<IrEmitUnit> emit_check_stmt(const CheckStmtPayload& payload, const SourceSpan& span);
    ParserResult<IrEmitUnit> emit_import_entry(const ImportEntryPayload& entry);
+   ParserResult<uint32_t> link_cached_module(const tiri::import_cache::CachedModuleArtifact &Artifact);
    ParserResult<IrEmitUnit> emit_import_stmt(const ImportStmtPayload& payload);
    ParserResult<IrEmitUnit> emit_namespace_stmt(const NamespaceStmtPayload& payload);
    void emit_namespace_registry_load(std::string_view name, BCReg destination);

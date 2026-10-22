@@ -56,7 +56,7 @@ static TValue * cpparser(lua_State *L, lua_CFunction dummy, APTR ud)
 // vstack) when a parse error occurs.
 
 static int load(lua_State *Lua, std::string_view Source, CSTRING SourceName, BytecodeLoadMetadata *Metadata,
-   BytecodeLoadPolicy Policy = BytecodeLoadPolicy::Install)
+   BytecodeLoadPolicy Policy = BytecodeLoadPolicy::Install, BytecodePayloadKind Kind = BytecodePayloadKind::Complete)
 {
    if (Metadata) *Metadata = {};
 
@@ -67,6 +67,7 @@ static int load(lua_State *Lua, std::string_view Source, CSTRING SourceName, Byt
 
    auto *ls = new LexState(Lua, Source, SourceName, std::nullopt);
    ls->bytecode_load_policy = Policy;
+   ls->bytecode_payload_kind = Kind;
 
    // Set diagnose mode if enabled - this allows lexer to collect errors instead of throwing
 
@@ -78,6 +79,7 @@ static int load(lua_State *Lua, std::string_view Source, CSTRING SourceName, Byt
    BytecodeLoadMetadata completed;
    if (not status and Metadata and ls->is_bytecode) {
       completed.ImportedModules = std::move(ls->bytecode_import_module_records);
+      completed.FragmentReferences = std::move(ls->bytecode_fragment_references);
       completed.Sources.reserve(ls->compilation_sources.size());
       for (size_t i = 0; i < ls->compilation_sources.size(); ++i) {
          const auto &source = ls->compilation_sources[i];
@@ -117,16 +119,16 @@ extern int lua_load(lua_State *Lua, std::string_view Source, CSTRING SourceName)
    return load(Lua, Source, SourceName, nullptr);
 }
 
-extern int lj_load_with_bytecode_metadata(
-   lua_State *Lua, std::string_view Source, CSTRING SourceName, BytecodeLoadMetadata &Metadata)
+extern int lj_load_with_bytecode_metadata(lua_State *Lua, std::string_view Source, CSTRING SourceName,
+   BytecodeLoadMetadata &Metadata, BytecodePayloadKind Kind)
 {
-   return load(Lua, Source, SourceName, &Metadata);
+   return load(Lua, Source, SourceName, &Metadata, BytecodeLoadPolicy::Install, Kind);
 }
 
-extern int lj_validate_bytecode(
-   lua_State *Lua, std::string_view Source, CSTRING SourceName, BytecodeLoadMetadata &Metadata)
+extern int lj_validate_bytecode(lua_State *Lua, std::string_view Source, CSTRING SourceName,
+   BytecodeLoadMetadata &Metadata, BytecodePayloadKind Kind)
 {
-   return load(Lua, Source, SourceName, &Metadata, BytecodeLoadPolicy::ValidateOnly);
+   return load(Lua, Source, SourceName, &Metadata, BytecodeLoadPolicy::ValidateOnly, Kind);
 }
 
 //********************************************************************************************************************

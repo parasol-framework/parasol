@@ -5,6 +5,7 @@
 #include "lj_gc.h"
 #include "lj_str.h"
 
+#include <algorithm>
 #include <array>
 #include <limits>
 #include <unordered_set>
@@ -395,6 +396,33 @@ bool validate_import_module_relocation_plan(const ImportModuleRelocationPlan &Pl
       }
    }
    return true;
+}
+
+//********************************************************************************************************************
+// Validates a fragment's activation sites against its reference table without changing bytecode.
+
+bool validate_import_module_fragment_activations(
+   GCproto *Root, std::span<const tiri::import_cache::FragmentReference> References)
+{
+   std::vector<uint32_t> identity(References.size());
+   for (size_t i = 0; i < identity.size(); ++i) identity[i] = uint32_t(i);
+   ImportModuleRelocationPlan plan;
+   if (not Root or not preflight_import_module_relocations(std::span<GCproto *const>(&Root, 1), identity, plan)) {
+      return false;
+   }
+
+   std::vector<bool> activated(References.size(), false);
+   for (const ImportModuleRelocationSite &site : plan.sites) {
+      const BCIns instruction = proto_bc(site.prototype)[site.instruction - 1];
+      if (bc_d(instruction) >= site.prototype->sizekgc) return false;
+      GCobj *constant = proto_kgc(site.prototype, ~ptrdiff_t(bc_d(instruction)));
+      if (constant->gch.gct != ~LJ_TSTR) return false;
+      const GCstr *name = gco_to_string(constant);
+      const std::string &expected = References[site.old_index].CompiledIdentity;
+      if (std::string_view(strdata(name), name->len) != expected) return false;
+      activated[site.old_index] = true;
+   }
+   return std::ranges::all_of(activated, [](bool Value) { return Value; });
 }
 
 //********************************************************************************************************************

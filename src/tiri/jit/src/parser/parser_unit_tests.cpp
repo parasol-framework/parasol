@@ -12759,6 +12759,114 @@ static bool test_bytecode_load_metadata_transaction(kt::Log &Log)
 }
 
 //********************************************************************************************************************
+// Module-cache fragments are accepted only by the import-cache loader, and only when every activation names its
+// reference's compiled identity and every reference is activated.  The root of a compiled program supplies a real
+// activation site; its executable directory is detached while the root is written as a fragment.
+
+static bool test_import_module_fragment_payloads(kt::Log &Log)
+{
+   constexpr std::string_view source =
+      "global i01_boundary_trace = ''\nimport 'tests/i01-direct'\nreturn i01_boundary_trace";
+   LuaStateHolder producer_holder;
+   lua_State *producer = producer_holder.get();
+   if (not producer) return false;
+   luaL_openlibs(producer);
+   if (lua_load(producer, source, "fragment-producer") != 0) {
+      Log.error("fragment producer did not compile: %s", lua_tostring(producer, -1));
+      return false;
+   }
+
+   GCproto *root = funcproto(funcV(producer->top - 1));
+   ImportModuleTable *table = root->import_module_table.get<ImportModuleTable>();
+   if (not table or table->entry_count != 1) {
+      Log.error("fragment producer must activate exactly one imported module");
+      return false;
+   }
+   GCstr *identity_string = gco_to_string(gcref(import_module_table_entries(table)[0].compiled_identity));
+   const std::string identity(strdata(identity_string), identity_string->len);
+
+   std::string complete;
+   if (lj_bcwrite(producer, root, bytecode_writer, &complete, 0) != 0) return false;
+
+   auto write_fragment = [&](const std::vector<tiri::import_cache::FragmentReference> &References,
+      std::vector<uint32_t> Mapping, std::string &Output) -> int {
+      Output.clear();
+      std::string encoded;
+      ImportModuleRelocationPlan relocation;
+      if (tiri::import_cache::encode_fragment_references(References, encoded) != tiri::cache::FormatError::OKAY or
+          not preflight_import_module_relocations(std::span<GCproto *const>(&root, 1), Mapping, relocation)) {
+         return 1;
+      }
+      setmref(root->import_module_table, nullptr);
+      const int status = lj_bcwrite_fragment(producer, root, bytecode_writer, &Output, relocation, encoded);
+      setmref(root->import_module_table, table);
+      return status;
+   };
+
+   std::string fragment;
+   const std::vector<tiri::import_cache::FragmentReference> references { { identity, 0, 1 } };
+   if (write_fragment(references, { 0 }, fragment) != 0) {
+      Log.error("a valid fragment could not be written");
+      return false;
+   }
+
+   LuaStateHolder consumer_holder;
+   lua_State *consumer = consumer_holder.get();
+   if (not consumer) return false;
+   luaL_openlibs(consumer);
+   BytecodeLoadMetadata metadata;
+   if (lj_validate_bytecode(consumer, fragment, "fragment-valid", metadata,
+       BytecodePayloadKind::ModuleFragment) != 0 or metadata.FragmentReferences != references or
+       not metadata.ImportedModules.empty()) {
+      Log.error("a valid fragment was rejected or lost its references: %s", lua_tostring(consumer, -1));
+      return false;
+   }
+   lua_pop(consumer, 1);
+
+   if (lj_load_with_bytecode_metadata(consumer, fragment, "fragment-public", metadata) IS 0) {
+      Log.error("an unresolved fragment was loaded as standalone bytecode");
+      return false;
+   }
+   if (std::string_view(lua_tostring(consumer, -1)).find("fragment") IS std::string_view::npos) {
+      Log.error("standalone fragment rejection did not explain the failure: %s", lua_tostring(consumer, -1));
+      return false;
+   }
+   lua_pop(consumer, 1);
+
+   if (lj_validate_bytecode(consumer, complete, "fragment-complete", metadata,
+       BytecodePayloadKind::ModuleFragment) IS 0) {
+      Log.error("a complete dump was accepted as a module fragment");
+      return false;
+   }
+   lua_pop(consumer, 1);
+
+   std::string mismatched;
+   if (write_fragment({ { "compiled-other", 0, 1 } }, { 0 }, mismatched) != 0 or
+       lj_validate_bytecode(consumer, mismatched, "fragment-mismatch", metadata,
+          BytecodePayloadKind::ModuleFragment) IS 0) {
+      Log.error("a fragment whose activation names a different module was accepted");
+      return false;
+   }
+   lua_pop(consumer, 1);
+
+   std::string unused;
+   if (write_fragment({ { identity, 0, 1 }, { "zzz-unused", 0, 1 } }, { 0 }, unused) != 0 or
+       lj_validate_bytecode(consumer, unused, "fragment-unused", metadata,
+          BytecodePayloadKind::ModuleFragment) IS 0) {
+      Log.error("a fragment with an unactivated reference was accepted");
+      return false;
+   }
+   lua_pop(consumer, 1);
+
+   std::string unresolved;
+   if (write_fragment({}, { UINT32_MAX }, unresolved) IS 0) {
+      Log.error("a fragment with an unreferenced activation was written");
+      return false;
+   }
+   return true;
+}
+
+//********************************************************************************************************************
 // Indexed source lookup retains exact-path fallback when the hash index points at a different canonical path.
 
 static bool test_file_source_index_collision_fallback(kt::Log &Log)
@@ -13004,7 +13112,7 @@ static bool test_import_module_relocation_transaction(kt::Log &Log)
 
 extern void parser_unit_tests(int &Passed, int &Total)
 {
-   constexpr std::array<TestCase, 115> tests = { {
+   constexpr std::array<TestCase, 116> tests = { {
       { "nested_function_failure_after_bytecode_growth", test_nested_function_failure_after_bytecode_growth },
       { "ordinary_function_policy", test_ordinary_function_policy },
       { "function_context_binding_syntax", test_function_context_binding_syntax },
@@ -13012,6 +13120,7 @@ extern void parser_unit_tests(int &Passed, int &Total)
       { "package_annotation_metadata", test_package_annotation_metadata },
       { "versioned_import_syntax", test_versioned_import_syntax },
       { "bytecode_load_metadata_transaction", test_bytecode_load_metadata_transaction },
+      { "import_module_fragment_payloads", test_import_module_fragment_payloads },
       { "file_source_index_collision_fallback", test_file_source_index_collision_fallback },
       { "import_module_metadata_release_idempotence", test_import_module_metadata_release_idempotence },
       { "import_module_relocation_transaction", test_import_module_relocation_transaction },

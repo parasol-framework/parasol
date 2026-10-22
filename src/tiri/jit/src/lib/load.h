@@ -14,6 +14,10 @@ struct lua_State;
 
 enum class BytecodeLoadPolicy : uint8_t { Install, ValidateOnly };
 
+// Complete dumps are self-contained.  Module fragments are internal imported-module cache payloads whose dependency
+// references must be linked by the compiler, so only the import-cache loader may request them.
+enum class BytecodePayloadKind : uint8_t { Complete, ModuleFragment };
+
 struct BytecodeLoadOperationCounters {
    uint32_t payload_loads = 0;
    uint32_t prototype_decodes = 0;
@@ -29,6 +33,7 @@ struct BytecodeLoadOperationCounters {
 // imported-module graph from source input or a failed load.
 struct BytecodeLoadMetadata {
    std::vector<tiri::import_cache::RootModuleRecord> ImportedModules;
+   std::vector<tiri::import_cache::FragmentReference> FragmentReferences;
    std::vector<tiri::import_cache::SourceDescriptor> Sources;
    std::optional<tiri::PackageIdentity> Package;
    std::string CompatibilityManifest;
@@ -36,7 +41,7 @@ struct BytecodeLoadMetadata {
    bool Bytecode = false;
 };
 
-[[nodiscard]] int lj_load_with_bytecode_metadata(
-   lua_State *, std::string_view, const char *, BytecodeLoadMetadata &);
-[[nodiscard]] int lj_validate_bytecode(
-   lua_State *, std::string_view, const char *, BytecodeLoadMetadata &);
+[[nodiscard]] int lj_load_with_bytecode_metadata(lua_State *, std::string_view, const char *, BytecodeLoadMetadata &,
+   BytecodePayloadKind Kind = BytecodePayloadKind::Complete);
+[[nodiscard]] int lj_validate_bytecode(lua_State *, std::string_view, const char *, BytecodeLoadMetadata &,
+   BytecodePayloadKind Kind = BytecodePayloadKind::Complete);
