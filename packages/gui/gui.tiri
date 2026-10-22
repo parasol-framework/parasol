@@ -538,6 +538,7 @@ end
 
 glIconSpecs = { } -- Parsed string specs, keyed by the raw string
 glIconKeys  = { } -- Hash keys, mapped to the canonical string that each was built from
+glFilterExtent = 0.1 -- Minimum margin of a filter region, as a fraction of the normalised diagonal (SVG default)
 
 function effectError(Spec:str!, Pos:num!, Message:str!, Hint:str)
    if Hint then
@@ -955,7 +956,7 @@ gui.parseFill = function(Spec:any!):table
       key = f'theme_{effectHash(Spec)}'
       return {
          canonical=key, key=key, fill={ key=key, config=Spec }, paints=array<table>, vectors=array<table>,
-         effects=array<table>
+         effects=array<table>, extent=glFilterExtent
       }
    elseif Spec is <str> then
       cached = glIconSpecs[Spec]
@@ -1020,9 +1021,17 @@ gui.parseFill = function(Spec:any!):table
       if text != '' then canonical ..= ' ' .. text end
    end
 
+   -- The filter region must cover the furthest reach of any filter effect.  Each effect reads the output of the one
+   -- before it, so this assumes that the reach of an effect is not extended by the effects that follow it.
+
+   extent = glFilterExtent
+   for effect in values(effects) do
+      if effect.def.extent then extent = math.max(extent, effect.def.extent(effect.args)) end
+   end
+
    result = {
       canonical=canonical, key=fill.key, fill={ key=fill.key, config=fill.config }, paints=paints, vectors=vectors,
-      effects=effects
+      effects=effects, extent=extent
    }
 
    if paint_text != '' then
@@ -1048,12 +1057,19 @@ end
 -- Build the filter chain for the effects of a parsed theme, or reuse the chain if it is already registered in Scene.
 -- Each effect reads the output of the effect before it.  Returns the definition name, and true if it was registered
 -- by this call.
+--
+-- Bounding box units are scaled by the normalised diagonal of the bounds, so a blur or offset covers the same distance
+-- on both axes and the region adds the same margin to every side, whatever the shape of the target.
 
 function effectFilter(Scene:obj!, Theme:table!, Ctx:table!):<str, bool>
    name = f'effect_filter_{Theme.effectKey}'
    if Scene.mtFindDef(name) is ERR_Okay then return name, false end
 
-   filter = Scene.new('VectorFilter', { primitiveUnits = VUNIT_BOUNDING_BOX })
+   extent = Theme.extent
+   filter = Scene.new('VectorFilter', {
+      primitiveUnits = VUNIT_BOUNDING_BOX, aspectRatio = VFA_NONE,
+      x = -extent, y = -extent, width = 1 + (extent * 2), height = 1 + (extent * 2)
+   })
 
    try
       Ctx.filter = filter
@@ -1188,7 +1204,7 @@ end
 -- for live rendering (higher quality transforms).
 --
 -- A pattern cannot paint outside of the vector that consumes it, so the icon is drawn inside a padded tile to give
--- effects such as emboss() and glow() room to extend beyond the artwork.  Consumers must paint the fill at
+-- filter effects such as glow() room to extend beyond the artwork.  Consumers must paint the fill at
 -- (X - margin, Y - margin) with a size of Size + (margin * 2), where margin is returned in the result table.  The
 -- icon box (X, Y, Size) remains the area for layout and hit testing.
 
@@ -1222,10 +1238,11 @@ gui.createIcon = function(Scene:obj!, Path:str!, Size:num, FillEffect:any!, Name
       return { name = Name, theme = FillEffect, size = Size, path = Path, fill = f'url(#{Name})', margin = margin }
    end
 
-   -- Filters extend up to 10% beyond the bounds of the artwork by default, which the margin must accommodate.
+   -- The filter region extends beyond the artwork by the theme's extent, measured against the normalised diagonal of
+   -- the artwork.  That diagonal cannot exceed Size for artwork that fits the icon box, so Size is a safe measure.
    -- Whole units keep the icon aligned to the pixel grid in the common case of an integral icon position.
 
-   margin = math.ceil(Size * 0.1)
+   margin = math.ceil(Size * gui.parseFill(FillEffect).extent)
    inset  = (margin * 100) / (Size + (margin * 2))
 
    -- Hosting the pattern's scene in Scene allows its vectors to reference the theme gradient that is shared by all
@@ -1584,7 +1601,12 @@ end
 -- vectors.  Changes to vectors are drawn before filters, so filters see them wherever the call is written.  Each vector
 -- effect can appear once.  Parameter types are 'num', 'colour' and 'enum'.
 --
--- Future candidates: halo(), shadow(), and inset() (filter).
+-- Filter units are fractions of the normalised diagonal of the target's bounds.  A filter effect that draws beyond
+-- the bounds must declare extent(Args), which returns its furthest reach in the same units, so that the filter region
+-- and icon padding can accommodate it.  The region always extends by at least glFilterExtent.  A blur of radius r
+-- reaches 2r, because its kernel extends to twice the radius.
+--
+-- Future candidates: halo(), shadow(), sand(), stone(), and inset() (filter).
 
 gui.effects = {
    -- A gloss highlight over the upper half of the fill.
@@ -1911,8 +1933,7 @@ gui.effects = {
    },
 
    -- A soft glow around the path, drawn under it.  The radius is relative to the bounding box.  The blurred
-   -- alpha is multiplied by strength, because it falls below half at the path's edge.  The glow is clipped by the
-   -- filter region, so large radii are cut off at the edges.
+   -- alpha is multiplied by strength, because it falls below half at the path's edge.
 
    glow = {
       kind   = 'filter',
@@ -1921,6 +1942,9 @@ gui.effects = {
          { name='radius',   type='num', default=0.04 },
          { name='strength', type='num', default=2 }
       },
+      extent = function(Args:table!):num
+         return math.abs(Args.radius) * 2
+      end,
       build = function(Ctx:table!, Args:table!):obj
          filter = Ctx.filter
          source = Ctx.input

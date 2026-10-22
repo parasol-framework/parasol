@@ -14,7 +14,7 @@
     <copyright>Paul Manias © 2010-2026</copyright>
     <description>
 <p>This filter offsets the input image relative to its current position in the image space by the specified vector of <code>(XOffset,YOffset)</code>.</p>
-<p>If the <class name="VectorFilter" field="PrimitiveUnits">VectorFilter.PrimitiveUnits</class> of the filter is <code>BOUNDING_BOX</code>, the offsets are fractions of the bounding box. By default both offsets are scaled by the normalised diagonal of the bounding box, which is the same formula used by a scaled stroke width.  The direction of the offset is then the same for any shape, which suits drop shadows.  If the <class name="VectorScene" field="Compliance">VectorScene.Compliance</class> of the filter's scene is <code>SVG1</code> or <code>SVG2</code>, the X offset is scaled by the bounding box width and the Y offset by its height, as per the SVG standard.</p></description>
+<p>If the <class name="VectorFilter" field="PrimitiveUnits">VectorFilter.PrimitiveUnits</class> of the filter is <code>BOUNDING_BOX</code>, the offsets are fractions of the bounding box. By default the X offset is scaled by the bounding box width and the Y offset by its height, as per the SVG standard. If the <class name="VectorFilter" field="AspectRatio">VectorFilter.AspectRatio</class> is <code>NONE</code>, both offsets are scaled by the normalised diagonal of the bounding box, which is the same formula used by a scaled stroke width.  The direction of the offset is then the same for any shape, which suits drop shadows.</p></description>
     <source>
       <file path="filters/">filter_offset.cpp</file>
     </source>

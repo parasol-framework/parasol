@@ -206,14 +206,8 @@
       <access read="R" write="W">Read/Write</access>
       <type lookup="VSC">VSC</type>
       <description>
-<p>Kōtuku extends some features of the SVG standard where the standard produces results that are unsuitable for user interfaces.  Setting Compliance to <code>SVG1</code> or <code>SVG2</code> restores the standard behaviour for the scene.  The default is <code>NONE</code>.</p>
-<p>The following features are affected:</p>
-<list type="bullet">
-<li><class name="OffsetFX">OffsetFX</class>: When the filter's <class name="VectorFilter" field="PrimitiveUnits">VectorFilter.PrimitiveUnits</class> is <code>BOUNDING_BOX</code>, the default is to scale both offsets
-by the normalised diagonal of the bounding box, so that the direction of the offset is the same for any shape.  The
-SVG standards scale the X offset by the bounding box width and the Y offset by its height.</li>
-</list>
-<p>The setting is read from the scene that a <class name="VectorFilter">VectorFilter</class> belongs to.</p>
+<p>Compliance declares the standard that the content of the scene was written for.  The default is <code>NONE</code>, which permits Kōtuku's extensions where they differ from the standards.  The <class name="SVG">SVG</class> class sets <code>SVG2</code> on the scenes that it creates.</p>
+<p>No features currently change their behaviour in response to this setting.  Features that extend a standard by default will consult it so that the standard behaviour can be restored for the scene.</p>
 <types lookup="VSC"/>
       </description>
     </field>
