@@ -32,6 +32,7 @@ end
 
 @AfterAll function cleanup()
    mSys.DeleteFile('temp:scintilla_test.cpp')
+   mSys.DeleteFile('temp:scintilla_test.txt')
 end
 
 ----------------------------------------------------------------------------------------------------------------------
@@ -276,6 +277,27 @@ end
    assert(sci.lineCount is 4, f'Expected 4 lines, got {sci.lineCount}')
    assert(sci.lexer is SCLEX_CPP, f'The C++ lexer must be detected, got {sci.lexer}')
    assert(sci.modified is 0, 'Loading a file must not mark the document as modified')
+end
+
+-- Regression: lexer detection read past the last pattern in the lexer table, so a file name that matched no pattern
+-- crashed the process.
+
+@Test function PathWithUnknownLexer()
+   writeTempFile('temp:scintilla_test.txt', 'Plain text\n')
+
+   local scene <close>, vp, sci = newEditor({ path='temp:scintilla_test.txt', flags=SCIF_DETECT_LEXER })
+   assert(sci.string is 'Plain text\n', 'The file content must be loaded on initialisation')
+   assert(sci.lexer is 0, f'No lexer can be chosen for an unknown file type, got {sci.lexer}')
+end
+
+-- Regression: Lexer was registered as init-only, so it could not be changed after initialisation.
+
+@Test function ChangeLexerAfterInit()
+   local scene <close>, vp, sci = newEditor({ lexer=SCLEX_CPP })
+   sci.string = 'def main():\n   return 0\n'
+
+   sci.lexer = SCLEX_PYTHON
+   assert(sci.lexer is SCLEX_PYTHON, f'The lexer must be changeable after initialisation, got {sci.lexer}')
 end
 
 ----------------------------------------------------------------------------------------------------------------------

@@ -508,7 +508,8 @@
       <access read="R" write="S">Read/Set</access>
       <type lookup="SCLEX">SCLEX</type>
       <description>
-<p>The lexer for document styling is defined here.</p>
+<p>The lexer for document styling is defined here.  The lexer can be changed at any time, in which case the document is restyled immediately.</p>
+<p>If the <code>DETECT_LEXER</code> flag is set, the lexer is chosen from the file name whenever a file is loaded, and this overrides any existing value.  The <code>Lexer</code> is left unchanged if the file name does not match a known type.</p>
 <types lookup="SCLEX"/>
       </description>
     </field>

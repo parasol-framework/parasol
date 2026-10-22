@@ -246,6 +246,40 @@ end
    assert(colourAt(bmp, 240, 80) is '255,255,255', 'The enlarged area must be painted with the background')
 end
 
+@Test function ResizeRetainsContentUntilRepaint()
+   -- The repaint that follows a resize is deferred to message processing, so the scene is drawn at least once with
+   -- the resized Bitmap before Scintilla paints it.  That draw must show the prior content rather than a blank area
+   -- (previously the Bitmap was cleared, causing the editor to flash while a window was being resized).
+   local scene <close> = obj.new('VectorScene', { pageWidth=PAGE_WIDTH, pageHeight=PAGE_HEIGHT })
+   local root = scene.new('VectorViewport', { x=0, y=0, width='100%', height='100%' })
+   local host = root.new('VectorViewport', { x=0, y=0, width=200, height=60 })
+   local sci = host.new('Scintilla', { bkgdColour='250,240,200,255' })
+   local bmp = obj.new('bitmap', { width=PAGE_WIDTH, height=PAGE_HEIGHT, bitsPerPixel=32 })
+   scene.bitmap = bmp
+   sci.string = 'Hello\nWorld'
+   render(scene)
+
+   local reference = darkRowProfile(bmp, 0, 0, 60, 2 * LINE_HEIGHT)
+   assert(reference.find('1'), 'The text must be drawn before the resize')
+
+   host.width  = 250
+   host.height = 90
+   check scene.acDraw()
+   assert(darkRowProfile(bmp, 0, 0, 60, 2 * LINE_HEIGHT) is reference,
+      'Growing the editor must retain the prior content until it is repainted')
+   assert(colourAt(bmp, 240, 80) is '250,240,200',
+      f'The exposed area must use BkgdColour, got {colourAt(bmp, 240, 80)}')
+
+   -- Shrinking changes the row stride of the Bitmap, which must not skew the retained content.
+
+   processing.sleep(0)
+   host.width  = 120
+   host.height = 40
+   check scene.acDraw()
+   assert(darkRowProfile(bmp, 0, 0, 60, 2 * LINE_HEIGHT) is reference,
+      'Shrinking the editor must retain the prior content until it is repainted')
+end
+
 @Test function FractionalHostIsPixelAligned()
    local scene <close> = obj.new('VectorScene', { pageWidth=PAGE_WIDTH, pageHeight=PAGE_HEIGHT })
    local root = scene.new('VectorViewport', { x=0, y=0, width='100%', height='100%' })

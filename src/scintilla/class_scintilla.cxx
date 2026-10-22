@@ -156,8 +156,7 @@ static const struct {
    { "*.sql",          SCLEX::SQL },
    { "*.vb",           SCLEX::VB },
    { "*.vbscript",     SCLEX::VBSCRIPT },
-   { "*.xml",          SCLEX::XML },
-   { nullptr, SCLEX::NIL }
+   { "*.xml",          SCLEX::XML }
 };
 
 #define SCICOLOUR(red,green,blue) (((uint8_t)(blue))<<16)|(((uint8_t)(green))<<8)|((uint8_t)(red))
@@ -223,6 +222,7 @@ static ERR input_canvas(objVectorRectangle *, const InputEvent *);
 static void align_canvas(extScintilla *, double, double);
 static void sync_page(extScintilla *);
 static void clear_bitmap(extScintilla *);
+static ERR resize_bitmap(extScintilla *, int, int);
 static void invalidate_area(extScintilla *, int, int, int, int);
 static void paint_dirty(extScintilla *);
 static void update_margin_width(extScintilla *);
@@ -391,8 +391,7 @@ static ERR feedback_view(objVectorViewport *View, FM Event)
 
    // The Bitmap is one pixel wider and taller than the View to cover the sub-pixel alignment offset.
 
-   if ((Self->Bitmap) and (acResize(Self->Bitmap, width + 1, height + 1, 0) IS ERR::Okay)) {
-      clear_bitmap(Self);
+   if ((Self->Bitmap) and (resize_bitmap(Self, width + 1, height + 1) IS ERR::Okay)) {
       if (Self->Canvas) {
          Self->Canvas->setWidth(Self->Bitmap->Width);
          Self->Canvas->setHeight(Self->Bitmap->Height);
@@ -556,6 +555,46 @@ static void clear_bitmap(extScintilla *Self)
    auto &bkgd = Self->BkgdColour;
    gfx::DrawRectangle(Self->Bitmap, 0, 0, Self->Bitmap->Width, Self->Bitmap->Height,
       Self->Bitmap->packPixel(bkgd.Red, bkgd.Green, bkgd.Blue, 255), BAF::FILL);
+}
+
+//********************************************************************************************************************
+// Resize the Bitmap while retaining its content.  The repaint that follows a resize is deferred, so the scene is drawn
+// with the resized Bitmap before Scintilla repaints it.  Retaining the content avoids the editor flashing to a blank
+// background on every resize, which is persistent while a window is being resized interactively.  Bitmap resizing
+// does not preserve pixels (the buffer is reallocated, or reused with a different row stride) so the rows are copied
+// through a temporary buffer.  Only the areas exposed by the resize are cleared.
+
+static ERR resize_bitmap(extScintilla *Self, int Width, int Height)
+{
+   auto bmp = Self->Bitmap;
+   int old_width = bmp->Width, old_height = bmp->Height, old_line_width = bmp->LineWidth;
+   int keep_height = std::min(old_height, Height);
+
+   std::vector<uint8_t> saved;
+   if (bmp->Data) saved.assign(bmp->Data, bmp->Data + (size_t(old_line_width) * keep_height));
+
+   if (auto error = acResize(bmp, Width, Height, 0); error != ERR::Okay) return error;
+
+   if (saved.empty() or (not bmp->Data)) {
+      clear_bitmap(Self);
+      return ERR::Okay;
+   }
+
+   int keep_width = std::min(old_width, bmp->Width);
+   auto row_bytes = size_t(keep_width) * bmp->BytesPerPixel;
+   for (int y=0; y < keep_height; y++) {
+      memcpy(bmp->Data + (size_t(y) * bmp->LineWidth), saved.data() + (size_t(y) * old_line_width), row_bytes);
+   }
+
+   auto &bkgd = Self->BkgdColour;
+   auto colour = bmp->packPixel(bkgd.Red, bkgd.Green, bkgd.Blue, 255);
+   if (bmp->Width > keep_width) {
+      gfx::DrawRectangle(bmp, keep_width, 0, bmp->Width - keep_width, keep_height, colour, BAF::FILL);
+   }
+   if (bmp->Height > keep_height) {
+      gfx::DrawRectangle(bmp, 0, keep_height, bmp->Width, bmp->Height - keep_height, colour, BAF::FILL);
+   }
+   return ERR::Okay;
 }
 
 //********************************************************************************************************************
@@ -2052,7 +2091,11 @@ static ERR SET_MarginClick(extScintilla *Self, FUNCTION *Value)
 -FIELD-
 Lexer: The lexer for document styling is defined here.
 
-The lexer for document styling is defined here.
+The lexer for document styling is defined here.  The lexer can be changed at any time, in which case the document is
+restyled immediately.
+
+If the `DETECT_LEXER` flag is set, the lexer is chosen from the file name whenever a file is loaded, and this
+overrides any existing value.  The `Lexer` is left unchanged if the file name does not match a known type.
 
 *********************************************************************************************************************/
 
@@ -2993,7 +3036,7 @@ static const FieldArray clFields[] = {
    { "TextColour",     FDF_STRUCT|FDF_RW, nullptr, SET_TextColour, "RGB8" },
    { "CursorRow",      FDF_INT|FDF_R, GET_CursorRow },
    { "CursorCol",      FDF_INT|FDF_R, GET_CursorCol },
-   { "Lexer",          FDF_INT|FDF_LOOKUP|FDF_RI, nullptr, SET_Lexer, &clScintillaLexer },
+   { "Lexer",          FDF_INT|FDF_LOOKUP|FDF_RW, nullptr, SET_Lexer, &clScintillaLexer },
    { "Modified",       FDF_INT|FDF_RW, nullptr, SET_Modified },
 
    // Virtual fields
@@ -3001,13 +3044,13 @@ static const FieldArray clFields[] = {
    { "AutoIndent",     FDF_INT|FDF_RW|FDF_PURE,   GET_AutoIndent, SET_AutoIndent },
    { "FileDrop",       FDF_FUNCTION|FDF_RW|FDF_PURE, GET_FileDrop, SET_FileDrop },
    { "FoldingMarkers", FDF_INT|FDF_RW|FDF_PURE,   GET_FoldingMarkers, SET_FoldingMarkers },
-   { "LineCount",      FDF_INT|FDF_R,    GET_LineCount },
+   { "LineCount",      FDF_INT|FDF_R,             GET_LineCount },
    { "LineNumbers",    FDF_INT|FDF_RW|FDF_PURE,   GET_LineNumbers, SET_LineNumbers },
    { "MarginClick",    FDF_FUNCTION|FDF_RW|FDF_PURE, GET_MarginClick, SET_MarginClick },
    { "Origin",         FDF_CPPSTRING|FDF_W, nullptr, SET_Origin },
-   { "ShowWhitespace", FDF_INT|FDF_RW|FDF_PURE,   GET_ShowWhitespace, SET_ShowWhitespace },
+   { "ShowWhitespace", FDF_INT|FDF_RW|FDF_PURE,      GET_ShowWhitespace, SET_ShowWhitespace },
    { "EventCallback",  FDF_FUNCTION|FDF_RW|FDF_PURE, GET_EventCallback, SET_EventCallback },
-   { "String",         FDF_CPPSTRING|FDF_RW, GET_String, SET_String },
+   { "String",         FDF_CPPSTRING|FDF_RW,      GET_String, SET_String },
    { "Symbols",        FDF_INT|FDF_RW|FDF_PURE,   GET_Symbols, SET_Symbols },
    { "TabWidth",       FDF_INT|FDF_RW|FDF_PURE,   GET_TabWidth, SET_TabWidth },
    { "Wordwrap",       FDF_INT|FDF_RW|FDF_PURE,   GET_Wordwrap, SET_Wordwrap },
