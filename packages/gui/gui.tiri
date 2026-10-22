@@ -1606,7 +1606,7 @@ end
 -- and icon padding can accommodate it.  The region always extends by at least glFilterExtent.  A blur of radius r
 -- reaches 2r, because its kernel extends to twice the radius.
 --
--- Future candidates: halo(), shadow(), sand(), stone(), and inset() (filter).
+-- Future candidates: halo(), sand(), stone(), and inset() (filter).
 
 gui.effects = {
    -- A gloss highlight over the upper half of the fill.
@@ -1961,6 +1961,45 @@ gui.effects = {
          halo = filter.new('CompositeFX', { operator=OP_IN, input=flood, mix=boost })
 
          over = { operator=OP_OVER, mix=halo }
+         if source then over.input = source else over.sourceType = 'Graphic' end
+         return filter.new('CompositeFX', over)
+      end
+   },
+
+   -- A drop shadow, drawn under the path.  The alpha is blurred by radius, offset by (x,y) and filled with colour,
+   -- whose alpha is multiplied by opacity.  All distances are relative to the bounding box.  The shadow is cast by the
+   -- output of the effects before it, so it normally comes last.
+
+   shadow = {
+      kind   = 'filter',
+      params = array<table> {
+         { name='colour',  type='colour', default='#000000' },
+         { name='x',       type='num', default=0.03 },
+         { name='y',       type='num', default=0.04 },
+         { name='radius',  type='num', default=0.03 },
+         { name='opacity', type='num', default=0.5 }
+      },
+      extent = function(Args:table!):num
+         return math.max(math.abs(Args.x), math.abs(Args.y)) + (math.max(Args.radius, 0) * 2)
+      end,
+      build = function(Ctx:table!, Args:table!):obj
+         filter = Ctx.filter
+         source = Ctx.input
+         colour = Args.colour
+         radius = math.max(Args.radius, 0)
+
+         spread = { sx=radius, sy=radius }
+         if source then spread.input = source else spread.sourceType = 'Alpha' end
+         blur = filter.new('BlurFX', spread)
+         offset = filter.new('OffsetFX', { input=blur, xOffset=Args.x, yOffset=Args.y })
+
+         flood = filter.new('FloodFX', {
+            colour=struct<FRGB> { red=colour.r, green=colour.g, blue=colour.b, alpha=colour.a },
+            opacity=math.clamp(Args.opacity, 0, 1)
+         })
+         cast = filter.new('CompositeFX', { operator=OP_IN, input=flood, mix=offset })
+
+         over = { operator=OP_OVER, mix=cast }
          if source then over.input = source else over.sourceType = 'Graphic' end
          return filter.new('CompositeFX', over)
       end
