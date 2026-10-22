@@ -27,21 +27,9 @@
   },
   "files": [
     {
-      "path": "fills.tiri",
-      "size": 77,
-      "sha256": "7d998738b0c4dee609dbaa240f876380fd222c832d8884c8d01d16b8af73238d",
-      "mediaType": "application/vnd.kotuku.tiri"
-    },
-    {
       "path": "fills_data.tiri",
       "size": 1547,
       "sha256": "3f43696c6df2928bbc0dea1546de8f77ddfb2d40e7ad3d4c5aa5e5f92da640ef",
-      "mediaType": "application/vnd.kotuku.tiri"
-    },
-    {
-      "path": "fonts.tiri",
-      "size": 77,
-      "sha256": "4152ea89e5544fde59d612e72cba004172339d5089b7392ff227c78b4785ef6c",
       "mediaType": "application/vnd.kotuku.tiri"
     },
     {
@@ -57,12 +45,6 @@
       "mediaType": "application/vnd.kotuku.tiri"
     },
     {
-      "path": "palettes.tiri",
-      "size": 80,
-      "sha256": "ba52a616543d19e9aeb1268c58d407ea33eb30154d0291929725df649c0f2911",
-      "mediaType": "application/vnd.kotuku.tiri"
-    },
-    {
       "path": "palettes_data.tiri",
       "size": 4510,
       "sha256": "e84f31e9eb5aa69962221d8f886b47b7deb0df6d0015ab5ddd56359969dbd4da",
@@ -72,15 +54,6 @@
   "exports": [
     {
       "gui": "gui.tiri"
-    },
-    {
-      "gui/palettes": "palettes.tiri"
-    },
-    {
-      "gui/fills": "fills.tiri"
-    },
-    {
-      "gui/fonts": "fonts.tiri"
     }
   ]
 }
