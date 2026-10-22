@@ -197,3 +197,41 @@ end
       assert((left > 245) and (right > 245), 'An extended pattern painter must reveal the masked target')
    end
 end
+
+-- A filter's output must be clipped by masks inherited from container viewports.  The mask reveals the left half of
+-- the page, and the red flood covers the full page, so the right half must remain black.  Previously the filter
+-- output was copied to the target without consulting the mask stack.
+
+function filterUnderMaskPixels(NestedViewport:bool):<table, table>
+   local scene <close> = obj.new('VectorScene', { pageWidth=120, pageHeight=80 })
+   local root = scene.new('VectorViewport', { width='100%', height='100%' })
+   local filter = scene.new('VectorFilter')
+   filter.new('FloodFX', { colour=struct<FRGB> { red=1, green=0, blue=0, alpha=1 } })
+   check scene.mtAddDef('red_flood', filter)
+
+   local clip = scene.new('VectorClip', { flags=VCLF_APPLY_FILLS, units=VUNIT_USERSPACE })
+   clip.viewport.new('VectorRectangle', { width=60, height=80, fill='white' })
+
+   local masked = root.new('VectorViewport', { width='100%', height='100%' })
+   masked.mask = clip
+   if NestedViewport then
+      local inner = masked.new('VectorViewport', { x=10, y=10, width=100, height=60, filter='url(#red_flood)' })
+      inner.new('VectorRectangle', { width='100%', height='100%', fill='white' })
+   else
+      masked.new('VectorRectangle', { x=10, y=10, width=100, height=60, fill='white', filter='url(#red_flood)' })
+   end
+
+   local bmp <close> = newBitmap(120, 80)
+   drawScene(scene, bmp)
+   return struct.toTable(mGfx.ReadRGBPixel(bmp, 30, 40)), struct.toTable(mGfx.ReadRGBPixel(bmp, 90, 40))
+end
+
+@Test function FilterOutputIsClippedByAncestorMask()
+   for _, nested in { false, true } do
+      local inside, outside = filterUnderMaskPixels(nested)
+      assert((inside.red > 245) and (inside.green < 10), f'Filter output inside the mask must be drawn (nested={nested})')
+      assert((outside.red < 10) and (outside.green < 10) and (outside.blue < 10),
+         f'Filter output outside the mask must be hidden, got {outside.red},{outside.green},{outside.blue} ' ..
+         f'(nested={nested})')
+   end
+end

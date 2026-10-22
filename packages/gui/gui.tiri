@@ -1584,7 +1584,7 @@ end
 -- vectors.  Changes to vectors are drawn before filters, so filters see them wherever the call is written.  Each vector
 -- effect can appear once.  Parameter types are 'num', 'colour' and 'enum'.
 --
--- Future candidates: halo(), shadow(), contour() and inset() (filter).
+-- Future candidates: halo(), shadow(), and inset() (filter).
 
 gui.effects = {
    -- A gloss highlight over the upper half of the fill.

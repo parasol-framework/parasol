@@ -783,6 +783,20 @@ void SceneRenderer::copy_filter_bitmap(objBitmap *Bitmap, extVectorFilter *Filte
 
    if ((width <= 0) or (height <= 0)) return;
 
+   // Masks inherited from container viewports, e.g. a VectorClip or a non-rectangular viewport path, must apply to the
+   // filter output.  The mask is addressed in render coordinates, so the output is rasterised through mRenderBase.
+
+   if (not mClipStack.empty()) {
+      agg::rasterizer_scanline_aa<> raster;
+      basic_path(raster, src_x, src_y, src_x + width, src_y + height);
+
+      agg::alpha_mask_gray8 alpha_mask(mClipStack.top().m_renderer);
+      agg::scanline_u8_am<agg::alpha_mask_gray8> masked_scanline(alpha_mask);
+      drawBitmap(masked_scanline, VSM::NEIGHBOUR, mRenderBase, raster, Bitmap, VSPREAD::CLIP,
+         std::min(Filter->Opacity, 1.0));
+      return;
+   }
+
    if (mBitmapOriginX or mBitmapOriginY) {
       auto save_data = mBitmap->offset(mBitmapOriginX, mBitmapOriginY);
 
