@@ -916,10 +916,19 @@ static int object_subscribe(lua_State *Lua)
       luaL_argerror(Lua, function_argument, "Function expected.");
    }
 
+   // A single native subscription serves every Tiri subscription to the same object and action, because
+   // notify_action() dispatches to all of them.
+
+   bool subscribed = false;
+   for (auto &existing : Lua->script->ActionList) {
+      if ((existing.ObjectID IS def->uid) and (existing.ActionID IS action_id)) { subscribed = true; break; }
+   }
+
    auto callback = C_FUNCTION(notify_action);
    callback.Context = Lua->script;
-   if (auto error = SubscribeAction(obj, action_id, &callback); !error) {
+   if (auto error = subscribed ? ERR::Okay : SubscribeAction(obj, action_id, &callback); !error) {
       auto &acsub = Lua->script->ActionList.emplace_back();
+      acsub.Serial = ++Lua->script->ActionSerial;
 
       if (not lua_isnil(Lua, reference_argument)) {
          lua_pushvalue(Lua, reference_argument);

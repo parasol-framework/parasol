@@ -455,7 +455,10 @@ static ERR stack_args(lua_State *Lua, OBJECTID ObjectID, const FunctionField *ar
 }
 
 //********************************************************************************************************************
-// Action notifications arrive when the user has used object.subscribe() in the Tiri script.
+// Action notifications arrive when the user has used object.subscribe() in the Tiri script.  One native subscription
+// serves every Tiri subscription to the same object and action, so each matching subscription is called in the order
+// of registration.  Callbacks may subscribe or unsubscribe, so subscriptions are identified by serial number and
+// looked up again before each call.
 //
 // function(ObjectID, Args, Reference)
 
@@ -465,67 +468,78 @@ void notify_action(OBJECTPTR Object, ACTIONID ActionID, ERR Result, APTR Args)
 
    if (Result != ERR::Okay) return;
 
+   std::vector<uint32_t> serials;
    for (auto &scan : Self->ActionList) {
-      if ((Object->UID IS scan.ObjectID) and (ActionID IS scan.ActionID)) {
-         LuaContextRootGuard context_guard(Self->Lua);
-         int depth = GetResource(RES::LOG_DEPTH); // Required because thrown errors cause the debugger to lose its branch
-
-         {
-            kt::Log log;
-
-            log.msg(VLF::BRANCH|VLF::DETAIL, "Action notification for object #%d, action %d.  Top: %d", Object->UID, int(ActionID), lua_gettop(Self->Lua));
-
-            LuaCallbackContextGuard callback_context(Self->Lua);
-            if (push_tiri_function(Self->Lua, scan.Function, callback_context) != ERR::Okay) {
-               log.warning("Action subscription callback is no longer valid.");
-               return;
-            }
-            push_object_id(Self->Lua, Object->UID);  // +1: Pass the object ID
-            lua_newtable(Self->Lua);  // +1: Table to store the parameters
-
-            if ((scan.Args) and (Args)) {
-               stack_args(Self->Lua, Object->UID, scan.Args, (int8_t *)Args);
-            }
-
-            int total_args = 2;
-
-            if (scan.Reference) { // +1: Custom reference (optional)
-               lua_rawgeti(Self->Lua, LUA_REGISTRYINDEX, scan.Reference);
-               total_args++; // ObjectID, ArgTable, Reference
-            }
-
-            if (lua_pcall(Self->Lua, total_args, 0, 0)) { // Make the call, function & args are removed from stack.
-               process_callback_error(Self, "Action Subscription");
-            }
-
-         }
-
-         SetResource(RES::LOG_DEPTH, depth);
-
-         if (ActionID IS AC::Free) {
-            std::erase_if(Self->ActionList, [&](auto &item) {
-               if (item.ObjectID IS Object->UID) {
-                  if (item.Function.defined()) {
-                     release_tiri_function(Self->Lua, &item.Function);
-                  }
-                  if (item.Reference) {
-                     luaL_unref(Self->Lua, LUA_REGISTRYINDEX, item.Reference);
-                     item.Reference = 0;
-                  }
-
-                  // The object is already being destroyed, so suppress destructor-time unsubscribe attempts.
-                  item.ObjectID = 0;
-                  return true;
-               }
-               else return false;
-            });
-         }
-
-         collect_garbage(Self->Lua);
-
-         return;
-      }
+      if ((Object->UID IS scan.ObjectID) and (ActionID IS scan.ActionID)) serials.push_back(scan.Serial);
    }
+
+   if (serials.empty()) return;
+
+   for (auto serial : serials) {
+      auto it = std::find_if(Self->ActionList.begin(), Self->ActionList.end(), [&](auto &item) {
+         return (item.Serial IS serial) and (item.ObjectID IS Object->UID) and (item.ActionID IS ActionID);
+      });
+      if (it IS Self->ActionList.end()) continue; // Removed by an earlier callback
+
+      auto &scan = *it;
+      LuaContextRootGuard context_guard(Self->Lua);
+      int depth = GetResource(RES::LOG_DEPTH); // Required because thrown errors cause the debugger to lose its branch
+
+      {
+         kt::Log log;
+
+         log.msg(VLF::BRANCH|VLF::DETAIL, "Action notification for object #%d, action %d.  Top: %d", Object->UID,
+            int(ActionID), lua_gettop(Self->Lua));
+
+         LuaCallbackContextGuard callback_context(Self->Lua);
+         if (push_tiri_function(Self->Lua, scan.Function, callback_context) != ERR::Okay) {
+            log.warning("Action subscription callback is no longer valid.");
+            continue;
+         }
+         push_object_id(Self->Lua, Object->UID);  // +1: Pass the object ID
+         lua_newtable(Self->Lua);  // +1: Table to store the parameters
+
+         if ((scan.Args) and (Args)) {
+            stack_args(Self->Lua, Object->UID, scan.Args, (int8_t *)Args);
+         }
+
+         int total_args = 2;
+
+         if (scan.Reference) { // +1: Custom reference (optional)
+            lua_rawgeti(Self->Lua, LUA_REGISTRYINDEX, scan.Reference);
+            total_args++; // ObjectID, ArgTable, Reference
+         }
+
+         // The subscription record must not be referenced after this point; the callback can modify ActionList.
+
+         if (lua_pcall(Self->Lua, total_args, 0, 0)) { // Make the call, function & args are removed from stack.
+            process_callback_error(Self, "Action Subscription");
+         }
+      }
+
+      SetResource(RES::LOG_DEPTH, depth);
+   }
+
+   if (ActionID IS AC::Free) {
+      std::erase_if(Self->ActionList, [&](auto &item) {
+         if (item.ObjectID IS Object->UID) {
+            if (item.Function.defined()) {
+               release_tiri_function(Self->Lua, &item.Function);
+            }
+            if (item.Reference) {
+               luaL_unref(Self->Lua, LUA_REGISTRYINDEX, item.Reference);
+               item.Reference = 0;
+            }
+
+            // The object is already being destroyed, so suppress destructor-time unsubscribe attempts.
+            item.ObjectID = 0;
+            return true;
+         }
+         else return false;
+      });
+   }
+
+   collect_garbage(Self->Lua);
 }
 
 //********************************************************************************************************************
