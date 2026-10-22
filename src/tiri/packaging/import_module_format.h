@@ -14,7 +14,11 @@
 
 namespace tiri::import_cache {
 
-constexpr uint32_t SCHEMA_VERSION = 15;
+// Schema 16 stores module-cache fragments: each payload holds only its own initialiser and references separately
+// cached dependencies.  Schema 15 payloads embedded their complete dependency graphs and are ordinary misses.
+constexpr uint32_t SCHEMA_VERSION = 16;
+// Bytecode header flag that marks a module-cache fragment payload.  Mirrors BCDUMP_F_FRAGMENT.
+constexpr uint8_t FRAGMENT_PAYLOAD_FLAG = 0x10;
 constexpr size_t MAX_INTERFACE_SIZE = 8 * 1024 * 1024;
 constexpr size_t MAX_INTERFACE_RECORDS = 4096;
 

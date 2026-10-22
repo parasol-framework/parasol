@@ -1,6 +1,7 @@
 #include "import_module_validation.h"
 #include "../lib/load.h"
 
+#include <algorithm>
 #include <ranges>
 #include <format>
 #include <utility>
@@ -144,27 +145,80 @@ bool ImportModuleValidationSession::validate_identity(
    }
 
    for (const auto &dependency : IdentityValue.ModuleDependencies) {
-      tiri::import_cache::CompilationRequest request;
-      request.ExpectedIdentity.BuildIdentity = IdentityValue.BuildIdentity;
-      request.ExpectedIdentity.LogicalRequest = dependency.OriginalRequest;
-      request.ExpectedIdentity.Source.ResolvedPath = dependency.ResolvedPath;
-      request.ExpectedIdentity.Options = IdentityValue.Options;
-      request.ExpectedIdentity.ImportedRoot = true;
-
       tiri::import_cache::ModuleLookup lookup;
-      if (auto error = this->ensure_validated(request, lookup); error != ERR::Okay) {
-         (void)error;
-         Reason = "an imported module dependency is unavailable";
-         return false;
-      }
-      if (not lookup.Cached.CacheHit or
-          lookup.Cached.CompileTimeInterface->digest() != dependency.InterfaceDigest or
-          lookup.Cached.CompiledIdentity != dependency.CompiledIdentity) {
-         Reason = lookup.Cached.Diagnostic.empty() ?
-            "an imported module dependency has changed or is unavailable" : lookup.Cached.Diagnostic;
-         return false;
-      }
+      if (not this->validate_dependency(IdentityValue, dependency, lookup, Reason)) return false;
    }
+   return true;
+}
+
+//********************************************************************************************************************
+// Validates one recorded module dependency through this session.  A parent is reusable only if the dependency is a
+// cache hit with exactly the compiled identity and interface digest that the parent was compiled against.
+
+bool ImportModuleValidationSession::validate_dependency(const tiri::import_cache::Identity &Parent,
+   const tiri::import_cache::ModuleDependencyIdentity &Dependency, tiri::import_cache::ModuleLookup &Lookup,
+   std::string &Reason)
+{
+   tiri::import_cache::CompilationRequest request;
+   request.ExpectedIdentity.BuildIdentity = Parent.BuildIdentity;
+   request.ExpectedIdentity.LogicalRequest = Dependency.OriginalRequest;
+   request.ExpectedIdentity.Source.ResolvedPath = Dependency.ResolvedPath;
+   request.ExpectedIdentity.Options = Parent.Options;
+   request.ExpectedIdentity.ImportedRoot = true;
+
+   if (auto error = this->ensure_validated(request, Lookup); error != ERR::Okay) {
+      (void)error;
+      Reason = "an imported module dependency is unavailable";
+      return false;
+   }
+   if (not Lookup.Cached.CacheHit or not Lookup.Artifact or
+       Lookup.Cached.CompileTimeInterface->digest() != Dependency.InterfaceDigest or
+       Lookup.Cached.CompiledIdentity != Dependency.CompiledIdentity) {
+      Reason = Lookup.Cached.Diagnostic.empty() ?
+         "an imported module dependency has changed or is unavailable" : Lookup.Cached.Diagnostic;
+      return false;
+   }
+   return true;
+}
+
+//********************************************************************************************************************
+// Resolves every fragment reference to the validated artifact of a dependency declared by the module's identity, then
+// publishes the immutable linked artifact.  The fragment carries no dependency code, so an unresolved reference makes
+// the whole module a cache miss before the parser commits to the cached interface.
+
+bool ImportModuleValidationSession::link_references(Node &Entry, PayloadMetadata &Metadata)
+{
+   auto &cached = Entry.Lookup.Cached;
+   const auto &identity = cached.CompilationIdentity;
+   // The linker registers a dependency through its fragment's first source, which must be the module itself.
+   if (Metadata.Sources.empty() or Metadata.Sources.front().ResolvedPath != identity.Source.ResolvedPath) {
+      cached.Diagnostic = "cached bytecode source map does not start with its module source";
+      return false;
+   }
+
+   auto artifact = std::make_shared<tiri::import_cache::CachedModuleArtifact>();
+   artifact->Dependencies.reserve(Metadata.References.size());
+   for (const auto &reference : Metadata.References) {
+      auto declared = std::ranges::find(identity.ModuleDependencies, reference.CompiledIdentity,
+         &tiri::import_cache::ModuleDependencyIdentity::CompiledIdentity);
+      if (declared IS identity.ModuleDependencies.end()) {
+         cached.Diagnostic = "cached bytecode references an undeclared imported-module dependency";
+         return false;
+      }
+      tiri::import_cache::ModuleLookup lookup;
+      if (not this->validate_dependency(identity, *declared, lookup, cached.Diagnostic)) return false;
+      artifact->Dependencies.push_back(lookup.Artifact);
+   }
+
+   artifact->LookupIdentity = cached.LookupIdentity;
+   artifact->CompiledIdentity = cached.CompiledIdentity;
+   artifact->Interface = cached.CompileTimeInterface;
+   artifact->Package = std::move(Metadata.Package);
+   artifact->Payload = std::move(cached.Payload);
+   artifact->Sources = std::move(Metadata.Sources);
+   artifact->References = std::move(Metadata.References);
+   cached.Payload.clear();
+   Entry.Lookup.Artifact = std::move(artifact);
    return true;
 }
 
@@ -172,9 +226,7 @@ bool ImportModuleValidationSession::validate_identity(
 // Validates bytecode in an isolated state and retains only decoded portable dependency records.
 
 bool ImportModuleValidationSession::validate_payload(std::string_view Payload, std::string &Reason,
-   std::vector<tiri::import_cache::RootModuleRecord> *EmbeddedModules,
-   std::vector<tiri::import_cache::SourceDescriptor> *Sources,
-   std::optional<tiri::PackageIdentity> *Package, std::string *CompatibilityManifest)
+   PayloadMetadata &Output)
 {
    std::unique_ptr<lua_State, decltype(&lua_close)> validation(luaL_newstate(this->lua.script), lua_close);
    if (not validation) {
@@ -188,7 +240,8 @@ bool ImportModuleValidationSession::validate_payload(std::string_view Payload, s
       return false;
    }
    BytecodeLoadMetadata metadata;
-   if (lj_validate_bytecode(validation.get(), Payload, "=import-cache-validation", metadata) != 0) {
+   if (lj_validate_bytecode(validation.get(), Payload, "=import-cache-validation", metadata,
+       BytecodePayloadKind::ModuleFragment) != 0) {
       auto message = lua_tostringview(validation.get(), -1);
       Reason.assign(message.data(), message.size());
       return false;
@@ -208,10 +261,10 @@ bool ImportModuleValidationSession::validate_payload(std::string_view Payload, s
    this->counters.SourceMapAllocations += operations.source_map_allocations;
    this->counters.ExecutableDirectoryAllocations += operations.executable_directory_allocations;
    this->counters.PayloadBundleDecodes++;
-   if (EmbeddedModules) *EmbeddedModules = std::move(metadata.ImportedModules);
-   if (Sources) *Sources = std::move(metadata.Sources);
-   if (Package) *Package = std::move(metadata.Package);
-   if (CompatibilityManifest) *CompatibilityManifest = std::move(metadata.CompatibilityManifest);
+   Output.References = std::move(metadata.FragmentReferences);
+   Output.Sources = std::move(metadata.Sources);
+   Output.Package = std::move(metadata.Package);
+   Output.CompatibilityManifest = std::move(metadata.CompatibilityManifest);
    return true;
 }
 
@@ -244,6 +297,17 @@ ERR ImportModuleValidationSession::ensure_validated(
       return ERR::Okay;
    }
 
+   // Validation recurses through module dependencies.  Bound the active chain by the executable graph's depth limit.
+   if (this->active_depth >= tiri::import_cache::MAX_ROOT_MODULE_DEPTH) {
+      Output = {};
+      Output.ExpectedIdentity = std::move(expected);
+      Output.Source = source->Source;
+      Output.Cached.Diagnostic = "the imported-module dependency graph exceeds its depth limit";
+      return ERR::Okay;
+   }
+   this->active_depth++;
+   auto depth = kt::deferred_call([&] { this->active_depth--; });
+
    auto [entry, inserted] = this->nodes.emplace(key, Node{});
    (void)inserted;
    Node *node = &entry->second;
@@ -254,13 +318,9 @@ ERR ImportModuleValidationSession::ensure_validated(
    auto identity_validator = [&](const tiri::import_cache::Identity &IdentityValue, std::string &Reason) {
       return this->validate_identity(IdentityValue, Reason);
    };
-   std::vector<tiri::import_cache::RootModuleRecord> embedded_modules;
-   std::vector<tiri::import_cache::SourceDescriptor> sources;
-   std::optional<tiri::PackageIdentity> payload_package;
-   std::string payload_compatibility;
+   PayloadMetadata payload;
    auto payload_validator = [&](std::string_view Payload, std::string &Reason) {
-      return this->validate_payload(
-         Payload, Reason, &embedded_modules, &sources, &payload_package, &payload_compatibility);
+      return this->validate_payload(Payload, Reason, payload);
    };
 
    auto error = tiri::import_cache::lookup_module(
@@ -268,8 +328,8 @@ ERR ImportModuleValidationSession::ensure_validated(
    if (error != ERR::Okay) return error;
 
    if (node->Lookup.Cached.CacheHit and
-       (payload_package != node->Lookup.Cached.CompilationIdentity.DeclaredPackage or
-        payload_package != node->Lookup.Cached.CompileTimeInterface->descriptors().Package)) {
+       (payload.Package != node->Lookup.Cached.CompilationIdentity.DeclaredPackage or
+        payload.Package != node->Lookup.Cached.CompileTimeInterface->descriptors().Package)) {
       node->Lookup.Cached.CacheHit = false;
       node->Lookup.Cached.Diagnostic = "cached bytecode package metadata does not agree with its envelope";
    }
@@ -279,7 +339,7 @@ ERR ImportModuleValidationSession::ensure_validated(
          node->Lookup.Cached.CompileTimeInterface->descriptors().CompatibilityManifest;
       std::vector<tiri::CompatibilityRecord> records;
       tiri::CompatibilityFailure failure;
-      if (payload_compatibility != interface_compatibility or
+      if (payload.CompatibilityManifest != interface_compatibility or
           tiri::decode_compatibility_manifest(interface_compatibility, records)) {
          node->Lookup.Cached.CacheHit = false;
          node->Lookup.Cached.Diagnostic =
@@ -294,9 +354,9 @@ ERR ImportModuleValidationSession::ensure_validated(
       }
    }
 
-   if (node->Lookup.Cached.CacheHit) {
-      node->Lookup.Sources = std::move(sources);
-      node->Lookup.EmbeddedModules = std::move(embedded_modules);
+   if (node->Lookup.Cached.CacheHit and not this->link_references(*node, payload)) {
+      node->Lookup.Cached.CacheHit = false;
+      node->Lookup.Cached.Payload.clear();
    }
 
    node->State = node->Lookup.Cached.CacheHit ? NodeState::VALID : NodeState::INVALID;

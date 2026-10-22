@@ -15,6 +15,15 @@
 namespace tiri::import_cache {
 namespace {
 
+//********************************************************************************************************************
+// Confirms that a payload is a module-cache fragment: private bytecode whose single-byte flags mark it as such.
+
+bool is_fragment_payload(std::string_view Payload) noexcept
+{
+   return Payload.size() > 4 and Payload.starts_with("\x1bLJ") and not (uint8_t(Payload[4]) & 0x80) and
+      (uint8_t(Payload[4]) & FRAGMENT_PAYLOAD_FLAG);
+}
+
 constexpr std::array<uint8_t, 8> MODULE_MAGIC = { 'T', 'I', 'R', 'I', 'M', 'O', 'D', '1' };
 constexpr size_t HEADER_SIZE = 8 + 4 + 4 + 4 + 8 + 8 + (cache::DIGEST_SIZE * 3);
 
@@ -981,7 +990,7 @@ cache::FormatError encode_envelope(const Identity &IdentityValue, const Finalise
 {
    Output.clear();
    if (Payload.size() > cache::MAX_PAYLOAD_SIZE) return cache::FormatError::SIZE_LIMIT;
-   if (not Payload.starts_with("\x1bLJ")) return cache::FormatError::INVALID_PAYLOAD;
+   if (not is_fragment_payload(Payload)) return cache::FormatError::INVALID_PAYLOAD;
    Identity final_identity = IdentityValue;
    if (auto error = finalise_identity(final_identity); error != cache::FormatError::OKAY) return error;
    std::string identity;
@@ -1054,7 +1063,7 @@ cache::FormatError decode_envelope(
    result.CompiledIdentity = result.CompilationIdentity.CompiledIdentity;
    std::string payload;
    if (bytecode_storage::decompress(encoded_payload, payload, decoded_size) != bytecode_storage::Error::OKAY or
-       cache::content_digest(payload) != payload_hash) {
+       cache::content_digest(payload) != payload_hash or not is_fragment_payload(payload)) {
       return cache::FormatError::INVALID_PAYLOAD;
    }
    result.Payload = std::move(payload);

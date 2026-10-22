@@ -24,6 +24,20 @@ struct RootModuleRecord {
    [[nodiscard]] bool operator==(const RootModuleRecord &) const = default;
 };
 
+// A module-cache fragment stores only its own executable code.  Each compiler-generated activation operand in the
+// fragment indexes this table, which names the separately cached dependency by its immutable compiled identity.
+// The importing source and line place the dependency's primary source in the diagnostic ancestry when it is linked.
+
+inline constexpr uint8_t FRAGMENT_REFERENCE_VERSION = 1;
+
+struct FragmentReference {
+   std::string CompiledIdentity;               // Identifies the referenced dependency module.
+   uint8_t ParentSource = 0;                   // Fragment source index that first imports the dependency.
+   uint32_t ImportLine = 1;                    // Line in the parent source where the dependency is imported.
+
+   [[nodiscard]] bool operator==(const FragmentReference &) const = default;
+};
+
 struct RootModuleRecordLocation {
    uint32_t InterfaceOffset = 0;               // Stores the interface byte offset in the bundle.
    uint32_t InterfaceSize = 0;                 // Stores the interface byte length in the bundle.
@@ -67,5 +81,13 @@ private:
 [[nodiscard]] cache::FormatError encode_root_module_bundle(const RootModuleGraphAssembly &Assembly, std::string &Output);
 [[nodiscard]] cache::FormatError index_root_module_bundle(std::string_view Input, std::vector<RootModuleRecordLocation> &Output);
 [[nodiscard]] cache::FormatError decode_root_module_bundle(std::string_view Input, std::vector<RootModuleRecord> &Output);
+
+// Encodes and decodes the canonical reference table of a module-cache fragment.  References are unique and sorted by
+// compiled identity, so a valid table has exactly one encoding.
+
+[[nodiscard]] cache::FormatError encode_fragment_references(
+   const std::vector<FragmentReference> &References, std::string &Output);
+[[nodiscard]] cache::FormatError decode_fragment_references(
+   std::string_view Input, std::vector<FragmentReference> &Output);
 
 } // namespace tiri::import_cache

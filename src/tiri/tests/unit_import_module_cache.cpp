@@ -84,7 +84,7 @@ bool prepare_artifact(const ModuleLookup &Lookup, FixtureArtifact &Output)
    if (FinalisedInterface::finalise(
        interface_for(Output.CompilationIdentity), Output.CompileTimeInterface) !=
        tiri::cache::FormatError::OKAY) return false;
-   Output.Payload.assign("\x1bLJ", 3);
+   Output.Payload.assign("\x1bLJ\xb0\x10", 5);
    Output.Payload.append(Lookup.Source);
    Output.Payload.append("-complete");
    return true;

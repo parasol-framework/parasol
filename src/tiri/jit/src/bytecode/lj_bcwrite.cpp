@@ -38,6 +38,7 @@ typedef struct BCWriteCtx {
    uint32_t import_module_bundle_size;
    const ImportModuleTable *import_module_table;
    const ImportModuleRelocationPlan *relocation;
+   bool fragment;      // Write an imported-module cache fragment rather than a complete dump.
 #ifdef LUA_USE_ASSERT
    global_State* g;
 #endif
@@ -654,6 +655,7 @@ static void bcwrite_header(BCWriteCtx* ctx)
    *p++ = (ctx->strip ? BCDUMP_F_STRIP : 0) +
       LJ_BE * BCDUMP_F_BE +
       ((ctx->pt->flags & PROTO_FFI) ? BCDUMP_F_FFI : 0) +
+      (ctx->fragment ? BCDUMP_F_FRAGMENT : 0) +
       LJ_FR2 * BCDUMP_F_FR2;
 
    if (!ctx->strip) {
@@ -701,10 +703,70 @@ static TValue* cpwriter(lua_State* L, lua_CFunction dummy, void* ud)
 }
 
 //********************************************************************************************************************
-// Write bytecode for a prototype.
+// Validates a complete dump's imported-module bundle against the executable directory attached to its root.
 
-int lj_bcwrite_relocated(lua_State *L, GCproto *Pt, lua_Writer Writer, void *Data, int Strip,
-   const ImportModuleRelocationPlan *Relocation)
+static bool bcwrite_validate_module_directory(BCWriteCtx &ctx)
+{
+   kt::Log log(__FUNCTION__);
+   if (not ctx.import_module_bundle or not ctx.import_module_bundle_size) {
+      log.warning("Missing imported-module bundle.");
+      return false;
+   }
+   std::vector<tiri::import_cache::RootModuleRecord> validated_modules;
+   if (tiri::import_cache::decode_root_module_bundle(std::string_view(
+       (const char *)ctx.import_module_bundle, ctx.import_module_bundle_size), validated_modules) !=
+       tiri::cache::FormatError::OKAY) {
+      log.warning("Invalid imported-module bundle.");
+      return false;
+   }
+   if (validated_modules.empty()) return not ctx.import_module_table;
+
+   if (not ctx.import_module_table or ctx.import_module_table->version != IMPORT_MODULE_TABLE_VERSION or
+       ctx.import_module_table->entry_count != validated_modules.size()) return false;
+   const ImportModuleTableEntry *table_entries = import_module_table_entries(ctx.import_module_table);
+   const uint32_t *table_dependencies = import_module_table_dependencies(ctx.import_module_table);
+   uint32_t dependency_count = 0;
+   for (uint32_t i = 0; i < ctx.import_module_table->entry_count; ++i) {
+      const ImportModuleTableEntry &entry = table_entries[i];
+      const auto &record = validated_modules[i];
+      if (not gcref(entry.compiled_identity) or gcref(entry.compiled_identity)->gch.gct != ~LJ_TSTR or
+          not gcref(entry.initialiser) or gcref(entry.initialiser)->gch.gct != ~LJ_TPROTO or
+          gco_to_proto(gcref(entry.initialiser))->sizeuv != 0 or entry.source_index != record.SourceIndex or
+          entry.dependency_count != record.Dependencies.size() or
+          entry.first_dependency != dependency_count or entry.interface_offset > ctx.import_module_bundle_size or
+          entry.interface_size > ctx.import_module_bundle_size - entry.interface_offset or
+          std::string_view((const char *)ctx.import_module_bundle + entry.interface_offset,
+             entry.interface_size) != record.InterfaceBytes) {
+         log.warning("Imported-module directory entry %u is inconsistent.", i);
+         return false;
+      }
+      GCstr *identity = gco_to_string(gcref(entry.compiled_identity));
+      if (identity->len != record.CompiledIdentity.size() or
+          memcmp(strdata(identity), record.CompiledIdentity.data(), identity->len) != 0) {
+         log.warning("Imported-module identity %u is inconsistent.", i);
+         return false;
+      }
+      for (uint32_t d = 0; d < entry.dependency_count; ++d) {
+         if (table_dependencies[entry.first_dependency + d] != record.Dependencies[d]) {
+            log.warning("Imported-module dependency %u:%u is inconsistent.", i, d);
+            return false;
+         }
+      }
+      dependency_count += entry.dependency_count;
+   }
+   if (dependency_count != ctx.import_module_table->dependency_count) {
+      log.warning("Imported-module dependency count is inconsistent.");
+      return false;
+   }
+   return true;
+}
+
+//********************************************************************************************************************
+// Validates root metadata and writes either a complete dump or, when Fragment is set, a module-cache fragment whose
+// imported-module block is the supplied reference table.
+
+static int bcwrite_dump(lua_State *L, GCproto *Pt, lua_Writer Writer, void *Data, int Strip,
+   const ImportModuleRelocationPlan *Relocation, const std::string_view *Fragment)
 {
    kt::Log log(__FUNCTION__);
    BCWriteCtx ctx;
@@ -714,6 +776,7 @@ int lj_bcwrite_relocated(lua_State *L, GCproto *Pt, lua_Writer Writer, void *Dat
    ctx.wdata = Data;
    ctx.strip = Strip;
    ctx.status = 0;
+   ctx.fragment = Fragment != nullptr;
    memset(ctx.source_wire, 0, sizeof(ctx.source_wire));
    memset(ctx.source_mapped, 0, sizeof(ctx.source_mapped));
    ctx.sources = proto_compilation_sources(Pt);
@@ -723,6 +786,17 @@ int lj_bcwrite_relocated(lua_State *L, GCproto *Pt, lua_Writer Writer, void *Dat
    ctx.import_module_bundle = proto_import_module_bundle(Pt, &ctx.import_module_bundle_size);
    ctx.import_module_table = proto_import_module_table(Pt);
    ctx.relocation = Relocation;
+   if (Fragment) {
+      // A fragment owns no executable directory.  Its reference table replaces the bundle on the wire.
+      std::vector<tiri::import_cache::FragmentReference> references;
+      if (ctx.import_module_table or tiri::import_cache::decode_fragment_references(*Fragment, references) !=
+          tiri::cache::FormatError::OKAY) {
+         log.warning("Invalid imported-module fragment references.");
+         return 1;
+      }
+      ctx.import_module_bundle = (const uint8_t *)Fragment->data();
+      ctx.import_module_bundle_size = uint32_t(Fragment->size());
+   }
    if (Relocation and not validate_import_module_relocation_plan(*Relocation)) {
       log.warning("Invalid relocation plan.");
       return 1;
@@ -751,59 +825,7 @@ int lj_bcwrite_relocated(lua_State *L, GCproto *Pt, lua_Writer Writer, void *Dat
       log.warning("Invalid structure manifest.");
       return 1;
    }
-   if (not ctx.import_module_bundle or not ctx.import_module_bundle_size) {
-      log.warning("Missing imported-module bundle.");
-      return 1;
-   }
-   std::vector<tiri::import_cache::RootModuleRecord> validated_modules;
-   if (tiri::import_cache::decode_root_module_bundle(std::string_view(
-       (const char *)ctx.import_module_bundle, ctx.import_module_bundle_size), validated_modules) !=
-       tiri::cache::FormatError::OKAY) {
-      log.warning("Invalid imported-module bundle.");
-      return 1;
-   }
-   if (validated_modules.empty()) {
-      if (ctx.import_module_table) return 1;
-   }
-   else {
-      if (not ctx.import_module_table or ctx.import_module_table->version != IMPORT_MODULE_TABLE_VERSION or
-          ctx.import_module_table->entry_count != validated_modules.size()) return 1;
-      const ImportModuleTableEntry *table_entries = import_module_table_entries(ctx.import_module_table);
-      const uint32_t *table_dependencies = import_module_table_dependencies(ctx.import_module_table);
-      uint32_t dependency_count = 0;
-      for (uint32_t i = 0; i < ctx.import_module_table->entry_count; ++i) {
-         const ImportModuleTableEntry &entry = table_entries[i];
-         const auto &record = validated_modules[i];
-         if (not gcref(entry.compiled_identity) or gcref(entry.compiled_identity)->gch.gct != ~LJ_TSTR or
-             not gcref(entry.initialiser) or gcref(entry.initialiser)->gch.gct != ~LJ_TPROTO or
-             gco_to_proto(gcref(entry.initialiser))->sizeuv != 0 or entry.source_index != record.SourceIndex or
-             entry.dependency_count != record.Dependencies.size() or
-             entry.first_dependency != dependency_count or entry.interface_offset > ctx.import_module_bundle_size or
-             entry.interface_size > ctx.import_module_bundle_size - entry.interface_offset or
-             std::string_view((const char *)ctx.import_module_bundle + entry.interface_offset,
-                entry.interface_size) != record.InterfaceBytes) {
-            log.warning("Imported-module directory entry %u is inconsistent.", i);
-            return 1;
-         }
-         GCstr *identity = gco_to_string(gcref(entry.compiled_identity));
-         if (identity->len != record.CompiledIdentity.size() or
-             memcmp(strdata(identity), record.CompiledIdentity.data(), identity->len) != 0) {
-            log.warning("Imported-module identity %u is inconsistent.", i);
-            return 1;
-         }
-         for (uint32_t d = 0; d < entry.dependency_count; ++d) {
-            if (table_dependencies[entry.first_dependency + d] != record.Dependencies[d]) {
-               log.warning("Imported-module dependency %u:%u is inconsistent.", i, d);
-               return 1;
-            }
-         }
-         dependency_count += entry.dependency_count;
-      }
-      if (dependency_count != ctx.import_module_table->dependency_count) {
-         log.warning("Imported-module dependency count is inconsistent.");
-         return 1;
-      }
-   }
+   if (not Fragment and not bcwrite_validate_module_directory(ctx)) return 1;
    auto entries = compilation_source_entries(ctx.sources);
    for (uint32_t i = 0; i < ctx.sources->count; ++i) {
       GCstr *path = gco_to_string(gcref(entries[i].canonical_path));
@@ -868,7 +890,25 @@ int lj_bcwrite_relocated(lua_State *L, GCproto *Pt, lua_Writer Writer, void *Dat
    return status;
 }
 
+//********************************************************************************************************************
+// Write bytecode for a prototype.
+
+int lj_bcwrite_relocated(lua_State *L, GCproto *Pt, lua_Writer Writer, void *Data, int Strip,
+   const ImportModuleRelocationPlan *Relocation)
+{
+   return bcwrite_dump(L, Pt, Writer, Data, Strip, Relocation, nullptr);
+}
+
 int lj_bcwrite(lua_State *L, GCproto *pt, lua_Writer writer, void *data, int strip)
 {
    return lj_bcwrite_relocated(L, pt, writer, data, strip, nullptr);
+}
+
+//********************************************************************************************************************
+// Write one module initialiser as an imported-module cache fragment.
+
+int lj_bcwrite_fragment(lua_State *L, GCproto *Pt, lua_Writer Writer, void *Data,
+   const ImportModuleRelocationPlan &Relocation, std::string_view References)
+{
+   return bcwrite_dump(L, Pt, Writer, Data, 0, &Relocation, &References);
 }

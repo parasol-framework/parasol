@@ -6,6 +6,8 @@
 #include "import_module_bundle.h"
 
 #include <functional>
+#include <memory>
+#include <optional>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -62,12 +64,28 @@ struct ModulePublication {
    ERR StorageError = ERR::Okay;      // Stores the result of the cache-storage operation.
 };
 
+// A validated module-cache fragment together with the separately cached modules named by its reference table.
+// Artifacts are immutable and retained for the whole compilation, so linking never observes later replacement,
+// deletion or partial publication of cache files.  Dependencies form an acyclic graph shared between importers.
+
+struct CachedModuleArtifact {
+   std::string LookupIdentity;                     // Identifies the cache entry that supplied the fragment.
+   std::string CompiledIdentity;                   // Identifies the compiled module content.
+   FinalisedInterfacePtr Interface;                // Holds the module's compile-time interface.
+   std::optional<tiri::PackageIdentity> Package;   // Holds the package declared by the module, when present.
+   std::string Payload;                            // Stores the validated fragment bytecode.
+   std::vector<SourceDescriptor> Sources;          // Holds the fragment source map; the first entry is the module.
+   std::vector<FragmentReference> References;      // Lists dependencies named by fragment activation operands.
+   std::vector<std::shared_ptr<const CachedModuleArtifact>> Dependencies; // Resolves References by position.
+};
+
+using CachedModuleArtifactPtr = std::shared_ptr<const CachedModuleArtifact>;
+
 struct ModuleLookup {
    Identity ExpectedIdentity;                      // Identifies the module expected by the caller.
    std::string Source;                             // Stores the source used for the lookup.
    CompiledModule Cached;                          // Holds the cached module, when one was found.
-   std::vector<SourceDescriptor> Sources;           // Holds the validated bytecode source map.
-   std::vector<RootModuleRecord> EmbeddedModules;  // Holds root modules embedded in the cached payload.
+   CachedModuleArtifactPtr Artifact;               // Holds the linked fragment graph of a validated cache hit.
 };
 
 using IdentityValidator = std::function<bool(const Identity &, std::string &)>;

@@ -1134,10 +1134,9 @@ struct ImportedModuleUnit {
    std::optional<tiri::PackageIdentity> declared_package;
    std::optional<tiri::DependencyRequirements> dependency_requirements;
    tiri::import_cache::FinalisedInterfacePtr interface_artifact;
-   std::string module_payload;
+   tiri::import_cache::CachedModuleArtifactPtr cache_artifact; // Validated fragment graph of a cache hit.
    std::shared_ptr<const InstalledImportInterface> installed_interface;
    std::vector<FuncState::DependencyDescriptor> module_dependencies;
-   std::vector<tiri::import_cache::RootModuleRecord> embedded_modules;
    uint8_t file_source_idx = 0;
    bool module_cache_hit = false;
    bool assignment_resolved = false;

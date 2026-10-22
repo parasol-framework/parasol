@@ -2236,7 +2236,6 @@ ParserResult<ImportEntryPayload> AstBuilder::parse_import_entry(const Token &Imp
          if (not module_unit->module_cache_hit) {
             this->root_builder()->ctx.lex().imported_module_counters.source_parses++;
          }
-         module_unit->embedded_modules = std::move(module_lookup.EmbeddedModules);
          module_unit->body = std::shared_ptr<BlockStmt>(std::move(imported_body));
          module_unit->module_dependencies = std::move(module_dependencies);
          module_unit->declared_package = std::move(declared_package);
@@ -2247,7 +2246,7 @@ ParserResult<ImportEntryPayload> AstBuilder::parse_import_entry(const Token &Imp
             module_unit->module_cache_identity = std::move(module_lookup.Cached.CompilationIdentity);
             module_unit->declared_package = module_unit->module_cache_identity.DeclaredPackage;
             module_unit->module_identity = module_unit->module_cache_identity.CompiledIdentity;
-            module_unit->module_payload = std::move(module_lookup.Cached.Payload);
+            module_unit->cache_artifact = module_lookup.Artifact;
             module_unit->interface_artifact = std::move(module_lookup.Cached.CompileTimeInterface);
             std::string diagnostic;
             module_unit->installed_interface = InstalledImportInterface::create(
@@ -2516,49 +2515,50 @@ ParserResult<std::unique_ptr<BlockStmt>> AstBuilder::parse_imported_file(
 
          uint8_t new_file_index = register_file_source(L, Path, filename, 1, source_lines, parent_index, import_line);
 
-         const auto primary = std::ranges::find(Lookup->Sources, Path,
-            &tiri::import_cache::SourceDescriptor::ResolvedPath);
-         const std::string_view declared_namespace = primary IS Lookup->Sources.end() ? std::string_view() :
-            std::string_view(primary->DeclaredNamespace);
+         const auto &artifact = *Lookup->Artifact;
+         const std::string_view declared_namespace = artifact.Sources.empty() ? std::string_view() :
+            std::string_view(artifact.Sources.front().DeclaredNamespace);
          const uint8_t source_descriptor = this->record_import_source(Path, filename, declared_namespace,
             source_lines, this->ctx.lex().current_source_descriptor, import_line, new_file_index);
+         if (not declared_namespace.empty()) {
+            set_file_source_namespace(L, new_file_index, std::string(declared_namespace));
+         }
+         this->register_cached_module_sources(artifact, new_file_index, source_descriptor);
 
-         for (const auto &cached_source : Lookup->Sources) {
-            if (cached_source.ResolvedPath IS Path) continue;
+         // Dependency fragments are linked from their own cache entries, so register their sources here for
+         // diagnostics and for the final compilation's source map.  Each module is registered once per walk.
 
-            const auto parent_source = std::ranges::find(Lookup->Sources, cached_source.ParentResolvedPath,
-               &tiri::import_cache::SourceDescriptor::ResolvedPath);
-            const uint8_t runtime_parent = parent_source IS Lookup->Sources.end() ? new_file_index :
-               find_file_source(L, parent_source->ResolvedPath).value_or(new_file_index);
-            const auto parent_record = std::ranges::find(
-               this->root_builder()->ctx.lex().compilation_sources, cached_source.ParentResolvedPath,
-               &CompilationSourceRecord::canonical_path);
-            const uint8_t descriptor_parent = parent_record IS
-               this->root_builder()->ctx.lex().compilation_sources.end() ? source_descriptor :
-               uint8_t(parent_record - this->root_builder()->ctx.lex().compilation_sources.begin());
-            auto existing = find_file_source(L, cached_source.ResolvedPath);
-            std::string cached_path = cached_source.ResolvedPath;
-            const BCLine cached_import_line(cached_source.ImportLine ? cached_source.ImportLine : 1);
-            const uint8_t runtime_index = existing.has_value() ? existing.value() :
-               register_file_source(L, cached_path, cached_source.Filename, BCLine(cached_source.FirstLine),
-                  BCLine(cached_source.TotalLines), runtime_parent, cached_import_line, true);
+         std::unordered_set<std::string_view> registered { artifact.CompiledIdentity };
+         std::vector<const tiri::import_cache::CachedModuleArtifact *> pending { &artifact };
+         while (not pending.empty()) {
+            const auto *importer = pending.back();
+            pending.pop_back();
+            for (size_t i = 0; i < importer->References.size(); ++i) {
+               const auto &dependency = *importer->Dependencies[i];
+               if (not registered.insert(dependency.CompiledIdentity).second) continue;
+               const auto &reference = importer->References[i];
+               const auto &parent_source = importer->Sources[reference.ParentSource];
+               const uint8_t runtime_parent = find_file_source(L, parent_source.ResolvedPath).value_or(new_file_index);
+               const auto &compilation_sources = this->root_builder()->ctx.lex().compilation_sources;
+               const auto parent_record = std::ranges::find(compilation_sources, parent_source.ResolvedPath,
+                  &CompilationSourceRecord::canonical_path);
+               const uint8_t descriptor_parent = parent_record IS compilation_sources.end() ? source_descriptor :
+                  uint8_t(parent_record - compilation_sources.begin());
 
-            if (not cached_source.DeclaredNamespace.empty()) {
-               set_file_source_namespace(L, runtime_index, cached_source.DeclaredNamespace);
+               const auto &primary = dependency.Sources.front();
+               std::string primary_path = primary.ResolvedPath;
+               const BCLine dependency_import_line(int32_t(reference.ImportLine));
+               const uint8_t runtime_index = register_file_source(L, primary_path, primary.Filename,
+                  BCLine(primary.FirstLine), BCLine(primary.TotalLines), runtime_parent, dependency_import_line);
+               if (not primary.DeclaredNamespace.empty()) {
+                  set_file_source_namespace(L, runtime_index, primary.DeclaredNamespace);
+               }
+               const uint8_t descriptor = this->record_import_source(primary.ResolvedPath, primary.Filename,
+                  primary.DeclaredNamespace, BCLine(primary.TotalLines), descriptor_parent, dependency_import_line,
+                  runtime_index);
+               this->register_cached_module_sources(dependency, runtime_index, descriptor);
+               pending.push_back(&dependency);
             }
-            (void)this->record_import_source(cached_source.ResolvedPath, cached_source.Filename,
-               cached_source.DeclaredNamespace, BCLine(cached_source.TotalLines), descriptor_parent,
-               cached_import_line, runtime_index);
-         }
-
-         if (primary != Lookup->Sources.end() and not primary->DeclaredNamespace.empty()) {
-            set_file_source_namespace(L, new_file_index, primary->DeclaredNamespace);
-         }
-
-         for (auto &record : Lookup->EmbeddedModules) {
-            if (record.SourceIndex >= Lookup->Sources.size()) continue;
-            const auto &module_source = Lookup->Sources[record.SourceIndex];
-            record.SourceIndex = find_file_source(L, module_source.ResolvedPath).value_or(new_file_index);
          }
 
          if (auto manifest = this->cache_manifest()) {
@@ -2810,6 +2810,41 @@ uint8_t AstBuilder::record_import_source(const std::string &Path, const std::str
    });
 
    return uint8_t(sources.size() - 1);
+}
+
+//********************************************************************************************************************
+// Registers the relative-import sources carried by one cached module fragment.  The fragment's first source is the
+// module itself and has already been registered by the caller as PrimaryIndex and PrimaryDescriptor.
+
+void AstBuilder::register_cached_module_sources(const tiri::import_cache::CachedModuleArtifact &Artifact,
+   uint8_t PrimaryIndex, uint8_t PrimaryDescriptor)
+{
+   lua_State *L = &this->ctx.lua();
+   auto &compilation_sources = this->root_builder()->ctx.lex().compilation_sources;
+   for (size_t i = 1; i < Artifact.Sources.size(); ++i) {
+      const auto &cached_source = Artifact.Sources[i];
+      const auto parent_source = std::ranges::find(Artifact.Sources, cached_source.ParentResolvedPath,
+         &tiri::import_cache::SourceDescriptor::ResolvedPath);
+      const uint8_t runtime_parent = parent_source IS Artifact.Sources.end() ? PrimaryIndex :
+         find_file_source(L, parent_source->ResolvedPath).value_or(PrimaryIndex);
+      const auto parent_record = std::ranges::find(compilation_sources, cached_source.ParentResolvedPath,
+         &CompilationSourceRecord::canonical_path);
+      const uint8_t descriptor_parent = parent_record IS compilation_sources.end() ? PrimaryDescriptor :
+         uint8_t(parent_record - compilation_sources.begin());
+      auto existing = find_file_source(L, cached_source.ResolvedPath);
+      std::string cached_path = cached_source.ResolvedPath;
+      const BCLine cached_import_line(cached_source.ImportLine ? cached_source.ImportLine : 1);
+      const uint8_t runtime_index = existing.has_value() ? existing.value() :
+         register_file_source(L, cached_path, cached_source.Filename, BCLine(cached_source.FirstLine),
+            BCLine(cached_source.TotalLines), runtime_parent, cached_import_line, true);
+
+      if (not cached_source.DeclaredNamespace.empty()) {
+         set_file_source_namespace(L, runtime_index, cached_source.DeclaredNamespace);
+      }
+      (void)this->record_import_source(cached_source.ResolvedPath, cached_source.Filename,
+         cached_source.DeclaredNamespace, BCLine(cached_source.TotalLines), descriptor_parent,
+         cached_import_line, runtime_index);
+   }
 }
 
 //********************************************************************************************************************
