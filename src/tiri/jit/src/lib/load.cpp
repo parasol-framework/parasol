@@ -74,7 +74,12 @@ static int load(lua_State *Lua, std::string_view Source, CSTRING SourceName, Byt
    if ((Lua->script->JitOptions & JOF::DIAGNOSE) != JOF::NIL) ls->diagnose_mode = true;
    Lua->script->CapturedVariables.clear();  // Clear previous captures before new parse
 
+   // Module captures belong to the root lexer.  Restore the caller's capture before deleting that lexer, including
+   // after Windows SEH, which skips parser-local destructors.  Nested bytecode loads retain the enclosing capture.
+
+   auto *saved_capture = Lua->cache_manifest_capture;
    auto status = lj_vm_cpcall(Lua, nullptr, ls, cpparser); // Call the parser
+   Lua->cache_manifest_capture = saved_capture;
 
    BytecodeLoadMetadata completed;
    if (not status and Metadata and ls->is_bytecode) {

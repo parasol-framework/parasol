@@ -217,6 +217,100 @@ end
 end
 
 ----------------------------------------------------------------------------------------------------------------------
+-- A runtime module lexer error unwinds through lua_load's protected boundary.  Later compilations must not retain
+-- the failed module's capture, including on Windows where SEH skips parser-local destructors.
+
+@Test function RuntimeImportRecoversAfterLexicalError()
+   local packages = glRoot .. 'failed-import-packages/'
+   local package_root <close> = obj.new('file', { path=packages, flags=FL_NEW|FL_FOLDER })
+   for name in values(array<str> { 'broken-module', 'recovery-module' }) do
+      local folder <close> = obj.new('file', { path=packages .. name .. '/', flags=FL_NEW|FL_FOLDER })
+      local version <close> = obj.new('file', { path=packages .. name .. '/1/', flags=FL_NEW|FL_FOLDER })
+   end
+   write_file(packages .. 'index.cfg', '[broken-module]\n1 = broken-module/1/main.tiri\n' ..
+      '[recovery-module]\n1 = recovery-module/1/main.tiri\n')
+   write_file(packages .. 'broken-module/1/main.tiri',
+      '@Package(name="broken-module", version="1")\n' .. "local value = 'unterminated")
+   write_file(packages .. 'recovery-module/1/main.tiri', [[
+      @Package(name="recovery-module", version="1")
+      namespace recovery_module { value=42 }
+   ]])
+
+   local code, output = package_import(packages, [[
+      local caught = false
+      try
+         exec("import 'broken-module'")
+      except e
+         assert(e.message.find('Unfinished string') != nil, e.message)
+         caught = true
+      end
+      assert(caught, 'The malformed package must raise a lexer error')
+      for pass in {0 to 2} do
+         exec("@if(platform='definitely-not-a-platform')\nlocal skipped = true\n@end")
+      end
+      exec("import 'recovery-module'; assert(recovery_module.value is 42)")
+      print('RUNTIME_IMPORT_RECOVERED')
+   ]])
+   assert(code is 0 and output.find('RUNTIME_IMPORT_RECOVERED') != nil, output)
+   assert_valid_cache_graph(output)
+end
+
+----------------------------------------------------------------------------------------------------------------------
+-- A statement root has no whole-script manifest, yet the package modules it compiles must still record their relative
+-- helpers in their own cache identities.  Changing a helper of a transitively imported package must not reuse stale
+-- entries.
+
+@Test function StatementRootModulesTrackRelativeHelpers()
+   local packages = glRoot .. 'statement-helper-packages/'
+   local package_root <close> = obj.new('file', { path=packages, flags=FL_NEW|FL_FOLDER })
+   for name in values(array<str> { 'gen-leaf', 'gen-top' }) do
+      local folder <close> = obj.new('file', { path=packages .. name .. '/', flags=FL_NEW|FL_FOLDER })
+      local version <close> = obj.new('file', { path=packages .. name .. '/1/', flags=FL_NEW|FL_FOLDER })
+   end
+
+   local helper = packages .. 'gen-leaf/1/helper.tiri'
+   write_file(packages .. 'index.cfg', '[gen-leaf]\n1 = gen-leaf/1/main.tiri\n[gen-top]\n1 = gen-top/1/main.tiri\n')
+   write_file(helper, 'global function gen_leaf_helper():num return 1 end')
+   date_file(helper, 3)
+   write_file(packages .. 'gen-leaf/1/main.tiri', [[
+      @Package(name="gen-leaf", version="1")
+      import './helper'
+      namespace gen_leaf { }
+      gen_leaf.value = gen_leaf_helper()
+   ]])
+   write_file(packages .. 'gen-top/1/main.tiri', [[
+      @Package(name="gen-top", version="1")
+      import 'gen-leaf'
+      namespace gen_top { }
+      gen_top.value = gen_leaf.value + 100
+   ]])
+
+   local statement = "import 'gen-top'; print('STATEMENT_HELPER_VALUE:' .. gen_top.value)"
+   for pass in {0 to 2} do
+      local code, output = package_import(packages, statement)
+      assert(code is 0 and output.find('STATEMENT_HELPER_VALUE:101') != nil, output)
+      if pass is 1 then
+         assert(output.find('Imported-module validation: hits=2 misses=0') != nil,
+            'The unchanged package graph must load from cache: ' .. output)
+      end
+   end
+
+   write_file(helper, 'global function gen_leaf_helper():num return 2 end')
+   date_file(helper, 4)
+
+   local code, output = package_import(packages, statement)
+   assert(code is 0 and output.find('STATEMENT_HELPER_VALUE:102') != nil,
+      'A changed relative helper must invalidate the cached package: ' .. output)
+   assert(output.find('misses=0') is nil, 'The changed package must recompile from source: ' .. output)
+   assert_valid_cache_graph(output)
+
+   code, output = package_import(packages, statement)
+   assert(code is 0 and output.find('STATEMENT_HELPER_VALUE:102') != nil, output)
+   assert(output.find('Imported-module validation: hits=2 misses=0') != nil,
+      'The republished package graph must load from cache: ' .. output)
+end
+
+----------------------------------------------------------------------------------------------------------------------
 -- A cached component that joins its owning package's namespace must reuse the namespace declaration's local.
 
 @Test function SplitPackageComponentsReuseOwningNamespace()

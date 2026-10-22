@@ -2455,6 +2455,23 @@ ParserResult<std::unique_ptr<BlockStmt>> AstBuilder::parse_imported_file(
 
    lua_State *L = &this->ctx.lua();
 
+   // A module's cache identity is assembled from the observations made while parsing its body.  A root without a
+   // whole-script manifest (e.g. a statement) receives a module-scoped capture so that the published identity is
+   // complete and the body parses exactly as it would under a source-backed root.  Nested modules share the capture.
+
+   // The root lexer owns the storage so that load() can release it even when SEH skips this guard.
+
+   struct ModuleCaptureGuard {
+      lua_State *Lua = nullptr;
+      ~ModuleCaptureGuard() { if (Lua) Lua->cache_manifest_capture = nullptr; }
+   } module_capture_guard;
+
+   if (ModuleInitialiser and not this->cache_manifest()) {
+      auto &module_capture = this->root_builder()->ctx.lex().module_cache_capture;
+      L->cache_manifest_capture = &module_capture.emplace();
+      module_capture_guard.Lua = L;
+   }
+
    auto *manifest = this->cache_manifest();
    const size_t import_start      = manifest ? manifest->Imports.size() : 0;
    const size_t conditional_start = manifest ? manifest->ConditionalInputs.size() : 0;
