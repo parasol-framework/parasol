@@ -262,3 +262,47 @@ end
    feed(JET_LMB, 0, 0)
    assert(requested and received, 'The vector bridge must preserve synchronous request and receipt delivery')
 end
+
+@Test function ClipboardSourceIsToldHowTheSessionEnded()
+   local surface <close>, scene, root = newScene()
+   root.dropTarget = 1
+   local pointer = obj.find('SystemPointer')
+   local results = array<int>
+   local source <close> = obj.new('Clipboard', {
+      flags=CPF_DRAG_DROP,
+      dragEndHandler=function(Clipboard, Item, Result)
+         assert(Item is 42, 'The session item must be reported to the source')
+         assert(pointer.dragSource is nil, 'The pointer session must be clear before the source is notified')
+         results.push(Result)
+      end
+   })
+   beginDrag(surface, source, string.char(DATA_TEXT))
+   feed(JET_LMB, 0, 0)
+   assert(#results is 1 and results[0] is ERR_Okay, 'A dispatched drop must be reported once with ERR_Okay')
+
+   beginDrag(surface, source, string.char(DATA_TEXT))
+   check pointer.acDeactivate()
+   feed(JET_LMB, 0, 0)
+   assert(#results is 2 and results[1] is ERR_Cancelled, 'Cancellation must be reported once with ERR_Cancelled')
+   check pointer.acDeactivate()
+   assert(#results is 2, 'Deactivate without an active session must not notify the source')
+
+   root.subscribe('DragDrop', function() pointer.acDeactivate() end)
+   beginDrag(surface, source, string.char(DATA_TEXT))
+   feed(JET_LMB, 0, 0)
+   assert(#results is 3 and results[2] is ERR_Cancelled,
+      'A session cancelled during delivery must be reported once, as a cancellation')
+end
+
+@Test function FreedClipboardSourceIsNotNotified()
+   local surface <close>, scene, root = newScene()
+   root.dropTarget = 1
+   local notified = 0
+   local hits = 0
+   root.subscribe('DragDrop', function() hits++ end)
+   local source = obj.new('Clipboard', { flags=CPF_DRAG_DROP, dragEndHandler=function() notified++ end })
+   beginDrag(surface, source, string.char(DATA_TEXT))
+   source.free()
+   feed(JET_LMB, 0, 0)
+   assert(notified is 0 and hits is 0, 'A freed source must be neither notified nor delivered')
+end

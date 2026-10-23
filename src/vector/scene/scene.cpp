@@ -1341,10 +1341,18 @@ static ERR vector_keyboard_events(extVector *Vector, const evKey *Event)
 }
 
 //********************************************************************************************************************
-// Distribute input events to any vectors that have subscribed and have the focus
+// Distribute input events to any vectors that have subscribed and have the focus.
+//
+// Hiding a surface does not take the focus from it, so a scene on a hidden surface, such as a popup menu that has
+// closed, can remain subscribed to key events.  Such a scene must ignore them; otherwise it would take the vector focus
+// on each Tab press and the visible scene would lose its place in the tab order.
 
 static void scene_key_event(evKey *Event, int Size, extVectorScene *Self)
 {
+   RNF surface_flags;
+   if (gfx::GetSurfaceFlags(Self->SurfaceID, &surface_flags) != ERR::Okay) return;
+   if ((surface_flags & RNF::VISIBLE) IS RNF::NIL) return;
+
    const std::lock_guard<std::recursive_mutex> lock(glVectorFocusLock);
 
    if ((Self->Flags & VPF::IGNORE_TAB) IS VPF::NIL) {

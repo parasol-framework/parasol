@@ -7,8 +7,8 @@
    module display as mGfx
 
    local clipboard = obj.new('Clipboard', { })
-   local window = gui.window({ title='Wayland clipboard check', insideWidth=620, insideHeight=230 })
-   local viewport = window.clientViewport({ aspectRatio=ARF_MEET })
+   local window = gui.window({ title='Wayland clipboard check', insideWidth=620, insideHeight=230, dragDrop=true })
+   local viewport = window.clientViewport({ aspectRatio=ARF_MEET, dropTarget=1 })
    local status = viewport.new('VectorText', {
       string='C: copy text  V: read selection  F: copy file URI',
       face='Noto Sans', fontSize=18, x=20, y=30, fill='rgb(0,0,0)'

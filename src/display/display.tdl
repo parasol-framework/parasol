@@ -537,6 +537,7 @@ module({
   ]],
   [[
    FUNCTION RequestHandler;
+   FUNCTION DragEndHandler;
    ~objClipboard();
   ]])
 

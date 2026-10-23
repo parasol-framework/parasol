@@ -44,7 +44,7 @@
       <prototype>ERR acDeactivate(*Object)</prototype>
       <tiriPrototype>err = Object.acDeactivate()</tiriPrototype>
       <description>
-<p>If a drag and drop operation was started with <function module="Display">StartCursorDrag</function>, it is cancelled without delivering a drop. The drag preview surface, if any, is hidden but not freed.  This action has no effect if no drag and drop operation is active.</p>
+<p>If a drag and drop operation was started with <function module="Display">StartCursorDrag</function>, it is cancelled without delivering a drop. The drag preview surface, if any, is hidden but not freed.  A <class name="Clipboard">Clipboard</class> source is notified through its <class name="Clipboard" field="DragEndHandler">Clipboard.DragEndHandler</class> with <code>ERR::Cancelled</code>.  This action has no effect if no drag and drop operation is active.</p>
       </description>
     </action>
 

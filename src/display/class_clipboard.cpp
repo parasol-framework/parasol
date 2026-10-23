@@ -551,10 +551,46 @@ static ERR CLIPBOARD_DataFeed(objClipboard *Self, struct acDataFeed *Args)
 }
 
 //********************************************************************************************************************
+// Reports the end of a drag and drop session to its source.  Only a Clipboard with a DragEndHandler is notified.  The
+// pointer session is already clear, so the handler may free the clipboard or prepare a new session.
+
+void notify_drag_end(OBJECTID SourceID, int Item, ERR Result)
+{
+   kt::ScopedObjectLock<objClipboard> src(SourceID);
+   if ((not src.granted()) or (src->classID() != CLASSID::CLIPBOARD)) return;
+
+   auto Self = *src;
+   if (Self->DragEndHandler.stale()) {
+      Self->DragEndHandler.unpin();
+      Self->DragEndHandler.disable();
+   }
+
+   if (Self->DragEndHandler.isC()) {
+      auto routine = (void (*)(objClipboard *, int, ERR, APTR))Self->DragEndHandler.Routine;
+      kt::SwitchContext ctx(Self->DragEndHandler.Context);
+      routine(Self, Item, Result, Self->DragEndHandler.Meta);
+   }
+   else if (Self->DragEndHandler.isScript()) {
+      ERR error;
+      if (sc::Call(Self->DragEndHandler, std::to_array<ScriptArg>({
+         { "Clipboard", Self, FD_OBJECTPTR },
+         { "Item",      Item },
+         { "Result",    int(Result) }
+      }), error) != ERR::Okay) error = ERR::Terminate;
+
+      if (error IS ERR::Terminate) {
+         Self->DragEndHandler.unpin();
+         Self->DragEndHandler.disable();
+      }
+   }
+}
+
+//********************************************************************************************************************
 
 objClipboard::~objClipboard()
 {
    if (RequestHandler.defined()) RequestHandler.unpin();
+   if (DragEndHandler.defined()) DragEndHandler.unpin();
 }
 
 /*********************************************************************************************************************
@@ -724,6 +760,23 @@ static ERR CLIPBOARD_Remove(objClipboard *Self, struct clip::Remove *Args)
 /*********************************************************************************************************************
 
 -FIELD-
+DragEndHandler: Callback for the end of a drag and drop operation sourced from this clipboard.
+
+If the clipboard is the source of a drag and drop operation started with ~Display.StartCursorDrag(), the
+DragEndHandler is called once when that operation ends.  The callback uses this signature:
+
+`void DragEndHandler(*Clipboard, int Item, ERR Result)`
+
+`Item` is the item number passed to ~Display.StartCursorDrag().  `Result` is `ERR::Okay` if the drop was dispatched to
+the surface under the pointer, or `ERR::Cancelled` if the operation ended without a drop, for instance because the
+@Pointer received a Deactivate action or a modal surface blocked the drop.  A dispatched drop does not imply that the
+destination accepted the data or completed a transfer; any data requests made by the destination will already have
+reached the #RequestHandler.
+
+The pointer's drag session is clear when the callback runs.  No notification is sent if the clipboard is freed while
+the operation is active.
+
+-FIELD-
 Flags: Optional clipboard behaviour flags.
 Lookup: CPF
 
@@ -743,6 +796,33 @@ The callback is expected to send a `DATA::RECEIPT` to the object referenced by `
 callback should return `ERR::NoSupport`.
 
 *********************************************************************************************************************/
+
+static ERR GET_DragEndHandler(objClipboard *Self, FUNCTION * &Value)
+{
+   if (Self->DragEndHandler.defined()) {
+      Value = &Self->DragEndHandler;
+      return ERR::Okay;
+   }
+   else return ERR::FieldNotSet;
+}
+
+static ERR SET_DragEndHandler(objClipboard *Self, FUNCTION *Value)
+{
+   if (Self->DragEndHandler.defined()) {
+      Self->DragEndHandler.unpin();
+      Self->DragEndHandler.disable();
+   }
+
+   if (Value) {
+      Self->DragEndHandler = *Value;
+      if (Self->DragEndHandler.defined()) Self->DragEndHandler.pin();
+   }
+   else Self->DragEndHandler.disable();
+
+   return ERR::Okay;
+}
+
+//********************************************************************************************************************
 
 static ERR GET_RequestHandler(objClipboard *Self, FUNCTION * &Value)
 {
@@ -1072,6 +1152,7 @@ extern "C" void win_clipboard_updated()
 
 static const FieldArray clFields[] = {
    { "Flags",          FDF_INTFLAGS|FDF_RI, nullptr, nullptr, &clClipboardFlags },
+   { "DragEndHandler", FDF_FUNCTION|FDF_RW|FDF_PURE, GET_DragEndHandler, SET_DragEndHandler },
    { "RequestHandler", FDF_FUNCTION|FDF_RW|FDF_PURE, GET_RequestHandler, SET_RequestHandler },
    END_FIELD
 };

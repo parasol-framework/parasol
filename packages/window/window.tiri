@@ -319,7 +319,11 @@ gui.window = function(Options:table!)
          end
       end
 
-      &scene = &surface.new('VectorScene', { flags=VPF_RESIZE, surface=&surface })
+      -- Drops are routed only to viewports that register with dropTarget, such as views created with dragDrop=true.
+
+      &scene = &surface.new('VectorScene', {
+         flags = Options.dragDrop ? VPF_RESIZE|VPF_DROP_TARGETS : VPF_RESIZE, surface = &surface
+      })
 
       &theme = gui.setTheme(&scene, Options.theme ?? gui.theme)
 

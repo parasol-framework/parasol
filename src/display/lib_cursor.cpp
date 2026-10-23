@@ -593,7 +593,8 @@ The DragDrop action is dispatched synchronously, so the Source must be able to a
 dispatch.  A new drag and drop operation cannot be started until the dispatch has returned.
 
 The operation is cancelled without a drop if the Source object is freed, or if the SystemPointer receives a
-Deactivate action.
+Deactivate action.  A @Clipboard source is told when the operation ends through its @Clipboard.DragEndHandler, unless
+the Source was freed.
 
 -INPUT-
 oid Source:  Refers to an object that is managing the source data.
