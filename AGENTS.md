@@ -36,7 +36,7 @@ and the `agents-platform` test or workflow preset for that tree.
 - Always install your latest build before running `ctest`.
 - Always run `ctest` through a test preset.  Run the standard test suite with `ctest --preset agents`.
 - Filter by label with `-L TEST_LABEL` or by test name with `-R TEST_NAME`, e.g. `ctest --preset agents -L xquery`.
-- Audio module integration tests (labels prefixed `audio_`) are excluded from the standard presets.  Run them
+- Audio module tests (any label beginning with `audio`) are excluded from the standard presets.  Run them
   explicitly with `ctest --preset agents-audio`, optionally adding `-R audio_reverb` for a single test.  The
   `debug-audio` and `debug-static-audio` presets do the same for the `debug` and `debug-static` trees.
 - For the `agents-platform` tree, use the `agents-platform` and `agents-platform-audio` test presets.

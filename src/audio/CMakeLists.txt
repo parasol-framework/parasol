@@ -59,8 +59,9 @@ if (UNIT_TESTS)
    endif ()
 endif ()
 
-# Audio integration tests are always registered with labels prefixed "audio_".  The standard test presets exclude
-# them, so run them explicitly with `ctest --preset agents-audio`.
+# Audio integration tests are always registered with labels prefixed "audio".  The standard test presets exclude
+# them, so run them explicitly with `ctest --preset agents-audio`.  Tests that override LABELS must keep an "audio"
+# label so that the preset filters continue to recognise them.
 
 option (KOTUKU_AUDIO_HARDWARE_TESTS "Run playback tests against the configured audio device" OFF)
 
