@@ -520,13 +520,14 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 -- Module-cache fragments.  Each cache entry stores only its own initialiser and references separately cached
 -- dependencies, so these helpers locate entries by the package paths recorded in their uncompressed identities.
+-- Match the fixture root as well as the package name: independent tests can publish identically named packages.
 
 function read_bytes(Path:str):str
    local file <close> = io.open(Path, 'r')
    return file.read('*a')
 end
 
-function fragment_entries(Packages:array<str>):table
+function fragment_entries(Packages:array<str>, Root:str):table
    local entries = {}
    local folder <close> = obj.new('file', { path=glCacheFolder, flags=FL_FOLDER|FL_READ })
    local err, file = folder.mtNext()
@@ -538,7 +539,7 @@ function fragment_entries(Packages:array<str>):table
          -- dependency-first order.
          local owner
          for package in values(Packages) do
-            if content.find('/' .. package .. '/') != nil then owner = package end
+            if content.find(Root .. package .. '/') != nil then owner = package end
          end
          if owner then entries[owner] = { path=name, size=file.size } end
       end
@@ -547,11 +548,11 @@ function fragment_entries(Packages:array<str>):table
    return entries
 end
 
-function clear_fragment_entries(Packages:array<str>)
-   local entries = fragment_entries(Packages)
+function clear_fragment_entries(Packages:array<str>, Root:str)
+   local entries = fragment_entries(Packages, Root)
    while table.size(entries) > 0 do
       for _, entry in entries do check mSys.DeleteFile(entry.path) end
-      entries = fragment_entries(Packages)
+      entries = fragment_entries(Packages, Root)
    end
 end
 
@@ -630,7 +631,7 @@ end
       output.find('destination-loads=4 ') != nil,
       'A warm graph must link every module from its own cache entry exactly once: ' .. output)
 
-   local small = fragment_entries(names)
+   local small = fragment_entries(names, packages)
    for name in values(names) do assert(small[name], 'Missing cache entry for ' .. name) end
 
    -- Remove one parent: the remaining entries are reused and only the missing branch and its importer rebuild.
@@ -640,7 +641,7 @@ end
       'A partially populated cache must reuse valid dependencies: ' .. output)
 
    -- Corrupt the shared leaf: every importer must reject its fragment rather than link stale or missing code.
-   write_file(fragment_entries(names)['frag-leaf'].path, 'TIRIMOD1-corrupt')
+   write_file(fragment_entries(names, packages)['frag-leaf'].path, 'TIRIMOD1-corrupt')
    output = run_fragment_graph(packages, 23)
    assert(output.find('hits=0 misses=4') != nil,
       'A corrupt dependency entry must invalidate every importer: ' .. output)
@@ -657,12 +658,12 @@ end
    -- Compare growth rather than total sizes: parent entries also carry dependency metadata whose size does not
    -- depend on the leaf's private implementation.
    local function measure(Helpers:num):table
-      clear_fragment_entries(names)
+      clear_fragment_entries(names, packages)
       write_package(packages, 'frag-leaf', fragment_leaf_source(11, Helpers))
       run_fragment_graph(packages, 25)
       local warm = run_fragment_graph(packages, 25)
       assert(warm.find('hits=4 misses=0') != nil, 'The rebuilt graph must be warm: ' .. warm)
-      return fragment_entries(names)
+      return fragment_entries(names, packages)
    end
    small = measure(20)
    local large = measure(160)
@@ -750,7 +751,7 @@ end
    local output = save(warm, source)
    assert(output.find('source-compilations=0') != nil, 'The second export must link cached fragments: ' .. output)
 
-   clear_fragment_entries(names)
+   clear_fragment_entries(names, packages)
    execute(cold)
    execute(warm)
 
@@ -848,7 +849,7 @@ end
       write_file(packages .. 'gen-leaf/1/helper.tiri', f'global function gen_helper_value():num return {Value} end')
       local code, output = run_root()
       assert(code is 0 and output.find('GEN_VALUE:' .. tostring(Value * 10)) != nil, output)
-      local entries = fragment_entries(names)
+      local entries = fragment_entries(names, packages)
       return { leaf=read_bytes(entries['gen-leaf'].path), top=read_bytes(entries['gen-top'].path),
          leaf_path=entries['gen-leaf'].path, top_path=entries['gen-top'].path }
    end
