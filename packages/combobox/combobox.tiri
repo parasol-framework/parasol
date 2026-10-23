@@ -4,7 +4,7 @@
 Documentation is available in the Kotuku Wiki.
 --]]
 
-   import 'gui', 'gui/dropdown'
+   import 'gui', './dropdown'
 
    namespace gui
 
@@ -24,13 +24,15 @@ function firstItem(Items:any):table
    end
 end
 
-function reportFeedback()
+-- Reports the drop-down item if selected, otherwise the text string is reported for editable comboboxes
+
+function reportFeedback(Item:any)
    &events.activate ?! return
    text = &text.string
    new_hash = text ? string.hash(text) : 0
    if new_hash != &hash then
       &hash = new_hash
-      &events.activate(text)
+      &events.activate(Item ?? text)
    end
 end
 
@@ -69,14 +71,14 @@ function createMenu(Items:any)
       &menu.surface?.free()
    end
 
-   &menu = gui.dropdown({
+   &menu = gui._dropdown({
       target    = 0, -- Open on the host desktop so the menu can extend beyond the combobox window
       relative  = &viewport,
       config    = Items ?? { },
       lineLimit = 8,
       feedback = function[<weak> &&](Item:table!)
          &text.string = Item.label
-         reportFeedback()
+         reportFeedback(Item)
          &viewport.acDraw()
       end,
       theme = &dropdownTheme

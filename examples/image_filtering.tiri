@@ -192,8 +192,8 @@ function buildScene()
          { label='Mitchell' }
       },
       events = {
-         activate = function(Text)
-            selectFilter(Text)
+         activate = function(Item:table!)
+            selectFilter(Item.label)
          end
       }
    })
@@ -208,14 +208,14 @@ function buildScene()
       y      = 10,
       items  = { { label='Test Pattern' }, { label='Photo' }, { label='Gradient' } },
       events = {
-         activate = function(Text)
-            if Text is 'Test Pattern' then
+         activate = function(Item:table!)
+            if Item.label is 'Test Pattern' then
                rect.fill = 'url(#pattern)'
                transformStyle = 'zoom'
-            elseif Text is 'Photo' then
+            elseif Item.label is 'Photo' then
                rect.fill = 'url(#photo)'
                transformStyle = 'scale'
-            elseif Text is 'Gradient' then
+            elseif Item.label is 'Gradient' then
                rect.fill = 'url(#gradient)'
                transformStyle = 'zoom'
             end

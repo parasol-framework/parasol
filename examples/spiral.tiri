@@ -88,8 +88,8 @@ function buildScene()
       target = glViewport, label = 'Winding:', text = 'Clockwise', x = 16, y = glY,
       items = array<table> { { label = 'Clockwise' }, { label = 'Anticlockwise' } },
       events = {
-         activate = function(Text:str)
-            glSpiral.clockwise = (Text is 'Clockwise') ? 1 : 0
+         activate = function(Item:table!)
+            glSpiral.clockwise = (Item.label is 'Clockwise') ? 1 : 0
             redraw()
          end
       }

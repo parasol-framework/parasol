@@ -97,8 +97,8 @@ end
       x      = glWindow.margins.left, y = y,
       items  = items,
       events = {
-         activate = function(Widget, Text)
-            setFont(Widget.text.string, glFontSize)
+         activate = function(Item:table!)
+            setFont(Item.label, glFontSize)
          end
       }
    })

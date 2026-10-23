@@ -1,4 +1,3 @@
-@Package(name="gui/combobox", version="1.0")
 
 --[[
 Internal script for combobox drop-down menus.
@@ -19,7 +18,7 @@ ICON_SIZE    <const> = math.floor(ITEM_HEIGHT * 0.8)
 ITEM_SPACING <const> = 1.2
 SCROLL_WIDTH <const> = 12
 
-gui.dropdown = function(Options)
+gui._dropdown = function(Options)
    theme_name = gui.getThemeName(Options.relative.scene) -- Adopt the theme of the window that opens the dropdown
    dropdown = table.merge(gui.themes[theme_name].dropdown, Options.theme, true, true)
    parent_surface = Options.target
