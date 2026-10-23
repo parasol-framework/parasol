@@ -237,6 +237,9 @@ static void compute_target_area(extVectorFilter *Self)
 // Return a bitmap from the bank.  In order to save memory, bitmap data is managed internally so that it always
 // reflects the size of the clipping region.  The bitmap's size reflects the Filter's (X,Y), (Width,Height) values in
 // accordance with the unit setting.
+//
+// Effects can call this function while they are the current context, so the filter is set as the owner explicitly.
+// The bank frees its bitmaps, which must not be freed earlier with an effect.
 
 static ERR get_banked_bitmap(extVectorFilter *Self, objBitmap **BitmapResult)
 {
@@ -248,9 +251,11 @@ static ERR get_banked_bitmap(extVectorFilter *Self, objBitmap **BitmapResult)
    if (bi >= Self->Bank.size()) Self->Bank.emplace_back(std::make_unique<filter_bitmap>());
 
    #ifdef DEBUG_FILTER_BITMAP
-      auto bmp = Self->Bank[bi].get()->get_bitmap(Self->ClientViewport->Scene->PageWidth, Self->ClientViewport->Scene->PageHeight, Self->VectorClip, true);
+      auto bmp = Self->Bank[bi].get()->get_bitmap(Self->ClientViewport->Scene->PageWidth,
+         Self->ClientViewport->Scene->PageHeight, Self->VectorClip, true, Self->UID);
    #else
-      auto bmp = Self->Bank[bi].get()->get_bitmap(Self->ClientViewport->Scene->PageWidth, Self->ClientViewport->Scene->PageHeight, Self->VectorClip, false);
+      auto bmp = Self->Bank[bi].get()->get_bitmap(Self->ClientViewport->Scene->PageWidth,
+         Self->ClientViewport->Scene->PageHeight, Self->VectorClip, false, Self->UID);
    #endif
 
    if (bmp) {
