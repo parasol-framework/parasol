@@ -475,6 +475,138 @@ void collect_module_imports(const ImportStmtPayload &Import, std::vector<const I
 }
 
 //********************************************************************************************************************
+// Visits, in source order, the nested modules and declarations through which a module body contributes to its
+// interface.  Interface preparation and cold-import lookup share this walk so that a module exposes the same exports
+// with the same first-declaration precedence whether or not its portable interface exists yet.
+//
+// The visitor provides nested(const ImportEntryPayload &), returning false to abort the walk;
+// declare_namespace(Name, Mode); and declare(Name, Kind, Initialiser, Function, IsConst, Declared), where Declared is
+// the source identifier of a global declaration and is otherwise null.
+
+template<typename Visitor>
+bool visit_module_exports(ParserContext &Context, const BlockStmt &Body, Visitor &Target)
+{
+   using namespace tiri::import_cache;
+   for (const auto &statement : Body.statements) {
+      if (not statement) continue;
+      switch (statement->kind) {
+         case AstNodeKind::ImportStmt: {
+            std::vector<const ImportEntryPayload *> nested_imports;
+            collect_module_imports(std::get<ImportStmtPayload>(statement->data), nested_imports);
+            for (const ImportEntryPayload *nested : nested_imports) {
+               if (not Target.nested(*nested)) return false;
+            }
+            break;
+         }
+         case AstNodeKind::NamespaceStmt: {
+            const auto &item = std::get<NamespaceStmtPayload>(statement->data);
+            std::string name = symbol_name(item.name.symbol);
+            Target.declare_namespace(name, item.mode IS NamespaceDeclarationMode::Create ?
+               NamespaceMode::DECLARE : NamespaceMode::JOIN);
+            Target.declare(std::move(name), ExportKind::GLOBAL, item.initialiser.get(),
+               function_expression(item.initialiser.get(), Context), true, nullptr);
+            break;
+         }
+         case AstNodeKind::GlobalDeclStmt: {
+            const auto &item = std::get<GlobalDeclStmtPayload>(statement->data);
+            for (size_t i = 0; i < item.names.size(); ++i) {
+               const ExprNode *value = i < item.values.size() ? item.values[i].get() :
+                  (item.values.empty() ? nullptr : item.values.back().get());
+               Target.declare(symbol_name(item.names[i].symbol), ExportKind::GLOBAL, value,
+                  function_expression(value, Context), item.names[i].has_const, &item.names[i]);
+            }
+            break;
+         }
+         case AstNodeKind::ExternStmt:
+            for (const auto &name : std::get<ExternDeclStmtPayload>(statement->data).names) {
+               Target.declare(symbol_name(name.symbol), ExportKind::EXTERN, nullptr, nullptr, name.has_const,
+                  nullptr);
+            }
+            break;
+         case AstNodeKind::FunctionStmt: {
+            const auto &item = std::get<FunctionStmtPayload>(statement->data);
+            if (item.name.is_explicit_global or item.name.segments.size() > 1) {
+               std::string name;
+               for (const auto &segment : item.name.segments) {
+                  if (not name.empty()) name.push_back('.');
+                  name += symbol_name(segment.symbol);
+               }
+               Target.declare(std::move(name), ExportKind::GLOBAL, nullptr, item.function.get(), true, nullptr);
+            }
+            break;
+         }
+         case AstNodeKind::AssignmentStmt: {
+            const auto &item = std::get<AssignmentStmtPayload>(statement->data);
+            for (size_t i = 0; i < item.targets.size(); ++i) {
+               std::string name = qualified_name(item.targets[i].get());
+               if (name.find('.') IS std::string::npos) continue;
+               const ExprNode *value = i < item.values.size() ? item.values[i].get() :
+                  (item.values.empty() ? nullptr : item.values.back().get());
+               Target.declare(std::move(name), ExportKind::GLOBAL, value, function_expression(value, Context),
+                  false, nullptr);
+            }
+            break;
+         }
+         default: break;
+      }
+   }
+   return true;
+}
+
+//********************************************************************************************************************
+// Collects the callable exports of a module compiled from source.  A nested module contributes its installed
+// interface when one exists, and otherwise its own source exports, mirroring the interface merge in prepare_block().
+
+class SourceExportCollector {
+public:
+   SourceExportCollector(ParserContext &Context, SourceModuleExports &Output) : context_(Context), output_(Output) { }
+
+   bool nested(const ImportEntryPayload &Entry)
+   {
+      ImportedModuleUnit *unit = Entry.module_unit.get();
+      if (not unit) return true;
+      if (unit->installed_interface) {
+         const InstalledImportInterface &installed = *unit->installed_interface;
+         for (const auto &item : installed.portable_interface().Namespaces) this->output_.namespaces.insert(item.Name);
+         for (const auto &exported : installed.bindings()) {
+            this->output_.exports.try_emplace(exported.Name, installed.callable(exported));
+         }
+      }
+      else if (const SourceModuleExports *exports = source_module_exports(this->context_, *unit)) {
+         this->output_.namespaces.insert(exports->namespaces.begin(), exports->namespaces.end());
+         for (const auto &[name, function] : exports->exports) this->output_.exports.try_emplace(name, function);
+      }
+      return true;
+   }
+
+   void declare_namespace(const std::string &Name, tiri::import_cache::NamespaceMode)
+   {
+      this->output_.namespaces.insert(Name);
+   }
+
+   void declare(std::string Name, tiri::import_cache::ExportKind, const ExprNode *,
+      const FunctionExprPayload *Function, bool, const Identifier *)
+   {
+      if (not Name.empty()) this->output_.exports.try_emplace(std::move(Name), Function);
+   }
+
+   static const SourceModuleExports * source_module_exports(ParserContext &Context, ImportedModuleUnit &Unit)
+   {
+      if (Unit.source_exports) return Unit.source_exports.get();
+      if (not Unit.body) return nullptr;
+      auto exports = std::make_unique<SourceModuleExports>();
+      SourceExportCollector collector(Context, *exports);
+      (void)visit_module_exports(Context, *Unit.body, collector);
+      Unit.source_exports = std::move(exports);
+      return Unit.source_exports.get();
+   }
+
+private:
+   ParserContext &context_;
+   SourceModuleExports &output_;
+};
+
+//********************************************************************************************************************
 // Builds and installs portable interfaces for imported modules contained in this block and its descendants.
 
 bool prepare_block(ParserContext &Context, BlockStmt &Block, std::string &Diagnostic)
@@ -538,92 +670,54 @@ bool prepare_block(ParserContext &Context, BlockStmt &Block, std::string &Diagno
             }
          }
 
-         for (auto &child_statement : body->statements) {
-            if (not child_statement) continue;
-            switch (child_statement->kind) {
-               case AstNodeKind::ImportStmt: {
-                  std::vector<const ImportEntryPayload *> nested_imports;
-                  collect_module_imports(std::get<ImportStmtPayload>(child_statement->data), nested_imports);
-                  for (const ImportEntryPayload *nested_entry : nested_imports) {
-                     const ImportEntryPayload &nested = *nested_entry;
-                     if (nested.module_unit and nested.module_unit->installed_interface) {
-                        const auto &nested_artifact = nested.module_unit->installed_interface->artifact();
-                        const auto &nested_interface = nested_artifact.descriptors();
-                        const auto &nested_digest = nested_artifact.digest();
-                        std::vector<tiri::CompatibilityRecord> nested_compatibility;
-                        if (tiri::decode_compatibility_manifest(
-                               nested_interface.CompatibilityManifest, nested_compatibility)) {
-                           Diagnostic = std::format("{}: nested module has invalid compatibility metadata",
-                              nested.lib_path);
-                           return false;
-                        }
-                        compatibility_records.insert(compatibility_records.end(),
-                           nested_compatibility.begin(), nested_compatibility.end());
-                        merge_interface(assembly, nested_interface);
-                        portable.NestedModules.push_back({ nested.module_unit->module_cache_identity.LogicalRequest,
-                           nested.lib_path, nested_digest });
-                        unit.module_cache_identity.ModuleDependencies.push_back({
-                           nested.module_unit->module_cache_identity.LogicalRequest, nested.lib_path, nested_digest,
-                           nested.module_unit->module_identity
-                        });
-                     }
-                  }
-                  break;
+         // Nested modules are prepared before their importer, so each has an installed interface to merge.
+
+         struct InterfaceExports {
+            ParserContext &context;
+            ImportedModuleUnit &unit;
+            InterfaceAssembly &assembly;
+            Interface &portable;
+            std::vector<tiri::CompatibilityRecord> &compatibility_records;
+            std::string &diagnostic;
+
+            bool nested(const ImportEntryPayload &Nested)
+            {
+               if (not Nested.module_unit or not Nested.module_unit->installed_interface) return true;
+               const auto &nested_artifact = Nested.module_unit->installed_interface->artifact();
+               const auto &nested_interface = nested_artifact.descriptors();
+               const auto &nested_digest = nested_artifact.digest();
+               std::vector<tiri::CompatibilityRecord> nested_compatibility;
+               if (tiri::decode_compatibility_manifest(nested_interface.CompatibilityManifest, nested_compatibility)) {
+                  this->diagnostic = std::format("{}: nested module has invalid compatibility metadata",
+                     Nested.lib_path);
+                  return false;
                }
-               case AstNodeKind::NamespaceStmt: {
-                  const auto &item = std::get<NamespaceStmtPayload>(child_statement->data);
-                  std::string name = symbol_name(item.name.symbol);
-                  assembly.append_namespace({ name, item.mode IS NamespaceDeclarationMode::Create ?
-                     NamespaceMode::DECLARE : NamespaceMode::JOIN });
-                  add_export(assembly, name, ExportKind::GLOBAL, item.initialiser.get(),
-                     function_expression(item.initialiser.get(), Context), true, Context);
-                  break;
-               }
-               case AstNodeKind::GlobalDeclStmt: {
-                  const auto &item = std::get<GlobalDeclStmtPayload>(child_statement->data);
-                  for (size_t i = 0; i < item.names.size(); ++i) {
-                     const ExprNode *value = i < item.values.size() ? item.values[i].get() :
-                        (item.values.empty() ? nullptr : item.values.back().get());
-                     add_export(assembly, symbol_name(item.names[i].symbol), ExportKind::GLOBAL, value,
-                        function_expression(value, Context), item.names[i].has_const, Context);
-                     apply_declared_value(assembly, item.names[i], Context);
-                  }
-                  break;
-               }
-               case AstNodeKind::ExternStmt:
-                  for (const auto &name : std::get<ExternDeclStmtPayload>(child_statement->data).names) {
-                     add_export(assembly, symbol_name(name.symbol), ExportKind::EXTERN, nullptr, nullptr,
-                        name.has_const, Context);
-                  }
-                  break;
-               case AstNodeKind::FunctionStmt: {
-                  const auto &item = std::get<FunctionStmtPayload>(child_statement->data);
-                  if (item.name.is_explicit_global or item.name.segments.size() > 1) {
-                     std::string name;
-                     for (const auto &segment : item.name.segments) {
-                        if (not name.empty()) name.push_back('.');
-                        name += symbol_name(segment.symbol);
-                     }
-                     add_export(assembly, std::move(name), ExportKind::GLOBAL, nullptr,
-                        item.function.get(), true, Context);
-                  }
-                  break;
-               }
-               case AstNodeKind::AssignmentStmt: {
-                  const auto &item = std::get<AssignmentStmtPayload>(child_statement->data);
-                  for (size_t i = 0; i < item.targets.size(); ++i) {
-                     std::string name = qualified_name(item.targets[i].get());
-                     if (name.find('.') IS std::string::npos) continue;
-                     const ExprNode *value = i < item.values.size() ? item.values[i].get() :
-                        (item.values.empty() ? nullptr : item.values.back().get());
-                     add_export(assembly, std::move(name), ExportKind::GLOBAL, value,
-                        function_expression(value, Context), false, Context);
-                  }
-                  break;
-               }
-               default: break;
+               this->compatibility_records.insert(this->compatibility_records.end(),
+                  nested_compatibility.begin(), nested_compatibility.end());
+               merge_interface(this->assembly, nested_interface);
+               this->portable.NestedModules.push_back({ Nested.module_unit->module_cache_identity.LogicalRequest,
+                  Nested.lib_path, nested_digest });
+               this->unit.module_cache_identity.ModuleDependencies.push_back({
+                  Nested.module_unit->module_cache_identity.LogicalRequest, Nested.lib_path, nested_digest,
+                  Nested.module_unit->module_identity
+               });
+               return true;
             }
-         }
+
+            void declare_namespace(std::string Name, NamespaceMode Mode)
+            {
+               this->assembly.append_namespace({ std::move(Name), Mode });
+            }
+
+            void declare(std::string Name, ExportKind Kind, const ExprNode *Initialiser,
+               const FunctionExprPayload *Function, bool IsConst, const Identifier *Declared)
+            {
+               add_export(this->assembly, std::move(Name), Kind, Initialiser, Function, IsConst, this->context);
+               if (Declared) apply_declared_value(this->assembly, *Declared, this->context);
+            }
+         } interface_exports { Context, unit, assembly, portable, compatibility_records, Diagnostic };
+
+         if (not visit_module_exports(Context, *body, interface_exports)) return false;
 
          Interface declarations;
          std::unordered_set<std::string> declared_structures;
@@ -706,4 +800,16 @@ bool prepare_block(ParserContext &Context, BlockStmt &Block, std::string &Diagno
 bool prepare_import_interfaces(ParserContext &Context, BlockStmt &Block, std::string &Diagnostic)
 {
    return prepare_block(Context, Block, Diagnostic);
+}
+
+//********************************************************************************************************************
+// Resolves a namespace member call target exported by a module that was compiled from source in this compilation.
+
+const FunctionExprPayload * source_module_member(ParserContext &Context, ImportedModuleUnit &Unit,
+   std::string_view Namespace, std::string_view Member)
+{
+   const SourceModuleExports *exports = SourceExportCollector::source_module_exports(Context, Unit);
+   if (not exports or not exports->namespaces.contains(std::string(Namespace))) return nullptr;
+   auto found = exports->exports.find(std::format("{}.{}", Namespace, Member));
+   return found IS exports->exports.end() ? nullptr : found->second;
 }

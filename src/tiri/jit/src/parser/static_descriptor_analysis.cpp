@@ -11,6 +11,7 @@
 #include "ast/nodes.h"
 #include "field_type_lookup.h"
 #include "import_interface.h"
+#include "import_interface_export.h"
 #include "parser_context.h"
 #include "table_ownership.h"
 #include "../../../defs.h"
@@ -742,13 +743,19 @@ private:
                   }
                   StaticBindingID binding_id = entry.reuses_namespace_binding ? entry.namespace_name->binding_id :
                      this->declare(*entry.namespace_name, initialiser, 0, function);
-                  if (binding_id and entry.module_unit and installed) {
+                  // A module compiled from source supplies the same namespace contracts as an installed interface,
+                  // so the importer's analysis does not depend on whether the module came from the cache.
+
+                  if (binding_id and entry.module_unit) {
                      auto &binding = this->catalogue_.binding(binding_id);
                      binding.import_interface = installed.get();
+                     binding.import_module = installed ? nullptr : entry.module_unit.get();
                      binding.import_namespace = &entry.default_namespace;
                      binding.is_import_namespace = true;
-                     if (const auto *exported = installed->find_export(entry.default_namespace)) {
-                        binding.function = installed->callable(*exported);
+                     if (installed) {
+                        if (const auto *exported = installed->find_export(entry.default_namespace)) {
+                           binding.function = installed->callable(*exported);
+                        }
                      }
                   }
                }
@@ -906,10 +913,17 @@ private:
       const auto &base = std::get<NameRef>(member.table->data);
       if (not base.binding_id) return;
       const auto &binding = this->catalogue_.binding(base.binding_id);
-      if (not binding.import_interface or not binding.import_namespace) return;
+      if (not binding.import_namespace) return;
       std::string_view member_name(strdata(member.member.symbol), member.member.symbol->len);
-      const auto *exported = binding.import_interface->find_member(*binding.import_namespace, member_name);
-      const FunctionExprPayload *function = exported ? binding.import_interface->callable(*exported) : nullptr;
+      const FunctionExprPayload *function = nullptr;
+      if (binding.import_interface) {
+         const auto *exported = binding.import_interface->find_member(*binding.import_namespace, member_name);
+         function = exported ? binding.import_interface->callable(*exported) : nullptr;
+      }
+      else if (binding.import_module) {
+         function = source_module_member(this->context_, *binding.import_module, *binding.import_namespace,
+            member_name);
+      }
       if (function) Call.callable = this->function_callable(*function);
    }
 

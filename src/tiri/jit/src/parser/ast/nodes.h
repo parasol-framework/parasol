@@ -38,6 +38,8 @@
 #include <span>
 #include <string>
 #include <string_view>
+#include <unordered_map>
+#include <unordered_set>
 #include <utility>
 #include <variant>
 #include <vector>
@@ -1124,6 +1126,13 @@ struct ImportedModuleKeyHash {
    }
 };
 
+// Exports of a module compiled from source, indexed by the same declarations and first-declaration precedence that
+// its portable interface applies.  Cold importers use it before interface preparation; see source_module_member().
+struct SourceModuleExports {
+   std::unordered_map<std::string, const FunctionExprPayload *> exports; // Qualified name to callable, if any
+   std::unordered_set<std::string> namespaces;
+};
+
 // Definition-level state shared by every non-local import edge in one root compilation.
 struct ImportedModuleUnit {
    ImportedModuleKey key;
@@ -1136,6 +1145,7 @@ struct ImportedModuleUnit {
    tiri::import_cache::FinalisedInterfacePtr interface_artifact;
    tiri::import_cache::CachedModuleArtifactPtr cache_artifact; // Validated fragment graph of a cache hit.
    std::shared_ptr<const InstalledImportInterface> installed_interface;
+   std::unique_ptr<SourceModuleExports> source_exports;
    std::vector<FuncState::DependencyDescriptor> module_dependencies;
    uint8_t file_source_idx = 0;
    bool module_cache_hit = false;
