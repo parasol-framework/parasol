@@ -765,6 +765,11 @@ class extFilterEffect : public objFilterEffect {
    }
 
    ~extFilterEffect() {
+      // Release the effects used as inputs, so that they can render to the filter's output again.
+
+      if ((SourceType IS VSF::REFERENCE) and (Input)) ((extFilterEffect *)Input)->UsageCount--;
+      if ((MixType IS VSF::REFERENCE) and (Mix)) ((extFilterEffect *)Mix)->UsageCount--;
+
       if (Filter) {
          for (auto e = Filter->Effects; (e) and (UsageCount > 0); e = (extFilterEffect *)e->Next) {
             if (e->Input IS this) { e->Input = nullptr; UsageCount--; }
