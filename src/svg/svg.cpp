@@ -143,7 +143,6 @@ struct svgState {
    double  m_font_size_px;    // Converted from m_font_size
    double  m_stroke_width;    // 0 if undefined
    double  m_fill_opacity;    // -1 if undefined
-   double  m_opacity;         // -1 if undefined
    double  m_stop_opacity;    // -1 if undefined
    int     m_font_weight;     // 0 if undefined
    RQ      m_path_quality;    // RQ::AUTO default
@@ -162,7 +161,7 @@ private:
 
 public:
    svgState(class extSVG *pSVG) : m_color(pSVG->Colour), m_fill("rgb(0,0,0)"), m_font_size("12pt"), m_font_family("Noto Sans"), m_font_size_px(16), m_stroke_width(0),
-      m_fill_opacity(-1), m_opacity(-1), m_stop_opacity(-1), m_font_weight(0), m_path_quality(RQ::AUTO),
+      m_fill_opacity(-1), m_stop_opacity(-1), m_font_weight(0), m_path_quality(RQ::AUTO),
       m_line_join(VLJ::NIL), m_line_cap(VLC::NIL), m_inner_join(VIJ::NIL),
       Self(pSVG), Scene(pSVG->Scene) { }
 

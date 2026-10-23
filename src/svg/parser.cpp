@@ -135,8 +135,8 @@ void svgState::applyStateToVector(objVector *Vector) const noexcept
 {
    kt::Log log(__FUNCTION__);
 
-   log.traceBranch("%s: Fill: %s, Stroke: %s, Opacity: %.2f, Font: %s %s",
-      Vector->Class->ClassName.c_str(), m_fill.c_str(), m_stroke.c_str(), m_opacity, m_font_family.c_str(), m_font_size.c_str());
+   log.traceBranch("%s: Fill: %s, Stroke: %s, Font: %s %s",
+      Vector->Class->ClassName.c_str(), m_fill.c_str(), m_stroke.c_str(), m_font_family.c_str(), m_font_size.c_str());
 
    if (!m_fill.empty())   Vector->setFill(m_fill);
    if (!m_stroke.empty()) Vector->setStroke(m_stroke);
@@ -165,8 +165,10 @@ void svgState::applyStateToVector(objVector *Vector) const noexcept
       else if (iequals("inherit", m_visibility))  Vector->setVisibility(VIS::INHERIT);
    }
 
+   // NB: 'opacity' is not an inherited property.  It is applied only to the element that declares it, and the
+   // renderer accounts for the opacity of any parent group.
+
    if (m_fill_opacity >= 0.0) Vector->setFillOpacity(m_fill_opacity);
-   if (m_opacity >= 0.0) Vector->setOpacity(m_opacity);
 
    if (Vector->classID() != CLASSID::VECTORTEXT) {
       if (m_path_quality != RQ::AUTO) Vector->setPathQuality(m_path_quality);
@@ -281,7 +283,6 @@ void svgState::applyTag(const XTag &Tag) noexcept
             break;
          }
          case SVF_fill_opacity: m_fill_opacity = std::clamp(svtonum<double>(val), 0.0, 1.0); break;
-         case SVF_opacity:      m_opacity = std::clamp(svtonum<double>(val), 0.0, 1.0); break;
          case SVF_stop_opacity: m_stop_opacity = std::clamp(svtonum<double>(val), 0.0, 1.0); break;
          case SVF_shape_rendering: m_path_quality = shape_rendering_to_render_quality(val); break;
       }
@@ -2674,10 +2675,7 @@ void svgState::proc_use(XTag &Tag, OBJECTPTR Parent) noexcept
 
       if (viewport->init() != ERR::Okay) { FreeResource(viewport); return; }
 
-      // Add all child elements in <symbol> to the viewport.  Some state values have to be reset here because
-      // they have already been applied to the viewport and will be inherited via that route.
-
-      state.m_opacity = 1.0;
+      // Add all child elements in <symbol> to the viewport.
 
       log.traceBranch("Processing all child elements within %s", ref.c_str());
       state.process_children(*tagref, viewport);
@@ -3005,6 +3003,8 @@ void svgState::proc_svg(XTag &Tag, OBJECTPTR Parent, objVector * &Vector) noexce
             break;
 
          case SVF_preserveAspectRatio: viewport->setAspectRatio(parse_aspect_ratio(val)); break;
+
+         case SVF_opacity: viewport->setOpacity(std::clamp(svtonum<double>(val), 0.0, 1.0)); break;
 
          case SVF_id:
             viewport->setSID(val);

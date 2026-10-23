@@ -92,9 +92,7 @@ void anim_base::set_orig_value(svgState &State)
             break;
 
          case SVF_opacity:
-            if (obj->Opacity != 1.0) target_attrib_orig = obj->Opacity;
-            else if (State.m_opacity != -1) target_attrib_orig = State.m_opacity;
-            else target_attrib_orig = 1.0;
+            target_attrib_orig = obj->Opacity; // Not inherited, so only the target's own value is relevant
             break;
 
          default: {

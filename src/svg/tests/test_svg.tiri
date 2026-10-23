@@ -195,7 +195,7 @@ end
 @Test global function Basics04() hashTestSVG('basics/w3-render-elems-06-t.svg', 0x1be1968b) end
 @Test global function Basics05() hashTestSVG('basics/w3-render-elems-07-t.svg', 0xa709bb67) end
 @Test global function Basics06() hashTestSVG('basics/w3-render-elems-08-t.svg', 0x0cf3b1d1) end
--- Requires support for group opacity
+-- Requires group opacity to composite the group as one layer; the renderer applies VectorGroup opacity per child
 @Test global function Basics07() hashTestSVG('basics/w3-render-groups-01-b.svg', -1) end
 @Test global function Basics08() hashTestSVG('basics/w3-render-groups-03-t.svg', 0x826f9292) end
 @Test global function Basics09() hashTestSVG('basics/w3-shapes-circle-01-t.svg', 0xcbc00eb8) end
@@ -547,6 +547,34 @@ end
 @Test function OpacityCompositesInSRGB()
    local px = renderStatementPixel(compositeDocument('<rect width="40" height="40" opacity="0.5"/>'))
    assertRed(px, 127, 128, 'opacity 0.5 black over white')
+end
+
+@Test function GroupOpacityIsNotInherited()
+   -- opacity applies to the group as a whole and must not be copied to its children.
+   local px = renderStatementPixel(compositeDocument('<g opacity="0.5"><rect width="40" height="40"/></g>'))
+   assertRed(px, 127, 128, 'Group opacity 0.5 black over white')
+
+   -- Nested opacity values multiply: 0.5 * 0.5 leaves 25% black, which reads 191.
+   px = renderStatementPixel(compositeDocument(
+      '<g opacity="0.5"><rect width="40" height="40" opacity="0.5"/></g>'))
+   assertRed(px, 190, 192, 'Group opacity 0.5 over a child with opacity 0.5')
+
+   -- fill-opacity is an inherited property and continues to reach the children.
+   px = renderStatementPixel(compositeDocument('<g fill-opacity="0.5"><rect width="40" height="40"/></g>'))
+   assertRed(px, 127, 128, 'Inherited fill-opacity 0.5 black over white')
+end
+
+@Test function SVGViewportOpacityIsNotInherited()
+   local px = renderStatementPixel(compositeDocument('<rect width="40" height="40"/>', 'opacity="0.5"'))
+   assertRed(px, 127, 128, 'Root SVG opacity 0.5 black over white')
+
+   px = renderStatementPixel(compositeDocument(
+      '<svg width="40" height="40" opacity="0.5"><rect width="40" height="40"/></svg>'))
+   assertRed(px, 127, 128, 'Nested SVG opacity 0.5 black over white')
+
+   px = renderStatementPixel(compositeDocument(
+      '<svg width="40" height="40" opacity="0.5"><rect width="40" height="40"/></svg>', 'opacity="0.5"'))
+   assertRed(px, 190, 192, 'Root and nested SVG opacity values multiply')
 end
 
 @Test function FilterOutputCompositesInSRGB()
