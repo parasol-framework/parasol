@@ -874,3 +874,139 @@ end
    assert(code is 0 and output.find('GEN_VALUE:20') != nil and output.find('hits=2 misses=0') != nil,
       'The republished generation must be warm: ' .. output)
 end
+
+----------------------------------------------------------------------------------------------------------------------
+-- Namespace member contracts must not depend on which producer populated the cache.  An extension imports a base and
+-- joins its namespace; consumers reassign a local initialised from a base member whose result is annotated as a
+-- table.  Each scenario starts from an empty cache, and fresh processes act as producers and consumers.
+
+function write_contract_base(Packages:str, Result:str)
+   write_package(Packages, 'contract-base', [[
+@Package(name="contract-base", version="1")
+   namespace contract { }
+print('CONTRACT_BASE_INIT')
+
+contract.make = function(Name:str!):]] .. Result .. [[
+
+   return { name=Name }
+end
+]])
+end
+
+@Test function NamespaceContractsIndependentOfProducer()
+   local packages = glRoot .. 'contract-packages/'
+   local root <close> = obj.new('file', { path=packages, flags=FL_NEW|FL_FOLDER })
+   local names = array<str> { 'contract-other', 'contract-base', 'contract-ext' }
+   write_file(packages .. 'index.cfg', '[contract-other]\n1 = contract-other/1/main.tiri\n' ..
+      '[contract-base]\n1 = contract-base/1/main.tiri\n[contract-ext]\n1 = contract-ext/1/main.tiri\n')
+   write_contract_base(packages, 'table')
+   write_package(packages, 'contract-ext', [[
+@Package(name="contract-ext", version="1")
+   import 'contract-base'
+   namespace contract
+
+contract.label = function(Info:table!):str
+   return 'label:' .. Info.name
+end
+]])
+   -- An unrelated namespace whose member of the same name returns a different type must not pollute the contract.
+   write_package(packages, 'contract-other', [[
+@Package(name="contract-other", version="1")
+   namespace contract_other { }
+
+contract_other.make = function():str
+   return 'other'
+end
+]])
+
+   local function root(Name:str, Source:str):<num, str>
+      local script = glRoot .. Name .. '.tiri'
+      write_file(script, Source)
+      return child(array<str> { script, '--log-trace', '--gfx-driver=headless',
+         '--set-volume', 'packages=' .. packages, '--set-volume', 'temp=' .. glRoot })
+   end
+
+   local function consume(Expected:str):str
+      local code, output = root('contract_consumer', [[
+   import 'contract-ext'
+local info = contract.make('a')
+info = contract.make('b')
+print('CONTRACT_VALUE:' .. contract.label(info))
+]])
+      assert(code is 0 and output.find('CONTRACT_VALUE:label:b') != nil,
+         'The consumer must compile and permit same-type reassignment: ' .. output)
+      assert(output.find(Expected) != nil, f'Expected "{Expected}": ' .. output)
+      return output
+   end
+
+   local function produce(Source:str, Expected:str)
+      local code, output = root('contract_producer', Source)
+      assert(code is 0 and output.find(Expected) != nil, f'Producer expected "{Expected}": ' .. output)
+   end
+
+   -- Each reset starts from an empty cache; the miss counts asserted by every consumer confirm it.
+   local function reset()
+      mSys.DeleteFile(glCacheFolder)
+   end
+
+   -- Empty cache, then a fresh-process warm run of the same consumer.
+
+   reset()
+   consume('hits=0 misses=2')
+   consume('hits=2 misses=0')
+
+   -- A base-only producer leaves the extension cold.
+
+   reset()
+   produce("   import 'contract-base'\n", 'hits=0 misses=1')
+   local base_entry = fragment_entries(names, packages)['contract-base']
+   assert(base_entry, 'The base producer must publish the base entry')
+   consume('hits=1 misses=1')
+
+   -- An unrelated earlier import in the producer; the base is reached directly and through the extension, and is
+   -- initialised once.
+
+   reset()
+   produce("   import 'contract-other', 'contract-base', 'contract-ext'\n", 'hits=0 misses=3')
+   local code, output = root('contract_diamond', [[
+   import 'contract-other', 'contract-base', 'contract-ext'
+local info = contract.make('a')
+info = contract.make('c')
+print('CONTRACT_DIAMOND:' .. contract.label(info) .. ':' .. contract_other.make())
+]])
+   assert(code is 0 and output.find('CONTRACT_DIAMOND:label:c:other') != nil and
+      output.find('hits=3 misses=0') != nil and output.count('CONTRACT_BASE_INIT') is 1,
+      'A shared dependency must keep its contract and initialise once: ' .. output)
+   consume('hits=2 misses=0')
+
+   -- The extension entry is present but the base entry is missing: both must fall back to source.
+
+   check mSys.DeleteFile(base_entry.path)
+   consume('hits=0 misses=2')
+   consume('hits=2 misses=0')
+
+   -- An incompatible reassignment fails on cold and warm paths alike.
+
+   local bad = "   import 'contract-ext'\nlocal info = contract.make('a')\ninfo = 'text'\n"
+   for _, state in array<str> { 'cold', 'warm' } do
+      if state is 'cold' then reset() else produce("   import 'contract-ext'\n", 'hits=0 misses=2') end
+      code, output = root('contract_bad', bad)
+      assert(code != 0 and output.find("cannot assign 'str' to variable of type 'table'") != nil,
+         f'The {state} consumer must reject an incompatible reassignment: ' .. output)
+      if state is 'warm' then
+         assert(output.find('Imported-module cache hit') != nil, 'The warm consumer must hit the cache: ' .. output)
+      end
+   end
+
+   -- Changing the declared result invalidates the warm importer, and the new contract is observed.
+
+   local reassign = "   import 'contract-ext'\nlocal info = contract.make('a')\ninfo = { }\nprint('CONTRACT_TABLE')\n"
+   code, output = root('contract_reassign', reassign)
+   assert(code is 0 and output.find('CONTRACT_TABLE') != nil and output.find('hits=2 misses=0') != nil, output)
+   write_contract_base(packages, 'str')
+   code, output = root('contract_reassign', reassign)
+   assert(code != 0 and output.find("cannot assign 'table' to variable of type 'str'") != nil and
+      output.find('Imported-module cache hit') is nil,
+      'A changed dependency result must invalidate the importer and expose the new contract: ' .. output)
+   write_contract_base(packages, 'table')
+end

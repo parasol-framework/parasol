@@ -5,11 +5,22 @@
 -- Tips carry no file attribution, so they are suppressed entirely while analysing imported
 -- statements to avoid spamming importers about library internals.
 
+   include 'core'
+
 local glFolder
+local glRoot
+local glXdgCache
+local glRestoreXdg = false
 
 @BeforeAll
 function setup(State)
    glFolder = State.folder
+end
+
+@AfterAll
+function cleanup()
+   if glRestoreXdg then processing.task().mtSetEnv('XDG_CACHE_HOME', glXdgCache ?? '') end
+   if glRoot then check mSys.DeleteFile(glRoot) end
 end
 
 -- Validate a source buffer as if it were a document sitting in the tests folder, so that
@@ -147,4 +158,155 @@ print('done')
    end
 
    assert(main_tip_found, 'The main buffer unused-variable tip should still be emitted')
+end
+
+----------------------------------------------------------------------------------------------------------------------
+-- Imported package namespace members are analysed in a child process against an isolated, empty module cache, so
+-- every module is compiled from source.  The root is created on first use; children inherit an XDG_CACHE_HOME inside
+-- it so that the user's real cache is never read or written.
+
+function write_file(Path:str, Content:str)
+   local file <close> = obj.new('file', { path=Path, flags=FL_NEW|FL_WRITE })
+   check file.acWrite(Content)
+end
+
+function make_folder(Path:str)
+   local folder <close> = obj.new('file', { path=Path, flags=FL_NEW|FL_FOLDER })
+end
+
+function contract_packages():str
+   if glRoot then return glRoot .. 'packages/' end
+
+   local err, temp = mSys.ResolvePath('temp:', 0)
+   check err
+   glRoot = temp .. f'/import_type_analysis.tests_{processing.task().id}_{mSys.PreciseTime()}/'
+   make_folder(glRoot)
+   if mSys.GetSystemState().platform is 'Linux' then
+      make_folder(glRoot .. '.cache/')
+      _, glXdgCache = processing.task().mtGetEnv('XDG_CACHE_HOME')
+      check processing.task().mtSetEnv('XDG_CACHE_HOME', glRoot .. '.cache')
+      glRestoreXdg = true
+   end
+
+   local packages = glRoot .. 'packages/'
+   make_folder(packages)
+   for name in values(array<str> { 'contract-base', 'contract-ext' }) do
+      make_folder(packages .. name .. '/')
+      make_folder(packages .. name .. '/1/')
+   end
+   write_file(packages .. 'index.cfg',
+      '[contract-base]\n1 = contract-base/1/main.tiri\n\n[contract-ext]\n1 = contract-ext/1/main.tiri\n')
+
+   -- The base declares the namespace and its members; the extension imports the base and joins its namespace.
+
+   write_file(packages .. 'contract-base/1/main.tiri', [[
+@Package(name="contract-base", version="1")
+   namespace contract { }
+
+contract.make = function(Name:str!):table
+   return { name=Name }
+end
+
+function contract.count(Value:num!):num
+   return Value + 1
+end
+]])
+   write_file(packages .. 'contract-ext/1/main.tiri', [[
+@Package(name="contract-ext", version="1")
+   import 'contract-base'
+   namespace contract
+
+contract.label = function(Info:table!):str
+   return 'label:' .. Info.name
+end
+]])
+   return packages
+end
+
+-- Compiles and runs Source as a root file with an empty module cache, returning the exit code and output.
+
+function run_cold(Source:str):<num, str>
+   local packages = contract_packages()
+   -- Removal of a missing folder fails harmlessly; the absence of cache hits asserted below proves that the cache
+   -- was empty.
+   mSys.DeleteFile(glRoot .. '.cache/tiri/')
+   mSys.DeleteFile(glRoot .. 'tiri/cache/')
+   local script = glRoot .. 'consumer.tiri'
+   write_file(script, Source)
+
+   local output = ''
+   local executable = processing.task().processPath .. 'origo'
+   if mSys.GetSystemState().platform is 'Windows' then executable ..= '.exe' end
+   local task <close> = obj.new('task', {
+      location=executable, flags=TSF_WAIT, timeout=20,
+      outputCallback=function(Task, Buffer) output ..= Buffer.getString() end,
+      errorCallback=function(Task, Buffer) output ..= Buffer.getString() end
+   })
+   for parameter in values(array<str> { script, '--log-trace', '--set-volume', 'packages=' .. packages,
+         '--set-volume', 'temp=' .. glRoot }) do
+      check task.mtAddArgument(parameter)
+   end
+   check task.acActivate()
+   assert(output.find('Imported-module cache hit') is nil,
+      'Every imported module must be compiled from source: ' .. output)
+   return task.returnCode, output
+end
+
+@Test function ColdNamespaceMemberContracts()
+   -- Without a cache, annotated member results must still fix the local's type for same-type reassignment.
+   local code, output = run_cold([[
+   import 'contract-base'
+local info = contract.make('a')
+info = contract.make('b')
+local total = contract.count(1)
+total = contract.count(total)
+print('CONTRACT_RESULT:' .. info.name .. ':' .. tostring(total))
+]])
+   assert(code is 0 and output.find('CONTRACT_RESULT:b:3') != nil,
+      'Annotated namespace members must expose their results on a cold import: ' .. output)
+end
+
+@Test function ColdJoinedNamespaceContracts()
+   -- The extension alone provides the base's members through its joined namespace, including through an alias.
+   local code, output = run_cold([[
+   import 'contract-ext'
+local info = contract.make('a')
+info = contract.make('b')
+print('CONTRACT_JOIN:' .. contract.label(info))
+]])
+   assert(code is 0 and output.find('CONTRACT_JOIN:label:b') != nil,
+      'A joined namespace must expose the base contracts on a cold import: ' .. output)
+
+   code, output = run_cold([[
+   import 'contract-ext' as alias
+local info = alias.make('a')
+info = alias.make('c')
+print('CONTRACT_ALIAS:' .. alias.label(info))
+]])
+   assert(code is 0 and output.find('CONTRACT_ALIAS:label:c') != nil,
+      'An aliased namespace must expose the same contracts on a cold import: ' .. output)
+end
+
+@Test function ColdNamespaceContractRejectsIncompatibleAssignment()
+   local code, output = run_cold([[
+   import 'contract-ext'
+local info = contract.make('a')
+info = 'text'
+print('CONTRACT_UNEXPECTED')
+]])
+   assert(code != 0 and output.find("cannot assign 'str' to variable of type 'table'") != nil and
+      output.find('CONTRACT_UNEXPECTED') is nil,
+      'A cold import must enforce the imported member result type: ' .. output)
+end
+
+@Test function ColdNamespaceIsNotOwnedByImporter()
+   -- The namespace table belongs to the imported module whether or not it came from the cache.
+   local code, output = run_cold([[
+   import 'contract-base'
+setmetatable(contract, { __context = true })
+print('CONTRACT_DESIGNATED')
+]])
+   assert(code != 0 and output.find('an imported value is not owned by this function') != nil and
+      output.find('CONTRACT_DESIGNATED') is nil,
+      'A cold imported namespace must not be designated contextual by its importer: ' .. output)
 end
