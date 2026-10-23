@@ -845,20 +845,41 @@ void SceneRenderer::copy_filter_bitmap(objBitmap *Bitmap, extVectorFilter *Filte
 
    mFormat.setBlendMode(BlendMode);
 
-   agg::rasterizer_scanline_aa<> raster;
-   basic_path(raster, src_x, src_y, src_x + width, src_y + height);
-
    // Masks inherited from container viewports, e.g. a VectorClip or a non-rectangular viewport path, must apply to the
    // filter output.
 
    if (not mClipStack.empty()) {
+      agg::rasterizer_scanline_aa<> raster;
+      basic_path(raster, src_x, src_y, src_x + width, src_y + height);
       agg::alpha_mask_gray8 alpha_mask(mClipStack.top().m_renderer);
       agg::scanline_u8_am<agg::alpha_mask_gray8> masked_scanline(alpha_mask);
       drawBitmap(masked_scanline, VSM::NEIGHBOUR, mRenderBase, raster, Bitmap, VSPREAD::CLIP, opacity);
+      return;
    }
-   else {
-      agg::scanline_u8 scanline;
-      drawBitmap(scanline, VSM::NEIGHBOUR, mRenderBase, raster, Bitmap, VSPREAD::CLIP, opacity);
+
+   // Unmasked output is fed to the pixel format row by row.  This produces exactly what drawBitmap() would for a
+   // pixel-aligned rectangle (a 1:1 NEIGHBOUR copy at full coverage, with the alpha scaled by the opacity as in
+   // drawBitmapRender()), without the cost of rasterising the rectangle and generating spans.
+
+   agg::pixfmt_psl source(*Bitmap); // Filter bitmaps are always 32-bit
+   const auto order = source.mPixelOrder;
+   agg::span_allocator<agg::rgba8> span_alloc;
+   agg::rgba8 *span = span_alloc.allocate(width);
+
+   for (int y=src_y; y < src_y + height; y++) {
+      const uint8_t *s = source.row_ptr(y) + (src_x<<2);
+      if (opacity < 1.0) {
+         for (int i=0; i < width; i++, s += 4) {
+            span[i] = agg::rgba8(s[order.Red], s[order.Green], s[order.Blue], s[order.Alpha]);
+            span[i].a = span[i].a * opacity;
+         }
+      }
+      else {
+         for (int i=0; i < width; i++, s += 4) {
+            span[i] = agg::rgba8(s[order.Red], s[order.Green], s[order.Blue], s[order.Alpha]);
+         }
+      }
+      mFormat.blend_color_hspan(src_x, y, width, span, nullptr, 255);
    }
 }
 
@@ -1477,98 +1498,4 @@ void agg::pixfmt_psl::setBitmap(objBitmap &Bitmap, BLM BlendMode) noexcept
    }
 
    rawBitmap(Bitmap.Data, Bitmap.Clip.Right, Bitmap.Clip.Bottom, Bitmap.LineWidth, Bitmap.BitsPerPixel, *Bitmap.ColourFormat, BlendMode);
-}
-
-void agg::pixfmt_psl::rawBitmap(uint8_t *Data, int Width, int Height, int Stride, int BitsPerPixel, ColourFormat &ColourFormat, BLM BlendMode) noexcept
-{
-   mData   = Data;
-   mWidth  = Width;
-   mHeight = Height;
-   mStride = Stride;
-   mBytesPerPixel = BitsPerPixel/8;
-   mBitsPerPixel  = BitsPerPixel;
-   mColourFormat  = ColourFormat;
-   mBlendMode     = (BlendMode IS BLM::AUTO) ? BLM::GAMMA : BlendMode;
-   bind_ops();
-}
-
-//********************************************************************************************************************
-// Rebinds the per-pixel and span operations for a new blend mode.  The bitmap data, dimensions and stride are
-// unchanged.  AUTO resolves to GAMMA; callers that need the target's colour space to be considered should resolve
-// the mode beforehand.
-
-void agg::pixfmt_psl::setBlendMode(BLM BlendMode) noexcept
-{
-   if (BlendMode IS BLM::AUTO) BlendMode = BLM::GAMMA;
-   if (BlendMode IS mBlendMode) return;
-   mBlendMode = BlendMode;
-   bind_ops();
-}
-
-void agg::pixfmt_psl::bind_ops() noexcept
-{
-   if (mBitsPerPixel IS 32) {
-      // Each branch binds the per-pixel and span operations for a <pixel order, blend mode> pair.
-      // The span operations are template instantiations with the per-pixel work inlined, so the
-      // function pointer indirection is paid once per span rather than once per pixel.
-
-      if (mBlendMode IS BLM::LINEAR) {
-         // Source colours are decoded to linear on every write path, including opaque fills and copies.
-         constexpr auto encode = &linear_blend32::encode;
-         if (mColourFormat.AlphaPos IS 24) {
-            if (mColourFormat.BluePos IS 0) {
-               set_ops32<2,1,0,3, &linear32BGRA, &linearCopy32BGRA, &linearCover32BGRA, false, encode>(pxBGRA);
-            }
-            else set_ops32<0,1,2,3, &linear32RGBA, &linearCopy32RGBA, &linearCover32RGBA, false, encode>(pxRGBA);
-         }
-         else if (mColourFormat.RedPos IS 24) {
-            set_ops32<3,1,2,0, &linear32AGBR, &linearCopy32AGBR, &linearCover32AGBR, false, encode>(pxAGBR);
-         }
-         else set_ops32<1,2,3,0, &linear32ARGB, &linearCopy32ARGB, &linearCover32ARGB, false, encode>(pxARGB);
-      }
-      else if (mBlendMode IS BLM::NONE) {
-         if (mColourFormat.AlphaPos IS 24) {
-            if (mColourFormat.BluePos IS 0) set_none_ops32<2,1,0,3, &noneCopy32BGRA, &noneCover32BGRA>(pxBGRA);
-            else set_none_ops32<0,1,2,3, &noneCopy32RGBA, &noneCover32RGBA>(pxRGBA);
-         }
-         else if (mColourFormat.RedPos IS 24) set_none_ops32<3,1,2,0, &noneCopy32AGBR, &noneCover32AGBR>(pxAGBR);
-         else set_none_ops32<1,2,3,0, &noneCopy32ARGB, &noneCover32ARGB>(pxARGB);
-      }
-      else if (mBlendMode IS BLM::SRGB) {
-         // The trailing 'true' selects the SSE2 solid-span kernels where available.
-         if (mColourFormat.AlphaPos IS 24) {
-            if (mColourFormat.BluePos IS 0) set_ops32<2,1,0,3, &srgb32BGRA, &srgbCopy32BGRA, &srgbCover32BGRA, true>(pxBGRA);
-            else set_ops32<0,1,2,3, &srgb32RGBA, &srgbCopy32RGBA, &srgbCover32RGBA, true>(pxRGBA);
-         }
-         else if (mColourFormat.RedPos IS 24) set_ops32<3,1,2,0, &srgb32AGBR, &srgbCopy32AGBR, &srgbCover32AGBR, true>(pxAGBR);
-         else set_ops32<1,2,3,0, &srgb32ARGB, &srgbCopy32ARGB, &srgbCover32ARGB, true>(pxARGB);
-      }
-      else { // BLM::GAMMA
-         if (mColourFormat.AlphaPos IS 24) {
-            if (mColourFormat.BluePos IS 0) set_ops32<2,1,0,3, &gamma32BGRA, &gammaCopy32BGRA, &gammaCover32BGRA>(pxBGRA);
-            else set_ops32<0,1,2,3, &gamma32RGBA, &gammaCopy32RGBA, &gammaCover32RGBA>(pxRGBA);
-         }
-         else if (mColourFormat.RedPos IS 24) set_ops32<3,1,2,0, &gamma32AGBR, &gammaCopy32AGBR, &gammaCover32AGBR>(pxAGBR);
-         else set_ops32<1,2,3,0, &gamma32ARGB, &gammaCopy32ARGB, &gammaCover32ARGB>(pxARGB);
-      }
-   }
-   else if (mBitsPerPixel IS 24) {
-      kt::Log log;
-      log.warning("Support for 24-bit bitmaps is deprecated.");
-   }
-   else if (mBitsPerPixel IS 16) {
-      // Deprecated.  16-bit client code should use 32-bit and downscale instead.
-      kt::Log log;
-      log.warning("Support for 16-bit bitmaps is deprecated.");
-   }
-   else if (mBitsPerPixel IS 8) {
-      // For generating grey-scale alpha masks
-      fBlendHLine      = &blendHLine8;
-      fBlendSolidHSpan = &blendSolidHSpan8;
-      fBlendColorHSpan = &blendColorHSpan8;
-      fCopyColorHSpan  = &copyColorHSpan8;
-      fBlendPix        = &blend8;
-      fCopyPix         = &copy8;
-      fCoverPix        = &cover8;
-   }
 }

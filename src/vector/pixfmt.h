@@ -9,7 +9,69 @@
 
 //#define SKIP_ALPHA_ZERO 1 // Enables skipping translucent pixels when compositing.
 
-extern agg::gamma_lut<uint8_t, uint16_t, 8, 12> glGamma;
+// The per-pixel blenders are small but are instantiated in many span loops; GCC declines to inline the gamma blender
+// without a hint, which leaves a call per pixel in the hottest loops.
+
+#if defined(_MSC_VER)
+   #define PIX_INLINE __forceinline
+#else
+   #define PIX_INLINE inline __attribute__((always_inline))
+#endif
+
+// Transfer tables for BLM::GAMMA, using the piecewise sRGB curve (IEC 61966-2-1), which is also used by glLinearRGB,
+// the filter pipelines and linearRGB gradients.  The curve's linear segment near black keeps every 8-bit value
+// distinct at 12 bits, so inv(dir(v)) IS v for all v and blending a colour over itself is lossless.  A pure power
+// curve maps sRGB values 1-4 to the same 12-bit code, which altered near-black pixels under faint blends.
+//
+// The tables are fixed arrays rather than heap pointers, so their addresses stay constant across the byte stores of a
+// span loop (the module is compiled with -fno-strict-aliasing, so a heap pointer would be reloaded after every store).
+// Recip[a] is the reciprocal of 255 * a used by the translucent destination path.  The AVX2 kernels gather 32 bits
+// per index, so Dir and Inv must be followed by other members of this struct.
+
+struct gamma_table {
+   uint16_t Dir[256];   // 8-bit sRGB to 12-bit linear
+   uint8_t  Inv[4096];  // 12-bit linear to 8-bit sRGB
+   uint32_t Recip[256]; // ceil(2^31 / (255 * a)) for a >= 1
+
+   static double decode(double Value) noexcept {
+      return (Value <= 0.04045) ? Value / 12.92 : pow((Value + 0.055) / 1.055, 2.4);
+   }
+
+   static double encode(double Value) noexcept {
+      return (Value <= 0.0031308) ? Value * 12.92 : (1.055 * pow(Value, 1.0 / 2.4)) - 0.055;
+   }
+
+   gamma_table() noexcept {
+      for (int i=0; i < 256; i++) Dir[i] = uint16_t(agg::uround(decode(i / 255.0) * 4095.0));
+      for (int i=0; i < 4096; i++) Inv[i] = uint8_t(agg::uround(encode(i / 4095.0) * 255.0));
+      Recip[0] = 0;
+      for (uint32_t a=1; a < 256; a++) Recip[a] = uint32_t(((uint64_t(1)<<31) + (0xff * a) - 1) / (0xff * a));
+   }
+
+   PIX_INLINE uint16_t dir(uint8_t Value) const noexcept { return Dir[Value]; }
+   PIX_INLINE uint8_t inv(uint32_t Value) const noexcept { return Inv[Value]; }
+};
+
+extern gamma_table glGamma;
+
+// Exact reciprocals for the divisor 255 * a of blend_translucent_dest32(), for a >= 1.  For any numerator n < 2^24,
+// (n * Recip[a]) >> 40 IS n / (255 * a), because Recip[a] = ceil(2^40 / d) and d < 2^16 (the round-up reciprocal
+// theorem with N = 24 and l = 16).
+
+struct translucent_table {
+   uint64_t Recip[256];
+
+   translucent_table() noexcept {
+      Recip[0] = 0;
+      for (uint64_t a=1; a < 256; a++) Recip[a] = ((uint64_t(1)<<40) + (0xff * a) - 1) / (0xff * a);
+   }
+
+   PIX_INLINE uint32_t divide(uint32_t Numerator, uint32_t Alpha) const noexcept {
+      return uint32_t((uint64_t(Numerator) * Recip[Alpha])>>40);
+   }
+};
+
+extern const translucent_table glTranslucent;
 
 static PIXEL_ORDER pxBGRA(2, 1, 0, 3);
 static PIXEL_ORDER pxRGBA(0, 1, 2, 3);
@@ -27,18 +89,23 @@ static PIXEL_ORDER pxRGB(0, 1, 2, 0);
 // both alphas and blended arithmetically in the destination's encoding.  The W3C's SVG sanctioned alpha formula is
 // always >= 1 and satisfies src_weight + dest_weight <= divisor, so channels can only exceed 255 by rounding.
 
-inline void blend_translucent_dest32(uint8_t *p, uint8_t oR, uint8_t oG, uint8_t oB, uint8_t oA,
+// The divisions are exact reciprocal multiplies (see translucent_table), as the numerator is below 2^24.
+
+PIX_INLINE void blend_translucent_dest32(uint8_t *p, uint8_t oR, uint8_t oG, uint8_t oB, uint8_t oA,
    uint8_t cr, uint8_t cg, uint8_t cb, uint8_t ca) noexcept
 {
    const uint32_t alpha_inv   = 0xff - ca;
    const uint32_t final_alpha = 0xff - ((alpha_inv * (0xff - p[oA]))>>8);
    const uint32_t src_weight  = 0xff * ca;
    const uint32_t dest_weight = alpha_inv * p[oA];
-   const uint32_t divisor     = 0xff * final_alpha;
-   const uint32_t round       = divisor>>1;
-   p[oR] = uint8_t(std::min<uint32_t>(0xff, (cr * src_weight + p[oR] * dest_weight + round) / divisor));
-   p[oG] = uint8_t(std::min<uint32_t>(0xff, (cg * src_weight + p[oG] * dest_weight + round) / divisor));
-   p[oB] = uint8_t(std::min<uint32_t>(0xff, (cb * src_weight + p[oB] * dest_weight + round) / divisor));
+   const uint32_t round       = (0xff * final_alpha)>>1;
+   auto channel = [&](uint8_t Src, uint8_t Dest) {
+      return uint8_t(std::min<uint32_t>(0xff, glTranslucent.divide(Src * src_weight + Dest * dest_weight + round,
+         final_alpha)));
+   };
+   p[oR] = channel(cr, p[oR]);
+   p[oG] = channel(cg, p[oG]);
+   p[oB] = channel(cb, p[oB]);
    p[oA] = uint8_t(final_alpha);
 }
 
@@ -52,7 +119,7 @@ struct linear_blend32 {
 
    inline static uint8_t encode(uint8_t Value) noexcept { return glLinearRGB.convert(Value); }
 
-   inline void operator()(uint8_t *p, uint8_t cr, uint8_t cg, uint8_t cb, uint8_t ca) const noexcept {
+   PIX_INLINE void operator()(uint8_t *p, uint8_t cr, uint8_t cg, uint8_t cb, uint8_t ca) const noexcept {
       if (p[oA] IS 0xff) {
          p[oR] = ((p[oR] * (0xff-ca)) + (glLinearRGB.convert(cr) * ca) + 0xff)>>8;
          p[oG] = ((p[oG] * (0xff-ca)) + (glLinearRGB.convert(cg) * ca) + 0xff)>>8;
@@ -75,7 +142,7 @@ struct srgb_blend32 {
 
    inline static uint8_t encode(uint8_t Value) noexcept { return Value; }
 
-   inline void operator()(uint8_t *p, uint8_t cr, uint8_t cg, uint8_t cb, uint8_t ca) const noexcept {
+   PIX_INLINE void operator()(uint8_t *p, uint8_t cr, uint8_t cg, uint8_t cb, uint8_t ca) const noexcept {
       if (p[oA] IS 0xff) {
          p[oR] = ((p[oR] * (0xff-ca)) + (cr * ca) + 0xff)>>8;
          p[oG] = ((p[oG] * (0xff-ca)) + (cg * ca) + 0xff)>>8;
@@ -95,9 +162,10 @@ struct srgb_blend32_gamma {
    inline static uint8_t encode(uint8_t Value) noexcept { return Value; }
 
    // Channel results never exceed hi_res_mask: the numerator is bounded by dir() <= hi_res_mask and
-   // a4 + a5 <= a6, so no clamping is required before the inv() lookup.
+   // a4 + a5 <= a6, so no clamping is required before the inv() lookup.  The source channels are passed already
+   // decoded with glGamma.dir() (Lr, Lg, Lb) so that span loops with a constant colour can decode it once.
 
-   inline void operator()(uint8_t *p, uint8_t cr, uint8_t cg, uint8_t cb, uint8_t ca) const noexcept {
+   PIX_INLINE void blend_decoded(uint8_t *p, uint32_t Lr, uint32_t Lg, uint32_t Lb, uint8_t ca) const noexcept {
       const uint8_t dest_alpha = p[oA];
       const uint32_t alpha_inv = 0xff - ca;
       const uint32_t a4 = 0xff * ca;
@@ -106,22 +174,25 @@ struct srgb_blend32_gamma {
          // Opaque destination: final alpha is 255 and the divisor is the constant 65025, which the
          // compiler lowers to a multiply-shift.
          const uint32_t a5 = alpha_inv * 0xff;
-         p[oR] = glGamma.inv((glGamma.dir(cr) * a4 + glGamma.dir(p[oR]) * a5) / 65025u);
-         p[oG] = glGamma.inv((glGamma.dir(cg) * a4 + glGamma.dir(p[oG]) * a5) / 65025u);
-         p[oB] = glGamma.inv((glGamma.dir(cb) * a4 + glGamma.dir(p[oB]) * a5) / 65025u);
+         p[oR] = glGamma.inv((Lr * a4 + glGamma.dir(p[oR]) * a5) / 65025u);
+         p[oG] = glGamma.inv((Lg * a4 + glGamma.dir(p[oG]) * a5) / 65025u);
+         p[oB] = glGamma.inv((Lb * a4 + glGamma.dir(p[oB]) * a5) / 65025u);
       }
       else {
          const uint32_t a5 = alpha_inv * dest_alpha;
          const uint32_t final_alpha = 0xff - ((alpha_inv * (0xff - dest_alpha))>>8); // Always >= 1
-         const uint32_t a6 = 0xff * final_alpha;
-         // One fixed-point reciprocal replaces three divisions; numerators stay below 2^30 so the
-         // 31-bit reciprocal cannot push a result past hi_res_mask.
-         const uint64_t recip = ((uint64_t(1)<<31) + a6 - 1) / a6;
-         p[oR] = glGamma.inv(uint32_t(((glGamma.dir(cr) * a4 + glGamma.dir(p[oR]) * a5) * recip)>>31));
-         p[oG] = glGamma.inv(uint32_t(((glGamma.dir(cg) * a4 + glGamma.dir(p[oG]) * a5) * recip)>>31));
-         p[oB] = glGamma.inv(uint32_t(((glGamma.dir(cb) * a4 + glGamma.dir(p[oB]) * a5) * recip)>>31));
+         // One fixed-point reciprocal of 255 * final_alpha replaces three divisions; numerators stay below
+         // 2^30 so the 31-bit reciprocal cannot push a result past hi_res_mask.
+         const uint64_t recip = glGamma.Recip[final_alpha];
+         p[oR] = glGamma.inv(uint32_t(((Lr * a4 + glGamma.dir(p[oR]) * a5) * recip)>>31));
+         p[oG] = glGamma.inv(uint32_t(((Lg * a4 + glGamma.dir(p[oG]) * a5) * recip)>>31));
+         p[oB] = glGamma.inv(uint32_t(((Lb * a4 + glGamma.dir(p[oB]) * a5) * recip)>>31));
          p[oA] = uint8_t(final_alpha);
       }
+   }
+
+   PIX_INLINE void operator()(uint8_t *p, uint8_t cr, uint8_t cg, uint8_t cb, uint8_t ca) const noexcept {
+      blend_decoded(p, glGamma.dir(cr), glGamma.dir(cg), glGamma.dir(cb), ca);
    }
 };
 
@@ -129,7 +200,7 @@ struct srgb_blend32_gamma {
 // Blend the pixel at (p) with the provided colour values and store the result back in (p)
 
 template <uint8_t oR, uint8_t oG, uint8_t oB, uint8_t oA, typename DrawPixel>
-void blend32(uint8_t *p, uint8_t Red, uint8_t Green, uint8_t Blue, uint8_t Alpha) noexcept
+PIX_INLINE void blend32(uint8_t *p, uint8_t Red, uint8_t Green, uint8_t Blue, uint8_t Alpha) noexcept
 {
    if (p[oA]) DrawPixel{oR,oG,oB,oA}(p,Red,Green,Blue,Alpha);
    else {
@@ -141,7 +212,7 @@ void blend32(uint8_t *p, uint8_t Red, uint8_t Green, uint8_t Blue, uint8_t Alpha
 }
 
 template <uint8_t oR, uint8_t oG, uint8_t oB, uint8_t oA, typename DrawPixel>
-void copy32(uint8_t *p, uint8_t Red, uint8_t Green, uint8_t Blue, uint8_t Alpha) noexcept
+PIX_INLINE void copy32(uint8_t *p, uint8_t Red, uint8_t Green, uint8_t Blue, uint8_t Alpha) noexcept
 {
    if (Alpha) {
       if ((Alpha == 0xff) or (!p[oA])) {
@@ -155,7 +226,7 @@ void copy32(uint8_t *p, uint8_t Red, uint8_t Green, uint8_t Blue, uint8_t Alpha)
 }
 
 template <uint8_t oR, uint8_t oG, uint8_t oB, uint8_t oA, typename DrawPixel>
-void cover32(uint8_t *p, uint8_t Red, uint8_t Green, uint8_t Blue, uint8_t Alpha, uint32_t cover) noexcept
+PIX_INLINE void cover32(uint8_t *p, uint8_t Red, uint8_t Green, uint8_t Blue, uint8_t Alpha, uint32_t cover) noexcept
 {
    if (cover == 255) copy32<oR,oG,oB,oA,DrawPixel>(p, Red, Green, Blue, Alpha);
    else if (Alpha) {
@@ -173,158 +244,170 @@ void cover32(uint8_t *p, uint8_t Red, uint8_t Green, uint8_t Blue, uint8_t Alpha
 //********************************************************************************************************************
 // sRGB blend operations
 
-static void srgb32BGRA(uint8_t *p, uint8_t cr, uint8_t cg, uint8_t cb, uint8_t alpha) noexcept {
+static PIX_INLINE void srgb32BGRA(uint8_t *p, uint8_t cr, uint8_t cg, uint8_t cb, uint8_t alpha) noexcept {
    blend32<2,1,0,3,srgb_blend32>(p, cr, cg, cb, alpha);
 }
 
-static void srgb32RGBA(uint8_t *p, uint8_t cr, uint8_t cg, uint8_t cb, uint8_t alpha) noexcept {
+static PIX_INLINE void srgb32RGBA(uint8_t *p, uint8_t cr, uint8_t cg, uint8_t cb, uint8_t alpha) noexcept {
    blend32<0,1,2,3,srgb_blend32>(p,cr,cg,cb,alpha);
 }
 
-static void srgb32AGBR(uint8_t *p, uint8_t cr, uint8_t cg, uint8_t cb, uint8_t alpha) noexcept {
+static PIX_INLINE void srgb32AGBR(uint8_t *p, uint8_t cr, uint8_t cg, uint8_t cb, uint8_t alpha) noexcept {
    blend32<3,1,2,0,srgb_blend32>(p,cr,cg,cb,alpha);
 }
 
-static void srgb32ARGB(uint8_t *p, uint8_t cr, uint8_t cg, uint8_t cb, uint8_t alpha) noexcept {
+static PIX_INLINE void srgb32ARGB(uint8_t *p, uint8_t cr, uint8_t cg, uint8_t cb, uint8_t alpha) noexcept {
    blend32<1,2,3,0,srgb_blend32>(p,cr,cg,cb,alpha);
 }
 
 // Gamma correct blend operations
 
-static void gamma32BGRA(uint8_t *p, uint8_t cr, uint8_t cg, uint8_t cb, uint8_t alpha) noexcept {
+static PIX_INLINE void gamma32BGRA(uint8_t *p, uint8_t cr, uint8_t cg, uint8_t cb, uint8_t alpha) noexcept {
    blend32<2,1,0,3,srgb_blend32_gamma>(p, cr, cg, cb, alpha);
 }
 
-static void gamma32RGBA(uint8_t *p, uint8_t cr, uint8_t cg, uint8_t cb, uint8_t alpha) noexcept {
+static PIX_INLINE void gamma32RGBA(uint8_t *p, uint8_t cr, uint8_t cg, uint8_t cb, uint8_t alpha) noexcept {
    blend32<0,1,2,3,srgb_blend32_gamma>(p,cr,cg,cb,alpha);
 }
 
-static void gamma32AGBR(uint8_t *p, uint8_t cr, uint8_t cg, uint8_t cb, uint8_t alpha) noexcept {
+static PIX_INLINE void gamma32AGBR(uint8_t *p, uint8_t cr, uint8_t cg, uint8_t cb, uint8_t alpha) noexcept {
    blend32<3,1,2,0,srgb_blend32_gamma>(p,cr,cg,cb,alpha);
 }
 
-static void gamma32ARGB(uint8_t *p, uint8_t cr, uint8_t cg, uint8_t cb, uint8_t alpha) noexcept {
+static PIX_INLINE void gamma32ARGB(uint8_t *p, uint8_t cr, uint8_t cg, uint8_t cb, uint8_t alpha) noexcept {
    blend32<1,2,3,0,srgb_blend32_gamma>(p,cr,cg,cb,alpha);
 }
 
 // Linear version of the blend operations
 
-static void linear32BGRA(uint8_t *p, uint8_t cr, uint8_t cg, uint8_t cb, uint8_t alpha) noexcept {
+static PIX_INLINE void linear32BGRA(uint8_t *p, uint8_t cr, uint8_t cg, uint8_t cb, uint8_t alpha) noexcept {
    blend32<2,1,0,3,linear_blend32>(p,cr,cg,cb,alpha);
 }
 
-static void linear32RGBA(uint8_t *p, uint8_t cr, uint8_t cg, uint8_t cb, uint8_t alpha) noexcept {
+static PIX_INLINE void linear32RGBA(uint8_t *p, uint8_t cr, uint8_t cg, uint8_t cb, uint8_t alpha) noexcept {
    blend32<0,1,2,3,linear_blend32>(p,cr,cg,cb,alpha);
 }
 
-static void linear32AGBR(uint8_t *p, uint8_t cr, uint8_t cg, uint8_t cb, uint8_t alpha) noexcept {
+static PIX_INLINE void linear32AGBR(uint8_t *p, uint8_t cr, uint8_t cg, uint8_t cb, uint8_t alpha) noexcept {
    blend32<3,1,2,0,linear_blend32>(p,cr,cg,cb,alpha);
 }
 
-static void linear32ARGB(uint8_t *p, uint8_t cr, uint8_t cg, uint8_t cb, uint8_t alpha) noexcept {
+static PIX_INLINE void linear32ARGB(uint8_t *p, uint8_t cr, uint8_t cg, uint8_t cb, uint8_t alpha) noexcept {
    blend32<1,2,3,0,linear_blend32>(p,cr,cg,cb,alpha);
 }
 
 //********************************************************************************************************************
 // sRGB copy and cover operations
 
-static void srgbCopy32BGRA(uint8_t *p, uint8_t cr, uint8_t cg, uint8_t cb, uint8_t alpha) noexcept {
+static PIX_INLINE void srgbCopy32BGRA(uint8_t *p, uint8_t cr, uint8_t cg, uint8_t cb, uint8_t alpha) noexcept {
    copy32<2,1,0,3,srgb_blend32>(p,cr,cg,cb,alpha);
 }
 
-static void srgbCover32BGRA(uint8_t *p, uint8_t cr, uint8_t cg, uint8_t cb, uint8_t alpha, uint32_t cover) noexcept {
+static PIX_INLINE void srgbCover32BGRA(uint8_t *p, uint8_t cr, uint8_t cg, uint8_t cb, uint8_t alpha,
+   uint32_t cover) noexcept {
    cover32<2,1,0,3,srgb_blend32>(p,cr,cg,cb,alpha,cover);
 }
 
-static void srgbCopy32RGBA(uint8_t *p, uint8_t cr, uint8_t cg, uint8_t cb, uint8_t alpha) noexcept {
+static PIX_INLINE void srgbCopy32RGBA(uint8_t *p, uint8_t cr, uint8_t cg, uint8_t cb, uint8_t alpha) noexcept {
    copy32<0,1,2,3,srgb_blend32>(p,cr,cg,cb,alpha);
 }
 
-static void srgbCover32RGBA(uint8_t *p, uint8_t cr, uint8_t cg, uint8_t cb, uint8_t alpha, uint32_t cover) noexcept {
+static PIX_INLINE void srgbCover32RGBA(uint8_t *p, uint8_t cr, uint8_t cg, uint8_t cb, uint8_t alpha,
+   uint32_t cover) noexcept {
    cover32<0,1,2,3,srgb_blend32>(p,cr,cg,cb,alpha,cover);
 }
 
-static void srgbCopy32AGBR(uint8_t *p, uint8_t cr, uint8_t cg, uint8_t cb, uint8_t alpha) noexcept {
+static PIX_INLINE void srgbCopy32AGBR(uint8_t *p, uint8_t cr, uint8_t cg, uint8_t cb, uint8_t alpha) noexcept {
    copy32<3,1,2,0,srgb_blend32>(p,cr,cg,cb,alpha);
 }
 
-static void srgbCover32AGBR(uint8_t *p, uint8_t cr, uint8_t cg, uint8_t cb, uint8_t alpha, uint32_t cover) noexcept {
+static PIX_INLINE void srgbCover32AGBR(uint8_t *p, uint8_t cr, uint8_t cg, uint8_t cb, uint8_t alpha,
+   uint32_t cover) noexcept {
    cover32<3,1,2,0,srgb_blend32>(p,cr,cg,cb,alpha,cover);
 }
 
-static void srgbCopy32ARGB(uint8_t *p, uint8_t cr, uint8_t cg, uint8_t cb, uint8_t alpha) noexcept {
+static PIX_INLINE void srgbCopy32ARGB(uint8_t *p, uint8_t cr, uint8_t cg, uint8_t cb, uint8_t alpha) noexcept {
    copy32<1,2,3,0,srgb_blend32>(p,cr,cg,cb,alpha);
 }
 
-static void srgbCover32ARGB(uint8_t *p, uint8_t cr, uint8_t cg, uint8_t cb, uint8_t alpha, uint32_t cover) noexcept {
+static PIX_INLINE void srgbCover32ARGB(uint8_t *p, uint8_t cr, uint8_t cg, uint8_t cb, uint8_t alpha,
+   uint32_t cover) noexcept {
    cover32<1,2,3,0,srgb_blend32>(p,cr,cg,cb,alpha,cover);
 }
 
 // Gamma correct copy and cover operations
 
-static void gammaCopy32BGRA(uint8_t *p, uint8_t cr, uint8_t cg, uint8_t cb, uint8_t alpha) noexcept {
+static PIX_INLINE void gammaCopy32BGRA(uint8_t *p, uint8_t cr, uint8_t cg, uint8_t cb, uint8_t alpha) noexcept {
    copy32<2,1,0,3,srgb_blend32_gamma>(p,cr,cg,cb,alpha);
 }
 
-static void gammaCover32BGRA(uint8_t *p, uint8_t cr, uint8_t cg, uint8_t cb, uint8_t alpha, uint32_t cover) noexcept {
+static PIX_INLINE void gammaCover32BGRA(uint8_t *p, uint8_t cr, uint8_t cg, uint8_t cb, uint8_t alpha,
+   uint32_t cover) noexcept {
    cover32<2,1,0,3,srgb_blend32_gamma>(p,cr,cg,cb,alpha,cover);
 }
 
-static void gammaCopy32RGBA(uint8_t *p, uint8_t cr, uint8_t cg, uint8_t cb, uint8_t alpha) noexcept {
+static PIX_INLINE void gammaCopy32RGBA(uint8_t *p, uint8_t cr, uint8_t cg, uint8_t cb, uint8_t alpha) noexcept {
    copy32<0,1,2,3,srgb_blend32_gamma>(p,cr,cg,cb,alpha);
 }
 
-static void gammaCover32RGBA(uint8_t *p, uint8_t cr, uint8_t cg, uint8_t cb, uint8_t alpha, uint32_t cover) noexcept {
+static PIX_INLINE void gammaCover32RGBA(uint8_t *p, uint8_t cr, uint8_t cg, uint8_t cb, uint8_t alpha,
+   uint32_t cover) noexcept {
    cover32<0,1,2,3,srgb_blend32_gamma>(p,cr,cg,cb,alpha,cover);
 }
 
-static void gammaCopy32AGBR(uint8_t *p, uint8_t cr, uint8_t cg, uint8_t cb, uint8_t alpha) noexcept {
+static PIX_INLINE void gammaCopy32AGBR(uint8_t *p, uint8_t cr, uint8_t cg, uint8_t cb, uint8_t alpha) noexcept {
    copy32<3,1,2,0,srgb_blend32_gamma>(p,cr,cg,cb,alpha);
 }
 
-static void gammaCover32AGBR(uint8_t *p, uint8_t cr, uint8_t cg, uint8_t cb, uint8_t alpha, uint32_t cover) noexcept {
+static PIX_INLINE void gammaCover32AGBR(uint8_t *p, uint8_t cr, uint8_t cg, uint8_t cb, uint8_t alpha,
+   uint32_t cover) noexcept {
    cover32<3,1,2,0,srgb_blend32_gamma>(p,cr,cg,cb,alpha,cover);
 }
 
-static void gammaCopy32ARGB(uint8_t *p, uint8_t cr, uint8_t cg, uint8_t cb, uint8_t alpha) noexcept {
+static PIX_INLINE void gammaCopy32ARGB(uint8_t *p, uint8_t cr, uint8_t cg, uint8_t cb, uint8_t alpha) noexcept {
    copy32<1,2,3,0,srgb_blend32_gamma>(p,cr,cg,cb,alpha);
 }
 
-static void gammaCover32ARGB(uint8_t *p, uint8_t cr, uint8_t cg, uint8_t cb, uint8_t alpha, uint32_t cover) noexcept {
+static PIX_INLINE void gammaCover32ARGB(uint8_t *p, uint8_t cr, uint8_t cg, uint8_t cb, uint8_t alpha,
+   uint32_t cover) noexcept {
    cover32<1,2,3,0,srgb_blend32_gamma>(p,cr,cg,cb,alpha,cover);
 }
 
 // Linear copy and cover operations
 
-static void linearCopy32BGRA(uint8_t *p, uint8_t cr, uint8_t cg, uint8_t cb, uint8_t alpha) noexcept {
+static PIX_INLINE void linearCopy32BGRA(uint8_t *p, uint8_t cr, uint8_t cg, uint8_t cb, uint8_t alpha) noexcept {
    copy32<2,1,0,3,linear_blend32>(p,cr,cg,cb,alpha);
 }
 
-static void linearCover32BGRA(uint8_t *p, uint8_t cr, uint8_t cg, uint8_t cb, uint8_t alpha, uint32_t cover) noexcept {
+static PIX_INLINE void linearCover32BGRA(uint8_t *p, uint8_t cr, uint8_t cg, uint8_t cb, uint8_t alpha,
+   uint32_t cover) noexcept {
    cover32<2,1,0,3,linear_blend32>(p,cr,cg,cb,alpha,cover);
 }
 
-static void linearCopy32RGBA(uint8_t *p, uint8_t cr, uint8_t cg, uint8_t cb, uint8_t alpha) noexcept {
+static PIX_INLINE void linearCopy32RGBA(uint8_t *p, uint8_t cr, uint8_t cg, uint8_t cb, uint8_t alpha) noexcept {
    copy32<0,1,2,3,linear_blend32>(p,cr,cg,cb,alpha);
 }
 
-static void linearCover32RGBA(uint8_t *p, uint8_t cr, uint8_t cg, uint8_t cb, uint8_t alpha, uint32_t cover) noexcept {
+static PIX_INLINE void linearCover32RGBA(uint8_t *p, uint8_t cr, uint8_t cg, uint8_t cb, uint8_t alpha,
+   uint32_t cover) noexcept {
    cover32<0,1,2,3,linear_blend32>(p,cr,cg,cb,alpha,cover);
 }
 
-static void linearCopy32AGBR(uint8_t *p, uint8_t cr, uint8_t cg, uint8_t cb, uint8_t alpha) noexcept {
+static PIX_INLINE void linearCopy32AGBR(uint8_t *p, uint8_t cr, uint8_t cg, uint8_t cb, uint8_t alpha) noexcept {
    copy32<3,1,2,0,linear_blend32>(p,cr,cg,cb,alpha);
 }
 
-static void linearCover32AGBR(uint8_t *p, uint8_t cr, uint8_t cg, uint8_t cb, uint8_t alpha, uint32_t cover) noexcept {
+static PIX_INLINE void linearCover32AGBR(uint8_t *p, uint8_t cr, uint8_t cg, uint8_t cb, uint8_t alpha,
+   uint32_t cover) noexcept {
    cover32<3,1,2,0,linear_blend32>(p,cr,cg,cb,alpha,cover);
 }
 
-static void linearCopy32ARGB(uint8_t *p, uint8_t cr, uint8_t cg, uint8_t cb, uint8_t alpha) noexcept {
+static PIX_INLINE void linearCopy32ARGB(uint8_t *p, uint8_t cr, uint8_t cg, uint8_t cb, uint8_t alpha) noexcept {
    copy32<1,2,3,0,linear_blend32>(p,cr,cg,cb,alpha);
 }
 
-static void linearCover32ARGB(uint8_t *p, uint8_t cr, uint8_t cg, uint8_t cb, uint8_t alpha, uint32_t cover) noexcept {
+static PIX_INLINE void linearCover32ARGB(uint8_t *p, uint8_t cr, uint8_t cg, uint8_t cb, uint8_t alpha,
+   uint32_t cover) noexcept {
    cover32<1,2,3,0,linear_blend32>(p,cr,cg,cb,alpha,cover);
 }
 
@@ -353,35 +436,39 @@ inline void none_cover32(uint8_t *p, uint8_t Red, uint8_t Green, uint8_t Blue, u
    }
 }
 
-static void noneCopy32BGRA(uint8_t *p, uint8_t cr, uint8_t cg, uint8_t cb, uint8_t alpha) noexcept {
+static PIX_INLINE void noneCopy32BGRA(uint8_t *p, uint8_t cr, uint8_t cg, uint8_t cb, uint8_t alpha) noexcept {
    none_copy32<2,1,0,3>(p,cr,cg,cb,alpha);
 }
 
-static void noneCover32BGRA(uint8_t *p, uint8_t cr, uint8_t cg, uint8_t cb, uint8_t alpha, uint32_t cover) noexcept {
+static PIX_INLINE void noneCover32BGRA(uint8_t *p, uint8_t cr, uint8_t cg, uint8_t cb, uint8_t alpha,
+   uint32_t cover) noexcept {
    none_cover32<2,1,0,3>(p,cr,cg,cb,alpha,cover);
 }
 
-static void noneCopy32RGBA(uint8_t *p, uint8_t cr, uint8_t cg, uint8_t cb, uint8_t alpha) noexcept {
+static PIX_INLINE void noneCopy32RGBA(uint8_t *p, uint8_t cr, uint8_t cg, uint8_t cb, uint8_t alpha) noexcept {
    none_copy32<0,1,2,3>(p,cr,cg,cb,alpha);
 }
 
-static void noneCover32RGBA(uint8_t *p, uint8_t cr, uint8_t cg, uint8_t cb, uint8_t alpha, uint32_t cover) noexcept {
+static PIX_INLINE void noneCover32RGBA(uint8_t *p, uint8_t cr, uint8_t cg, uint8_t cb, uint8_t alpha,
+   uint32_t cover) noexcept {
    none_cover32<0,1,2,3>(p,cr,cg,cb,alpha,cover);
 }
 
-static void noneCopy32AGBR(uint8_t *p, uint8_t cr, uint8_t cg, uint8_t cb, uint8_t alpha) noexcept {
+static PIX_INLINE void noneCopy32AGBR(uint8_t *p, uint8_t cr, uint8_t cg, uint8_t cb, uint8_t alpha) noexcept {
    none_copy32<3,1,2,0>(p,cr,cg,cb,alpha);
 }
 
-static void noneCover32AGBR(uint8_t *p, uint8_t cr, uint8_t cg, uint8_t cb, uint8_t alpha, uint32_t cover) noexcept {
+static PIX_INLINE void noneCover32AGBR(uint8_t *p, uint8_t cr, uint8_t cg, uint8_t cb, uint8_t alpha,
+   uint32_t cover) noexcept {
    none_cover32<3,1,2,0>(p,cr,cg,cb,alpha,cover);
 }
 
-static void noneCopy32ARGB(uint8_t *p, uint8_t cr, uint8_t cg, uint8_t cb, uint8_t alpha) noexcept {
+static PIX_INLINE void noneCopy32ARGB(uint8_t *p, uint8_t cr, uint8_t cg, uint8_t cb, uint8_t alpha) noexcept {
    none_copy32<1,2,3,0>(p,cr,cg,cb,alpha);
 }
 
-static void noneCover32ARGB(uint8_t *p, uint8_t cr, uint8_t cg, uint8_t cb, uint8_t alpha, uint32_t cover) noexcept {
+static PIX_INLINE void noneCover32ARGB(uint8_t *p, uint8_t cr, uint8_t cg, uint8_t cb, uint8_t alpha,
+   uint32_t cover) noexcept {
    none_cover32<1,2,3,0>(p,cr,cg,cb,alpha,cover);
 }
 
@@ -430,12 +517,59 @@ public:
    uint8_t mBytesPerPixel;
    PIXEL_ORDER mPixelOrder;
 
+   friend struct pixfmt_test; // src/vector/tests/test_pixfmt.cpp compares the SIMD kernels with the scalar ones
+
 private:
+   // Results of gamma-blending one colour and alpha over each value of an opaque destination channel, filled on
+   // first use.  Solid hlines (shape interiors) repeat the same colour and alpha for every row, so after the first
+   // row a channel blend is one table read.  An alpha of 255 is never blended, so the initial key cannot match.
+
+   struct gamma_hline_lut {
+      uint32_t Key = 0xffffffff; // Packed r, g, b and blend alpha
+      uint32_t Src[3];           // glGamma.dir(channel) * 255 * alpha
+      uint32_t DestWeight;       // 255 * (255 - alpha)
+      uint16_t Value[3][256];    // 0x100 | result, or 0 if not yet computed
+
+      PIX_INLINE uint8_t lookup(int Channel, uint8_t Dest) noexcept {
+         uint16_t &v = Value[Channel][Dest];
+         if (!(v & 0x100)) v = 0x100 | glGamma.inv((Src[Channel] + glGamma.dir(Dest) * DestWeight) / 65025u);
+         return uint8_t(v);
+      }
+   };
+
    ColourFormat mColourFormat; // Retained so that setBlendMode() can rebind the operations
    uint8_t mBitsPerPixel = 0;
    BLM mBlendMode = BLM::AUTO; // The bound mode; AUTO is resolved to GAMMA when bound
+   gamma_hline_lut mGammaLUT;
+   uint32_t mGammaPendingKey = 0xffffffff; // A colour that has not yet been given the table
+   uint32_t mGammaPendingPixels = 0;
 
    void bind_ops() noexcept;
+
+   // Returns the hline table for a colour and blend alpha, or nullptr if the colour has not yet covered enough
+   // pixels to repay clearing the table.  Short spans in many colours (text, small shapes) therefore keep the
+   // per-pixel blend.
+
+   inline gamma_hline_lut * gamma_lut(const agg::rgba8 &Colour, uint32_t Alpha, uint32_t Length) noexcept
+   {
+      const uint32_t key = uint32_t(Colour.r) | (uint32_t(Colour.g)<<8) | (uint32_t(Colour.b)<<16) | (Alpha<<24);
+      if (key != mGammaLUT.Key) {
+         if (key IS mGammaPendingKey) mGammaPendingPixels += Length;
+         else {
+            mGammaPendingKey    = key;
+            mGammaPendingPixels = Length;
+         }
+         if (mGammaPendingPixels < 256) return nullptr;
+
+         mGammaLUT.Key        = key;
+         mGammaLUT.Src[0]     = glGamma.dir(Colour.r) * 0xff * Alpha;
+         mGammaLUT.Src[1]     = glGamma.dir(Colour.g) * 0xff * Alpha;
+         mGammaLUT.Src[2]     = glGamma.dir(Colour.b) * 0xff * Alpha;
+         mGammaLUT.DestWeight = 0xff * (0xff - Alpha);
+         std::memset(mGammaLUT.Value, 0, sizeof(mGammaLUT.Value));
+      }
+      return &mGammaLUT;
+   }
 
    void pixel_order(PIXEL_ORDER PixelOrder)
    {
@@ -578,6 +712,113 @@ private:
       do {
          none_cover32<oR,oG,oB,oA>(p, c.r, c.g, c.b, c.a, *covers++);
          p += sizeof(uint32_t);
+      } while(--len);
+   }
+
+   // BLM::GAMMA span routines for a solid colour.  Results are identical to blendHLine32T/blendSolidHSpan32T with
+   // gamma32 pixels: the source colour is decoded once per span, and opaque destinations in an hline are blended
+   // through the cached gamma_hline_lut.
+
+   template <uint8_t oR, uint8_t oG, uint8_t oB, uint8_t oA>
+   static void gammaHLine32T(agg::pixfmt_psl *Self, int x, int y, unsigned len, const agg::rgba8 &c,
+      int8u cover) noexcept
+   {
+      if (!c.a) return;
+      uint8_t *p = Self->mData + (y * Self->mStride) + (x<<2);
+      const uint32_t alpha = (uint32_t(c.a) * (cover + 1)) >> 8;
+      if (alpha IS 0xff) {
+         uint32_t v;
+         ((uint8_t *)&v)[oR] = c.r;
+         ((uint8_t *)&v)[oG] = c.g;
+         ((uint8_t *)&v)[oB] = c.b;
+         ((uint8_t *)&v)[oA] = c.a;
+         fill32(p, len, v);
+         return;
+      }
+
+      const srgb_blend32_gamma blend{oR,oG,oB,oA};
+      const uint32_t lr = glGamma.dir(c.r), lg = glGamma.dir(c.g), lb = glGamma.dir(c.b);
+      auto lut = Self->gamma_lut(c, alpha, len);
+
+      // An empty destination takes the colour and blend alpha directly.
+      uint32_t empty_value;
+      ((uint8_t *)&empty_value)[oR] = c.r;
+      ((uint8_t *)&empty_value)[oG] = c.g;
+      ((uint8_t *)&empty_value)[oB] = c.b;
+      ((uint8_t *)&empty_value)[oA] = alpha;
+
+#ifdef KOTUKU_SSE2
+      // Groups of four opaque destinations are blended through the table without per-pixel tests, and groups of
+      // four empty destinations (fresh filter and buffer bitmaps) are written with one store.
+      const __m128i alpha_mask = _mm_set1_epi32(int(uint32_t(0xff) << (oA<<3)));
+      const __m128i empty_v    = _mm_set1_epi32(int(empty_value));
+      while (len >= 4) {
+         const __m128i da = _mm_and_si128(_mm_loadu_si128((const __m128i *)p), alpha_mask);
+         if (lut and (_mm_movemask_epi8(_mm_cmpeq_epi32(da, alpha_mask)) IS 0xffff)) {
+            for (int i=0; i < 4; i++, p += 4) {
+               p[oR] = lut->lookup(0, p[oR]);
+               p[oG] = lut->lookup(1, p[oG]);
+               p[oB] = lut->lookup(2, p[oB]);
+            }
+         }
+         else if (_mm_movemask_epi8(_mm_cmpeq_epi32(da, _mm_setzero_si128())) IS 0xffff) {
+            _mm_storeu_si128((__m128i *)p, empty_v);
+            p += 16;
+         }
+         else {
+            for (int i=0; i < 4; i++, p += 4) {
+               gamma_hline_pixel<oR,oG,oB,oA>(p, blend, lut, lr, lg, lb, alpha, empty_value);
+            }
+         }
+         len -= 4;
+      }
+#endif
+      while (len) {
+         gamma_hline_pixel<oR,oG,oB,oA>(p, blend, lut, lr, lg, lb, alpha, empty_value);
+         p += 4;
+         --len;
+      }
+   }
+
+   template <uint8_t oR, uint8_t oG, uint8_t oB, uint8_t oA>
+   PIX_INLINE static void gamma_hline_pixel(uint8_t *p, const srgb_blend32_gamma &Blend, gamma_hline_lut *Lut,
+      uint32_t Lr, uint32_t Lg, uint32_t Lb, uint32_t Alpha, uint32_t EmptyValue) noexcept
+   {
+      const uint8_t dest_alpha = p[oA];
+      if (!dest_alpha) std::memcpy(p, &EmptyValue, 4);
+      else if ((dest_alpha IS 0xff) and Lut) {
+         p[oR] = Lut->lookup(0, p[oR]);
+         p[oG] = Lut->lookup(1, p[oG]);
+         p[oB] = Lut->lookup(2, p[oB]);
+      }
+      else Blend.blend_decoded(p, Lr, Lg, Lb, Alpha);
+   }
+
+   template <uint8_t oR, uint8_t oG, uint8_t oB, uint8_t oA>
+   static void gammaSolidHSpan32T(agg::pixfmt_psl *Self, int x, int y, uint32_t len, const agg::rgba8 &c,
+      const uint8_t *covers) noexcept
+   {
+      if (!c.a) return;
+      uint8_t *p = Self->mData + (y * Self->mStride) + (x<<2);
+      const srgb_blend32_gamma blend{oR,oG,oB,oA};
+      const uint32_t lr = glGamma.dir(c.r), lg = glGamma.dir(c.g), lb = glGamma.dir(c.b);
+      do {
+         const uint32_t alpha = (uint32_t(c.a) * (uint32_t(*covers) + 1)) >> 8;
+         if (alpha IS 0xff) {
+            p[oR] = c.r;
+            p[oG] = c.g;
+            p[oB] = c.b;
+            p[oA] = 0xff;
+         }
+         else if (p[oA]) blend.blend_decoded(p, lr, lg, lb, alpha);
+         else {
+            p[oR] = c.r;
+            p[oG] = c.g;
+            p[oB] = c.b;
+            p[oA] = alpha;
+         }
+         p += sizeof(uint32_t);
+         ++covers;
       } while(--len);
    }
 
@@ -1166,6 +1407,141 @@ private:
       }
    }
 
+   // AVX2 colour span for BLM::GAMMA, processing eight pixels per iteration with gathers from the glGamma tables.
+   // Results are identical to blendColorHSpan32T with the gamma cover32 pixels:
+   //
+   //   * The blend numerator (Ls * a4 + Ld * a5) / 65025 with a4 = 255a and a5 = 255(255-a) is computed as
+   //     (Ls * a + Ld * (255-a)) / 255, which is equal as a rational and so has the same floor.  The sum is formed
+   //     with one madd_epi16 per channel.
+   //   * trunc(X * (1/255.0f)) IS X / 255 for every X <= 4095 * 255 (verified exhaustively), so the division is a
+   //     single-precision multiply.
+   //   * Gathers read 32 bits per index and mask the result.  Reads past the end of Dir and Inv land in the
+   //     following members of gamma_table.
+   //
+   // A group containing a translucent destination (0 < alpha < 255) is processed by the scalar cover32, as in the
+   // sRGB kernels.  A group whose source alphas are all zero is skipped without a store.
+
+   KOTUKU_TARGET_AVX2 inline static __m256i gammaDir8(__m256i Index) noexcept
+   {
+      const __m256i v = _mm256_i32gather_epi32((const int *)glGamma.Dir, Index, 2);
+      return _mm256_and_si256(v, _mm256_set1_epi32(0xffff));
+   }
+
+   KOTUKU_TARGET_AVX2 inline static __m256i gammaInv8(__m256i Index) noexcept
+   {
+      const __m256i v = _mm256_i32gather_epi32((const int *)glGamma.Inv, Index, 1);
+      return _mm256_and_si256(v, _mm256_set1_epi32(0xff));
+   }
+
+   // Blends one channel: Ls and Ld are the decoded source and destination, Weights holds (a, 255-a) as 16-bit
+   // pairs.  Returns the sRGB result in the low byte of each lane.
+
+   KOTUKU_TARGET_AVX2 inline static __m256i gammaChannel8(__m256i Ls, __m256i Ld, __m256i Weights) noexcept
+   {
+      const __m256i x = _mm256_madd_epi16(_mm256_or_si256(Ls, _mm256_slli_epi32(Ld, 16)), Weights);
+      const __m256i q = _mm256_cvttps_epi32(_mm256_mul_ps(_mm256_cvtepi32_ps(x), _mm256_set1_ps(1.0f / 255.0f)));
+      return gammaInv8(q);
+   }
+
+   template <uint8_t oR, uint8_t oG, uint8_t oB, uint8_t oA>
+   KOTUKU_TARGET_AVX2 static void gammaBlendColorHSpan32A(agg::pixfmt_psl *Self, int x, int y, uint32_t len,
+      const agg::rgba8 *colors, const uint8_t *covers, uint8_t cover) noexcept
+   {
+      uint8_t *p = Self->mData + (y * Self->mStride) + (x<<2);
+
+      const __m256i zero = _mm256_setzero_si256();
+      const __m256i m8   = _mm256_set1_epi32(0xff);
+      const __m256i v255 = _mm256_set1_epi32(0xff);
+      const __m256i one  = _mm256_set1_epi32(1);
+      const __m256i cv_const = _mm256_set1_epi32(cover);
+      const __m256i opaque_alpha = _mm256_set1_epi32(int(uint32_t(0xff) << (oA<<3)));
+
+      while (len >= 8) {
+         const __m256i d  = _mm256_loadu_si256((const __m256i *)p);
+         const __m256i da = _mm256_and_si256(_mm256_srli_epi32(d, oA<<3), m8);
+         const __m256i d_empty = _mm256_cmpeq_epi32(da, zero);
+         const __m256i d_edge  = _mm256_or_si256(d_empty, _mm256_cmpeq_epi32(da, v255));
+
+         if (uint32_t(_mm256_movemask_epi8(d_edge)) != 0xffffffffu) {
+            for (int i=0; i < 8; i++, p += 4, colors++) {
+               cover32<oR,oG,oB,oA,srgb_blend32_gamma>(p, colors->r, colors->g, colors->b, colors->a,
+                  covers ? *covers++ : cover);
+            }
+            len -= 8;
+            continue;
+         }
+
+         const __m256i s  = _mm256_loadu_si256((const __m256i *)colors);
+         const __m256i sa = _mm256_srli_epi32(s, 24);
+         const __m256i skip = _mm256_cmpeq_epi32(sa, zero);
+
+         if (uint32_t(_mm256_movemask_epi8(skip)) IS 0xffffffffu) {
+            p += 32;
+            colors += 8;
+            if (covers) covers += 8;
+            len -= 8;
+            continue;
+         }
+
+         __m256i cv;
+         if (covers) {
+            cv = _mm256_cvtepu8_epi32(_mm_loadl_epi64((const __m128i *)covers));
+            covers += 8;
+         }
+         else cv = cv_const;
+
+         // Scaled alpha (a * (cover+1)) >> 8; the product fits 16 bits, so a 16-bit multiply suffices.
+         const __m256i a = _mm256_srli_epi32(_mm256_mullo_epi16(sa, _mm256_add_epi32(cv, one)), 8);
+         const __m256i direct = _mm256_or_si256(_mm256_cmpeq_epi32(a, v255), d_empty);
+
+         const __m256i sr = _mm256_and_si256(s, m8);
+         const __m256i sg = _mm256_and_si256(_mm256_srli_epi32(s, 8), m8);
+         const __m256i sb = _mm256_and_si256(_mm256_srli_epi32(s, 16), m8);
+
+         const __m256i copied = _mm256_or_si256(
+            _mm256_or_si256(_mm256_slli_epi32(sr, oR<<3), _mm256_slli_epi32(sg, oG<<3)),
+            _mm256_or_si256(_mm256_slli_epi32(sb, oB<<3), _mm256_slli_epi32(a, oA<<3)));
+
+         // Opaque sources (images, solid regions of filter output) need no blending.
+
+         if (uint32_t(_mm256_movemask_epi8(_mm256_andnot_si256(skip, direct))) IS 0xffffffffu) {
+            _mm256_storeu_si256((__m256i *)p, copied);
+            p += 32;
+            colors += 8;
+            len -= 8;
+            continue;
+         }
+
+         const __m256i weights = _mm256_or_si256(a, _mm256_slli_epi32(_mm256_sub_epi32(v255, a), 16));
+         const __m256i dr = _mm256_and_si256(_mm256_srli_epi32(d, oR<<3), m8);
+         const __m256i dg = _mm256_and_si256(_mm256_srli_epi32(d, oG<<3), m8);
+         const __m256i db = _mm256_and_si256(_mm256_srli_epi32(d, oB<<3), m8);
+         const __m256i rr = gammaChannel8(gammaDir8(sr), gammaDir8(dr), weights);
+         const __m256i rg = gammaChannel8(gammaDir8(sg), gammaDir8(dg), weights);
+         const __m256i rb = gammaChannel8(gammaDir8(sb), gammaDir8(db), weights);
+
+         const __m256i blended = _mm256_or_si256(
+            _mm256_or_si256(_mm256_slli_epi32(rr, oR<<3), _mm256_slli_epi32(rg, oG<<3)),
+            _mm256_or_si256(_mm256_slli_epi32(rb, oB<<3), opaque_alpha));
+
+         __m256i res = _mm256_blendv_epi8(blended, copied, direct);
+         res = _mm256_blendv_epi8(res, d, skip);
+         _mm256_storeu_si256((__m256i *)p, res);
+
+         p += 32;
+         colors += 8;
+         len -= 8;
+      }
+
+      while (len) {
+         cover32<oR,oG,oB,oA,srgb_blend32_gamma>(p, colors->r, colors->g, colors->b, colors->a,
+            covers ? *covers++ : cover);
+         p += 4;
+         ++colors;
+         --len;
+      }
+   }
+
 #endif // KOTUKU_AVX2
 
    // Binds the full set of 32-bit operations for a pixel order and blend mode in one step.
@@ -1225,6 +1601,19 @@ private:
       fBlendSolidHSpan = &noneSolidHSpan32T<oR,oG,oB,oA>;
       fBlendColorHSpan = &blendColorHSpan32T<CopyPix,CoverPix>;
       fCopyColorHSpan  = &copyColorHSpan32T<oR,oG,oB,oA,&srgb_blend32::encode>;
+   }
+
+   // BLM::GAMMA uses the generic operations with dedicated solid-colour spans.
+
+   template <uint8_t oR, uint8_t oG, uint8_t oB, uint8_t oA, auto BlendPix, auto CopyPix, auto CoverPix>
+   void set_gamma_ops32(const PIXEL_ORDER &Order) noexcept
+   {
+      set_ops32<oR,oG,oB,oA,BlendPix,CopyPix,CoverPix>(Order);
+      fBlendHLine      = &gammaHLine32T<oR,oG,oB,oA>;
+      fBlendSolidHSpan = &gammaSolidHSpan32T<oR,oG,oB,oA>;
+#ifdef KOTUKU_AVX2
+      if (simd_has_avx2()) fBlendColorHSpan = &gammaBlendColorHSpan32A<oR,oG,oB,oA>;
+#endif
    }
 
    // Generic 8-bit grey-scale routines.  8-bit targets always use blend8/copy8/cover8, so these
@@ -1384,5 +1773,107 @@ public:
       }
    }
 };
+
+//********************************************************************************************************************
+// The pixel format bindings are defined here (rather than in scene_draw.cpp) so that the header can be compiled
+// on its own by the pixel format unit test.
+
+inline void pixfmt_psl::rawBitmap(uint8_t *Data, int Width, int Height, int Stride, int BitsPerPixel, ColourFormat &ColourFormat, BLM BlendMode) noexcept
+{
+   mData   = Data;
+   mWidth  = Width;
+   mHeight = Height;
+   mStride = Stride;
+   mBytesPerPixel = BitsPerPixel/8;
+   mBitsPerPixel  = BitsPerPixel;
+   mColourFormat  = ColourFormat;
+   mBlendMode     = (BlendMode IS BLM::AUTO) ? BLM::GAMMA : BlendMode;
+   bind_ops();
+}
+
+//********************************************************************************************************************
+// Rebinds the per-pixel and span operations for a new blend mode.  The bitmap data, dimensions and stride are
+// unchanged.  AUTO resolves to GAMMA; callers that need the target's colour space to be considered should resolve
+// the mode beforehand.
+
+inline void pixfmt_psl::setBlendMode(BLM BlendMode) noexcept
+{
+   if (BlendMode IS BLM::AUTO) BlendMode = BLM::GAMMA;
+   if (BlendMode IS mBlendMode) return;
+   mBlendMode = BlendMode;
+   bind_ops();
+}
+
+inline void pixfmt_psl::bind_ops() noexcept
+{
+   if (mBitsPerPixel IS 32) {
+      // Each branch binds the per-pixel and span operations for a <pixel order, blend mode> pair.
+      // The span operations are template instantiations with the per-pixel work inlined, so the
+      // function pointer indirection is paid once per span rather than once per pixel.
+
+      if (mBlendMode IS BLM::LINEAR) {
+         // Source colours are decoded to linear on every write path, including opaque fills and copies.
+         constexpr auto encode = &linear_blend32::encode;
+         if (mColourFormat.AlphaPos IS 24) {
+            if (mColourFormat.BluePos IS 0) {
+               set_ops32<2,1,0,3, &linear32BGRA, &linearCopy32BGRA, &linearCover32BGRA, false, encode>(pxBGRA);
+            }
+            else set_ops32<0,1,2,3, &linear32RGBA, &linearCopy32RGBA, &linearCover32RGBA, false, encode>(pxRGBA);
+         }
+         else if (mColourFormat.RedPos IS 24) {
+            set_ops32<3,1,2,0, &linear32AGBR, &linearCopy32AGBR, &linearCover32AGBR, false, encode>(pxAGBR);
+         }
+         else set_ops32<1,2,3,0, &linear32ARGB, &linearCopy32ARGB, &linearCover32ARGB, false, encode>(pxARGB);
+      }
+      else if (mBlendMode IS BLM::NONE) {
+         if (mColourFormat.AlphaPos IS 24) {
+            if (mColourFormat.BluePos IS 0) set_none_ops32<2,1,0,3, &noneCopy32BGRA, &noneCover32BGRA>(pxBGRA);
+            else set_none_ops32<0,1,2,3, &noneCopy32RGBA, &noneCover32RGBA>(pxRGBA);
+         }
+         else if (mColourFormat.RedPos IS 24) set_none_ops32<3,1,2,0, &noneCopy32AGBR, &noneCover32AGBR>(pxAGBR);
+         else set_none_ops32<1,2,3,0, &noneCopy32ARGB, &noneCover32ARGB>(pxARGB);
+      }
+      else if (mBlendMode IS BLM::SRGB) {
+         // The trailing 'true' selects the SSE2 solid-span kernels where available.
+         if (mColourFormat.AlphaPos IS 24) {
+            if (mColourFormat.BluePos IS 0) set_ops32<2,1,0,3, &srgb32BGRA, &srgbCopy32BGRA, &srgbCover32BGRA, true>(pxBGRA);
+            else set_ops32<0,1,2,3, &srgb32RGBA, &srgbCopy32RGBA, &srgbCover32RGBA, true>(pxRGBA);
+         }
+         else if (mColourFormat.RedPos IS 24) set_ops32<3,1,2,0, &srgb32AGBR, &srgbCopy32AGBR, &srgbCover32AGBR, true>(pxAGBR);
+         else set_ops32<1,2,3,0, &srgb32ARGB, &srgbCopy32ARGB, &srgbCover32ARGB, true>(pxARGB);
+      }
+      else { // BLM::GAMMA
+         if (mColourFormat.AlphaPos IS 24) {
+            if (mColourFormat.BluePos IS 0) {
+               set_gamma_ops32<2,1,0,3, &gamma32BGRA, &gammaCopy32BGRA, &gammaCover32BGRA>(pxBGRA);
+            }
+            else set_gamma_ops32<0,1,2,3, &gamma32RGBA, &gammaCopy32RGBA, &gammaCover32RGBA>(pxRGBA);
+         }
+         else if (mColourFormat.RedPos IS 24) {
+            set_gamma_ops32<3,1,2,0, &gamma32AGBR, &gammaCopy32AGBR, &gammaCover32AGBR>(pxAGBR);
+         }
+         else set_gamma_ops32<1,2,3,0, &gamma32ARGB, &gammaCopy32ARGB, &gammaCover32ARGB>(pxARGB);
+      }
+   }
+   else if (mBitsPerPixel IS 24) {
+      kt::Log log;
+      log.warning("Support for 24-bit bitmaps is deprecated.");
+   }
+   else if (mBitsPerPixel IS 16) {
+      // Deprecated.  16-bit client code should use 32-bit and downscale instead.
+      kt::Log log;
+      log.warning("Support for 16-bit bitmaps is deprecated.");
+   }
+   else if (mBitsPerPixel IS 8) {
+      // For generating grey-scale alpha masks
+      fBlendHLine      = &blendHLine8;
+      fBlendSolidHSpan = &blendSolidHSpan8;
+      fBlendColorHSpan = &blendColorHSpan8;
+      fCopyColorHSpan  = &copyColorHSpan8;
+      fBlendPix        = &blend8;
+      fCopyPix         = &copy8;
+      fCoverPix        = &cover8;
+   }
+}
 
 } // namespace

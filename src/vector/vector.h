@@ -1963,7 +1963,6 @@ static int get_utf8(const std::string_view &Value, uint32_t &Unicode, std::size_
 
 //********************************************************************************************************************
 
-extern agg::gamma_lut<uint8_t, uint16_t, 8, 12> glGamma;
 extern double glDisplayVDPI, glDisplayHDPI, glDisplayDPI;
 
 extern void set_text_final_xy(extVectorText *);

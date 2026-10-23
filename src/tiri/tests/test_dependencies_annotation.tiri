@@ -48,7 +48,7 @@ end
 @Test function RequirementsSurviveCompiledFileRoundTrip()
    local err, temp = mSys.ResolvePath('temp:', 0)
    check err
-   local output = temp .. f'/dependencies_{processing.task().id}_{mSys.PreciseTime()}.tbc'
+   local output = temp .. f'dependencies_{processing.task().id}_{mSys.PreciseTime()}.tbc'
    defer mSys.DeleteFile(output) end
 
    local producer <close> = obj.new('tiri', {
