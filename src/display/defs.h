@@ -129,7 +129,7 @@ struct SurfaceRecord {
    }
 
    inline bool hasFocus() const { return (Flags & RNF::HAS_FOCUS) != RNF::NIL; }
-   inline void dropFocus() { Flags &= RNF::HAS_FOCUS; }
+   inline void dropFocus() { Flags &= ~RNF::HAS_FOCUS; }
    inline bool transparent() const { return (Flags & RNF::TRANSPARENT) != RNF::NIL; }
    inline bool visible() const { return (Flags & RNF::VISIBLE) != RNF::NIL; }
    inline bool invisible() const { return (Flags & RNF::VISIBLE) IS RNF::NIL; }

@@ -95,6 +95,7 @@ the surface area first).</li>
       <description>
 <p>Focus() makes the surface the primary focus target and notifies the affected focus subscribers.  Focus is propagated through the surface hierarchy so that parent surfaces also record inherited focus.</p>
 <p>The request is ignored if the surface is disabled, marked with <code>RNF::NO_FOCUS</code>, or outside the active modal surface. If <code>RNF::IGNORE_FOCUS</code> is set, the focus request is forwarded to the parent surface instead.</p>
+<p>Focus subscribers are also notified when a surface that held the focus through a focused child becomes the primary focus again, for instance when that child is hidden or freed.</p>
       </description>
     </action>
 
@@ -105,6 +106,7 @@ the surface area first).</li>
       <tiriPrototype>err = Object.acHide()</tiriPrototype>
       <description>
 <p>Hide() clears the visible state.  For top-level surfaces it hides the hosted display window; for child surfaces it invalidates and exposes the covered parent area so that the background is redrawn.  Hiding a modal surface also restores the previous modal surface, or clears modal mode if there is no previous surface.</p>
+<p>If a child surface holds the user focus, either directly or through a focused descendant, the focus passes to its nearest ancestor that can accept it.  Ancestors that are disabled or marked with <code>RNF::NO_FOCUS</code> are skipped.  The surfaces losing the focus receive <action>LostFocus</action> before Hide() returns.  The focus of a hidden top-level surface is decided by the host window manager, so on drivers without one, such as the headless driver, it remains with the hidden surface.</p>
       </description>
     </action>
 

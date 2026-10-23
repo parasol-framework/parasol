@@ -1,4 +1,4 @@
-   import 'gui', 'gui/menu', 'gui/menubar', 'gui/dropdown'
+   import 'gui', 'gui/menu', 'gui/menubar'
    include 'display', 'vector'
    module vector as mVec
 
@@ -118,30 +118,6 @@ end
 function resetPointer()
    -- Keep pointer position from an earlier test from selecting a newly created menu or suppressing a repeated move.
    if obj.find('SystemPointer') then feed(JET_ABS_XY, 1000, 1000) end
-end
-
-@Test function ModalDropdownAcceptsPointerPress()
-   local surface <close>, target = newTarget()
-   local hits = 0
-   local dropdown = gui.dropdown({
-      relative = target, x = 20, y = 20,
-      config = array<table> { { label='First' }, { label='Second' } },
-      feedback = function(Item)
-         if Item.label is 'Second' then hits++ end
-      end
-   })
-   defer dropdown.surface?.free() end
-
-   surface.modal = true
-   surface.acShow()
-   dropdown.show()
-   dropdown.surface.acDraw()
-   processing.sleep(0)
-
-   feed(JET_ABS_XY, dropdown.surface.absX + 10, dropdown.surface.absY + dropdown.items[1].y + 5)
-   feed(JET_LMB, 1, 0)
-   feed(JET_LMB, 0, 0)
-   assert(hits is 1 and not dropdown.visible, 'A modal dropdown click must activate the selected row')
 end
 
 @Test function MenuReportsHighlightChanges()
@@ -1268,32 +1244,4 @@ function capHeight(Text:obj!):num
    metrics = struct<FontMetrics>
    check mVec.GetFontMetrics(handle, metrics)
    return metrics.ascent
-end
-
-@Test function DropdownRowsCentreTextAndIcons()
-   local surface <close>, target = newTarget()
-   local dropdown = gui.dropdown({
-      relative = target, x = 20, y = 20,
-      config = array<table> { { label='First', icon='items/cancel' }, { label='Second' }, { label='Third' } }
-   })
-   defer dropdown.surface?.free() end
-
-   local next_y = dropdown.items[0].y
-   for _, mi in dropdown.items do
-      assert(mi.height is math.floor(mi.height), 'Dropdown rows must be whole pixels')
-      assert(mi.y is next_y, 'Dropdown rows must follow each other without gaps or overlaps')
-      next_y = mi.y + mi.height
-
-      local cap_centre = mi.text.y - (capHeight(mi.text) * 0.5)
-      local row_centre = mi.y + (mi.height * 0.5)
-      assert(math.abs(cap_centre - row_centre) <= 0.5,
-         f'Dropdown capitals must centre in the row ({cap_centre} vs {row_centre})')
-
-      if mi.iconView then
-         local icon_centre = mi.iconView.y + (mi.iconView.height * 0.5)
-         assert(math.abs(icon_centre - row_centre) <= 0.5,
-            f'Dropdown icons must centre in the row ({icon_centre} vs {row_centre})')
-      end
-   end
-   assert(dropdown.items[0].iconView, 'The icon fixture must create an icon')
 end

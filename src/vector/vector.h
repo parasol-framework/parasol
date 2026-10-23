@@ -912,7 +912,10 @@ class extVectorScene : public objVectorScene {
    ankerl::unordered_dense::map<extVectorViewport *, ankerl::unordered_dense::map<extVector *, FUNCTION>> ResizeSubscriptions;
    OBJECTID ButtonLock; // The vector currently holding a button lock
    OBJECTID ActiveVector; // The most recent vector to have received an input movement event.
-   OBJECTID LastFocusID; // The foreground vector that held the focus when the surface last lost it.
+   OBJECTID LastFocusID; // The foreground vector that held the focus when the scene last lost it.
+   int64_t KeyDispatchSeen; // The most recent key dispatch received by this scene.
+   int64_t KeyDispatchSkip; // A key dispatch to ignore because the scene gained the focus while it was in progress.
+   int64_t KeySubscribedDispatch; // The key dispatch in progress when the scene subscribed to key events, if any.
    OBJECTID DropTargetID; // The viewport receiving the drop that is currently being delivered.
    double DropX, DropY; // Drop coordinates relative to DropTargetID, captured before delivery.
    int InputHandle;
@@ -1308,6 +1311,7 @@ extern void render_scene_from_viewport(extVectorScene *, objBitmap *, objVectorV
 extern const FieldDef clAspectRatio[];
 extern std::recursive_mutex glVectorFocusLock;
 extern std::vector<extVector *> glVectorFocusList; // The first reference is the most foreground object with the focus
+extern APTR glKeyDispatchHandle;
 
 //********************************************************************************************************************
 // Generic function for setting the clip region of an AGG rasterizer

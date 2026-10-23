@@ -694,6 +694,9 @@ through the surface hierarchy so that parent surfaces also record inherited focu
 
 The request is ignored if the surface is disabled, marked with `RNF::NO_FOCUS`, or outside the active modal surface.
 If `RNF::IGNORE_FOCUS` is set, the focus request is forwarded to the parent surface instead.
+
+Focus subscribers are also notified when a surface that held the focus through a focused child becomes the primary
+focus again, for instance when that child is hidden or freed.
 -END-
 *********************************************************************************************************************/
 
@@ -848,7 +851,9 @@ static ERR SURFACE_Focus(extSurface *Self)
    BroadcastEvent(ev, event_size);
 
    if (Self->hasFocus()) {
-      // Return without notification as we already have the focus
+      // The surface held the focus by inheritance and is now the primary focus again, e.g. because a focused child
+      // has been hidden.  Subscribers are notified so that they can restore their own focus state, which is how a
+      // VectorScene returns the focus to the vector that held it before the child was focussed.
 
       if (Self->RevertFocusID) {
          kt::ScopedObjectLock focus(Self->RevertFocusID);
@@ -857,7 +862,7 @@ static ERR SURFACE_Focus(extSurface *Self)
       }
 
       glLastFocusTime = PreciseTime();
-      return ERR::Okay|ERR::Notified;
+      return ERR::Okay;
    }
    else {
       Self->Flags |= RNF::HAS_FOCUS;
@@ -884,6 +889,40 @@ static ERR SURFACE_Focus(extSurface *Self)
 }
 
 //********************************************************************************************************************
+// If the surface holds the focus, either as the primary focus or through a focused descendant, hand the focus to the
+// nearest ancestor that can accept it.  The surface record is tested rather than the object flags, because Focus()
+// clears the records of the losing surfaces before it notifies anyone, while the object flags only change when
+// LostFocus is delivered.  A surface that is already losing the focus is therefore left alone.
+//
+// Top-level surfaces are ignored, as the host window manager or the user decides where the focus goes next.
+
+static void release_focus(extSurface *Self)
+{
+   std::vector<OBJECTID> ancestors;
+
+   {
+      const std::lock_guard<std::recursive_mutex> lock(glSurfaceLock);
+
+      auto i = find_surface_list(Self);
+      if ((i IS -1) or (not glSurfaces[i].hasFocus())) return;
+
+      for (auto parent_id = glSurfaces[i].ParentID; parent_id; parent_id = glSurfaces[i].ParentID) {
+         if ((i = find_surface_list(parent_id, i)) IS -1) break;
+         if ((glSurfaces[i].Flags & (RNF::NO_FOCUS|RNF::DISABLED)) IS RNF::NIL) ancestors.push_back(parent_id);
+      }
+   }
+
+   // An ancestor that cannot be locked, e.g. because it is also being freed, is skipped in favour of the next.
+
+   for (auto id : ancestors) {
+      if (kt::ScopedObjectLock<extSurface> ancestor(id); ancestor.granted()) {
+         acFocus(*ancestor);
+         return;
+      }
+   }
+}
+
+//********************************************************************************************************************
 
 extSurface::~extSurface()
 {
@@ -899,7 +938,12 @@ extSurface::~extSurface()
       }
    }
 
+   // Hide() hands the focus to an ancestor if this surface or one of its descendants holds it.  A surface that was
+   // focussed while hidden is not handled by Hide(), so the focus is released explicitly before the surface record is
+   // removed.
+
    acHide(this);
+   release_focus(this);
 
    // Remove any references to this surface object from the global surface list
 
@@ -910,16 +954,6 @@ extSurface::~extSurface()
    if ((BufferID) and ((!BitmapOwnerID) or (BitmapOwnerID IS UID))) {
       if (Bitmap) { ReleaseObject(Bitmap); Bitmap = nullptr; }
       FreeResource(BufferID);
-   }
-
-   // Give the focus to the parent if our object has the primary focus.  Do not apply this technique to surface objects
-   // acting as windows, as the window class has its own focus management code.
-
-   if (hasFocus() and Owner) {
-      if (ParentID) {
-         kt::ScopedObjectLock focus(ParentID);
-         if (focus.granted()) acFocus(*focus);
-      }
    }
 
    if ((Flags & RNF::AUTO_QUIT) != RNF::NIL) {
@@ -948,6 +982,12 @@ Hide: Hides a surface object from the display.
 Hide() clears the visible state.  For top-level surfaces it hides the hosted display window; for child surfaces it
 invalidates and exposes the covered parent area so that the background is redrawn.  Hiding a modal surface also
 restores the previous modal surface, or clears modal mode if there is no previous surface.
+
+If a child surface holds the user focus, either directly or through a focused descendant, the focus passes to its
+nearest ancestor that can accept it.  Ancestors that are disabled or marked with `RNF::NO_FOCUS` are skipped.  The
+surfaces losing the focus receive #LostFocus() before Hide() returns.  The focus of a hidden top-level surface is
+decided by the host window manager, so on drivers without one, such as the headless driver, it remains with the
+hidden surface.
 -END-
 *********************************************************************************************************************/
 
@@ -959,18 +999,21 @@ static ERR SURFACE_Hide(extSurface *Self)
 
    if (Self->invisible()) return ERR::Okay|ERR::Notified;
 
-   if (!Self->ParentID) {
-      Self->Flags &= ~RNF::VISIBLE; // Important to switch off visibliity before Hide(), otherwise a false redraw will occur.
-      UpdateSurfaceField(Self, &SurfaceRecord::Flags, Self->Flags);
+   // Only change visibility in the record.  During focus notifications its HAS_FOCUS flag can already be cleared
+   // while the object still awaits LostFocus, so copying the object flags would restore a stale focus state.
 
+   {
+      const std::lock_guard<std::recursive_mutex> lock(glSurfaceLock);
+      Self->Flags &= ~RNF::VISIBLE;
+      if (auto i = find_surface_list(Self); i != -1) glSurfaces[i].Flags &= ~RNF::VISIBLE;
+   }
+
+   if (!Self->ParentID) {
       kt::ScopedObjectLock display(Self->DisplayID);
       if (display.granted()) if (auto error = acHide(*display); error != ERR::Okay) return error;
    }
    else {
-      // Mark this surface object as invisible, then invalidate the region it was covering in order to have the background redrawn.
-
-      Self->Flags &= ~RNF::VISIBLE;
-      UpdateSurfaceField(Self, &SurfaceRecord::Flags, Self->Flags);
+      // Invalidate the region it was covering in order to have the background redrawn.
 
       if (Self->BitmapOwnerID != Self->UID) {
          RedrawSurface(Self->ParentID, Self->FixedX, Self->FixedY, Self->FixedWidth, Self->FixedHeight,
@@ -990,6 +1033,11 @@ static ERR SURFACE_Hide(extSurface *Self)
       log.msg("Surface is modal, switching off modal mode.");
       gfx::SetModalSurface(0);
    }
+
+   // A hidden surface cannot hold the focus.  This must follow the modal reset, otherwise the ancestor that receives
+   // the focus could be rejected as being outside the modal's scope.
+
+   release_focus(Self);
 
    refresh_pointer();
    return ERR::Okay;
