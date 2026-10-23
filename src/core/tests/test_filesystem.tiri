@@ -405,15 +405,16 @@ end
 
 ----------------------------------------------------------------------------------------------------------------------
 
-@Test; @Requires(windows_platform=true)
-function ResolveWindowsFolderCanonicalPath()
-   folder_path = glTempRoot .. 'resolve_windows_folder/'
+@Test function ResolveFolderTrailingSeparator()
+   folder_path = glTempRoot .. 'resolve_folder/'
    ensureFolder(folder_path)
 
-   err, resolved_folder = mSys.ResolvePath(folder_path)
-   assert(err is ERR_Okay, 'ResolvePath() failed for a folder path: ' .. mSys.GetErrorMsg(err))
-   assert(resolved_folder.endsWith('/') or resolved_folder.endsWith('\\'),
-      'ResolvePath() should preserve a trailing separator on Windows folder paths.')
+   for _, flags in { 0, RSF_NO_FILE_CHECK, RSF_NO_FOLLOW } do
+      err, resolved_folder = mSys.ResolvePath(folder_path, flags)
+      assert(err is ERR_Okay, f'ResolvePath() failed for a folder path with flags {flags}: {mSys.GetErrorMsg(err)}')
+      assert(resolved_folder.endsWith('/') or resolved_folder.endsWith('\\'),
+         f'ResolvePath() should preserve the trailing separator of an existing folder with flags {flags}, got "{resolved_folder}"')
+   end
 end
 
 ----------------------------------------------------------------------------------------------------------------------
