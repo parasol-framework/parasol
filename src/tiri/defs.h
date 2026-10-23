@@ -207,6 +207,7 @@ struct actionmonitor {
    int     Reference;         // A custom reference to pass to the callback (optional)
    ACTIONID ActionID;          // Action being monitored.
    OBJECTID ObjectID;          // Object being monitored
+   uint32_t Serial = 0;        // Identifies the subscription while callbacks modify the list
 
    actionmonitor() {}
 
@@ -223,7 +224,8 @@ struct actionmonitor {
    }
 
    actionmonitor(actionmonitor &&move) noexcept :
-      Object(move.Object), Args(move.Args), Function(move.Function), Reference(move.Reference), ActionID(move.ActionID), ObjectID(move.ObjectID) {
+      Object(move.Object), Args(move.Args), Function(move.Function), Reference(move.Reference),
+      ActionID(move.ActionID), ObjectID(move.ObjectID), Serial(move.Serial) {
       move.ObjectID = 0;
    }
 
@@ -236,6 +238,7 @@ struct actionmonitor {
          Reference = move.Reference;
          ActionID = move.ActionID;
          ObjectID = move.ObjectID;
+         Serial = move.Serial;
          move.ObjectID = 0;
       }
       return *this;
@@ -601,6 +604,7 @@ class extTiri : public objTiri {
    public:
    lua_State *Lua;                        // Lua instance
    std::vector<actionmonitor> ActionList; // Action subscriptions managed by subscribe()
+   uint32_t ActionSerial = 0;             // Source of actionmonitor.Serial values
    std::vector<eventsub> EventList;       // Event subscriptions managed by subscribeEvent()
    std::vector<datarequest> Requests;     // For drag and drop requests
    std::vector<VariableInfo> CapturedVariables; // Variable declarations captured during parsing (JOF::DIAGNOSE)

@@ -385,6 +385,34 @@ end
    assert(callback_count is 1, "Expected Free action callback to be called once")
 end
 
+-- Every subscription to the same object and action must be called once, in order.  Unsubscribing from a callback
+-- stops the remaining callbacks for that action.
+
+@Test function MultipleActionSubscriptions()
+   local f = obj.new('time', { })
+   local calls = array<str>
+   f.subscribe('Query', function() calls.push('a') end)
+   f.subscribe('Query', function() calls.push('b') end)
+   f.subscribe('Free', function() calls.push('free1') end)
+   f.subscribe('Free', function() calls.push('free2') end)
+   check f.acQuery()
+   assert(calls.concat(',') is 'a,b', 'Each Query subscription must be called once: ' .. calls.concat(','))
+
+   f.subscribe('Query', function()
+      calls.push('c')
+      f.unsubscribe('Query')
+   end)
+   f.subscribe('Query', function() calls.push('d') end)
+   check f.acQuery()
+   check f.acQuery()
+   assert(calls.concat(',') is 'a,b,a,b,c', 'Unsubscribing must stop the remaining callbacks: ' .. calls.concat(','))
+
+   f.subscribe('Query', function() calls.push('e') end)
+   check f.acQuery()
+   f.free()
+   assert(calls.concat(',') is 'a,b,a,b,c,e,free1,free2', 'Resubscription and Free must notify every subscriber')
+end
+
 -----------------------------------------------------------------------------------------------------------------------
 -- Actions appended to AC must have a matching Tiri jump-table entry.  A missing entry dispatches through null.
 
