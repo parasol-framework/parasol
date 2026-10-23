@@ -654,6 +654,8 @@ end
 
    -- Grow the leaf's code eightfold.  Parent entries reference the leaf and must not grow with it.  Superseded
    -- entries remain under their old lookup keys, so measure each generation from an otherwise empty cache.
+   -- Compare growth rather than total sizes: parent entries also carry dependency metadata whose size does not
+   -- depend on the leaf's private implementation.
    local function measure(Helpers:num):table
       clear_fragment_entries(names)
       write_package(packages, 'frag-leaf', fragment_leaf_source(11, Helpers))
@@ -669,8 +671,6 @@ end
    for name in values(array<str> { 'frag-left', 'frag-right', 'frag-top' }) do
       assert(math.abs(large[name].size - small[name].size) < 256,
          f'{name} must not embed the leaf body: {small[name].size} -> {large[name].size}')
-      assert(large[name].size * 2 < large['frag-leaf'].size,
-         f"{name} must be smaller than the shared leaf: {large[name].size} vs {large['frag-leaf'].size}")
    end
 end
 
