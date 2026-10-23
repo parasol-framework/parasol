@@ -357,10 +357,20 @@
     <field>
       <name>ColourSpace</name>
       <comment>Defines the colour space to use when blending the vector with a target bitmap's content.</comment>
-      <access read="R" write="W">Read/Write</access>
+      <access read="R" write="S">Read/Set</access>
       <type lookup="VCS">VCS</type>
       <description>
-<p>By default, vectors are rendered using the standard RGB colour space and alpha blending rules.  Changing the colour space to <code>LINEAR_RGB</code> will tell the renderer to automatically convert sRGB values to linear RGB when blending on the fly.</p>
+<p>The ColourSpace determines how translucent pixels of the vector and its descendants are blended with the target. <code>SRGB</code> blends the stored sRGB values directly, which matches the behaviour of web browsers.  <code>LINEAR_RGB</code> blends in linear light (gamma-correct blending).</p>
+<p>The renderer resolves the blend for each vector in the following order:</p>
+<list type="ordered">
+<li>A target bitmap that stores linear data (<class name="Bitmap" field="ColourSpace">Bitmap.ColourSpace</class> is <code>CS::LINEAR_RGB</code>, or <class name="Bitmap" field="BlendMode">Bitmap.BlendMode</class> is
+<code>BLM::LINEAR</code>) is blended as linear data, and a target with a <class name="Bitmap" field="BlendMode">Bitmap.BlendMode</class> of <code>BLM::NONE</code> is copied to.  These
+describe the target's encoding and cannot be overridden.</li>
+<li>Otherwise the ColourSpace of the vector, or of its nearest ancestor that does not use <code>INHERIT</code>, applies.</li>
+<li>If no explicit ColourSpace is found, the target's <class name="Bitmap" field="BlendMode">Bitmap.BlendMode</class> preference applies.  The default of
+<code>BLM::AUTO</code> means gamma-correct blending.</li>
+</list>
+<p>The default of <code>INHERIT</code> therefore uses the target's preference unless an ancestor states otherwise.  The resolved mode also applies to buffered viewports, pattern tiles and filter output drawn on behalf of the vector.  SVG documents set <code>SRGB</code> on their root viewport, so SVG content composites as it does in web browsers unless <code>color-interpolation</code> is set to <code>linearRGB</code>.</p>
 <types lookup="VCS"/>
       </description>
     </field>
@@ -841,8 +851,8 @@ Z: Close Path
 
     <constants lookup="VCS" comment="Colour space options.">
       <const name="INHERIT">Inherit the colour space option from the parent vector.</const>
-      <const name="LINEAR_RGB">Linear RGB is the default colour space for SVG and produces the best results.</const>
-      <const name="SRGB">The default colour-space is sRGB, recommended for its speed.</const>
+      <const name="LINEAR_RGB">Operate in linear light.  This produces higher quality results, and is the SVG default for <code>color-interpolation-filters</code>.</const>
+      <const name="SRGB">Operate on sRGB-encoded values directly.  This is the fastest option, and is the SVG default for <code>color-interpolation</code>.</const>
     </constants>
 
     <constants lookup="VF" comment="Optional flags and indicators for the Vector class.">

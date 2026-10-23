@@ -184,8 +184,8 @@
 
     <constants lookup="VCS" comment="Colour space options.">
       <const name="INHERIT">Inherit the colour space option from the parent vector.</const>
-      <const name="LINEAR_RGB">Linear RGB is the default colour space for SVG and produces the best results.</const>
-      <const name="SRGB">The default colour-space is sRGB, recommended for its speed.</const>
+      <const name="LINEAR_RGB">Operate in linear light.  This produces higher quality results, and is the SVG default for <code>color-interpolation-filters</code>.</const>
+      <const name="SRGB">Operate on sRGB-encoded values directly.  This is the fastest option, and is the SVG default for <code>color-interpolation</code>.</const>
     </constants>
 
     <constants lookup="VSPREAD" comment="Spread method options define the method to use for tiling filled graphics.">

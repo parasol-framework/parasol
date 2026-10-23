@@ -1867,9 +1867,13 @@ static void fill_pattern(VectorState &State, const TClipRectangle<double> &Bound
    // Bounding-box content units are always relative to the consumer, independently of the tile units.
    prepare_pattern(&Pattern, Bounds.width(), Bounds.height(), content_scale);
 
-   // Redraw the pattern source if any part of the definition has been marked dirty.
-   if ((((extVectorScene *)Pattern.Scene)->SubtreeDirty) or (!Pattern.Bitmap)) {
-      if (render_pattern(&Pattern) != ERR::Okay) return;
+   // Redraw the pattern source if any part of the definition has been marked dirty, or if a consumer with a different
+   // blend mode last rendered it.
+
+   const BLM tile_mode = intermediate_blend_mode(State);
+   if ((((extVectorScene *)Pattern.Scene)->SubtreeDirty) or (!Pattern.Bitmap) or
+       (Pattern.Bitmap->BlendMode != tile_mode)) {
+      if (render_pattern(&Pattern, tile_mode) != ERR::Okay) return;
    }
 
    // Map bitmap pixels to the target's user space, in order: bitmap pixels to tile units (inverting the bitmap

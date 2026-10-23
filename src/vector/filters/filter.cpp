@@ -20,6 +20,10 @@ will be supporting them.  The VectorFilter will detect the filter objects and th
 in which they are added.  It is most optimal to create each pipeline in advance, and a new VectorFilter object should
 be created for each pipeline as necessary.
 
+The filter's output is composited into the target with the blend mode resolved for the client vector, as described
+for @Vector.ColourSpace, and the filter's #Opacity is applied at the same time.  The filter's own #ColourSpace
+governs effect processing only and does not affect how the output is composited.
+
 It is important to note that filter effects are CPU intensive tasks and real-time performance may be disappointing.
 If this is an issue, consider pre-rendering the filter effects in advance and caching the results in memory or files.
 
@@ -434,10 +438,14 @@ objBitmap * get_source_graphic(extVectorFilter *Self)
 
    if (!sg) return nullptr;
 
-   // The BlendMode is set to SRGB for the sake of SVG compatibility.  Otherwise the use of filters
-   // like feColorMatrix can produce unexpected results.
+   // The SourceGraphic is an sRGB-encoded intermediate, so it inherits the target's preference but not its encoding
+   // (LINEAR and NONE).  An explicit Vector.ColourSpace on the client or its ancestors still applies, which is how
+   // SVG content resolves to SRGB.
 
-   sg->BlendMode   = BLM::SRGB;
+   auto preference = Self->BkgdBitmap ? Self->BkgdBitmap->BlendMode : BLM::AUTO;
+   if ((preference IS BLM::LINEAR) or (preference IS BLM::NONE)) preference = BLM::AUTO;
+
+   sg->BlendMode   = preference;
    sg->ColourSpace = CS::SRGB;
 
    if (!Self->SourceScene) {
@@ -445,8 +453,7 @@ objBitmap * get_source_graphic(extVectorFilter *Self)
             fl::PageWidth(Self->ClientViewport->Scene->PageWidth),
             fl::PageHeight(Self->ClientViewport->Scene->PageHeight)))) {
 
-         if (!extVectorViewport::create::global(fl::Owner(Self->SourceScene->UID),
-               fl::ColourSpace(Self->ColourSpace))) return nullptr;
+         if (!extVectorViewport::create::global(fl::Owner(Self->SourceScene->UID))) return nullptr;
       }
       else return nullptr;
    }
@@ -454,6 +461,11 @@ objBitmap * get_source_graphic(extVectorFilter *Self)
             (Self->ClientViewport->Scene->PageHeight > Self->SourceScene->PageHeight)) {
       acResize(Self->SourceScene, Self->ClientViewport->Scene->PageWidth, Self->ClientViewport->Scene->PageHeight, 0);
    }
+
+   // The client is drawn outside of its scene graph, so the viewport supplies the colour space that the client
+   // resolved to in the renderer.  The filter's own ColourSpace applies to effect processing only.
+
+   ((extVector *)Self->SourceScene->Viewport)->ColourSpace = Self->ClientColourSpace;
 
    auto const save_child = Self->SourceScene->Viewport->Child;
    Self->SourceScene->Viewport->Child = Self->ClientVector;
@@ -590,9 +602,11 @@ static ERR set_clip_region(extVectorFilter *Self, extVectorViewport *Viewport, e
 
 //********************************************************************************************************************
 // Main rendering routine for filter effects.  Called by the scene graph renderer whenever a vector uses a filter.
+// ColourSpace is the client's resolved colour space in the renderer, which can be inherited from a vector that is not
+// a physical ancestor, e.g. the viewport that consumes a live pattern.
 
 ERR render_filter(extVectorFilter *Self, extVectorViewport *Viewport, extVector *Vector,
-   objBitmap *BkgdBitmap, objBitmap **Output)
+   objBitmap *BkgdBitmap, VCS ColourSpace, objBitmap **Output)
 {
    kt::Log log(__FUNCTION__);
 
@@ -612,6 +626,7 @@ ERR render_filter(extVectorFilter *Self, extVectorViewport *Viewport, extVector 
    Self->ClientViewport = Viewport;
    Self->ClientVector   = Vector;
    Self->BkgdBitmap     = BkgdBitmap; // For VSF::BKGD and VSF::BKGD_ALPHA
+   Self->ClientColourSpace = ColourSpace;
    Self->Rendered       = false; // Set to true when SourceGraphic is rendered
    Self->BankIndex      = 0;
 
@@ -764,6 +779,9 @@ ColourSpace: The colour space of the filter graphics (SRGB or linear RGB).
 By default, colour filters are processed in SRGB format.  This is the same colour space as used by the rest of the
 graphics system, which means that no special conversion is necessary prior to and post filter processing.  However,
 linear RGB is better suited for producing high quality results at a cost of speed.
+
+This setting applies only to the processing of effects within the pipeline.  The composite of the filter's output into
+the target is governed by the client vector's @Vector.ColourSpace.
 
 Note that if SVG compatibility is required, linear RGB must be used as the default.
 

@@ -64,9 +64,10 @@ void prepare_pattern(extVectorPattern *Self, double BoxWidth, double BoxHeight, 
 
 //********************************************************************************************************************
 // Render the pattern's scene to its tile bitmap.  The scene's page dimensions must have been defined and the
-// viewport prepared with prepare_pattern().
+// viewport prepared with prepare_pattern().  BlendMode is the tile's blend preference, which a consumer sets to its own
+// resolved mode so that overlapping content in the tile blends as it would if drawn directly.
 
-ERR render_pattern(extVectorPattern *Self)
+ERR render_pattern(extVectorPattern *Self, BLM BlendMode)
 {
    kt::Log log(__FUNCTION__);
 
@@ -85,6 +86,7 @@ ERR render_pattern(extVectorPattern *Self)
       fl::Flags(BMF::ALPHA_CHANNEL),
       fl::BitsPerPixel(32)))) return ERR::CreateObject;
 
+   Self->Bitmap->BlendMode = BlendMode;
    clearmem(Self->Bitmap->Data, Self->Bitmap->LineWidth * Self->Bitmap->Height);
    Self->Scene->Bitmap = Self->Bitmap;
    return acDraw(Self->Scene);

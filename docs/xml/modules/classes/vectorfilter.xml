@@ -17,6 +17,7 @@
 <pre>&lt;circle cx=&quot;160&quot; cy=&quot;50&quot; r=&quot;40&quot; fill=&quot;#f00&quot; filter=&quot;url(#EffectPipeline)&quot;/&gt;
 </pre>
 <p>Filter pipelines are constructed from effects based on the <class name="FilterEffect">FilterEffect</class> class, such as <class name="CompositeFX">CompositeFX</class> and <class name="FloodFX">FloodFX</class>. Construct a new pipeline by creating effect objects and placing them under the ownership of the VectorFilter that will be supporting them.  The VectorFilter will detect the filter objects and they will be processed in the order in which they are added.  It is most optimal to create each pipeline in advance, and a new VectorFilter object should be created for each pipeline as necessary.</p>
+<p>The filter's output is composited into the target with the blend mode resolved for the client vector, as described for <class name="Vector" field="ColourSpace">Vector.ColourSpace</class>, and the filter's <fl>Opacity</fl> is applied at the same time.  The filter's own <fl>ColourSpace</fl> governs effect processing only and does not affect how the output is composited.</p>
 <p>It is important to note that filter effects are CPU intensive tasks and real-time performance may be disappointing. If this is an issue, consider pre-rendering the filter effects in advance and caching the results in memory or files.</p>
 <p>It is a requirement that VectorFilter objects are owned by the <class name="VectorScene">VectorScene</class> they are targeting.</p></description>
     <source>
@@ -55,6 +56,7 @@
       <type lookup="VCS">VCS</type>
       <description>
 <p>By default, colour filters are processed in SRGB format.  This is the same colour space as used by the rest of the graphics system, which means that no special conversion is necessary prior to and post filter processing.  However, linear RGB is better suited for producing high quality results at a cost of speed.</p>
+<p>This setting applies only to the processing of effects within the pipeline.  The composite of the filter's output into the target is governed by the client vector's <class name="Vector" field="ColourSpace">Vector.ColourSpace</class>.</p>
 <p>Note that if SVG compatibility is required, linear RGB must be used as the default.</p>
 <types lookup="VCS"/>
       </description>
@@ -183,8 +185,8 @@
   <types>
     <constants lookup="VCS" comment="Colour space options.">
       <const name="INHERIT">Inherit the colour space option from the parent vector.</const>
-      <const name="LINEAR_RGB">Linear RGB is the default colour space for SVG and produces the best results.</const>
-      <const name="SRGB">The default colour-space is sRGB, recommended for its speed.</const>
+      <const name="LINEAR_RGB">Operate in linear light.  This produces higher quality results, and is the SVG default for <code>color-interpolation-filters</code>.</const>
+      <const name="SRGB">Operate on sRGB-encoded values directly.  This is the fastest option, and is the SVG default for <code>color-interpolation</code>.</const>
     </constants>
 
     <constants lookup="VFA" comment="Define the aspect ratio for VectorFilter unit scaling.">

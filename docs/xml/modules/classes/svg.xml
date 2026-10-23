@@ -27,6 +27,7 @@
 <li>Export capabilities to multiple formats including PNG images</li>
 </list>
 <p>The class supports both file-based loading via <fl>Path</fl> and direct string-based parsing via <fl>Statement</fl>.  SVG documents can be integrated into existing scene graphs by setting the <fl>Target</fl> field, or rendered independently through the automatically created scene structure.</p>
+<p>SVG content is composited in sRGB, as in web browsers.  The top-level <class name="VectorViewport">VectorViewport</class> of each parsed document has its <class name="Vector" field="ColourSpace">Vector.ColourSpace</class> set to <code>SRGB</code>, and the <code>color-interpolation=&quot;linearRGB&quot;</code> attribute opts an element and its descendants into gamma-correct blending.  Symbols instantiated with <method>ParseSymbol</method> inherit the colour space of the target viewport instead.</p>
 <p>Animation timing is controlled through the <fl>FrameRate</fl> field, with callback support via <fl>FrameCallback</fl> for custom rendering workflows.  The implementation maintains compatibility with the complete SVG specification while providing enhanced programmatic access unique to Kotuku.</p>
 <p>Please refer to the W3C's online documentation for exhaustive information on the SVG standard.</p></description>
     <source>
@@ -84,7 +85,7 @@
       <tiriPrototype>Object.init()</tiriPrototype>
       <description>
 <p>The initialisation process establishes the scene graph structure and processes any specified SVG source content.  If a <fl>Path</fl> has been configured, the referenced SVG file will be loaded and parsed immediately.  Alternatively, if <fl>Statement</fl> contains SVG data, that content will be processed instead.</p>
-<p>The default behaviour creates a local <class name="VectorScene">VectorScene</class> object to contain the generated scene graph.  This can be overridden by setting the <fl>Target</fl> field to redirect content into an existing scene graph structure, enabling integration with existing UI components.</p>
+<p>The default behaviour creates a local <class name="VectorScene">VectorScene</class> object to contain the generated scene graph.  Its <class name="VectorScene" field="Compliance">VectorScene.Compliance</class> is set to <code>SVG2</code> so that the document is rendered to the SVG standard.  This can be overridden by setting the <fl>Target</fl> field to redirect content into an existing scene graph structure, enabling integration with existing UI components.  The <class name="VectorScene" field="Compliance">VectorScene.Compliance</class> of a target's scene is not modified.</p>
 <p>The initialisation sequence includes:</p>
 <list type="ordered">
 <li>Scene graph structure creation or validation of the specified <fl>Target</fl></li>
@@ -282,6 +283,7 @@
 <p>This field redirects the generated SVG scene graph to an existing container object instead of creating an independent scene structure.  The target approach enables seamless integration of SVG content into established UI hierarchies and composite scene graphs.</p>
 <p><b>Default behaviour:</b> When no target is specified, the SVG object creates and manages a dedicated <class name="VectorViewport">VectorViewport</class> to contain the generated content.  This viewport and its children remain under direct SVG object ownership.</p>
 <p><b>Target requirements:</b> The target object must be part of an existing scene graph owned by a <class name="VectorScene">VectorScene</class> object. While any vector object can serve as a target, <class name="VectorViewport">VectorViewport</class> objects are recommended for optimal compatibility and performance.</p>
+<p><b>Standards compliance:</b> The <class name="VectorScene" field="Compliance">VectorScene.Compliance</class> of the target's scene is not modified, because it applies to all content in that scene.  Set it to <code>SVG2</code> before parsing if the document must be rendered to the SVG standard.</p>
 <p><b>Ownership implications:</b> Specifying a target makes the generated scene graph independent of the SVG object lifecycle.  The SVG object can be terminated without affecting the created vector elements, enabling flexible resource management patterns.</p>
 <p><b>Resource tracking:</b> When independent operation is not desired, enable the <code>ENFORCE_TRACKING</code> flag to maintain resource tracking relationships between the SVG object and generated definitions, ensuring proper cleanup on object destruction.</p>
       </description>

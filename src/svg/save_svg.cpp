@@ -46,6 +46,21 @@ static void set_gradient_colour_space(XTag *Tag, objGradient *Gradient, ERR &Err
 }
 
 //*********************************************************************************************************************
+// Export an explicit Vector.ColourSpace as color-interpolation.  INHERIT is the SVG default and is not written.
+
+static void set_vector_colour_space(XTag *Tag, objVector *Vector)
+{
+   VCS colour_space;
+   if (!Vector->getColourSpace(colour_space)) {
+      switch(colour_space) {
+         case VCS::SRGB:       xml::NewAttrib(Tag, "color-interpolation", "sRGB"); break;
+         case VCS::LINEAR_RGB: xml::NewAttrib(Tag, "color-interpolation", "linearRGB"); break;
+         default: break;
+      }
+   }
+}
+
+//*********************************************************************************************************************
 
 static bool has_attrib(const XTag *Tag, std::string_view Name) noexcept
 {
@@ -697,6 +712,8 @@ static ERR save_svg_scan_std(extSVG *Self, objXML *XML, objVector *Vector, int T
    if (Vector->FillOpacity != 1.0) xml::NewAttrib(tag, "fill-opacity", (Vector->FillOpacity));
    if (Vector->StrokeOpacity != 1.0) xml::NewAttrib(tag, "stroke-opacity", (Vector->StrokeOpacity));
 
+   set_vector_colour_space(tag, Vector);
+
    if ((!Vector->getStroke(sv)) and not sv.empty()) {
       xml::NewAttrib(tag, "stroke", sv);
    }
@@ -1235,6 +1252,8 @@ static ERR save_svg_scan_viewport(extSVG *Self, objXML *XML, objVector *Vector, 
       if ((!error) and (!viewport->getWidth(unit))) set_dimension(tag, "width", unit);
       if ((!error) and (!viewport->getHeight(unit))) set_dimension(tag, "height", unit);
    }
+
+   if (!error) set_vector_colour_space(tag, Vector);
 
    if (!error) ChildIndex = tag->ID;
 

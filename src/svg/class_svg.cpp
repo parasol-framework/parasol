@@ -24,6 +24,11 @@ The class supports both file-based loading via #Path and direct string-based par
 can be integrated into existing scene graphs by setting the #Target field, or rendered independently through the
 automatically created scene structure.
 
+SVG content is composited in sRGB, as in web browsers.  The top-level @VectorViewport of each parsed document has its
+@Vector.ColourSpace set to `SRGB`, and the `color-interpolation="linearRGB"` attribute opts an element and its
+descendants into gamma-correct blending.  Symbols instantiated with #ParseSymbol() inherit the colour space of the
+target viewport instead, as does a document parsed into a #Target scene that already has a viewport.
+
 Animation timing is controlled through the #FrameRate field, with callback support via #FrameCallback for custom
 rendering workflows.  The implementation maintains compatibility with the complete SVG specification while providing
 enhanced programmatic access unique to Kotuku.
@@ -405,6 +410,14 @@ static ERR SVG_SaveToObject(extSVG *Self, struct acSaveToObject *Args)
                   if ((!error) and (!Self->Viewport->getHeight(unit))) set_dimension(tag, "height", unit);
                }
 
+               // The root composites in sRGB by default when the document is parsed, so only linearRGB is written.
+
+               VCS colour_space;
+               if ((!error) and (!Self->Viewport->getColourSpace(colour_space)) and
+                   (colour_space IS VCS::LINEAR_RGB)) {
+                  xml::NewAttrib(tag, "color-interpolation", "linearRGB");
+               }
+
                if (!error) {
                   if (!(error = save_svg_defs(Self, *xml, Self->Scene, index))) {
                      for (auto scan=((objVector *)Self->Viewport)->Child; scan; scan=scan->Next) {
@@ -601,6 +614,9 @@ performance.
 
 <b>Standards compliance:</b> The @VectorScene.Compliance of the target's scene is not modified, because it applies to
 all content in that scene.  Set it to `SVG2` before parsing if the document must be rendered to the SVG standard.
+For the same reason, if the target is a @VectorScene with an existing viewport, the document reuses that viewport
+and its @Vector.ColourSpace is not reset to `SRGB`, so the document composites in the host's colour space.  Attributes
+declared on the root `svg` tag, including `color-interpolation`, are still applied to the reused viewport.
 
 <b>Ownership implications:</b> Specifying a target makes the generated scene graph independent of the SVG object
 lifecycle.  The SVG object can be terminated without affecting the created vector elements, enabling flexible

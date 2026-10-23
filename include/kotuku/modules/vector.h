@@ -4189,8 +4189,8 @@ class objVector : public Object {
    }
 
    inline ERR setColourSpace(const VCS Value) noexcept {
-      this->ColourSpace = Value;
-      return ERR::Okay;
+      auto field = &this->Class->Dictionary[31];
+      return field->WriteValue(this, field, FD_INT, &Value);
    }
 
    inline ERR setStrokeColour(const struct FRGB & Value) noexcept {

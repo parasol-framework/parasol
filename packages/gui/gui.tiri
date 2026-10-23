@@ -2091,7 +2091,9 @@ gui.effects = {
 
    -- A drop shadow, drawn under the path.  The alpha is blurred by radius, offset by (x,y) and filled with colour,
    -- whose alpha is multiplied by opacity.  All distances are relative to the bounding box.  The shadow is cast by the
-   -- output of the effects before it, so it normally comes last.
+   -- output of the effects before it, so it normally comes last.  The default opacity is tuned for the default
+   -- gamma-correct blending, which lightens dark translucent pixels; it matches the soft edge of a 0.5 shadow blended
+   -- in sRGB.
 
    shadow = {
       kind   = 'filter',
@@ -2100,7 +2102,7 @@ gui.effects = {
          { name='x',       type='num', default=0.03 },
          { name='y',       type='num', default=0.04 },
          { name='radius',  type='num', default=0.03 },
-         { name='opacity', type='num', default=0.5 }
+         { name='opacity', type='num', default=0.85 }
       },
       extent = function(Args:table!):num
          return math.max(math.abs(Args.x), math.abs(Args.y)) + (math.max(Args.radius, 0) * 2)

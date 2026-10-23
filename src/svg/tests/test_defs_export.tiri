@@ -286,3 +286,38 @@ end
    assertNear(loaded.tolerance, 0, 'Manual sampling should survive round trip')
    assert(loaded.vertices is 8, 'Manual interval count should survive round trip, got ' .. loaded.vertices)
 end
+
+@Test function ColourInterpolationRoundTrip()
+   local scene <close> = obj.new('VectorScene', { pageWidth=40, pageHeight=40 })
+   local svg = obj.new('svg', { target=scene, statement=[[
+<svg width="40" height="40" color-interpolation="linearRGB" xmlns="http://www.w3.org/2000/svg">
+  <g id="ci_srgb" color-interpolation="sRGB"><rect id="ci_inherit" width="20" height="20"/></g>
+  <rect id="ci_linear" x="20" width="20" height="20" color-interpolation="linearRGB"/>
+</svg>]] })
+   assert(svg.viewport.colourSpace is VCS_LINEAR_RGB, 'Root color-interpolation should import')
+   assert(obj.find('ci_srgb').colourSpace is VCS_SRGB, 'Group color-interpolation should import')
+   assert(obj.find('ci_linear').colourSpace is VCS_LINEAR_RGB, 'Shape color-interpolation should import')
+   assert(obj.find('ci_inherit').colourSpace is VCS_INHERIT, 'Unspecified color-interpolation should inherit')
+
+   local saved = saveScene(scene, 'temp:svg_colour_interpolation.svg')
+   assertContains(saved, 'color-interpolation="sRGB"', 'sRGB color-interpolation should export')
+   assertContains(saved, 'color-interpolation="linearRGB"', 'linearRGB color-interpolation should export')
+
+   local loaded_scene <close> = obj.new('VectorScene', { pageWidth=40, pageHeight=40 })
+   local loaded_svg = obj.new('svg', { target=loaded_scene, statement=saved })
+   assert(loaded_svg.viewport.colourSpace is VCS_LINEAR_RGB, 'Root color-interpolation should survive round trip')
+   local group = loaded_svg.viewport.child
+   assert(group.colourSpace is VCS_SRGB, 'Group color-interpolation should survive round trip')
+   assert(group.child.colourSpace is VCS_INHERIT, 'Inherited color-interpolation should not be written')
+   assert(group.next.colourSpace is VCS_LINEAR_RGB, 'Shape color-interpolation should survive round trip')
+end
+
+@Test function DefaultSVGRootDoesNotExportColourInterpolation()
+   -- sRGB is the SVG default for a parsed document's root, so it is not written.
+   local scene <close> = obj.new('VectorScene', { pageWidth=40, pageHeight=40 })
+   local svg = obj.new('svg', { target=scene, statement=[[
+<svg width="40" height="40" xmlns="http://www.w3.org/2000/svg"><rect width="20" height="20"/></svg>]] })
+   assert(svg.viewport.colourSpace is VCS_SRGB, 'A parsed root should composite in sRGB')
+   local saved = saveScene(scene, 'temp:svg_colour_interpolation_default.svg')
+   assert(saved.find('color-interpolation', 0, true) is nil, 'The default root colour space should not be written')
+end
