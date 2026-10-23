@@ -485,7 +485,8 @@
       <access read="R" write="W">Read/Write</access>
       <type lookup="BLM">BLM</type>
       <description>
-<p>The default value is <code>BLM::AUTO</code>, which selects the preferred blending path for the current bitmap and graphics backend.</p>
+<p>The BlendMode is honoured by the Vector module when a scene is rendered to the bitmap.  The default of <code>AUTO</code> resolves to <code>GAMMA</code>, or to <code>LINEAR</code> if the <fl>ColourSpace</fl> is <code>CS::LINEAR_RGB</code>.  <code>SRGB</code> and <code>GAMMA</code> are preferences that an explicit <class name="Vector" field="ColourSpace">Vector.ColourSpace</class> can override, while <code>NONE</code> and <code>LINEAR</code> describe how the bitmap stores its data and always apply.</p>
+<p>Display functions such as <function module="Display">CopyArea</function> and <function module="Display">DrawRectangle</function> do not read this field.  Their blending behaviour is selected by the <code>BAF</code> flags passed to each call.</p>
 <types lookup="BLM"/>
       </description>
     </field>
@@ -857,11 +858,11 @@ unpackAlpha(Colour)
     </constants>
 
     <constants lookup="BLM" comment="Defines the blending algorithm to use when transparent pixels are rendered to the bitmap.">
-      <const name="AUTO">Use the most suitable of the available algorithms.</const>
-      <const name="GAMMA">Use gamma correct blending.  This algorithm is slow but produces a high quality result.</const>
-      <const name="LINEAR">Use linear blending.  Applicable if the bitmap is in linear colour space.</const>
-      <const name="NONE">Never blend transparent pixels, just copy as-is.</const>
-      <const name="SRGB">Use sRGB linear blending.  This algorithm is extremely efficient but produces poor quality results.</const>
+      <const name="AUTO">Use the default algorithm.  The vector renderer resolves this to <code>GAMMA</code>, or to <code>LINEAR</code> if the bitmap's colour space is <code>CS::LINEAR_RGB</code>.</const>
+      <const name="GAMMA">Use gamma-correct blending of sRGB-encoded data.  Colours are converted to linear light, blended and converted back to sRGB.  This is slower than <code>SRGB</code> but produces a higher quality result.</const>
+      <const name="LINEAR">Blend into a bitmap that stores linear data.  Source colours are converted from sRGB to linear light and blended arithmetically with the destination, which is assumed to be linear already and is not converted.</const>
+      <const name="NONE">Never blend.  Source pixels, including their alpha channel, replace the destination within the area covered.  Anti-aliased edges interpolate all four channels towards the source by coverage, and fully transparent source pixels are written rather than skipped.</const>
+      <const name="SRGB">Blend the stored sRGB values arithmetically, without conversion to linear light.  This is the fastest algorithm and matches the compositing of web browsers, but translucent colours and anti-aliased edges can appear darker than intended.</const>
     </constants>
 
     <constants lookup="BMF" comment="Bitmap flags">

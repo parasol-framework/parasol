@@ -24,6 +24,11 @@ The class supports both file-based loading via #Path and direct string-based par
 can be integrated into existing scene graphs by setting the #Target field, or rendered independently through the
 automatically created scene structure.
 
+SVG content is composited in sRGB, as in web browsers.  The top-level @VectorViewport of each parsed document has its
+@Vector.ColourSpace set to `SRGB`, and the `color-interpolation="linearRGB"` attribute opts an element and its
+descendants into gamma-correct blending.  Symbols instantiated with #ParseSymbol() inherit the colour space of the
+target viewport instead.
+
 Animation timing is controlled through the #FrameRate field, with callback support via #FrameCallback for custom
 rendering workflows.  The implementation maintains compatibility with the complete SVG specification while providing
 enhanced programmatic access unique to Kotuku.
@@ -403,6 +408,14 @@ static ERR SVG_SaveToObject(extSVG *Self, struct acSaveToObject *Args)
                   if ((!error) and (!Self->Viewport->getY(unit))) set_dimension(tag, "y", unit);
                   if ((!error) and (!Self->Viewport->getWidth(unit))) set_dimension(tag, "width", unit);
                   if ((!error) and (!Self->Viewport->getHeight(unit))) set_dimension(tag, "height", unit);
+               }
+
+               // The root composites in sRGB by default when the document is parsed, so only linearRGB is written.
+
+               VCS colour_space;
+               if ((!error) and (!Self->Viewport->getColourSpace(colour_space)) and
+                   (colour_space IS VCS::LINEAR_RGB)) {
+                  xml::NewAttrib(tag, "color-interpolation", "linearRGB");
                }
 
                if (!error) {

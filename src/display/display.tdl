@@ -142,11 +142,11 @@ module({
      "CHUNKY: Chunky pixel mode (default).")
 
   enums("BLM", { type="int", start=0, comment="Defines the blending algorithm to use when transparent pixels are rendered to the bitmap." },
-    "AUTO: Use the most suitable of the available algorithms.",
-    "NONE: Never blend transparent pixels, just copy as-is.",
-    "SRGB: Use sRGB linear blending.  This algorithm is extremely efficient but produces poor quality results.",
-    "GAMMA: Use gamma correct blending.  This algorithm is slow but produces a high quality result.",
-    "LINEAR: Use linear blending.  Applicable if the bitmap is in linear colour space."
+    "AUTO: Use the default algorithm.  The vector renderer resolves this to `GAMMA`, or to `LINEAR` if the bitmap's colour space is `CS::LINEAR_RGB`.",
+    "NONE: Never blend.  Source pixels, including their alpha channel, replace the destination within the area covered.  Anti-aliased edges interpolate all four channels towards the source by coverage, and fully transparent source pixels are written rather than skipped.",
+    "SRGB: Blend the stored sRGB values arithmetically, without conversion to linear light.  This is the fastest algorithm and matches the compositing of web browsers, but translucent colours and anti-aliased edges can appear darker than intended.",
+    "GAMMA: Use gamma-correct blending of sRGB-encoded data.  Colours are converted to linear light, blended and converted back to sRGB.  This is slower than `SRGB` but produces a higher quality result.",
+    "LINEAR: Blend into a bitmap that stores linear data.  Source colours are converted from sRGB to linear light and blended arithmetically with the destination, which is assumed to be linear already and is not converted."
   )
 
   flags("BMF", { comment="Bitmap flags" },

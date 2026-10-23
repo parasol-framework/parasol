@@ -722,6 +722,7 @@ class extVectorFilter : public objVectorFilter {
    extVectorScene *Scene;              // Scene that the filter belongs to.
    filter_bitmap SourceGraphic;        // Rendering of the vector client for SourceGraphic and SourceAlpha.  Clip-sized.
    objBitmap *BkgdBitmap;              // Target bitmap supplied by Scene.acDraw()
+   VCS ClientColourSpace = VCS::INHERIT; // Colour space the client resolves to in the scene graph renderer
    extFilterEffect *ActiveEffect;      // Current effect being processed by the pipeline.
    extFilterEffect *Effects;           // Pointer to the first effect in the chain.
    extFilterEffect *LastEffect;
@@ -1000,6 +1001,7 @@ class extVectorViewport : public extVector {
    int vpBufferSize; // Size of the vpBufferData in bytes
    uint64_t vpSeenShareVersion; // Scene ShareVersion that was current when vpBuffer was last rendered.
    double vpBufferPhaseX, vpBufferPhaseY; // Sub-pixel offset of vpBounds when vpBuffer was last rendered.
+   VCS vpBufferColourSpace = VCS::INHERIT; // Colour space inherited by the buffer's content when last rendered.
    std::unique_ptr<std::vector<class InputBoundary>> vpInputBounds; // Cached boundaries for buffered viewports; allocated on first use only.
    extVectorClip *vpClipOwner;
    bool  vpClip; // Viewport requires non-rectangular clipping, e.g. because it is rotated or sheared.
@@ -1294,7 +1296,7 @@ extern void apply_transition(extVectorTransition *, double, agg::trans_affine &)
 extern void apply_transition_xy(extVectorTransition *, double, double *, double *);
 extern void calc_aspectratio(CSTRING, ARF, double, double, double, double, double &X, double &Y, double &, double &);
 extern void prepare_pattern(extVectorPattern *, double, double, double);
-extern ERR render_pattern(extVectorPattern *);
+extern ERR render_pattern(extVectorPattern *, BLM = BLM::AUTO);
 extern void calc_full_boundary(extVector *, TClipRectangle<double> &, bool IncludeSiblings = true, bool IncludeTransforms = true, bool IncludeStrokes = false);
 extern void calc_local_boundary(extVector *, TClipRectangle<double> &);
 extern void convert_to_aggpath(extVectorPath *, std::vector<PathCommand> &, agg::path_storage &);
@@ -1305,7 +1307,7 @@ extern GRADIENT_TABLE * get_fill_gradient_table(extPainter &, double);
 extern GRADIENT_TABLE * get_stroke_gradient_table(extVector &);
 extern objBitmap * get_source_graphic(extVectorFilter *);
 extern ERR read_path(std::vector<PathCommand> &, std::string_view);
-extern ERR render_filter(extVectorFilter *, extVectorViewport *, extVector *, objBitmap *, objBitmap **);
+extern ERR render_filter(extVectorFilter *, extVectorViewport *, extVector *, objBitmap *, VCS, objBitmap **);
 extern ERR scene_input_events(const InputEvent *, int);
 extern void send_feedback(extVector *, FM, OBJECTPTR = nullptr);
 extern void apply_focus(extVectorScene *, extVector *);

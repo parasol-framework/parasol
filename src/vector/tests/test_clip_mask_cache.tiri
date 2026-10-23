@@ -279,7 +279,8 @@ end
    for _, position in array<table> { { x=20, y=10 }, { x=150, y=10 }, { x=20, y=90 }, { x=150, y=90 } } do
       local plain = translucentFilterPixel(true, 0.5, false, position.x, position.y)
       local buffered = translucentFilterPixel(true, 0.5, true, position.x, position.y)
-      assert((plain.green > 100) and (plain.green < 150), 'Reference filter must produce translucent red')
+      -- 50% red over white reads green ~128 under sRGB blending and ~186 under the default gamma-correct blend.
+      assert((plain.green > 100) and (plain.green < 200), 'Reference filter must produce translucent red')
       assert((plain.red is buffered.red) and (math.abs(plain.green - buffered.green) <= 1) and
          (math.abs(plain.blue - buffered.blue) <= 1),
          f'Buffered masked filter at {position.x},{position.y} must match the unbuffered output, got ' ..

@@ -1116,9 +1116,36 @@ static ERR VECTOR_SET_ClipRule(extVector *Self, VFR Value)
 ColourSpace: Defines the colour space to use when blending the vector with a target bitmap's content.
 Lookup: VCS
 
-By default, vectors are rendered using the standard RGB colour space and alpha blending rules.  Changing the colour
-space to `LINEAR_RGB` will tell the renderer to automatically convert sRGB values to linear RGB when blending on the
-fly.
+The ColourSpace determines how translucent pixels of the vector and its descendants are blended with the target.
+`SRGB` blends the stored sRGB values directly, which matches the behaviour of web browsers.  `LINEAR_RGB` blends in
+linear light (gamma-correct blending).
+
+The renderer resolves the blend for each vector in the following order:
+
+<list type="ordered">
+<li>A target bitmap that stores linear data (@Bitmap.ColourSpace is `CS::LINEAR_RGB`, or @Bitmap.BlendMode is
+`BLM::LINEAR`) is blended as linear data, and a target with a @Bitmap.BlendMode of `BLM::NONE` is copied to.  These
+describe the target's encoding and cannot be overridden.</li>
+<li>Otherwise the ColourSpace of the vector, or of its nearest ancestor that does not use `INHERIT`, applies.</li>
+<li>If no explicit ColourSpace is found, the target's @Bitmap.BlendMode preference applies.  The default of
+`BLM::AUTO` means gamma-correct blending.</li>
+</list>
+
+The default of `INHERIT` therefore uses the target's preference unless an ancestor states otherwise.  The resolved
+mode also applies to buffered viewports, pattern tiles and filter output drawn on behalf of the vector.  SVG documents
+set `SRGB` on their root viewport, so SVG content composites as it does in web browsers unless `color-interpolation`
+is set to `linearRGB`.
+
+*********************************************************************************************************************/
+
+static ERR VECTOR_SET_ColourSpace(extVector *Self, VCS Value)
+{
+   Self->ColourSpace = Value;
+   mark_buffers_for_refresh(Self);
+   return ERR::Okay;
+}
+
+/*********************************************************************************************************************
 
 -FIELD-
 Cursor: The mouse cursor to display when the pointer is within the vector's boundary.
@@ -2513,7 +2540,7 @@ static const FieldArray clVectorFields[] = {
    { "Flags",           FDF_INTFLAGS|FDF_RI, nullptr, nullptr, &clVectorFlags },
    { "Cursor",          FDF_INT|FDF_LOOKUP|FDF_RW, nullptr, VECTOR_SET_Cursor, &clVectorCursor },
    { "PathQuality",     FDF_INT|FDF_LOOKUP|FDF_RW, nullptr, nullptr, &clVectorPathQuality },
-   { "ColourSpace",     FDF_INT|FDF_LOOKUP|FDF_RW, nullptr, nullptr, &clVectorColourSpace },
+   { "ColourSpace",     FDF_INT|FDF_LOOKUP|FDF_RW, nullptr, VECTOR_SET_ColourSpace, &clVectorColourSpace },
    { "PathTimestamp",   FDF_INT|FDF_R },
    // Directly accessible private fields
    { "Stroke",       FDF_CPPSTRING|FDF_RW, nullptr, VECTOR_SET_Stroke },

@@ -369,9 +369,9 @@ end
 
    y += msgButton.viewport.height + 12
 
-   checkbox = gui.toggle({
+   toggle = gui.toggle({
       target = viewport,
-      label  = 'Checkbox',
+      label  = 'Toggle',
       x      = win.margins.left,
       y      = y,
       events = {
@@ -415,7 +415,7 @@ end
       }
    })
 
-   y += checkbox.viewport.height + 12
+   y += toggle.viewport.height + 12
 
    combobox = gui.combobox({
       target = viewport,

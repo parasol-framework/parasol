@@ -169,7 +169,7 @@ private:
 
    void render_fill(VectorState &, extVector &, agg::rasterizer_scanline_aa<> &, extPainter &);
    void render_stroke(VectorState &, extVector &);
-   void copy_filter_bitmap(objBitmap *, extVectorFilter *);
+   void copy_filter_bitmap(objBitmap *, extVectorFilter *, BLM);
    bool shape_intersects_clip(extVector *);
    void draw_vectors(extVector *, VectorState &);
    static const agg::trans_affine build_fill_transform(extVector &, bool,  VectorState &);
@@ -209,7 +209,8 @@ public:
    double mOpacity;
    VIS    mVisible;
    VOF    mOverflowX, mOverflowY;
-   bool   mLinearRGB;
+   VCS    mColourSpace; // Nearest explicit ColourSpace of the vector or its ancestors, otherwise INHERIT
+   BLM    mBlendMode;   // Blend mode resolved for the current vector and target bitmap
    bool   mIsolated;
    bool   mDirty;
 
@@ -221,11 +222,52 @@ public:
       mOpacity(1.0),
       mVisible(VIS::VISIBLE),
       mOverflowX(VOF::VISIBLE), mOverflowY(VOF::VISIBLE),
-      mLinearRGB(false),
+      mColourSpace(VCS::INHERIT),
+      mBlendMode(BLM::GAMMA),
       mIsolated(false),
       mDirty(false)
       { }
 };
+
+//********************************************************************************************************************
+// Blend mode resolution for a vector drawn into Target:
+//
+// 1. The target's encoding wins.  Linear data blends as LINEAR and a NONE target copies; vectors cannot override this.
+// 2. The nearest explicit Vector.ColourSpace.  SRGB blends sRGB values and LINEAR_RGB blends in linear light (GAMMA).
+// 3. The target's BlendMode preference, where AUTO means GAMMA.
+
+static BLM resolve_content_blend_mode(BLM Preference, VCS ColourSpace)
+{
+   if (ColourSpace IS VCS::SRGB) return BLM::SRGB;
+   if (ColourSpace IS VCS::LINEAR_RGB) return BLM::GAMMA;
+   return (Preference IS BLM::SRGB) ? BLM::SRGB : BLM::GAMMA;
+}
+
+static BLM resolve_blend_mode(const objBitmap &Target, VCS ColourSpace)
+{
+   if ((Target.ColourSpace IS CS::LINEAR_RGB) or (Target.BlendMode IS BLM::LINEAR)) return BLM::LINEAR;
+   if (Target.BlendMode IS BLM::NONE) return BLM::NONE;
+   return resolve_content_blend_mode(Target.BlendMode, ColourSpace);
+}
+
+// The blend mode for sRGB-encoded intermediate bitmaps, such as pattern tiles, that are composited into the target
+// as source images.  The vector's colour space and the target's preference apply, but not the target's encoding.
+
+static BLM intermediate_blend_mode(const VectorState &State)
+{
+   if ((State.mBlendMode IS BLM::LINEAR) or (State.mBlendMode IS BLM::NONE)) {
+      return resolve_content_blend_mode(BLM::AUTO, State.mColourSpace);
+   }
+   return State.mBlendMode;
+}
+
+// Buffers and isolated backgrounds store their content in the target's encoding.  Linear content is composited with
+// plain arithmetic (the SRGB operations), because the LINEAR operations would decode it a second time.
+
+static BLM composite_blend_mode(BLM Mode)
+{
+   return (Mode IS BLM::LINEAR) ? BLM::SRGB : Mode;
+}
 
 //********************************************************************************************************************
 
@@ -766,14 +808,13 @@ bool SceneRenderer::shape_intersects_clip(extVector *Shape)
 }
 
 //********************************************************************************************************************
-// Filter bitmaps use absolute clip coordinates.  Buffered viewport targets are local bitmaps with their Data pointer
-// shifted so vector rasterisation can still address absolute scene coordinates.  CopyArea() clips against bitmap
-// dimensions, so translate the final filter copy back to viewport-local coordinates when a buffered target is active.
+// Composites a filter's output into the render target.  The output is an sRGB-encoded source image that is drawn 1:1
+// through the render target with the vector's resolved blend mode, so the result is the same whether or not a mask
+// applies.  Filter bitmaps use absolute clip coordinates, which suits buffered viewport targets because their Data
+// pointer is shifted so that rasterisation can address absolute scene coordinates.
 
-void SceneRenderer::copy_filter_bitmap(objBitmap *Bitmap, extVectorFilter *Filter)
+void SceneRenderer::copy_filter_bitmap(objBitmap *Bitmap, extVectorFilter *Filter, BLM BlendMode)
 {
-   Bitmap->Opacity = (Filter->Opacity < 1.0) ? (255.0 * Filter->Opacity) : 255;
-
    // Restrict only the final copy.  Filter inputs must retain pixels outside this clip for offsets and blur kernels.
    const auto &clip = mRenderBase.clip_box();
    const int src_x = std::max(Bitmap->Clip.Left, clip.x1);
@@ -783,37 +824,41 @@ void SceneRenderer::copy_filter_bitmap(objBitmap *Bitmap, extVectorFilter *Filte
 
    if ((width <= 0) or (height <= 0)) return;
 
-   // Masks inherited from container viewports, e.g. a VectorClip or a non-rectangular viewport path, must apply to the
-   // filter output.  The mask is addressed in render coordinates, so the output is rasterised through the render
-   // target.  The blend is forced to sRGB to match the CopyArea() path below; the target's default gamma-correct
-   // blend would visibly weaken translucent output such as drop shadows while a mask is active.
+   // Fast path: CopyArea() blends sRGB with SIMD and is pixel-identical to the pixel format's SRGB blend.  Its
+   // BAF::COPY mode ignores the source opacity, so it is limited to fully opaque, unmasked output.
 
-   if (not mClipStack.empty()) {
-      agg::rasterizer_scanline_aa<> raster;
-      basic_path(raster, src_x, src_y, src_x + width, src_y + height);
-
-      agg::pixfmt_psl format(*mBitmap, BLM::SRGB);
-      agg::renderer_base<agg::pixfmt_psl> render_base(format);
-      const auto &rb_clip = mRenderBase.clip_box();
-      // Buffered targets retain scene coordinates beyond their local bitmap dimensions.
-      render_base.clip_box_naked(rb_clip);
-
-      agg::alpha_mask_gray8 alpha_mask(mClipStack.top().m_renderer);
-      agg::scanline_u8_am<agg::alpha_mask_gray8> masked_scanline(alpha_mask);
-      drawBitmap(masked_scanline, VSM::NEIGHBOUR, render_base, raster, Bitmap, VSPREAD::CLIP,
-         std::min(Filter->Opacity, 1.0));
+   if ((BlendMode IS BLM::SRGB) and (mClipStack.empty()) and (Filter->Opacity >= 1.0)) {
+      Bitmap->Opacity = 255;
+      if (mBitmapOriginX or mBitmapOriginY) {
+         // CopyArea() clips against the bitmap dimensions, so a buffered target is addressed in local coordinates.
+         auto save_data = mBitmap->offset(mBitmapOriginX, mBitmapOriginY);
+         gfx::CopyArea(Bitmap, mBitmap, BAF::BLEND|BAF::COPY, src_x, src_y, width, height,
+            src_x - mBitmapOriginX, src_y - mBitmapOriginY);
+         mBitmap->Data = save_data;
+      }
+      else gfx::CopyArea(Bitmap, mBitmap, BAF::BLEND|BAF::COPY, src_x, src_y, width, height, src_x, src_y);
       return;
    }
 
-   if (mBitmapOriginX or mBitmapOriginY) {
-      auto save_data = mBitmap->offset(mBitmapOriginX, mBitmapOriginY);
+   mFormat.setBlendMode(BlendMode);
 
-      gfx::CopyArea(Bitmap, mBitmap, BAF::BLEND|BAF::COPY, src_x, src_y, width, height,
-         src_x - mBitmapOriginX, src_y - mBitmapOriginY);
+   agg::rasterizer_scanline_aa<> raster;
+   basic_path(raster, src_x, src_y, src_x + width, src_y + height);
 
-      mBitmap->Data = save_data;
+   const double opacity = std::min(Filter->Opacity, 1.0);
+
+   // Masks inherited from container viewports, e.g. a VectorClip or a non-rectangular viewport path, must apply to the
+   // filter output.
+
+   if (not mClipStack.empty()) {
+      agg::alpha_mask_gray8 alpha_mask(mClipStack.top().m_renderer);
+      agg::scanline_u8_am<agg::alpha_mask_gray8> masked_scanline(alpha_mask);
+      drawBitmap(masked_scanline, VSM::NEIGHBOUR, mRenderBase, raster, Bitmap, VSPREAD::CLIP, opacity);
    }
-   else gfx::CopyArea(Bitmap, mBitmap, BAF::BLEND|BAF::COPY, src_x, src_y, width, height, src_x, src_y);
+   else {
+      agg::scanline_u8 scanline;
+      drawBitmap(scanline, VSM::NEIGHBOUR, mRenderBase, raster, Bitmap, VSPREAD::CLIP, opacity);
+   }
 }
 
 // This is the main routine for parsing the vector tree for drawing.
@@ -855,6 +900,11 @@ void SceneRenderer::draw_vectors(extVector *CurrentVector, VectorState &ParentSt
 
       mObjectCount++;
 
+      // The blend mode is resolved before any drawing, including filter output.
+
+      if (shape->ColourSpace != VCS::INHERIT) state.mColourSpace = shape->ColourSpace;
+      state.mBlendMode = resolve_blend_mode(*mBitmap, state.mColourSpace);
+
       auto filter = (extVectorFilter *)shape->Filter;
       if ((filter) and (not filter->Disabled)) {
          #ifdef DBG_DRAW
@@ -867,8 +917,8 @@ void SceneRenderer::draw_vectors(extVector *CurrentVector, VectorState &ParentSt
          if ((not container) and (shape->classID() IS CLASSID::VECTORVIEWPORT)) container = (extVectorViewport *)shape;
 
          objBitmap *bmp;
-         if ((container) and (not render_filter(filter, container, shape, mBitmap, &bmp))) {
-            copy_filter_bitmap(bmp, filter);
+         if ((container) and (not render_filter(filter, container, shape, mBitmap, state.mColourSpace, &bmp))) {
+            copy_filter_bitmap(bmp, filter, state.mBlendMode);
          }
          continue;
       }
@@ -876,10 +926,6 @@ void SceneRenderer::draw_vectors(extVector *CurrentVector, VectorState &ParentSt
       #ifdef DBG_DRAW
          log.traceBranch("%s: #%d, Matrices: %p", get_name(shape), shape->UID, shape->matrices());
       #endif
-
-      if (mBitmap->ColourSpace IS CS::LINEAR_RGB) state.mLinearRGB = true; // The target bitmap's colour space has priority if linear.
-      else if (shape->ColourSpace IS VCS::LINEAR_RGB) state.mLinearRGB = true; // Use the parent value unless a specific CS is required by the client
-      else if (shape->ColourSpace IS VCS::SRGB) state.mLinearRGB = false;
 
       if (shape->LineJoin  != VLJ::INHERIT) state.mLineJoin  = shape->LineJoin;
       if (shape->InnerJoin != VIJ::INHERIT) state.mInnerJoin = shape->InnerJoin;
@@ -921,6 +967,11 @@ void SceneRenderer::draw_vectors(extVector *CurrentVector, VectorState &ParentSt
             state.mIsolated = true;
          }
       }
+
+      // The pixel format is rebound per vector so that fills, strokes and composites use the resolved mode.  Children
+      // rebind for themselves, so any drawing that follows them must rebind again.
+
+      mFormat.setBlendMode(state.mBlendMode);
 
       if (shape->classID() IS CLASSID::VECTORVIEWPORT) {
          bool has_fill_pattern = shape->Fill.Pattern;
@@ -1088,7 +1139,18 @@ void SceneRenderer::draw_vectors(extVector *CurrentVector, VectorState &ParentSt
                            fl::Height(buffer_height),
                            fl::BitsPerPixel(32),
                            fl::Flags(BMF::ALPHA_CHANNEL));
-                           //fl::ColourSpace(view->vpColourSpace));
+                        redraw = true;
+                     }
+
+                     // The buffer adopts the target's encoding and preference, and its content inherits the
+                     // resolved colour space, so that content blends as it would if drawn directly.
+
+                     if ((view->vpBuffer->BlendMode != mBitmap->BlendMode) or
+                         (view->vpBuffer->ColourSpace != mBitmap->ColourSpace) or
+                         (view->vpBufferColourSpace != state.mColourSpace)) {
+                        view->vpBuffer->BlendMode   = mBitmap->BlendMode;
+                        view->vpBuffer->ColourSpace = mBitmap->ColourSpace;
+                        view->vpBufferColourSpace   = state.mColourSpace;
                         redraw = true;
                      }
 
@@ -1102,8 +1164,9 @@ void SceneRenderer::draw_vectors(extVector *CurrentVector, VectorState &ParentSt
                         // the overflow values.
 
                         VectorState child_state;
-                        child_state.mOverflowX = VOF::HIDDEN;
-                        child_state.mOverflowY = VOF::HIDDEN;
+                        child_state.mOverflowX   = VOF::HIDDEN;
+                        child_state.mOverflowY   = VOF::HIDDEN;
+                        child_state.mColourSpace = state.mColourSpace;
 
                         auto save_bmp    = mBitmap;
                         auto save_format = mFormat;
@@ -1174,6 +1237,8 @@ void SceneRenderer::draw_vectors(extVector *CurrentVector, VectorState &ParentSt
 
                      agg::rasterizer_scanline_aa<> raster;
                      raster.add_path(view->BasePath);
+
+                     mFormat.setBlendMode(composite_blend_mode(state.mBlendMode));
 
                      if (not mClipStack.empty()) {
                         agg::alpha_mask_gray8 alpha_mask(mClipStack.top().m_renderer);
@@ -1285,6 +1350,7 @@ void SceneRenderer::draw_vectors(extVector *CurrentVector, VectorState &ParentSt
          mBitmapOriginX = save_origin_x;
          mBitmapOriginY = save_origin_y;
          mFormat.setBitmap(*mBitmap);
+         mFormat.setBlendMode(composite_blend_mode(state.mBlendMode));
          if (not mClipStack.empty()) {
             agg::alpha_mask_gray8 alpha_mask(mClipStack.top().m_renderer);
             agg::scanline_u8_am<agg::alpha_mask_gray8> masked_scanline(alpha_mask);
@@ -1419,48 +1485,82 @@ void agg::pixfmt_psl::rawBitmap(uint8_t *Data, int Width, int Height, int Stride
    mHeight = Height;
    mStride = Stride;
    mBytesPerPixel = BitsPerPixel/8;
+   mBitsPerPixel  = BitsPerPixel;
+   mColourFormat  = ColourFormat;
+   mBlendMode     = (BlendMode IS BLM::AUTO) ? BLM::GAMMA : BlendMode;
+   bind_ops();
+}
 
-   if (BitsPerPixel IS 32) {
+//********************************************************************************************************************
+// Rebinds the per-pixel and span operations for a new blend mode.  The bitmap data, dimensions and stride are
+// unchanged.  AUTO resolves to GAMMA; callers that need the target's colour space to be considered should resolve
+// the mode beforehand.
+
+void agg::pixfmt_psl::setBlendMode(BLM BlendMode) noexcept
+{
+   if (BlendMode IS BLM::AUTO) BlendMode = BLM::GAMMA;
+   if (BlendMode IS mBlendMode) return;
+   mBlendMode = BlendMode;
+   bind_ops();
+}
+
+void agg::pixfmt_psl::bind_ops() noexcept
+{
+   if (mBitsPerPixel IS 32) {
       // Each branch binds the per-pixel and span operations for a <pixel order, blend mode> pair.
       // The span operations are template instantiations with the per-pixel work inlined, so the
       // function pointer indirection is paid once per span rather than once per pixel.
 
-      if (BlendMode IS BLM::LINEAR) {
-         if (ColourFormat.AlphaPos IS 24) {
-            if (ColourFormat.BluePos IS 0) set_ops32<2,1,0,3, &linear32BGRA, &linearCopy32BGRA, &linearCover32BGRA>(pxBGRA);
-            else set_ops32<0,1,2,3, &linear32RGBA, &linearCopy32RGBA, &linearCover32RGBA>(pxRGBA);
+      if (mBlendMode IS BLM::LINEAR) {
+         // Source colours are decoded to linear on every write path, including opaque fills and copies.
+         constexpr auto encode = &linear_blend32::encode;
+         if (mColourFormat.AlphaPos IS 24) {
+            if (mColourFormat.BluePos IS 0) {
+               set_ops32<2,1,0,3, &linear32BGRA, &linearCopy32BGRA, &linearCover32BGRA, false, encode>(pxBGRA);
+            }
+            else set_ops32<0,1,2,3, &linear32RGBA, &linearCopy32RGBA, &linearCover32RGBA, false, encode>(pxRGBA);
          }
-         else if (ColourFormat.RedPos IS 24) set_ops32<3,1,2,0, &linear32AGBR, &linearCopy32AGBR, &linearCover32AGBR>(pxAGBR);
-         else set_ops32<1,2,3,0, &linear32ARGB, &linearCopy32ARGB, &linearCover32ARGB>(pxARGB);
+         else if (mColourFormat.RedPos IS 24) {
+            set_ops32<3,1,2,0, &linear32AGBR, &linearCopy32AGBR, &linearCover32AGBR, false, encode>(pxAGBR);
+         }
+         else set_ops32<1,2,3,0, &linear32ARGB, &linearCopy32ARGB, &linearCover32ARGB, false, encode>(pxARGB);
       }
-      else if (BlendMode IS BLM::SRGB) {
+      else if (mBlendMode IS BLM::NONE) {
+         if (mColourFormat.AlphaPos IS 24) {
+            if (mColourFormat.BluePos IS 0) set_none_ops32<2,1,0,3, &noneCopy32BGRA, &noneCover32BGRA>(pxBGRA);
+            else set_none_ops32<0,1,2,3, &noneCopy32RGBA, &noneCover32RGBA>(pxRGBA);
+         }
+         else if (mColourFormat.RedPos IS 24) set_none_ops32<3,1,2,0, &noneCopy32AGBR, &noneCover32AGBR>(pxAGBR);
+         else set_none_ops32<1,2,3,0, &noneCopy32ARGB, &noneCover32ARGB>(pxARGB);
+      }
+      else if (mBlendMode IS BLM::SRGB) {
          // The trailing 'true' selects the SSE2 solid-span kernels where available.
-         if (ColourFormat.AlphaPos IS 24) {
-            if (ColourFormat.BluePos IS 0) set_ops32<2,1,0,3, &srgb32BGRA, &srgbCopy32BGRA, &srgbCover32BGRA, true>(pxBGRA);
+         if (mColourFormat.AlphaPos IS 24) {
+            if (mColourFormat.BluePos IS 0) set_ops32<2,1,0,3, &srgb32BGRA, &srgbCopy32BGRA, &srgbCover32BGRA, true>(pxBGRA);
             else set_ops32<0,1,2,3, &srgb32RGBA, &srgbCopy32RGBA, &srgbCover32RGBA, true>(pxRGBA);
          }
-         else if (ColourFormat.RedPos IS 24) set_ops32<3,1,2,0, &srgb32AGBR, &srgbCopy32AGBR, &srgbCover32AGBR, true>(pxAGBR);
+         else if (mColourFormat.RedPos IS 24) set_ops32<3,1,2,0, &srgb32AGBR, &srgbCopy32AGBR, &srgbCover32AGBR, true>(pxAGBR);
          else set_ops32<1,2,3,0, &srgb32ARGB, &srgbCopy32ARGB, &srgbCover32ARGB, true>(pxARGB);
       }
       else { // BLM::GAMMA
-         if (ColourFormat.AlphaPos IS 24) {
-            if (ColourFormat.BluePos IS 0) set_ops32<2,1,0,3, &gamma32BGRA, &gammaCopy32BGRA, &gammaCover32BGRA>(pxBGRA);
+         if (mColourFormat.AlphaPos IS 24) {
+            if (mColourFormat.BluePos IS 0) set_ops32<2,1,0,3, &gamma32BGRA, &gammaCopy32BGRA, &gammaCover32BGRA>(pxBGRA);
             else set_ops32<0,1,2,3, &gamma32RGBA, &gammaCopy32RGBA, &gammaCover32RGBA>(pxRGBA);
          }
-         else if (ColourFormat.RedPos IS 24) set_ops32<3,1,2,0, &gamma32AGBR, &gammaCopy32AGBR, &gammaCover32AGBR>(pxAGBR);
+         else if (mColourFormat.RedPos IS 24) set_ops32<3,1,2,0, &gamma32AGBR, &gammaCopy32AGBR, &gammaCover32AGBR>(pxAGBR);
          else set_ops32<1,2,3,0, &gamma32ARGB, &gammaCopy32ARGB, &gammaCover32ARGB>(pxARGB);
       }
    }
-   else if (BitsPerPixel IS 24) {
+   else if (mBitsPerPixel IS 24) {
       kt::Log log;
       log.warning("Support for 24-bit bitmaps is deprecated.");
    }
-   else if (BitsPerPixel IS 16) {
+   else if (mBitsPerPixel IS 16) {
       // Deprecated.  16-bit client code should use 32-bit and downscale instead.
       kt::Log log;
       log.warning("Support for 16-bit bitmaps is deprecated.");
    }
-   else if (BitsPerPixel IS 8) {
+   else if (mBitsPerPixel IS 8) {
       // For generating grey-scale alpha masks
       fBlendHLine      = &blendHLine8;
       fBlendSolidHSpan = &blendSolidHSpan8;

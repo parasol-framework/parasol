@@ -1548,9 +1548,14 @@ static ERR SET_BkgdIndex(extBitmap *Self, int Index)
 
 -FIELD-
 BlendMode: Defines the blending algorithm to use when rendering transparent pixels.
+Lookup: BLM
 
-The default value is `BLM::AUTO`, which selects the preferred blending path for the current bitmap and graphics
-backend.
+The BlendMode is honoured by the Vector module when a scene is rendered to the bitmap.  The default of `AUTO`
+resolves to `GAMMA`, or to `LINEAR` if the #ColourSpace is `CS::LINEAR_RGB`.  `SRGB` and `GAMMA` are preferences that an explicit @Vector.ColourSpace can
+override, while `NONE` and `LINEAR` describe how the bitmap stores its data and always apply.
+
+Display functions such as ~Display.CopyArea() and ~Display.DrawRectangle() do not read this field.  Their blending
+behaviour is selected by the `BAF` flags passed to each call.
 
 -FIELD-
 BytesPerPixel: The number of bytes per pixel.

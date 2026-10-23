@@ -12,6 +12,37 @@ Name: Bitmap
 #include <algorithm>
 #include <cstring>
 
+//********************************************************************************************************************
+// Blends a source colour onto a 32-bit destination pixel with the sRGB formula used by CopyArea().  A translucent
+// destination (0 < alpha < 255) uses straight-alpha source-over, which weights each colour by its alpha.  The result
+// is identical to srgb_blend32 in the Vector module, which relies on this for its CopyArea() fast path.  An empty
+// destination retains the opaque formula; BAF::COPY replaces such pixels instead.
+
+inline void blend_srgb32(uint8_t *Dest, uint8_t dR, uint8_t dG, uint8_t dB, uint8_t dA,
+   uint8_t Red, uint8_t Green, uint8_t Blue, uint8_t Alpha)
+{
+   const uint32_t alpha_inv  = 0xff - Alpha;
+   const uint32_t dest_alpha = Dest[dA];
+
+   if ((dest_alpha IS 0xff) or (!dest_alpha)) {
+      Dest[dR] = ((Red * Alpha) + (Dest[dR] * alpha_inv) + 0xff)>>8;
+      Dest[dG] = ((Green * Alpha) + (Dest[dG] * alpha_inv) + 0xff)>>8;
+      Dest[dB] = ((Blue * Alpha) + (Dest[dB] * alpha_inv) + 0xff)>>8;
+      Dest[dA] = 0xff - ((alpha_inv * (0xff - dest_alpha))>>8);
+   }
+   else {
+      const uint32_t final_alpha = 0xff - ((alpha_inv * (0xff - dest_alpha))>>8); // Always >= 1
+      const uint32_t src_weight  = 0xff * Alpha;
+      const uint32_t dest_weight = alpha_inv * dest_alpha;
+      const uint32_t divisor     = 0xff * final_alpha;
+      const uint32_t round       = divisor>>1;
+      Dest[dR] = uint8_t(std::min<uint32_t>(0xff, (Red * src_weight + Dest[dR] * dest_weight + round) / divisor));
+      Dest[dG] = uint8_t(std::min<uint32_t>(0xff, (Green * src_weight + Dest[dG] * dest_weight + round) / divisor));
+      Dest[dB] = uint8_t(std::min<uint32_t>(0xff, (Blue * src_weight + Dest[dB] * dest_weight + round) / divisor));
+      Dest[dA] = uint8_t(final_alpha);
+   }
+}
+
 #ifdef KOTUKU_SSE2
 
 // SIMD helpers for the 32-bit blitting routines.  All arithmetic is performed on 16-bit lanes so that the
@@ -68,6 +99,16 @@ inline __m128i simd_blend4(__m128i S, __m128i D, int AlphaPos, __m128i AlphaLane
    blo = simd_select(AlphaLane, xlo, blo);
    bhi = simd_select(AlphaLane, xhi, bhi);
    return _mm_packus_epi16(blo, bhi);
+}
+
+// True if any of four destination pixels is translucent (0 < alpha < 255).  simd_blend4() implements the opaque
+// formula only, so such groups must be blended with blend_srgb32().
+
+inline bool simd_translucent4(__m128i D, __m128i AlphaMask)
+{
+   const auto a = _mm_and_si128(D, AlphaMask);
+   const auto edge = _mm_or_si128(_mm_cmpeq_epi32(a, _mm_setzero_si128()), _mm_cmpeq_epi32(a, AlphaMask));
+   return _mm_movemask_epi8(edge) != 0xffff;
 }
 
 #endif // KOTUKU_SSE2
@@ -543,6 +584,14 @@ ERR CopyArea(objBitmap *Source, objBitmap *Dest, BAF Flags, int X, int Y, int Wi
                         }
                      }
                      else {
+                        auto copy_pixel = [&](uint8_t *Src, uint8_t *Dest) {
+                           if (Dest[dA]) {
+                              if (Src[sA] IS 0xff) ((uint32_t *)Dest)[0] = ((uint32_t *)Src)[0];
+                              else if (auto a = Src[sA]) blend_srgb32(Dest, dR, dG, dB, dA, Src[sR], Src[sG], Src[sB], a);
+                           }
+                           else ((uint32_t *)Dest)[0] = ((uint32_t *)Src)[0];
+                        };
+
                         int x = 0;
 #ifdef KOTUKU_SSE2
                         if (simd_ok) {
@@ -551,6 +600,10 @@ ERR CopyArea(objBitmap *Source, objBitmap *Dest, BAF Flags, int X, int Y, int Wi
                            for (; x + 4 <= Width; x += 4, sp += 16, dp += 16) {
                               auto s = _mm_loadu_si128((const __m128i *)sp);
                               auto d = _mm_loadu_si128((const __m128i *)dp);
+                              if (simd_translucent4(d, simd_amask)) {
+                                 for (int i=0; i < 16; i += 4) copy_pixel(sp + i, dp + i);
+                                 continue;
+                              }
                               auto src_zero  = _mm_cmpeq_epi32(_mm_and_si128(s, simd_amask), zero);
                               auto dest_zero = _mm_cmpeq_epi32(_mm_and_si128(d, simd_amask), zero);
                               auto blended = simd_blend4(s, d, sA<<3, simd_alpha_lane, op);
@@ -559,18 +612,7 @@ ERR CopyArea(objBitmap *Source, objBitmap *Dest, BAF Flags, int X, int Y, int Wi
                         }
 #endif
                         for (; x < Width; x++) {
-                           if (dp[dA]) {
-                              if (sp[sA] IS 0xff) ((uint32_t *)dp)[0] = ((uint32_t *)sp)[0];
-                              else if (auto a = sp[sA]) {
-                                 const uint8_t ca = 0xff - a;
-                                 dp[dR] = ((sp[sR] * a) + (dp[dR] * ca) + 0xff)>>8;
-                                 dp[dG] = ((sp[sG] * a) + (dp[dG] * ca) + 0xff)>>8;
-                                 dp[dB] = ((sp[sB] * a) + (dp[dB] * ca) + 0xff)>>8;
-                                 dp[dA] = 0xff - ((ca * (0xff - dp[dA]))>>8);
-                              }
-                           }
-                           else ((uint32_t *)dp)[0] = ((uint32_t *)sp)[0];
-
+                           copy_pixel(sp, dp);
                            sp += 4;
                            dp += 4;
                         }
@@ -608,6 +650,11 @@ ERR CopyArea(objBitmap *Source, objBitmap *Dest, BAF Flags, int X, int Y, int Wi
                            }
                         }
                         else {
+                           auto blend_pixel = [&](uint8_t *Src, uint8_t *Dest) {
+                              if (Src[sA] IS 0xff) ((uint32_t *)Dest)[0] = ((uint32_t *)Src)[0];
+                              else if (auto a = Src[sA]) blend_srgb32(Dest, dR, dG, dB, dA, Src[sR], Src[sG], Src[sB], a);
+                           };
+
                            i = 0;
 #ifdef KOTUKU_SSE2
                            if (simd_ok) {
@@ -616,6 +663,10 @@ ERR CopyArea(objBitmap *Source, objBitmap *Dest, BAF Flags, int X, int Y, int Wi
                               for (; i + 4 <= Width; i += 4, sp += 16, dp += 16) {
                                  auto s = _mm_loadu_si128((const __m128i *)sp);
                                  auto d = _mm_loadu_si128((const __m128i *)dp);
+                                 if (simd_translucent4(d, simd_amask)) {
+                                    for (int j=0; j < 16; j += 4) blend_pixel(sp + j, dp + j);
+                                    continue;
+                                 }
                                  auto src_zero = _mm_cmpeq_epi32(_mm_and_si128(s, simd_amask), zero);
                                  auto blended = simd_blend4(s, d, sA<<3, simd_alpha_lane, op);
                                  _mm_storeu_si128((__m128i *)dp, simd_select(src_zero, d, blended));
@@ -623,15 +674,7 @@ ERR CopyArea(objBitmap *Source, objBitmap *Dest, BAF Flags, int X, int Y, int Wi
                            }
 #endif
                            for (; i < Width; i++) {
-                              if (sp[sA] IS 0xff) ((uint32_t *)dp)[0] = ((uint32_t *)sp)[0];
-                              else if (auto a = sp[sA]) {
-                                 const uint8_t ca = 0xff - a;
-                                 dp[dR] = ((sp[sR] * a) + (dp[dR] * ca) + 0xff)>>8;
-                                 dp[dG] = ((sp[sG] * a) + (dp[dG] * ca) + 0xff)>>8;
-                                 dp[dB] = ((sp[sB] * a) + (dp[dB] * ca) + 0xff)>>8;
-                                 dp[dA] = 0xff - ((ca * (0xff - dp[dA]))>>8);
-                              }
-
+                              blend_pixel(sp, dp);
                               sp += 4;
                               dp += 4;
                            }
@@ -662,6 +705,13 @@ ERR CopyArea(objBitmap *Source, objBitmap *Dest, BAF Flags, int X, int Y, int Wi
                         }
                      }
                      else {
+                        auto blend_pixel = [&](uint8_t *Src, uint8_t *Dest) {
+                           if (auto oa = Src[sA]) {
+                              const uint8_t a = (oa * src->Opacity + 0xff)>>8;
+                              blend_srgb32(Dest, dR, dG, dB, dA, Src[sR], Src[sG], Src[sB], a);
+                           }
+                        };
+
                         i = 0;
 #ifdef KOTUKU_SSE2
                         if (simd_ok) {
@@ -670,6 +720,10 @@ ERR CopyArea(objBitmap *Source, objBitmap *Dest, BAF Flags, int X, int Y, int Wi
                            for (; i + 4 <= Width; i += 4, sp += 16, dp += 16) {
                               auto s = _mm_loadu_si128((const __m128i *)sp);
                               auto d = _mm_loadu_si128((const __m128i *)dp);
+                              if (simd_translucent4(d, simd_amask)) {
+                                 for (int j=0; j < 16; j += 4) blend_pixel(sp + j, dp + j);
+                                 continue;
+                              }
                               auto src_zero = _mm_cmpeq_epi32(_mm_and_si128(s, simd_amask), zero);
                               auto blended = simd_blend4(s, d, sA<<3, simd_alpha_lane, op);
                               _mm_storeu_si128((__m128i *)dp, simd_select(src_zero, d, blended));
@@ -677,15 +731,7 @@ ERR CopyArea(objBitmap *Source, objBitmap *Dest, BAF Flags, int X, int Y, int Wi
                         }
 #endif
                         for (; i < Width; i++) {
-                           if (auto oa = sp[sA]) {
-                              const uint8_t a = (oa * src->Opacity + 0xff)>>8;
-                              const uint8_t ca = 0xff - a;
-                              dp[dR] = ((sp[sR] * a) + (dp[dR] * ca) + 0xff)>>8;
-                              dp[dG] = ((sp[sG] * a) + (dp[dG] * ca) + 0xff)>>8;
-                              dp[dB] = ((sp[sB] * a) + (dp[dB] * ca) + 0xff)>>8;
-                              dp[dA] = 0xff - ((ca * (0xff - dp[dA]))>>8);
-                           }
-
+                           blend_pixel(sp, dp);
                            sp += 4;
                            dp += 4;
                         }

@@ -2953,6 +2953,11 @@ void svgState::proc_svg(XTag &Tag, OBJECTPTR Parent, objVector * &Vector) noexce
 
    if (!Self->Viewport) Self->Viewport = viewport;
 
+   // SVG content composites in sRGB by default, as browsers do.  A top-level viewport sets the policy for the document
+   // and nested viewports inherit it.  The color-interpolation attribute can override it for a subtree.
+
+   if ((Parent IS Self->Scene) or (Parent IS Self->Target)) viewport->setColourSpace(VCS::SRGB);
+
    // Process <svg> attributes
 
    auto state = *this;
@@ -3013,6 +3018,15 @@ void svgState::proc_svg(XTag &Tag, OBJECTPTR Parent, objVector * &Vector) noexce
 
          case SVF_isolation_mode:
             if (iequals("isolated", val)) viewport->setFlags(viewport->Flags | VF::ISOLATED);
+            break;
+
+         case SVF_colour_interpolation:
+         case SVF_color_interpolation:
+            if (iequals("auto", val)) viewport->setColourSpace(VCS::SRGB);
+            else if (iequals("sRGB", val)) viewport->setColourSpace(VCS::SRGB);
+            else if (iequals("linearRGB", val)) viewport->setColourSpace(VCS::LINEAR_RGB);
+            else if (iequals("inherit", val)) viewport->setColourSpace(VCS::INHERIT);
+            else log.warning("Invalid color-interpolation value '%s' at line %d", val.c_str(), Tag.LineNo);
             break;
 
          case SVF_zoomAndPan:
