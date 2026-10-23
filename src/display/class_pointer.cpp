@@ -324,16 +324,24 @@ static void process_ptr_button(extPointer *Self, struct dcDeviceInput *Input)
 
       Self->DragDelivering = true;
 
+      auto result = ERR::Cancelled;
       if (!modal_id) {
          kt::ScopedObjectLock src(source_id);
          if (src.granted()) {
             kt::ScopedObjectLock surface(Self->OverObjectID);
-            if (surface.granted()) acDragDrop(*surface, *src, item, std::string_view(datatypes.data(), size));
+            if (surface.granted()) {
+               acDragDrop(*surface, *src, item, std::string_view(datatypes.data(), size));
+               result = ERR::Okay;
+            }
          }
       }
 
-      if (Self->DragSourceID IS source_id) end_cursor_drag(Self);
+      // A session cancelled or replaced during delivery has already been reported to its source.
+
+      const bool ended = Self->DragSourceID IS source_id;
+      if (ended) end_cursor_drag(Self);
       Self->DragDelivering = false;
+      if (ended) notify_drag_end(source_id, item, result);
    }
 }
 
@@ -573,14 +581,19 @@ extPointer::~extPointer()
 Deactivate: Cancels the active drag and drop operation.
 
 If a drag and drop operation was started with ~Display.StartCursorDrag(), it is cancelled without delivering a drop.
-The drag preview surface, if any, is hidden but not freed.  This action has no effect if no drag and drop operation is
-active.
+The drag preview surface, if any, is hidden but not freed.  A @Clipboard source is notified through its
+@Clipboard.DragEndHandler with `ERR::Cancelled`.  This action has no effect if no drag and drop operation is active.
 -END-
 *********************************************************************************************************************/
 
 static ERR POINTER_Deactivate(extPointer *Self)
 {
-   if (Self->DragSourceID) end_cursor_drag(Self);
+   if (Self->DragSourceID) {
+      const auto source_id = Self->DragSourceID;
+      const auto item = Self->DragItem;
+      end_cursor_drag(Self);
+      notify_drag_end(source_id, item, ERR::Cancelled);
+   }
    return ERR::Okay;
 }
 

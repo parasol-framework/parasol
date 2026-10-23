@@ -474,6 +474,7 @@ extern ERR  unlock_surface(extBitmap *);
 extern ERR  pointer_window(OBJECTID, HOSTWINDOW &);
 extern void end_cursor_drag(extPointer *, bool = true);
 extern void notify_drag_source_free(OBJECTPTR, ACTIONID, ERR, APTR);
+extern void notify_drag_end(OBJECTID, int, ERR);
 extern ERR  get_display_info(OBJECTID, DisplayInfo *);
 extern void resize_feedback(FUNCTION *, OBJECTID, int X, int Y, int Width, int Height);
 

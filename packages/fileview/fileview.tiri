@@ -38,7 +38,7 @@ TBID <const> = {
 local glFolderFill
 local glEnableThreading = false
 
-rxParentFolder   <const> = <{ regex.new([[^(.+[:\/\\]+).+]]) }>
+rxParentFolder   <const> = <{ regex.new([[^(.*[:\/\\]+).+]]) }>
 rxStripFolder    <const> = <{ regex.new([[^(.*?)[:\/\\]*$]]) }> -- Remove trailing qualifiers
 rxExtractIcon    <const> = <{ regex.new([[^(.+)\.([^:\/\\]+)$]]) }>
 rxStripExtension <const> = <{ regex.new([[^(.*?)\.[^:\/\\]+$]]) }>
@@ -482,7 +482,24 @@ function pasteFromClipboard(self, Folder:str!)
    end
 end
 
--- Returns a single item structure identifying a file/folder/volume
+-- Returns the parent folder of a fully qualified path, including its trailing separator.
+
+function parentFolder(Path:str!):str
+   return rxParentFolder.extract(rxStripFolder.extract(Path))
+end
+
+-- Normalises a path for comparison: volumes are resolved and trailing separators are removed.
+
+function pathKey(Path:str!):str
+   local err, resolved = mSys.ResolvePath(Path, RSF_NO_FILE_CHECK)
+   local key = rxStripFolder.extract(err is ERR_Okay ? resolved : Path)
+   return glState.platform is 'Windows' ? key.lower() : key
+end
+
+----------------------------------------------------------------------------------------------------------------------
+
+-- Returns a single item structure identifying a file/folder/volume.  The path field is the fully qualified location of
+-- the item, independent of its displayed name.  Folder paths are terminated with a slash.
 
 function createFileItem(self, Info)
    if not self.showHidden then
@@ -520,6 +537,7 @@ function createFileItem(self, Info)
          iconTheme   = colour,
          sort        = '\x02' .. Info.name.lower(),
          filename    = Info.name, -- Unique
+         path        = Info.name .. ':',
          insensitive = true,
          name        = { value = display_name },
          totalsize   = total_size,
@@ -538,6 +556,7 @@ function createFileItem(self, Info)
          iconTheme   = 'fill(yellow) outline(#3c1e1e)',
          sort        = '\x03' .. Info.name.lower(),
          filename    = Info.name,
+         path        = (self.path ?? '') .. rxStripFolder.extract(Info.name) .. '/',
          fill        = glFolderFill,
          name        = { sort = 'D' .. display_name.lower(), value = display_name },
          insensitive = true,
@@ -561,6 +580,7 @@ function createFileItem(self, Info)
             icon        = getFileIcon(self.path .. Info.name),
             name        = { sort = 'F' .. Info.name.lower(), value = Info.name },
             filename    = filename,
+            path        = (self.path ?? '') .. Info.name,
             hidden      = not filterCheck(self, filename),
             size        = { sort = sortNum(Info.size), value = Info.size },
             date        = { sort = 'F' .. sortNum(Info.timestamp), value = printableTime(Info.modified) },
@@ -663,7 +683,7 @@ gui.fileview = function(Options)
    end
 
    function incrementalRefresh(Elapsed, CurrentTime, Current)
-      if self.inRefresh or self.watch then return end
+      if self.inRefresh or self.watch or self._released then return end
 
       if not lDir then
          flags = RDF_FOLDERS|RDF_PERMISSIONS|RDF_DATE|RDF_SIZE|RDF_TAGS
@@ -783,7 +803,7 @@ gui.fileview = function(Options)
    end
 
    function pathWatch(MonitoredFile:obj!, Path:str, Flags:num!)
-      if self.inRefresh then return end
+      if self.inRefresh or self._released then return end
 
       if Flags is 0 then -- No flags means a change has occurred but the host is unable to tell us what happened.
          self.refresh()
@@ -1255,6 +1275,57 @@ gui.fileview = function(Options)
       end
    end
 
+   -- Copies files and folders to a destination folder.  Sources is a list of fully qualified paths, with folders
+   -- terminated by a slash.  Sources that already reside in Dest, and folders that would be copied into themselves or
+   -- their own sub-folders, are skipped.  The copy is performed on the next message cycle with the progress and
+   -- collision handling of io.ui.copy(), and Options.transferComplete(FileView, Sources, Dest, Error) is called on
+   -- completion.  Only the 'copy' operation is supported.  Returns the number of sources accepted for transfer.
+
+   self.transferFiles = function(Sources:any!, Dest:str!, Operation:str):num
+      Operation ?= 'copy'
+      if Operation != 'copy' then raise ERR_NoSupport, f'Unsupported file transfer operation "{Operation}"' end
+
+      local last = Dest.sub(-1)
+      if last != '/' and last != ':' and last != '\\' then Dest ..= '/' end
+      if not io.isFolder(Dest) then
+         msg(f'Transfer rejected, "{Dest}" is not a folder.')
+         return 0
+      end
+
+      local dest_key = pathKey(Dest)
+      local accepted = array<str>
+      for src in values(Sources) do
+         local folder = src.endsWith('/') or src.endsWith('\\')
+         if pathKey(parentFolder(src) ?? '') is dest_key then
+            msg(f'Skipping "{src}", it is already in "{Dest}".')
+         elseif folder and (dest_key .. '/').startsWith(pathKey(src) .. '/') then
+            msg(f'Skipping "{src}", a folder cannot be copied into itself.')
+         else
+            accepted.push(src)
+         end
+      end
+
+      if #accepted is 0 then return 0 end
+
+      processing.delayedCall(function()
+         local err = io.ui.copy(accepted, Dest, false) ?? ERR_Okay
+         if not self._released and not self.watch and self.path and pathKey(self.path) is dest_key then
+            self.refresh()
+         end
+         lOptions.transferComplete?(self, accepted, Dest, err)
+      end)
+
+      return #accepted
+   end
+
+   -- Drops onto a folder or volume row target that location.  Any other drop targets the current folder.
+
+   function dropDestination(Item:table):str
+      if Item and (Item.type is 'folder' or Item.type is 'volume') then return Item.path end
+      if Item?.type is 'parent' and self.path then return parentFolder(self.path) end
+      return self.path
+   end
+
    -- Run the open command for all currently selected files.
 
    self.openFiles = function()
@@ -1414,6 +1485,41 @@ gui.fileview = function(Options)
          end
       end
 
+      -- Dragged items are captured as fully qualified paths when the drag starts, so that a refresh or a change of
+      -- folder cannot alter what is transferred.  The regular clipboard is not used.
+
+      self.view.events.dragStart = function(View, Session)
+         self.path ?! return -- Volumes cannot be dragged
+
+         local files = array<str>
+         for item in values(Session.items) do
+            if (item.type is 'file' or item.type is 'folder') and item.path then files.push(item.path) end
+         end
+
+         if #files > 0 then return { files = files } end
+      end
+
+      self.view.events.dragDrop = function(View, Item, Drop)
+         if not Drop.datatypes?.find(string.char(DATA_FILE), 0, true) then return end
+         local dest = dropDestination(Item)
+         dest ?! return
+
+         -- The data is retrieved within the drop, while the source can still answer.
+         local sources = array<str>
+         try
+            input.requestItem(Drop.source, Drop.item, 'file', function(Items)
+               for entry in values(Items) do
+                  if entry.item is 'file' and entry.path then sources.push(entry.path) end
+               end
+            end)
+         except ex
+            msg(f'Failed to retrieve dropped files: {ex.message}')
+            return
+         end
+
+         if #sources > 0 then self.transferFiles(sources, dest, 'copy') end
+      end
+
       if Options.toolbar then
          local tbo
          if (Options.toolbar is true) or (Options.toolbar is 'all') then
@@ -1522,21 +1628,11 @@ gui.fileview = function(Options)
                   Bar.addGroup(16, 'Settings', 2)
 
                   Bar.addItem(TBID.COL_VIEW, 'Column View', 'Column View', 'layout/column_three', function()
-                     self.style = 'column'
-                     self.view.free()
-                     self.filterViewport = nil
-                     self.view = gui.columnView(ViewOptions)
-                     configureView(self, ViewOptions)
-                     self.refresh()
+                     self.setStyle('column')
                   end)
 
                   Bar.addItem(TBID.LIST_VIEW, 'List View', 'List View', 'layout/list', function()
-                     self.style = 'list'
-                     self.view.free()
-                     self.filterViewport = nil
-                     self.view = gui.listView(ViewOptions)
-                     configureView(self, ViewOptions)
-                     self.refresh()
+                     self.setStyle('list')
                   end)
 
                   Bar.addItem(TBID.FONT, 'Font', 'Font Settings', 'items/font', function()
@@ -1552,14 +1648,7 @@ gui.fileview = function(Options)
                                     fontStyle = &style
                                  } }
                               }, true, true)
-                              self.view.free()
-                              self.view = choose self.style from
-                                 'column' -> gui.columnView(ViewOptions)
-                                 'list'   -> gui.listView(ViewOptions)
-                                 else     -> gui.listView(ViewOptions)
-                              end
-                              configureView(self, ViewOptions)
-                              self.refresh()
+                              self.setStyle(self.style)
                            end
                         end
                      })
@@ -1576,6 +1665,7 @@ gui.fileview = function(Options)
 
    self.refresh = function()
       if self.inRefresh then return end -- Recursion detected, aborting request.
+      if self._released then return end -- The host viewport has been destroyed
 
       msg('Performing a full refresh of the file view: ' .. tostring(self.path))
 
@@ -1676,100 +1766,20 @@ gui.fileview = function(Options)
    self.theme = self.view.theme --gui.getTheme(Options.target)
    glFolderFill = self.theme.palette.type is 'light' ? 'rgb(20,20,110)' : 'rgb(205,225,255)'
 
-   -- Drag and drop support is implemented with help from the Clipboard class.  It allows items to be
-   -- requested from the FileView.
-
-   drag_clipboard = obj.new('clipboard', {
-      name  = 'fvDragClipboard',
-      flags = '!DragDrop',
-      requestHandler = function(Clipboard, Requester, Item, Datatypes)
-         if not self.path?? then -- Do nothing if we are at the root level
-            gui.dialog.error('Drag and Drop Failure', 'Drag and drop from volumes is not supported.');
-            return
-         end
-
-         if Datatypes[0] is DATA_FILE then
-            items = self.view.dragItems
-            if #items > 0 then
-               files = array<table> { }
-               for item in values(items) do
-                  files.push({ file = { path=self.path .. item.name.value } })
-               end
-
-               xml = {
-                  receipt = {
-                     totalItems = #items,
-                     id = Item,
-                     files
-                  }
-               }
-               Requester.acDataFeed(Clipboard, DATA_RECEIPT, xml.toXML())
-            end
-         end
-      end
-   })
-
-   drag_clipboard.detach()
---[[
-      self.view.dragSource = drag_clipboard
-
-      self.view.subscribe('dragdrop', function(ScriptID, Args, Reference)
-         -- This notification is received when something is dropped onto the viewport.
-
-         dest_tag = self.view.hItem
-
-         input.requestItem(Args.source, Args.item, 'file', function(Items)
-            drag_clipboard.mtRemove(CLIPTYPE_FILE)
-
-            dest = self.path
-
-            -- If the item is being dropped onto a folder, the destination path will be our Path & the folder name.
-
-            if dest_tag != -1 then
-               tag = self.view.xml.tags[dest_tag+1]
-               if 'dir' is tag.attrib.name then
-                  dest = (self.path ? '') .. dest_tag.name
-               end
-            end
-
-            if not dest?? or dest is ':' then return end
-
-            dev_dest = obj.new('storagedevice', { volume = dest })
-            dest_device_id = dev_dest.deviceID
-            count = 0
-            for item in values(Items) do
-               if 'file' is item.item then
-                  if item.path != dest then
-                     dev_src = obj.new('storagedevice', { volume = item.path })
-                     src_device_id = dev_src.deviceID
-
-                     flags = 0
-                     if dest_device_id != nil and src_dev_id != nil and dest_device_id is src_device_id then
-                        flags = flags|CEF_DELETE
-                     elseif (dev_src.deviceFlags is dev_dest.deviceFlags) and
-                            (dev_src.bytesFree is dev_dest.bytesFree) and
-                            (dev_src.bytesUsed is dev_dest.bytesUsed) then
-                        flags = flags|CEF_DELETE
-                     end
-
-                     if flags has CEF_DELETE then
-                        msg('Move "' .. item.path .. '" to "' .. dest .. '"')
-                     else
-                        msg('Copy "' .. item.path .. '" to "' .. dest .. '"')
-                     end
-
-                     drag_clipboard.mtAddFile(CLIPTYPE_FILE, item.path, flags|CEF_EXTEND)
-                     count = count + 1
-                  end
-               end
-            end
-
-            if count > 0 then pasteFromClipboard(self, dest, drag_clipboard.cluster) end
-         end)
-      end)
---]]
-
    configureView(self, vo)
+
+   -- Replaces the view with a new 'list' or 'column' view and reloads the current folder.  A drag that started from
+   -- the old view is cancelled when that view is freed.
+
+   self.setStyle = function(Style:str!)
+      assert(Style is 'list' or Style is 'column', 'Style must be list or column')
+      self.style = Style
+      self.view.free()
+      self.filterViewport = nil
+      self.view = Style is 'column' ? gui.columnView(vo) : gui.listView(vo)
+      configureView(self, vo)
+      self.refresh()
+   end
 
    local err
    err, self.evVolumeCreated = subscribeEvent('filesystem.volume.created', eventVolumeCreated)
@@ -1809,8 +1819,9 @@ gui.fileview = function(Options)
       if self.timer then mSys.UpdateTimer(self.timer, 0); self.timer = nil end
       if self.evVolumeCreated then unsubscribeEvent(self.evVolumeCreated); self.evVolumeCreated = nil end
       if self.evVolumeDeleted then unsubscribeEvent(self.evVolumeDeleted); self.evVolumeDeleted = nil end
+      self.watch?.free() -- Stop monitoring now; pending notifications must not reach the destroyed view
       self.watch = nil
-      drag_clipboard.free()
+      self._released = true
    end
 
    Options.target.subscribe('free', releaseSubscriptions)

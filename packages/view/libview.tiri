@@ -9,6 +9,10 @@
    module display as mGfx
 
    glItemCounter = 1
+   glDragCounter = 1
+   glDragSession = nil -- The active session started by any view in this script, for identifying internal drops
+
+   DRAG_THRESHOLD <const> = 4 -- Pointer travel, in page units, before a press over an item becomes a drag
 
 ----------------------------------------------------------------------------------------------------------------------
 
@@ -216,6 +220,137 @@ function selectPrev(View:table, Filter):table
 end
 
 ----------------------------------------------------------------------------------------------------------------------
+-- Drag and drop.  A session snapshots its payload when the drag starts, so that later changes to the view's contents,
+-- selection or path cannot alter the data that a destination receives.
+
+function fileReceipt(Session:table!, Item:num!):str
+   local receipt = f'<receipt totalItems="{#Session.files}" id="{Item}">'
+   for path in values(Session.files) do
+      receipt ..= f'<file path="{path.escXML()}"/>'
+   end
+   return receipt .. '</receipt>'
+end
+
+-- Serves a destination's data request from the active session.  Requests for other sessions are refused.
+
+function dragRequest(View:table!, Clipboard, Requester, Item:num, Datatypes):num
+   local session = View._dragSession
+   if not session or Item != session.id or not Requester then return ERR_NoSupport end
+
+   local receipt:str
+   local datatype = Datatypes[0]
+   if datatype is DATA_FILE and session.files then
+      receipt = fileReceipt(session, Item)
+   elseif session._payload.receipt then
+      receipt = session._payload.receipt(session, datatype, Requester)
+   end
+
+   receipt ?! return ERR_NoSupport
+   session.requested = true
+   return Requester.acDataFeed(Clipboard, DATA_RECEIPT, receipt)
+end
+
+-- Ends the active session exactly once.  Outcome is 'dropped' or 'cancelled'.
+
+function finishDrag(View:table!, Outcome:str!)
+   local session = View._dragSession
+   session ?! return
+   View._dragSession = nil
+   if glDragSession is session then glDragSession = nil end
+   session.preview?.free()
+   session.preview = nil
+   View.events?.dragEnd(View, session, Outcome)
+end
+
+function dragClipboard(View:table!):obj
+   if not View._dragClipboard then
+      View._dragClipboard = obj.new('clipboard', {
+         flags = CPF_DRAG_DROP,
+         requestHandler = function(Clipboard, Requester, Item, Datatypes)
+            return dragRequest(View, Clipboard, Requester, Item, Datatypes)
+         end,
+         dragEndHandler = function(Clipboard, Item, Result)
+            if View._dragSession?.id is Item then
+               finishDrag(View, Result is ERR_Okay ? 'dropped' : 'cancelled')
+            end
+         end
+      })
+   end
+   return View._dragClipboard
+end
+
+-- Called when the pointer has travelled far enough from a press.  The dragStart event returns the payload, or nil to
+-- refuse the drag.  Only one attempt is made for each press.
+
+function beginDrag(View:table!, Press:table!)
+   View._dragPress = nil
+   local handler = View.events?.dragStart
+   handler ?! return
+   if not selectionEligible(View, Press.item) or View._dragSession then return end
+
+   local items = array<table> { }
+   if Press.item._selected then
+      for item in values(View.items) do
+         if item._selected and not item.hidden then items.push(item) end
+      end
+   else
+      items.push(Press.item)
+   end
+
+   local session = { id = glDragCounter, items = items, x = Press.x, y = Press.y, requested = false }
+   glDragCounter++
+
+   local payload = handler(View, session)
+   payload ?! return
+   if not View.viewport then
+      payload.preview?.free()
+      return
+   end
+
+   if payload.files then
+      session.files = array<str> { }
+      for path in values(payload.files) do session.files.push(path) end
+   end
+
+   local datatypes = payload.datatypes ?? (session.files ? string.char(DATA_FILE) : '')
+   session._payload = payload
+   session.preview  = payload.preview
+   View._dragged    = true -- The release that ends this press must not select or activate
+
+   local clipboard = dragClipboard(View)
+   session._sourceID = clipboard.id
+   View._dragSession = session
+   glDragSession = session
+
+   local err = datatypes != '' ? mGfx.StartCursorDrag(clipboard.id, session.id, datatypes,
+      session.preview?.id ?? 0) : ERR_NoData
+   if err != ERR_Okay then
+      msg(f'Failed to start drag: {mSys.GetErrorMsg(err)}')
+      finishDrag(View, 'cancelled')
+   end
+end
+
+-- Cancels an active session when the view is destroyed.  The source clipboard is freed with it.
+
+function releaseDrag(View:table!)
+   View._dragPress = nil
+   finishDrag(View, 'cancelled')
+   View._dragClipboard?.free()
+   View._dragClipboard = nil
+end
+
+-- Returns the item at a position in page coordinates, or nil for empty space.
+
+function itemAtPoint(View:table!, X:num!, Y:num!):table
+   for zone in values(View.zones) do
+      if Y >= zone.y and Y < zone.y + zone.height and
+         (not zone.width or (X >= zone.x and X < zone.x + zone.width)) then
+         if selectionEligible(View, zone.item) then return zone.item end
+      end
+   end
+end
+
+----------------------------------------------------------------------------------------------------------------------
 
 gui.initView = function(Options:table!, BuildUI, NewItems, PrepareView:func)
    local scroll_direction = Options.scrollDirection ?? 'all'
@@ -230,6 +365,7 @@ gui.initView = function(Options:table!, BuildUI, NewItems, PrepareView:func)
       disabled   = false,
       sensitive  = Options.sensitive ?? false,
       multiSelect = Options.multiSelect is true,
+      dragDrop   = Options.dragDrop is true,
       _selectionVersion = 0,
       _contentsVersion = 0,
       hItem      = nil, -- Highlighted item (pointer hover or keyboard navigation)
@@ -726,9 +862,15 @@ gui.initView = function(Options:table!, BuildUI, NewItems, PrepareView:func)
 
       failure:any
       try
-         vw.clearView()
+         releaseDrag(vw)
       except e
          failure = e
+      end
+
+      try
+         vw.clearView()
+      except e
+         failure ?= e
       end
 
       vw.viewport?.free()
@@ -910,6 +1052,13 @@ gui.initView = function(Options:table!, BuildUI, NewItems, PrepareView:func)
    vw.viewport.subscribe('free', function()
       vw._modifierKeyboard?.unsubscribe()
       vw._modifierKeyboard = nil
+      if vw._dragSession or vw._dragClipboard then
+         try
+            releaseDrag(vw)
+         except e
+            msg(f'Drag cleanup failed during view destruction: {e.message}')
+         end
+      end
       if vw._releaseItem and vw.items then
          local failure:any = nil
          for item in values(vw.items) do
@@ -989,9 +1138,21 @@ gui.initView = function(Options:table!, BuildUI, NewItems, PrepareView:func)
                vw.clickAbsY = ev.absY
                vw.clickX = ev.x
                vw.clickY = ev.y
+               vw._dragPress = nil
+               vw._dragged = nil
                if vw.hItem and not vw.activeZone then
                   setKeyboardTarget(vw, vw.hItem)
                end
+            elseif vw._dragged then -- Release of a press that started a drag
+               vw._dragged = nil
+               vw._dragPress = nil
+               vw._modifiedClick = nil
+               ev = ev.next
+               continue
+            elseif vw._dragPress then -- Release without a drag; apply any selection deferred by the press
+               local press = vw._dragPress
+               vw._dragPress = nil
+               if press.deferSelect and selectionEligible(vw, press.item) then selectUserItem(press.item, 0) end
             end
 
             if vw.activeZone then -- Custom zone for click activity
@@ -1012,8 +1173,16 @@ gui.initView = function(Options:table!, BuildUI, NewItems, PrepareView:func)
                end
             end
 
-            if (ev.value is 1) and vw.hItem then
-               if not vw.disabled then selectUserItem(vw.hItem, vw.qualifiers) end
+            if (ev.value is 1) and vw.hItem and not vw.disabled then
+               if vw.dragDrop and vw.events?.dragStart then
+                  -- Pressing an item that is already part of a multiple selection keeps the group intact, so that
+                  -- the group can be dragged.  An ordinary click collapses the selection on release instead.
+                  local defer_select = vw.multiSelect and vw.hItem._selected and not vw._modifiedClick
+                  vw._dragPress = { item=vw.hItem, x=ev.x, y=ev.y, deferSelect=defer_select }
+                  if not defer_select then selectUserItem(vw.hItem, vw.qualifiers) end
+               else
+                  selectUserItem(vw.hItem, vw.qualifiers)
+               end
             end
          elseif ev.type is JET_ABS_XY then
             vw?.activeZone?.clickMove(ev)
@@ -1021,11 +1190,40 @@ gui.initView = function(Options:table!, BuildUI, NewItems, PrepareView:func)
             vw.cursorY = ev.y
             vw.cursorAbsX = ev.absX
             vw.cursorAbsY = ev.absY
+            local press = vw._dragPress
+            if press and (math.abs(ev.x - press.x) >= DRAG_THRESHOLD or math.abs(ev.y - press.y) >= DRAG_THRESHOLD) then
+               beginDrag(vw, press)
+               vw.viewport ?! return
+            end
             cursorActivity()
          end
          ev = ev.next
       end
    end)
+
+   -- Drops are accepted over the frame, which covers the rows and the empty space around them.  Column banners,
+   -- scrollbars and toolbars reserved with reserveTop() are outside the frame and are not drop targets.  Drops are
+   -- only routed if the scene was created with VPF_DROP_TARGETS, e.g. by gui.window({ dragDrop=true }).
+
+   if vw.dragDrop then
+      vw.frame.dropTarget = 1
+      vw.frame.subscribe('DragDrop', function(Frame, Args)
+         local handler = vw.events?.dragDrop
+         if not handler or vw.disabled or vw.scene.dropTarget?.id != vw.frame.id then return end
+
+         local x = vw.scene.dropX - vw.page.x
+         local y = vw.scene.dropY - vw.page.y
+         local source = Args.source
+         handler(vw, itemAtPoint(vw, x, y), {
+            source    = source,
+            item      = Args.item,
+            datatypes = Args.datatype,
+            x         = x,
+            y         = y,
+            session   = (glDragSession and source and glDragSession._sourceID is source.id) ? glDragSession : nil
+         })
+      end)
+   end
 
    try
       -- Install implementation-specific lifecycle hooks before any initial rows are constructed.

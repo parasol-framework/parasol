@@ -342,7 +342,7 @@
   <types>
     <constants lookup="VPF" comment="Optional flags for the VectorScene object.">
       <const name="BITMAP_SIZED">Automatically adjust the <class name="VectorScene" field="PageWidth">VectorScene.PageWidth</class> and <class name="VectorScene" field="PageHeight">VectorScene.PageHeight</class> to match the target <class name="Bitmap" field="Width">Bitmap.Width</class> and <class name="Bitmap" field="Height">Bitmap.Height</class>.</const>
-      <const name="DROP_TARGETS">Route drag and drop operations from the <class name="VectorScene" field="Surface">VectorScene.Surface</class> to the registered <class name="VectorViewport">VectorViewport</class> under the pointer.  Must be set prior to initialisation, and only one scene per surface can use this option.</const>
+      <const name="DROP_TARGETS">Route drag and drop operations from the <class name="VectorScene" field="Surface">VectorScene.Surface</class> to the registered <class name="VectorViewport">VectorViewport</class> under the pointer.</const>
       <const name="IGNORE_TAB">Ignore the Tab key for cycling through keyboard subscribers.</const>
       <const name="MANUAL_RENDER">Clear and draw a locked bitmap without callbacks. Call Flush and expose manually.</const>
       <const name="OUTLINE_VIEWPORTS">Draw a green outline around all viewport paths.  Extremely useful for debugging layout issues.</const>

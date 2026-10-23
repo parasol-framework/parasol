@@ -4,15 +4,15 @@
 
    include 'display', 'vector'
 
--- Broadcast a key press in the form of an evKey record: { int64 EventID; KQ Qualifiers; KEY Code; int Unicode },
+-- Broadcast a key event in the form of an evKey record: { int64 EventID; KQ Qualifiers; KEY Code; int Unicode },
 -- padded to 24 bytes.  The 64-bit event ID is composed as GetEventID() does, because a Tiri number cannot represent it
 -- exactly.
 
-function sendKey(Code:num!)
+function sendKey(Code:num!, Qualifiers:num)
    local ev = array<int, 6>
    ev[0] = ('keypress').hash()
    ev[1] = (EVG_IO << 24) | (('keyboard').hash() & 0xffffff)
-   ev[2] = KQ_PRESSED
+   ev[2] = Qualifiers ?? KQ_PRESSED
    ev[3] = Code
    check mSys.BroadcastEvent(ev, 24)
    processing.sleep(0)
@@ -142,4 +142,46 @@ end
 
    sendKey(KEY_A)
    assert(hits is 1, 'Changing the tab order of other subscribers removed the focused vector from key dispatch')
+end
+
+-- Hiding a surface does not take the focus from it, so a popup that hides itself leaves its scene subscribed to key
+-- events.  That scene must not take the vector focus on Tab, otherwise Tab in the visible scene restarts from its first
+-- subscriber instead of advancing from the focused vector.
+
+@Test function TabIgnoresHiddenPopupScene()
+   local surface <close> = obj.new('Surface', { width=100, height=100 })
+   local scene = surface.new('VectorScene', { surface=surface })
+   local root = scene.new('VectorViewport', { x=0, y=0, width=100, height=100 })
+   local hits = array<int, 3>
+   local controls = array<obj>
+   for i in {0 to 3} do
+      local index = i
+      local vp = root.new('VectorViewport', { x=i * 10, y=0, width=10, height=10 })
+      vp.mtSubscribeKeyboard(function(Vector, Qualifiers, Code, Unicode) hits[index] += 1 end)
+      controls.push(vp)
+   end
+
+   surface.acShow()
+   surface.acFocus()
+   processing.sleep(0)
+
+   local popup = surface.new('Surface', { x=0, y=0, width=50, height=50 })
+   local popup_scene = popup.new('VectorScene', { surface=popup })
+   local popup_vp = popup_scene.new('VectorViewport', { })
+   local popup_hits = 0
+   popup_vp.mtSubscribeKeyboard(function(Vector, Qualifiers, Code, Unicode) popup_hits++ end)
+   popup.acShow()
+   popup.acFocus()
+   check popup_vp.acFocus()
+   processing.sleep(0)
+   sendKey(KEY_A)
+   assert(popup_hits is 1, 'The visible popup did not receive a key press')
+
+   popup.acHide()
+   check controls[0].acFocus()
+   processing.sleep(0)
+   sendKey(KEY_TAB, KQ_RELEASED)
+   sendKey(KEY_A)
+   assert(popup_hits is 1, 'The hidden popup received a key press')
+   assert(hits[0] is 0 and hits[1] is 1, 'Tab did not advance from the first control to the second')
 end

@@ -1485,6 +1485,7 @@ class objClipboard : public Object {
 
 #ifdef PRV_CLIPBOARD
    FUNCTION RequestHandler;
+   FUNCTION DragEndHandler;
    ~objClipboard();
 #endif
 
@@ -1527,8 +1528,14 @@ class objClipboard : public Object {
       return ERR::Okay;
    }
 
+   inline ERR getDragEndHandler(FUNCTION * &Value) noexcept {
+      auto field = &this->Class->Dictionary[2];
+      auto get_field = (ERR (*)(APTR, FUNCTION * &))field->GetValue;
+      return get_field(this, Value);
+   }
+
    inline ERR getRequestHandler(FUNCTION * &Value) noexcept {
-      auto field = &this->Class->Dictionary[3];
+      auto field = &this->Class->Dictionary[4];
       auto get_field = (ERR (*)(APTR, FUNCTION * &))field->GetValue;
       return get_field(this, Value);
    }
@@ -1542,8 +1549,13 @@ class objClipboard : public Object {
       return ERR::Okay;
    }
 
+   inline ERR setDragEndHandler(const FUNCTION Value) noexcept {
+      auto field = &this->Class->Dictionary[2];
+      return field->WriteValue(this, field, FD_FUNCTION, &Value);
+   }
+
    inline ERR setRequestHandler(const FUNCTION Value) noexcept {
-      auto field = &this->Class->Dictionary[3];
+      auto field = &this->Class->Dictionary[4];
       return field->WriteValue(this, field, FD_FUNCTION, &Value);
    }
 
