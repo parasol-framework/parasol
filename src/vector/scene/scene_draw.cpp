@@ -169,7 +169,7 @@ private:
 
    void render_fill(VectorState &, extVector &, agg::rasterizer_scanline_aa<> &, extPainter &);
    void render_stroke(VectorState &, extVector &);
-   void copy_filter_bitmap(objBitmap *, extVectorFilter *, BLM);
+   void copy_filter_bitmap(objBitmap *, extVectorFilter *, BLM, double);
    bool shape_intersects_clip(extVector *);
    void draw_vectors(extVector *, VectorState &);
    static const agg::trans_affine build_fill_transform(extVector &, bool,  VectorState &);
@@ -813,7 +813,7 @@ bool SceneRenderer::shape_intersects_clip(extVector *Shape)
 // applies.  Filter bitmaps use absolute clip coordinates, which suits buffered viewport targets because their Data
 // pointer is shifted so that rasterisation can address absolute scene coordinates.
 
-void SceneRenderer::copy_filter_bitmap(objBitmap *Bitmap, extVectorFilter *Filter, BLM BlendMode)
+void SceneRenderer::copy_filter_bitmap(objBitmap *Bitmap, extVectorFilter *Filter, BLM BlendMode, double Opacity)
 {
    // Restrict only the final copy.  Filter inputs must retain pixels outside this clip for offsets and blur kernels.
    const auto &clip = mRenderBase.clip_box();
@@ -824,10 +824,13 @@ void SceneRenderer::copy_filter_bitmap(objBitmap *Bitmap, extVectorFilter *Filte
 
    if ((width <= 0) or (height <= 0)) return;
 
+   // The source graphic already includes the client's opacity; only ancestor and filter opacity remain.
+   const double opacity = std::clamp(Filter->Opacity * Opacity, 0.0, 1.0);
+
    // Fast path: CopyArea() blends sRGB with SIMD and is pixel-identical to the pixel format's SRGB blend.  Its
    // BAF::COPY mode ignores the source opacity, so it is limited to fully opaque, unmasked output.
 
-   if ((BlendMode IS BLM::SRGB) and (mClipStack.empty()) and (Filter->Opacity >= 1.0)) {
+   if ((BlendMode IS BLM::SRGB) and (mClipStack.empty()) and (opacity >= 1.0)) {
       Bitmap->Opacity = 255;
       if (mBitmapOriginX or mBitmapOriginY) {
          // CopyArea() clips against the bitmap dimensions, so a buffered target is addressed in local coordinates.
@@ -844,8 +847,6 @@ void SceneRenderer::copy_filter_bitmap(objBitmap *Bitmap, extVectorFilter *Filte
 
    agg::rasterizer_scanline_aa<> raster;
    basic_path(raster, src_x, src_y, src_x + width, src_y + height);
-
-   const double opacity = std::min(Filter->Opacity, 1.0);
 
    // Masks inherited from container viewports, e.g. a VectorClip or a non-rectangular viewport path, must apply to the
    // filter output.
@@ -918,7 +919,7 @@ void SceneRenderer::draw_vectors(extVector *CurrentVector, VectorState &ParentSt
 
          objBitmap *bmp;
          if ((container) and (not render_filter(filter, container, shape, mBitmap, state.mColourSpace, &bmp))) {
-            copy_filter_bitmap(bmp, filter, state.mBlendMode);
+            copy_filter_bitmap(bmp, filter, state.mBlendMode, state.mOpacity);
          }
          continue;
       }
