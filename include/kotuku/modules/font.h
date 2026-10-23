@@ -444,6 +444,7 @@ struct FontBase {
    ERR (*_RefreshFonts)(void);
    ERR (*_SelectFont)(const std::string_view &Name, const std::string_view &Style, std::string *Path, FMETA *Meta);
    ERR (*_ResolveFamilyName)(const std::string_view &String, std::string_view *Result);
+   ERR (*_RegisterFont)(const std::string_view &Path, std::string *Family);
 #endif // KOTUKU_STATIC
 };
 
@@ -455,6 +456,7 @@ inline int CharWidth(objFont *Font, uint32_t Char) { return FontBase->_CharWidth
 inline ERR RefreshFonts(void) { return FontBase->_RefreshFonts(); }
 inline ERR SelectFont(const std::string_view &Name, const std::string_view &Style, std::string *Path, FMETA *Meta) { return FontBase->_SelectFont(Name,Style,Path,Meta); }
 inline ERR ResolveFamilyName(const std::string_view &String, std::string_view *Result) { return FontBase->_ResolveFamilyName(String,Result); }
+inline ERR RegisterFont(const std::string_view &Path, std::string *Family) { return FontBase->_RegisterFont(Path,Family); }
 } // namespace
 #else
 namespace fnt {
@@ -463,5 +465,6 @@ extern int CharWidth(objFont *Font, uint32_t Char);
 extern ERR RefreshFonts(void);
 extern ERR SelectFont(const std::string_view &Name, const std::string_view &Style, std::string *Path, FMETA *Meta);
 extern ERR ResolveFamilyName(const std::string_view &String, std::string_view *Result);
+extern ERR RegisterFont(const std::string_view &Path, std::string *Family);
 } // namespace
 #endif // KOTUKU_STATIC
