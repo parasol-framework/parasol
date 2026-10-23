@@ -2938,8 +2938,10 @@ void svgState::proc_svg(XTag &Tag, OBJECTPTR Parent, objVector * &Vector) noexce
    // If initialising to a VectorScene, prefer to use its existing viewport if there is one.
 
    objVectorViewport *viewport;
+   bool reused_viewport = false;
    if ((Parent->classID() IS CLASSID::VECTORSCENE) and (((objVectorScene *)Parent)->Viewport)) {
       viewport = ((objVectorScene *)Parent)->Viewport;
+      reused_viewport = true;
    }
    else {
       if (NewObject(CLASSID::VECTORVIEWPORT, &viewport) != ERR::Okay) return;
@@ -2952,9 +2954,12 @@ void svgState::proc_svg(XTag &Tag, OBJECTPTR Parent, objVector * &Vector) noexce
    if (!Self->Viewport) Self->Viewport = viewport;
 
    // SVG content composites in sRGB by default, as browsers do.  A top-level viewport sets the policy for the document
-   // and nested viewports inherit it.  The color-interpolation attribute can override it for a subtree.
+   // and nested viewports inherit it.  The color-interpolation attribute can override it for a subtree.  A viewport
+   // reused from a target scene belongs to the host, so its colour space is left for the host to decide.
 
-   if ((Parent IS Self->Scene) or (Parent IS Self->Target)) viewport->setColourSpace(VCS::SRGB);
+   if ((!reused_viewport) and ((Parent IS Self->Scene) or (Parent IS Self->Target))) {
+      viewport->setColourSpace(VCS::SRGB);
+   }
 
    // Process <svg> attributes
 
