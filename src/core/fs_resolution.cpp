@@ -9,7 +9,8 @@ Name: Files
 //********************************************************************************************************************
 // Canonicalises native host paths.  Existing targets resolve symbolic links and Windows reparse points unless
 // RSF::NO_FOLLOW is set.  Windows falls back to lexical canonicalisation for missing targets; on Linux, a missing
-// target returns no result unless RSF::NO_FOLLOW is set.
+// target returns no result unless RSF::NO_FOLLOW is set.  A trailing separator on Path is preserved in the result on
+// all platforms.
 //
 // The Path must be resolved to the native OS format.
 
@@ -69,6 +70,11 @@ static std::optional<std::string> true_path(CSTRING Path, RSF Flags)
    if (char *rp = realpath(Path, nullptr)) {
       std::string p(rp);
       free(rp);
+
+      // realpath() strips the trailing separator that identifies a folder, so restore it to match the other branches
+
+      const std::string_view source(Path);
+      if ((source.ends_with('/') or source.ends_with('\\')) and (not p.ends_with('/'))) p += '/';
       return std::make_optional<std::string>(p);
    }
    else return std::nullopt;

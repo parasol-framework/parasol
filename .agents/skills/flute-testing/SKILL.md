@@ -86,7 +86,7 @@ cmake --build --preset agents-install
 ctest --preset agents -L TEST_LABEL
 ```
 
-Always run `ctest` through a test preset.  Audio tests registered with an `audio_` name prefix are excluded from the
+Always run `ctest` through a test preset.  Audio tests (any label beginning with `audio`) are excluded from the
 standard presets; run them with `ctest --preset agents-audio`.
 
 ## CMake Registration
@@ -107,4 +107,5 @@ endforeach()
 
 Keep labels and names consistent with neighbouring tests so focused `ctest --preset agents -L ...` runs remain
 predictable.  Note that `flute_test()` labels each test with its name, and the standard presets exclude labels matching
-`^audio_`, so only use that prefix for tests that belong to the opt-in audio suite.
+`^audio`, so only use that prefix for tests that belong to the opt-in audio suite.  Tests that override `LABELS` with
+`set_tests_properties()` replace the name label, so audio tests must keep an `audio` label.

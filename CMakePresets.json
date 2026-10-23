@@ -148,7 +148,7 @@
       },
       "filter": {
         "exclude": {
-          "label": "^audio_"
+          "label": "^audio"
         }
       }
     },
