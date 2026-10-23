@@ -66,8 +66,8 @@ function buildScene()
          { label = 'Square' }
       },
       events = {
-         activate = function(Text:str!)
-            selectWave(Text)
+         activate = function(Item:table!)
+            selectWave(Item.label)
          end
       }
    })
@@ -85,8 +85,8 @@ function buildScene()
          { label = 'Exponential' }
       },
       events = {
-         activate = function(Text:str!)
-            glWave.envelope = choose Text from
+         activate = function(Item:table!)
+            glWave.envelope = choose Item.label from
                'Linear'      -> WVE_LINEAR
                'Quadratic'   -> WVE_QUADRATIC
                'Smoothstep'  -> WVE_SMOOTHSTEP

@@ -115,8 +115,8 @@ function buildScene()
       target = glViewport, label = 'Mode:', text = glMode, x = 16, y = glY,
       items = array<table> { { label = 'Shape' }, { label = 'Repeat' }, { label = 'Spiral' } },
       events = {
-         activate = function(Text:str)
-            glMode = Text
+         activate = function(Item:table!)
+            glMode = Item.label
             applyMode()
             redraw()
          end
@@ -131,9 +131,9 @@ function buildScene()
       target = glViewport, label = 'Mod:', text = MODS[0], x = 16, y = glY,
       items = mod_items,
       events = {
-         activate = function(Text:str)
+         activate = function(Item:table!)
             for i in {0 to #MODS} do
-               if MODS[i] is Text then glShape.mod = i end
+               if MODS[i] is Item.label then glShape.mod = i end
             end
             redraw()
          end
