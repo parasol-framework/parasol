@@ -35,6 +35,7 @@ FT_Library glFTLibrary = nullptr;
 
 std::recursive_mutex glVectorFocusLock;
 std::vector<extVector *> glVectorFocusList; // The first reference is the most foreground object with the focus
+APTR glKeyDispatchHandle = nullptr;
 
 std::recursive_mutex glFontMutex;
 ankerl::unordered_dense::map<uint32_t, std::unique_ptr<bmp_font>> glBitmapFonts;
@@ -116,6 +117,8 @@ static ERR MODInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 
 static ERR MODExpunge(void)
 {
+   if (glKeyDispatchHandle) { UnsubscribeEvent(glKeyDispatchHandle); glKeyDispatchHandle = nullptr; }
+
    glBitmapFonts.clear();
    glFreetypeFonts.clear();
 

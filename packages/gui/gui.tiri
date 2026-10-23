@@ -2083,7 +2083,7 @@ gui.effects = {
          })
          halo = filter.new('CompositeFX', { operator=OP_IN, input=flood, mix=boost })
 
-         over = { operator=OP_OVER, mix=halo }
+         over = { operator = OP_OVER, mix = halo }
          if source then over.input = source else over.sourceType = 'Graphic' end
          return filter.new('CompositeFX', over)
       end
@@ -2117,12 +2117,12 @@ gui.effects = {
          offset = filter.new('OffsetFX', { input=blur, xOffset=Args.x, yOffset=Args.y })
 
          flood = filter.new('FloodFX', {
-            colour=struct<FRGB> { red=colour.r, green=colour.g, blue=colour.b, alpha=colour.a },
-            opacity=math.clamp(Args.opacity, 0, 1)
+            colour = struct<FRGB> { red=colour.r, green=colour.g, blue=colour.b, alpha=colour.a },
+            opacity = math.clamp(Args.opacity, 0, 1)
          })
          cast = filter.new('CompositeFX', { operator=OP_IN, input=flood, mix=offset })
 
-         over = { operator=OP_OVER, mix=cast }
+         over = { operator = OP_OVER, mix = cast }
          if source then over.input = source else over.sourceType = 'Graphic' end
          return filter.new('CompositeFX', over)
       end

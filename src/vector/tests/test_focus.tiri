@@ -185,3 +185,189 @@ end
    assert(popup_hits is 1, 'The hidden popup received a key press')
    assert(hits[0] is 0 and hits[1] is 1, 'Tab did not advance from the first control to the second')
 end
+
+-- Create a focused window surface whose scene holds Total keyboard controls.  Returns the surface, the controls, their
+-- key press counts and their FM_HAS_FOCUS counts.
+
+function controlScene(Total:num!):<obj, array<obj>, array<int>, array<int>>
+   local surface = obj.new('Surface', { width=100, height=100 })
+   local scene = surface.new('VectorScene', { surface=surface })
+   local root = scene.new('VectorViewport', { x=0, y=0, width=100, height=100 })
+   local hits = array<int>
+   local focus_events = array<int>
+   local controls = array<obj>
+   for i in {0 to Total} do
+      local index = i
+      local vp = root.new('VectorViewport', { x=i * 10, y=0, width=10, height=10 })
+      vp.mtSubscribeKeyboard(function(Vector, Qualifiers, Code, Unicode) hits[index] += 1 end)
+      vp.mtSubscribeFeedback(FM_HAS_FOCUS, function(Vector, EventFlag, EventObject) focus_events[index] += 1 end)
+      controls.push(vp)
+      hits.push(0)
+      focus_events.push(0)
+   end
+
+   surface.acShow()
+   surface.acFocus()
+   processing.sleep(0)
+   return surface, controls, hits, focus_events
+end
+
+-- Open a focused popup surface with its own scene and keyboard subscriber.  OnKey, if provided, is called with the
+-- popup and the key details for each key press received.  Returns the popup and a table holding its key press count.
+
+function openPopup(Parent:obj!, OnKey:func):<obj, table>
+   local popup = Parent.new('Surface', { x=0, y=0, width=50, height=50 })
+   local popup_scene = popup.new('VectorScene', { surface=popup })
+   local popup_vp = popup_scene.new('VectorViewport', { })
+   local counts = { hits=0 }
+   popup_vp.mtSubscribeKeyboard(function(Vector, Qualifiers, Code, Unicode)
+      counts.hits++
+      if OnKey then OnKey(popup, Qualifiers, Code) end
+   end)
+   popup.acShow()
+   popup.acFocus()
+   processing.sleep(0)
+   sendKey(KEY_A)
+   assert(counts.hits is 1, 'The visible popup did not receive a key press')
+   return popup, counts
+end
+
+-- Closing a popup must return the vector focus to the control that held it before the popup was opened, without any
+-- help from the application.
+
+@Test function PopupHideRestoresFocus()
+   local surface <close>, controls, hits, focus_events = controlScene(4)
+   check controls[1].acFocus()
+   processing.sleep(0)
+   local prior_focus = focus_events[1]
+
+   local popup, popup_counts = openPopup(surface)
+   assert(hits[1] is 0, 'The window control received a key press meant for the popup')
+
+   popup.acHide()
+   processing.sleep(0)
+   assert(focus_events[1] is prior_focus + 1, 'Hiding the popup did not return the focus to the second control')
+   sendKey(KEY_A)
+   assert(hits[1] is 1, 'The second control did not receive the key press after the popup was hidden')
+   assert(popup_counts.hits is 1, 'The hidden popup received a key press')
+end
+
+@Test function PopupHideThenTabAdvances()
+   local surface <close>, controls, hits = controlScene(4)
+   check controls[1].acFocus()
+   processing.sleep(0)
+
+   local popup = openPopup(surface)
+   popup.acHide()
+   processing.sleep(0)
+   sendKey(KEY_TAB, KQ_RELEASED)
+   sendKey(KEY_A)
+   assert(hits[2] is 1, 'Tab did not advance from the restored control to the next')
+   assert(hits[0] is 0 and hits[1] is 0, 'Tab did not move the focus away from the restored control')
+end
+
+@Test function PopupFreeRestoresFocus()
+   local surface <close>, controls, hits, focus_events = controlScene(4)
+   check controls[1].acFocus()
+   processing.sleep(0)
+   local prior_focus = focus_events[1]
+
+   local popup = openPopup(surface)
+   popup.free()
+   processing.sleep(0)
+   assert(focus_events[1] is prior_focus + 1, 'Freeing the popup did not return the focus to the second control')
+   sendKey(KEY_A)
+   assert(hits[1] is 1, 'The second control did not receive the key press after the popup was freed')
+end
+
+-- A key press that closes a popup is still being dispatched when the focus returns to the window's scene.  That scene
+-- must not deliver the same press to the vector that regains the focus, otherwise an Enter press that activates a menu
+-- item would reach the button that opened the menu and reopen it.
+
+function closeOnEnter(Popup:obj!, Qualifiers:num!, Code:num!)
+   if (Code is KEY_ENTER) and (Qualifiers has KQ_PRESSED) then Popup.acHide() end
+end
+
+@Test function ClosingKeyNotRedeliveredOnRestore()
+   local surface <close>, controls, hits, focus_events = controlScene(4)
+   check controls[1].acFocus()
+   processing.sleep(0)
+   local prior_focus = focus_events[1]
+
+   local popup, popup_counts = openPopup(surface, closeOnEnter)
+   sendKey(KEY_ENTER)
+   assert(popup_counts.hits is 2, 'The popup did not receive the Enter press')
+   assert(focus_events[1] is prior_focus + 1, 'Closing the popup did not return the focus to the second control')
+   assert(hits[1] is 0, 'The Enter press that closed the popup was delivered again to the restored control')
+
+   sendKey(KEY_ENTER)
+   assert(hits[1] is 1, 'The restored control did not receive the next key press')
+   assert(popup_counts.hits is 2, 'The hidden popup received a key press')
+end
+
+@Test function ClosingKeyNotRedeliveredOnExplicitFocus()
+   local surface <close>, controls, hits = controlScene(4)
+   check controls[1].acFocus()
+   processing.sleep(0)
+
+   local popup = openPopup(surface, function(Popup:obj!, Qualifiers:num!, Code:num!)
+      if (Code is KEY_ENTER) and (Qualifiers has KQ_PRESSED) then
+         Popup.acHide()
+         check controls[3].acFocus()
+      end
+   end)
+
+   sendKey(KEY_ENTER)
+   assert(hits[3] is 0, 'The Enter press that closed the popup was delivered to the newly focused control')
+   assert(hits[1] is 0, 'The Enter press that closed the popup was delivered to the restored control')
+   sendKey(KEY_A)
+   assert(hits[3] is 1, 'The newly focused control did not receive the next key press')
+end
+
+-- A scene that subscribes to key events while a key is being dispatched does not receive that key, so it must not be
+-- marked to skip it.  Otherwise the scene would discard the next key press instead.
+
+@Test function FocusToUnsubscribedSceneKeepsNextKey()
+   local first <close>, first_controls, first_hits = controlScene(2)
+   local second <close>, second_controls, second_hits = controlScene(2)
+   assert(first.userFocus is second.id, 'The second surface did not receive the focus')
+
+   second_controls[0].mtSubscribeKeyboard(function(Vector, Qualifiers, Code, Unicode)
+      if (Code is KEY_ENTER) and (Qualifiers has KQ_PRESSED) then first.acFocus() end
+   end)
+
+   sendKey(KEY_ENTER)
+   assert(first.userFocus is first.id, 'The key handler did not move the focus to the first surface')
+   assert(first_hits[0] is 0, 'The first surface received the key press that focussed it')
+
+   sendKey(KEY_ENTER)
+   assert(first_hits[0] is 1, 'The first surface did not receive the next key press')
+end
+
+-- Identical events can reuse the message buffer.  Closing on the second Enter must still suppress delivery to the
+-- restored control, while the following identical Enter must be delivered normally.
+
+@Test function RepeatedClosingKeyNotRedelivered()
+   local surface <close>, controls, hits = controlScene(4)
+   check controls[1].acFocus()
+   processing.sleep(0)
+   local enters = 0
+   local popup, popup_counts = openPopup(surface, function(Popup:obj!, Qualifiers:num!, Code:num!)
+      if (Code is KEY_ENTER) and (Qualifiers has KQ_PRESSED) then
+         enters++
+         if enters is 2 then Popup.acHide() end
+      end
+   end)
+
+   sendKey(KEY_ENTER)
+   assert(enters is 1, 'The popup did not receive the first Enter press')
+   assert(hits[1] is 0, 'The window received a key press meant for the popup')
+   sendKey(KEY_ENTER)
+   assert(enters is 2, 'The popup did not receive the second Enter press')
+   assert(surface.userFocus is surface.id, 'The second Enter press did not close the popup')
+   assert(hits[1] is 0, 'The second Enter press was delivered again to the restored control')
+
+   sendKey(KEY_ENTER)
+   assert(hits[1] is 1, 'The restored control did not receive the following identical Enter press')
+   assert(popup_counts.hits is 3, 'The hidden popup received another key press')
+end

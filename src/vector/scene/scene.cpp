@@ -85,6 +85,7 @@ static ERR VECTORSCENE_Reset(extVectorScene *);
 void apply_focus(extVectorScene *, extVector *);
 extVectorViewport * get_drop_target_at_xy(extVectorScene *, double, double);
 static void scene_key_event(evKey *, int, extVectorScene *);
+static void deliver_key_event(evKey *, extVectorScene *);
 static bool process_resize_msgs(extVectorScene *);
 
 // Surfaces that have a drop router, mapped to the routing VectorScene.  Only one scene per surface can route drops,
@@ -92,6 +93,24 @@ static bool process_resize_msgs(extVectorScene *);
 
 static ankerl::unordered_dense::map<OBJECTID, OBJECTID> glDropRouters;
 static std::mutex glDropRoutersLock;
+
+// Key dispatch tracking.  A key handler can move the vector focus to another scene while the event is still being
+// dispatched, e.g. an Enter press that closes a popup returns the focus to the window that opened it.  That scene is
+// marked to skip its next key event, which is the same event, so that the press is not acted on twice.
+//
+// The module subscribes before any scene.  Events are delivered in reverse subscription order, so its callback runs
+// after all scenes and advances the dispatch counter even when consecutive events have identical contents and reuse
+// the same buffer.  The counter is protected by glVectorFocusLock; tlKeyScene identifies the scene delivering a key
+// event on the calling thread.
+
+static thread_local extVectorScene *tlKeyScene = nullptr;
+static int64_t glKeyDispatch = 1; // Zero is reserved for scenes that have not received an event.
+
+static void finish_key_dispatch(evKey *Event, int Size, APTR Meta)
+{
+   const std::lock_guard<std::recursive_mutex> lock(glVectorFocusLock);
+   glKeyDispatch++;
+}
 
 //********************************************************************************************************************
 
@@ -368,6 +387,20 @@ static void notify_redimension(OBJECTPTR Object, ACTIONID ActionID, ERR Result, 
 }
 
 //********************************************************************************************************************
+// Subscribe the scene to key events if it is not already subscribed.  A subscription made while a key event is being
+// dispatched does not receive that event, which is recorded so that the scene is not marked to skip it.
+
+static void subscribe_key_events(extVectorScene *Self)
+{
+   if (Self->KeyHandle) return;
+
+   const std::lock_guard<std::recursive_mutex> lock(glVectorFocusLock);
+   SubscribeEvent(EVID_IO_KEYBOARD_KEYPRESS, C_FUNCTION(scene_key_event, Self), &Self->KeyHandle);
+   Self->KeySubscribedDispatch = tlKeyScene ? glKeyDispatch : 0;
+   Self->KeyDispatchSkip = 0;
+}
+
+//********************************************************************************************************************
 // Called when the subscribed Surface loses the focus.  The focused vector is recorded so that it can be restored when
 // the surface regains the focus.  The focus list is left alone if it belongs to another scene, as that scene's surface
 // may already have received the focus.
@@ -393,11 +426,9 @@ static void notify_lostfocus(OBJECTPTR Object, ACTIONID ActionID, ERR Result, AP
 static void notify_focus(OBJECTPTR Object, ACTIONID ActionID, ERR Result, APTR Args)
 {
    auto Self = (extVectorScene *)CurrentContext();
-   if (!Self->KeyHandle) {
-      SubscribeEvent(EVID_IO_KEYBOARD_KEYPRESS, C_FUNCTION(scene_key_event, Self), &Self->KeyHandle);
-   }
 
    const std::lock_guard<std::recursive_mutex> lock(glVectorFocusLock);
+   subscribe_key_events(Self);
    if ((not glVectorFocusList.empty()) and ((extVectorScene *)glVectorFocusList.front()->Scene IS Self)) return;
 
    if (Self->LastFocusID) {
@@ -767,9 +798,7 @@ static ERR VECTORSCENE_Init(extVectorScene *Self)
          SubscribeAction(*surface, AC::LostFocus, C_FUNCTION(notify_lostfocus));
          if (Self->DropRouting) SubscribeAction(*surface, AC::DragDrop, C_FUNCTION(notify_dragdrop));
 
-         if (surface->hasFocus()) {
-            SubscribeEvent(EVID_IO_KEYBOARD_KEYPRESS, C_FUNCTION(scene_key_event, Self), &Self->KeyHandle);
-         }
+         if (surface->hasFocus()) subscribe_key_events(Self);
 
          SPT presence;
          if ((!surface->getPresence(presence)) and (presence != SPT::HOST)) {
@@ -1166,6 +1195,28 @@ void apply_focus(extVectorScene *Scene, extVector *Vector)
 
    if ((!glVectorFocusList.empty()) and (Vector IS glVectorFocusList.front())) return;
 
+   // A scene that loses the vector focus to another scene records its focused vector, so that the focus can be
+   // restored when its surface becomes the primary focus again.  This cannot be left to notify_lostfocus(), because
+   // a surface that keeps the focus by inheritance, such as the parent of a focused popup, does not lose the focus.
+
+   if ((Vector) and (!glVectorFocusList.empty())) {
+      auto front = glVectorFocusList.front();
+      if (auto front_scene = (extVectorScene *)front->Scene; front_scene and (front_scene != Vector->Scene)) {
+         front_scene->LastFocusID = front->UID;
+      }
+   }
+
+   // If the focus moves to another scene while a key event is being dispatched, that scene skips the event unless it
+   // has already received it.
+
+   if ((tlKeyScene) and (Vector)) {
+      if (auto scene = (extVectorScene *)Vector->Scene; scene and (scene != tlKeyScene) and (scene->KeyHandle)) {
+         if ((scene->KeyDispatchSeen != glKeyDispatch) and (scene->KeySubscribedDispatch != glKeyDispatch)) {
+            scene->KeyDispatchSkip = glKeyDispatch;
+         }
+      }
+   }
+
    std::vector<extVector *> focus_gained; // The first reference is the most foreground object
 
    for (auto node=Vector; node; node=(extVector *)node->Parent) {
@@ -1343,18 +1394,38 @@ static ERR vector_keyboard_events(extVector *Vector, const evKey *Event)
 //********************************************************************************************************************
 // Distribute input events to any vectors that have subscribed and have the focus.
 //
-// Hiding a surface does not take the focus from it, so a scene on a hidden surface, such as a popup menu that has
-// closed, can remain subscribed to key events.  Such a scene must ignore them; otherwise it would take the vector focus
-// on each Tab press and the visible scene would lose its place in the tab order.
+// A scene on a hidden surface ignores key events.  Hiding a surface hands its focus to an ancestor, but a host or
+// driver can still leave a hidden surface focused, and its scene must not then take the vector focus on Tab.
+//
+// A scene that received the vector focus while this event was being dispatched to another scene ignores the event,
+// as it was meant for the vector that held the focus when the key was pressed.
 
 static void scene_key_event(evKey *Event, int Size, extVectorScene *Self)
 {
    RNF surface_flags;
    if (gfx::GetSurfaceFlags(Self->SurfaceID, &surface_flags) != ERR::Okay) return;
-   if ((surface_flags & RNF::VISIBLE) IS RNF::NIL) return;
 
    const std::lock_guard<std::recursive_mutex> lock(glVectorFocusLock);
 
+   // The skip marker is consumed by the next call, whether or not it applies, so that it can never suppress a later
+   // event.
+
+   Self->KeyDispatchSeen = glKeyDispatch;
+   auto skip = Self->KeyDispatchSkip IS glKeyDispatch;
+   Self->KeyDispatchSkip = 0;
+
+   if ((skip) or ((surface_flags & RNF::VISIBLE) IS RNF::NIL)) return;
+
+   auto prev_scene = tlKeyScene;
+   tlKeyScene = Self;
+   deliver_key_event(Event, Self);
+   tlKeyScene = prev_scene;
+}
+
+//********************************************************************************************************************
+
+static void deliver_key_event(evKey *Event, extVectorScene *Self)
+{
    if ((Self->Flags & VPF::IGNORE_TAB) IS VPF::NIL) {
       if ((Event->Code IS KEY::TAB) and ((Event->Qualifiers & (KQ::ALT|KQ::CTRL|KQ::COMMAND)) IS KQ::NIL)) {
          // Tab is intercepted to allow cycling through the keyboard subscribers in tab order.  If the Shift key is
@@ -1423,5 +1494,7 @@ ERR init_vectorscene(void)
       fl::Size(sizeof(extVectorScene)),
       fl::Path(MOD_PATH));
 
-   return clVectorScene ? ERR::Okay : ERR::AddClass;
+   if (not clVectorScene) return ERR::AddClass;
+
+   return SubscribeEvent(EVID_IO_KEYBOARD_KEYPRESS, C_FUNCTION(finish_key_dispatch), &glKeyDispatchHandle);
 }

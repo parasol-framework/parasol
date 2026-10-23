@@ -87,6 +87,8 @@ if (UNIT_TESTS)
    set_tests_properties (display_headless_driver PROPERTIES LABELS display)
 endif ()
 
+flute_test (display_surface_focus "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_surface_focus.tiri")
+
 if (WIN32)
    target_compile_definitions (${MOD} PRIVATE DISPLAY_WINDOWS_DRIVER WIN_DRAGDROP)
    target_link_libraries (${MOD} PRIVATE ole32 oleaut32 uuid)
