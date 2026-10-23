@@ -179,7 +179,7 @@ function contract_packages():str
 
    local err, temp = mSys.ResolvePath('temp:', 0)
    check err
-   glRoot = temp .. f'/import_type_analysis.tests_{processing.task().id}_{mSys.PreciseTime()}/'
+   glRoot = temp .. f'import_type_analysis.tests_{processing.task().id}_{mSys.PreciseTime()}/'
    make_folder(glRoot)
    if mSys.GetSystemState().platform is 'Linux' then
       make_folder(glRoot .. '.cache/')

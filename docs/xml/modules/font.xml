@@ -46,12 +46,38 @@
     <description>
 <p>Scans the <code>fonts:</code> volume and rebuilds the font database.</p>
 <p>Refreshing fonts can take an extensive amount of time because each font file must be analysed for family, style, metric and metadata information.  The <code>fonts:fonts.cfg</code> file is rewritten on completion.</p>
+<p>Fonts registered with <function>RegisterFont</function> are private to the process and are neither cleared nor saved by a refresh.</p>
     </description>
     <result type="ERR">
       <error code="Okay">Operation successful.</error>
       <error code="AccessObject">Access to the font database was denied, or the object does not exist.</error>
       <error code="GetField">Failed to read font database entries after scanning.</error>
       <error code="OpenFile">Failed to open <code>fonts:fonts.cfg</code> for writing.</error>
+    </result>
+  </function>
+
+  <function>
+    <name>RegisterFont</name>
+    <comment>Makes a font file available to the running process.</comment>
+    <prototype>ERR fnt::RegisterFont(STRVIEW Path, STRING * Family)</prototype>
+    <tiriPrototype>err, Family:str = RegisterFont(Path:str)</tiriPrototype>
+    <tags>blocking, mutates-input</tags>
+    <input>
+      <param type="STRVIEW" name="Path">The location of the font file.</param>
+      <param type="STRING *" name="Family">Optional, returns the family name of the registered font.</param>
+    </input>
+    <description>
+<p>Registers a scalable font file, such as a TrueType or OpenType file, so that its family can be referenced by name in the same way as an installed font.  This allows an application to use fonts that are distributed with it, without installing them to the <code>fonts:</code> volume.</p>
+<p>The family and style names are read from the file.  A variable font registers each of its named styles.  The resolved family name is returned in <code>Family</code> and can be used with the <class name="VectorText" field="Face">VectorText.Face</class> field, <function>SelectFont</function> and <function>ResolveFamilyName</function>.  Registering further files for the same family adds their styles to it, with the most recently registered file taking precedence for any style that is provided more than once.</p>
+<p>Registered fonts are private to the running process.  They are not saved to the font database, do not appear in the font lists that are built from <code>fonts:fonts.cfg</code> and are unaffected by <function>RefreshFonts</function>.  A registered family takes precedence over an installed family of the same name.  Registrations last until the Font module is expunged; there is no means of removing them.</p>
+    </description>
+    <result type="ERR">
+      <error code="Okay">Operation successful.</error>
+      <error code="InvalidData">The file is not a recognised font format.</error>
+      <error code="NoSupport">The file is not a scalable font.</error>
+      <error code="AccessObject">Access to the font database was denied, or the object does not exist.</error>
+      <error code="ResolvePath">The <code>Path</code> could not be resolved to an existing file.</error>
+      <error code="NullArgs">Function call missing argument value(s)</error>
     </result>
   </function>
 
@@ -67,7 +93,7 @@
     </input>
     <description>
 <p>Converts a CSV family string to one resolved family name.  <code>String</code> is parsed from left to right, with each family name or wildcard tested against the font database in order.  If a single asterisk is used to terminate the list, the system default is returned when no earlier name matches.</p>
-<p>Individual names may use the common wildcards <code>?</code> and <code>*</code>; for example, <code>Times New *</code> can match <code>Times New Roman</code> if it is available.</p>
+<p>Individual names may use the common wildcards <code>?</code> and <code>*</code>; for example, <code>Times New *</code> can match <code>Times New Roman</code> if it is available.  Families registered with <function>RegisterFont</function> are tested before the font database.</p>
 <p>The returned <code>Result</code> is borrowed storage.  Copy it immediately if it needs to survive a later font database refresh.</p>
     </description>
     <result type="ERR">
@@ -92,7 +118,8 @@
       <param type="FMETA *" name="Meta" lookup="FMETA">Optional, returns additional meta information about the font file.</param>
     </input>
     <description>
-<p>Resolves a font family <code>Name</code> and preferred <code>Style</code> to a font file path.  The family name must exist in the font database.  If the requested style is unavailable, the function falls back to the face's regular style or first registered style.</p>
+<p>Resolves a font family <code>Name</code> and preferred <code>Style</code> to a font file path.  The family name must exist in the font database or have been registered with <function>RegisterFont</function>.  If the requested style is unavailable, the function falls back to the face's regular style or first registered style.</p>
+<p>Families registered with <function>RegisterFont</function> are searched first and resolved exclusively from their registered files, so a private family will shadow a system family of the same name.  The <code>Meta</code> result for a private family includes the <code>HIDDEN</code> flag.</p>
     </description>
     <result type="ERR">
       <error code="Okay">Operation successful.</error>

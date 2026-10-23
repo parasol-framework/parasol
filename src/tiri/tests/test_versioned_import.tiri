@@ -11,7 +11,7 @@ end
 @BeforeAll function setup()
    local err, temp = mSys.ResolvePath('temp:', 0)
    check err
-   glRoot = temp .. f'/versioned_import.tests_{processing.task().id}_{mSys.PreciseTime()}/'
+   glRoot = temp .. f'versioned_import.tests_{processing.task().id}_{mSys.PreciseTime()}/'
    local folder <close> = obj.new('file', { path=glRoot, flags=FL_NEW|FL_FOLDER })
 
    local packages <close> = obj.new('file', { path=glRoot .. 'packages/', flags=FL_NEW|FL_FOLDER })

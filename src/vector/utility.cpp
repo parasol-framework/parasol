@@ -1,5 +1,6 @@
 
-agg::gamma_lut<uint8_t, uint16_t, 8, 12> glGamma(2.2);
+gamma_table glGamma;
+const translucent_table glTranslucent;
 double glDisplayHDPI = 96, glDisplayVDPI = 96, glDisplayDPI = 96;
 
 [[maybe_unused]] static HSV rgb_to_hsl(FRGB Colour);

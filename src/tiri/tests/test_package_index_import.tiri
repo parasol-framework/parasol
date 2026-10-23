@@ -37,7 +37,7 @@ end
 @BeforeAll function setup()
    local err, temp = mSys.ResolvePath('temp:', 0)
    check err
-   glRoot = temp .. f'/package_index.tests_{processing.task().id}_{mSys.PreciseTime()}/'
+   glRoot = temp .. f'package_index.tests_{processing.task().id}_{mSys.PreciseTime()}/'
    glPackages = glRoot .. 'packages/'
    glScripts = glRoot .. 'scripts/'
    make_folder(glRoot)
